@@ -145,10 +145,60 @@ export class MemoryService {
     // No keyword hits — fall back to highest-importance memories as general context.
     const pool = relevant.length > 0 ? relevant : scored
 
-    return pool
+    const results = pool
       .sort((a, b) => b.score - a.score || b.row.importance - a.row.importance)
       .slice(0, limit)
       .map((item) => item.row)
+
+    if (results.length > 0) {
+      await this.recordMemoryUsage(results.map((item) => item.id))
+    }
+
+    return results
+  }
+
+  /**
+   * Increment usage_count and set last_used_at for memories returned by search.
+   * Failures are swallowed so search results are unchanged for callers.
+   */
+  private async recordMemoryUsage(memoryIds: string[]): Promise<void> {
+    if (memoryIds.length === 0) return
+
+    try {
+      const supabase = getServiceSupabase()
+      const { error } = await supabase.rpc('mark_memories_used', {
+        memory_ids: memoryIds,
+      })
+
+      if (error) {
+        // Fallback without RPC: bump each row independently.
+        const now = new Date().toISOString()
+        await Promise.all(
+          memoryIds.map(async (id) => {
+            const { data } = await supabase
+              .from('memories')
+              .select('usage_count')
+              .eq('id', id)
+              .maybeSingle()
+
+            const current =
+              typeof data?.usage_count === 'number' && Number.isFinite(data.usage_count)
+                ? data.usage_count
+                : 0
+
+            await supabase
+              .from('memories')
+              .update({
+                usage_count: current + 1,
+                last_used_at: now,
+              })
+              .eq('id', id)
+          }),
+        )
+      }
+    } catch {
+      // Usage tracking must not change search behavior.
+    }
   }
 
   private async ensureDefaultUserId(): Promise<string> {
