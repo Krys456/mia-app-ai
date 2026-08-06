@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { MemoryPipeline } from './_lib/MemoryPipeline'
 
 export const config = {
   runtime: 'nodejs',
@@ -75,7 +76,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       })
     }
 
-    const { MemoryPipeline } = await import('./_lib/MemoryPipeline')
     const pipeline = new MemoryPipeline()
     const result = await pipeline.run({
       userMessage,
