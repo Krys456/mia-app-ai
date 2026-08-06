@@ -60,7 +60,7 @@ export async function listMemories(options?: {
   q?: string
 }): Promise<MemoryItem[]> {
   const category = options?.category && options.category !== 'All' ? options.category : undefined
-  const data = await parseJson<{ memories: MemoryItem[] }>(
+  const data = await parseJson<{ success?: boolean; memories: MemoryItem[] }>(
     await fetch(
       memoriesUrl('', {
         category,
@@ -69,7 +69,7 @@ export async function listMemories(options?: {
       { headers: authHeaders() },
     ),
   )
-  return data.memories
+  return data.memories ?? []
 }
 
 /** Creates a memory via POST /api/memories (Supabase-backed). Returns void on success. */
