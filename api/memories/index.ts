@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { MemoryService } from '../_lib/MemoryService'
 
 export const config = {
   runtime: 'nodejs',
@@ -86,11 +87,6 @@ function validateMemoryCreate(body: Record<string, unknown>): ValidationResult {
   }
 }
 
-async function loadMemoryService() {
-  const mod = await import('../_lib/MemoryService')
-  return new mod.MemoryService()
-}
-
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     if (req.method === 'OPTIONS') {
@@ -100,8 +96,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return sendJson(res, 200, { success: true })
     }
 
+    const memoryService = new MemoryService()
+
     if (req.method === 'GET') {
-      const memoryService = await loadMemoryService()
       const category =
         typeof req.query.category === 'string' ? req.query.category.trim() : undefined
       const memories = await memoryService.getMemories({
@@ -139,18 +136,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       })
     }
 
-    const memoryService = await loadMemoryService()
     await memoryService.saveMemory(validated.data)
-
     return sendJson(res, 201, { success: true })
   } catch (error) {
     console.error('[api/memories]', error)
     const message = error instanceof Error ? error.message : String(error)
-
-    if (res.headersSent) {
-      return undefined
-    }
-
+    if (res.headersSent) return undefined
     return sendJson(res, 500, {
       success: false,
       error: message,
