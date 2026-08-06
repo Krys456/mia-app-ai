@@ -1,6 +1,11 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import OpenAI from 'openai'
 
+export const config = {
+  runtime: 'nodejs',
+  maxDuration: 30,
+}
+
 type ChatRole = 'user' | 'assistant' | 'system'
 
 interface ChatApiMessage {
@@ -29,8 +34,25 @@ function sanitizeMessages(raw: unknown): ChatApiMessage[] {
       role: msg.role,
       content: msg.content.trim(),
     }))
-    // Keep the request bounded for cost / latency safety
     .slice(-40)
+}
+
+function parseBody(req: VercelRequest): ChatApiRequestBody {
+  if (req.body == null) return {}
+  if (typeof req.body === 'string') {
+    const trimmed = req.body.trim()
+    if (!trimmed) return {}
+    return JSON.parse(trimmed) as ChatApiRequestBody
+  }
+  if (typeof req.body === 'object') {
+    return req.body as ChatApiRequestBody
+  }
+  throw new Error('Unsupported request body')
+}
+
+function sendJson(res: VercelResponse, status: number, payload: Record<string, unknown>) {
+  res.setHeader('Content-Type', 'application/json; charset=utf-8')
+  return res.status(status).json(payload)
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -43,48 +65,57 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST, OPTIONS')
-    return res.status(405).json({ error: 'Method not allowed' })
+    return sendJson(res, 405, { error: 'Method not allowed' })
   }
 
   const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) {
-    return res.status(500).json({
+    return sendJson(res, 500, {
       error: 'Server misconfigured: OPENAI_API_KEY is not set',
     })
   }
 
   let body: ChatApiRequestBody
   try {
-    body = (typeof req.body === 'string' ? JSON.parse(req.body) : req.body) as ChatApiRequestBody
+    body = parseBody(req)
   } catch {
-    return res.status(400).json({ error: 'Invalid JSON body' })
+    return sendJson(res, 400, { error: 'Invalid JSON body' })
   }
-  const messages = sanitizeMessages(body?.messages)
+
+  const messages = sanitizeMessages(body.messages).filter(
+    (msg) => msg.role === 'user' || msg.role === 'assistant',
+  )
   const systemPrompt =
-    typeof body?.systemPrompt === 'string' && body.systemPrompt.trim()
+    typeof body.systemPrompt === 'string' && body.systemPrompt.trim()
       ? body.systemPrompt.trim()
       : 'You are LAIfe — a warm, helpful AI companion.'
 
   if (messages.length === 0) {
-    return res.status(400).json({ error: 'messages must be a non-empty array' })
+    return sendJson(res, 400, { error: 'messages must be a non-empty array' })
   }
 
   try {
-    const openai = new OpenAI({ apiKey })
+    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
     const model = process.env.OPENAI_MODEL?.trim() || 'gpt-4o-mini'
 
-    const completion = await openai.chat.completions.create({
+    // Latest OpenAI SDK primary API: Responses
+    const response = await client.responses.create({
       model,
-      messages: [{ role: 'system', content: systemPrompt }, ...messages],
+      instructions: systemPrompt,
       temperature: 0.8,
+      input: messages.map((msg) => ({
+        type: 'message' as const,
+        role: msg.role,
+        content: msg.content,
+      })),
     })
 
-    const content = completion.choices[0]?.message?.content?.trim()
+    const content = response.output_text?.trim()
     if (!content) {
-      return res.status(502).json({ error: 'Empty response from OpenAI' })
+      return sendJson(res, 502, { error: 'Empty response from OpenAI' })
     }
 
-    return res.status(200).json({ content })
+    return sendJson(res, 200, { content })
   } catch (error) {
     console.error(error)
 
@@ -95,9 +126,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         type: error.type,
         message: error.message,
       })
+
+      const status =
+        typeof error.status === 'number' && error.status >= 400 && error.status < 600
+          ? error.status
+          : 502
+
+      return sendJson(res, status, {
+        error: error.message,
+        code: error.code,
+        type: error.type,
+      })
     }
 
-    return res.status(502).json({
+    return sendJson(res, 500, {
       error: error instanceof Error ? error.message : String(error),
     })
   }
