@@ -1,6 +1,8 @@
 import type { ThemeDefinition } from './lib/themes'
 import { DEFAULT_THEME_ID } from './lib/themes'
 
+export type AppView = 'chat' | 'memory'
+
 export type MessageRole = 'user' | 'assistant' | 'system'
 
 export interface ChatMessage {

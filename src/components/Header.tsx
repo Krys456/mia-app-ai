@@ -1,5 +1,6 @@
 import { BrandLogo } from './BrandLogo'
 import { useChat } from '../context/ChatContext'
+import type { AppView } from '../types'
 import './Header.css'
 
 function IconNewChat() {
@@ -11,6 +12,26 @@ function IconNewChat() {
         strokeWidth="1.8"
         strokeLinecap="round"
       />
+    </svg>
+  )
+}
+
+function IconMemory() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M6.5 7.5h11v11a2 2 0 0 1-2 2h-7a2 2 0 0 1-2-2v-11Z"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M9 7.5V5.8A1.8 1.8 0 0 1 10.8 4h2.4A1.8 1.8 0 0 1 15 5.8V7.5"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+      />
+      <path d="M9.5 12h5M9.5 15.5h5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
     </svg>
   )
 }
@@ -29,8 +50,18 @@ function IconSettings() {
   )
 }
 
-export function Header() {
+interface HeaderProps {
+  view: AppView
+  onNavigate: (view: AppView) => void
+}
+
+export function Header({ view, onNavigate }: HeaderProps) {
   const { newChat, openSettings, settingsOpen } = useChat()
+
+  const goHomeChat = () => {
+    onNavigate('chat')
+    newChat()
+  }
 
   return (
     <header className="app-header" role="banner">
@@ -38,7 +69,7 @@ export function Header() {
         <button
           type="button"
           className="header-btn header-btn--brand"
-          onClick={newChat}
+          onClick={goHomeChat}
           aria-label="LAIfe home — start fresh chat"
           title="LAIfe"
         >
@@ -53,11 +84,24 @@ export function Header() {
           <button
             type="button"
             className="header-btn"
-            onClick={newChat}
+            onClick={() => {
+              onNavigate('chat')
+              newChat()
+            }}
             aria-label="New chat"
             title="New chat"
           >
             <IconNewChat />
+          </button>
+          <button
+            type="button"
+            className={`header-btn${view === 'memory' ? ' header-btn--active' : ''}`}
+            onClick={() => onNavigate('memory')}
+            aria-label="Memory"
+            title="Memory"
+            aria-pressed={view === 'memory'}
+          >
+            <IconMemory />
           </button>
           <button
             type="button"
