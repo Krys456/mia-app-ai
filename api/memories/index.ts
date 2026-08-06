@@ -1,5 +1,4 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { MemoryService } from '../../server/memory/MemoryService'
 
 export const config = {
   runtime: 'nodejs',
@@ -17,9 +16,7 @@ type ValidationResult =
   | { ok: true; data: MemoryCreateInput }
   | { ok: false; errors: Record<string, string> }
 
-const memoryService = new MemoryService()
-
-function sendJson(res: VercelResponse, status: number, payload: unknown) {
+function sendJson(res: VercelResponse, status: number, payload: Record<string, unknown>) {
   res.setHeader('Content-Type', 'application/json; charset=utf-8')
   return res.status(status).json(payload)
 }
@@ -90,46 +87,57 @@ function validateMemoryCreate(body: Record<string, unknown>): ValidationResult {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method === 'OPTIONS') {
-    res.setHeader('Access-Control-Allow-Origin', '*')
-    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
-    return res.status(204).end()
-  }
-
-  if (req.method !== 'POST') {
-    res.setHeader('Allow', 'POST, OPTIONS')
-    return sendJson(res, 405, {
-      success: false,
-      error: 'Method not allowed. Only POST is supported.',
-    })
-  }
-
-  let body: Record<string, unknown>
   try {
-    body = parseBody(req)
-  } catch {
-    return sendJson(res, 400, {
-      success: false,
-      error: 'Invalid JSON body',
-    })
-  }
+    if (req.method === 'OPTIONS') {
+      res.setHeader('Access-Control-Allow-Origin', '*')
+      res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+      res.setHeader('Content-Type', 'application/json; charset=utf-8')
+      return res.status(200).json({ success: true })
+    }
 
-  const validated = validateMemoryCreate(body)
-  if (!validated.ok) {
-    return sendJson(res, 400, {
-      success: false,
-      error: 'Validation failed',
-      errors: validated.errors,
-    })
-  }
+    if (req.method !== 'POST') {
+      res.setHeader('Allow', 'POST, OPTIONS')
+      return sendJson(res, 500, {
+        success: false,
+        error: 'Method not allowed. Only POST is supported.',
+      })
+    }
 
-  try {
+    let body: Record<string, unknown>
+    try {
+      body = parseBody(req)
+    } catch (parseError) {
+      console.error('[api/memories] invalid JSON body', parseError)
+      return sendJson(res, 500, {
+        success: false,
+        error: 'Invalid JSON body',
+      })
+    }
+
+    const validated = validateMemoryCreate(body)
+    if (!validated.ok) {
+      console.error('[api/memories] validation failed', validated.errors)
+      return sendJson(res, 500, {
+        success: false,
+        error: 'Validation failed',
+        errors: validated.errors,
+      })
+    }
+
+    const { MemoryService } = await import('../../server/memory/MemoryService')
+    const memoryService = new MemoryService()
     await memoryService.saveMemory(validated.data)
+
     return sendJson(res, 201, { success: true })
   } catch (error) {
     console.error('[api/memories]', error)
     const message = error instanceof Error ? error.message : String(error)
+
+    if (res.headersSent) {
+      return undefined
+    }
+
     return sendJson(res, 500, {
       success: false,
       error: message,
