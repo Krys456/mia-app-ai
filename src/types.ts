@@ -1,3 +1,6 @@
+import type { ThemeDefinition } from './lib/themes'
+import { DEFAULT_THEME_ID } from './lib/themes'
+
 export type MessageRole = 'user' | 'assistant' | 'system'
 
 export interface ChatMessage {
@@ -15,8 +18,16 @@ export interface PersonalizationSettings {
   customInstructions: string
 }
 
+export interface ThemeSettings {
+  /** Active theme id (builtin or custom). */
+  activeThemeId: string
+  /** User-created themes stored on this device. */
+  customThemes: ThemeDefinition[]
+}
+
 export interface AppSettings {
   personalization: PersonalizationSettings
+  theme: ThemeSettings
 }
 
 export const DEFAULT_PERSONALIZATION: PersonalizationSettings = {
@@ -25,4 +36,9 @@ export const DEFAULT_PERSONALIZATION: PersonalizationSettings = {
   replyLength: 'concise',
   useEmojis: true,
   customInstructions: '',
+}
+
+export const DEFAULT_THEME_SETTINGS: ThemeSettings = {
+  activeThemeId: DEFAULT_THEME_ID,
+  customThemes: [],
 }
