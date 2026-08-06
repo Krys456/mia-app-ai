@@ -15,8 +15,8 @@
   height: 55%;
   border-radius: 50%;
   background:
-    radial-gradient(circle at 35% 40%, rgba(0, 210, 255, 0.2), transparent 55%),
-    radial-gradient(circle at 70% 45%, rgba(255, 0, 127, 0.16), transparent 50%);
+    radial-gradient(circle at 35% 40%, rgba(43, 152, 255, 0.22), transparent 55%),
+    radial-gradient(circle at 70% 45%, rgba(239, 8, 161, 0.18), transparent 50%);
   filter: blur(18px);
   pointer-events: none;
   animation: glow-pulse 5.5s ease-in-out infinite;

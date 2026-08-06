@@ -1,12 +1,12 @@
 :root {
-  /* LAIfe brand theme — derived from official logo */
+  /* LAIfe brand theme — colors sampled from official logo */
   --laife-black: #000000;
   --laife-dark: #111111;
   --laife-soft: #222222;
-  --laife-cyan: #00e5ff;
-  --laife-blue: #3d8bff;
-  --laife-purple: #c44dff;
-  --laife-pink: #ff2d95;
+  --laife-cyan: #2b98ff;
+  --laife-blue: #1c84e9;
+  --laife-purple: #e20dc4;
+  --laife-pink: #ef08a1;
   --laife-magenta: #ff3de0;
 
   --bg: var(--laife-black);
@@ -24,19 +24,19 @@
   --gradient-brand: linear-gradient(
     115deg,
     var(--laife-cyan) 0%,
-    var(--laife-blue) 28%,
-    var(--laife-purple) 58%,
+    var(--laife-blue) 26%,
+    var(--laife-purple) 62%,
     var(--laife-pink) 100%
   );
   --gradient-brand-soft: linear-gradient(
     135deg,
-    rgba(0, 229, 255, 0.18),
-    rgba(196, 77, 255, 0.12),
-    rgba(255, 45, 149, 0.16)
+    rgba(43, 152, 255, 0.2),
+    rgba(226, 13, 196, 0.12),
+    rgba(239, 8, 161, 0.16)
   );
-  --glow-cyan: 0 0 24px rgba(0, 229, 255, 0.3);
-  --glow-pink: 0 0 24px rgba(255, 45, 149, 0.24);
-  --glow-brand: 0 0 28px rgba(0, 229, 255, 0.22), 0 0 48px rgba(255, 45, 149, 0.14);
+  --glow-cyan: 0 0 24px rgba(43, 152, 255, 0.32);
+  --glow-pink: 0 0 24px rgba(239, 8, 161, 0.26);
+  --glow-brand: 0 0 28px rgba(43, 152, 255, 0.24), 0 0 48px rgba(239, 8, 161, 0.14);
 
   --radius-sm: 0.75rem;
   --radius-md: 1.1rem;
@@ -75,9 +75,9 @@ body,
 body {
   min-width: 320px;
   background:
-    radial-gradient(900px 520px at 15% -5%, rgba(0, 229, 255, 0.18), transparent 55%),
-    radial-gradient(780px 480px at 95% 0%, rgba(255, 45, 149, 0.15), transparent 50%),
-    radial-gradient(640px 420px at 50% 110%, rgba(196, 77, 255, 0.11), transparent 55%),
+    radial-gradient(900px 520px at 15% -5%, rgba(43, 152, 255, 0.18), transparent 55%),
+    radial-gradient(780px 480px at 95% 0%, rgba(239, 8, 161, 0.15), transparent 50%),
+    radial-gradient(640px 420px at 50% 110%, rgba(226, 13, 196, 0.11), transparent 55%),
     var(--laife-black);
 }
 
@@ -105,7 +105,6 @@ select {
   border: 0;
 }
 
-/* Shared brand utilities */
 .brand-gradient-text {
   background: var(--gradient-brand);
   -webkit-background-clip: text;
