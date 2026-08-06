@@ -36,6 +36,20 @@ function IconMemory() {
   )
 }
 
+function IconVision() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinejoin="round"
+      />
+      <circle cx="12" cy="12" r="2.5" stroke="currentColor" strokeWidth="1.7" />
+    </svg>
+  )
+}
+
 function IconSettings() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -102,6 +116,16 @@ export function Header({ view, onNavigate }: HeaderProps) {
             aria-pressed={view === 'memory'}
           >
             <IconMemory />
+          </button>
+          <button
+            type="button"
+            className={`header-btn${view === 'vision' ? ' header-btn--active' : ''}`}
+            onClick={() => onNavigate('vision')}
+            aria-label="Vision"
+            title="Vision"
+            aria-pressed={view === 'vision'}
+          >
+            <IconVision />
           </button>
           <button
             type="button"
