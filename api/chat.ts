@@ -1,13 +1,35 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { waitUntil } from '@vercel/functions'
 import OpenAI from 'openai'
 
-// TODO(memory): Long-term user memory must stay OPTIONAL and must never be a
-// hard import here. If reintroduced, use a dynamic/optional path that cannot
-// crash /api/chat when the database module is unavailable on Vercel.
+// Memory is OPTIONAL: only dynamic-imported after a successful reply so a
+// missing/broken memory module cannot take down /api/chat at load time.
 
 export const config = {
   runtime: 'nodejs',
   maxDuration: 60,
+}
+
+/**
+ * Fire-and-forget memory pipeline. Never throws to the chat path.
+ * Failures are ignored so chat always returns normally.
+ */
+function scheduleMemoryPipeline(userMessage: string, assistantMessage: string) {
+  const task = (async () => {
+    try {
+      const { MemoryPipeline } = await import('../server/memory/MemoryPipeline')
+      const pipeline = new MemoryPipeline()
+      await pipeline.run({ userMessage, assistantMessage })
+    } catch {
+      // Ignore — memory must never affect the chat response.
+    }
+  })()
+
+  try {
+    waitUntil(task)
+  } catch {
+    void task
+  }
 }
 
 const SYSTEM_PROMPT = `Sei LAIfe, un assistente AI avanzato.
@@ -125,6 +147,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const content = response.output_text?.trim()
     if (!content) {
       return sendJson(res, 502, { error: 'Empty response from OpenAI' })
+    }
+
+    const lastUserMessage = [...messages].reverse().find((msg) => msg.role === 'user')
+    if (lastUserMessage?.content) {
+      // Background only — do not await; response format stays { content }.
+      scheduleMemoryPipeline(lastUserMessage.content, content)
     }
 
     return sendJson(res, 200, { content })
