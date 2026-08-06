@@ -1,13 +1,10 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { getServiceSupabase } from '../_lib/supabase'
+import { MemoryService } from '../../server/memory/MemoryService'
 
 export const config = {
   runtime: 'nodejs',
   maxDuration: 15,
 }
-
-const DEFAULT_API_USER_EMAIL = 'brain-api@local'
-const DEFAULT_API_USER_NAME = 'BrAIn API'
 
 type MemoryCreateInput = {
   category: string
@@ -19,6 +16,8 @@ type MemoryCreateInput = {
 type ValidationResult =
   | { ok: true; data: MemoryCreateInput }
   | { ok: false; errors: Record<string, string> }
+
+const memoryService = new MemoryService()
 
 function sendJson(res: VercelResponse, status: number, payload: unknown) {
   res.setHeader('Content-Type', 'application/json; charset=utf-8')
@@ -90,41 +89,6 @@ function validateMemoryCreate(body: Record<string, unknown>): ValidationResult {
   }
 }
 
-async function ensureDefaultUserId(): Promise<string> {
-  const supabase = getServiceSupabase()
-
-  const { data: existing, error: lookupError } = await supabase
-    .from('users')
-    .select('id')
-    .eq('email', DEFAULT_API_USER_EMAIL)
-    .maybeSingle()
-
-  if (lookupError) {
-    throw new Error(`Failed to look up default user: ${lookupError.message}`)
-  }
-
-  if (existing?.id) {
-    return String(existing.id)
-  }
-
-  const { data: created, error: createError } = await supabase
-    .from('users')
-    .insert({
-      email: DEFAULT_API_USER_EMAIL,
-      display_name: DEFAULT_API_USER_NAME,
-    })
-    .select('id')
-    .single()
-
-  if (createError || !created?.id) {
-    throw new Error(
-      `Failed to create default user: ${createError?.message ?? 'unknown error'}`,
-    )
-  }
-
-  return String(created.id)
-}
-
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Origin', '*')
@@ -161,25 +125,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const supabase = getServiceSupabase()
-    const userId = await ensureDefaultUserId()
-
-    const { error: insertError } = await supabase.from('memories').insert({
-      user_id: userId,
-      category: validated.data.category,
-      title: validated.data.title,
-      content: validated.data.content,
-      importance: validated.data.importance,
-    })
-
-    if (insertError) {
-      console.error('[api/memories] insert failed', insertError)
-      return sendJson(res, 500, {
-        success: false,
-        error: insertError.message,
-      })
-    }
-
+    await memoryService.saveMemory(validated.data)
     return sendJson(res, 201, { success: true })
   } catch (error) {
     console.error('[api/memories]', error)
