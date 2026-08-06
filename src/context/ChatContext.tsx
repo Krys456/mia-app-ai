@@ -7,6 +7,7 @@ import {
   useReducer,
   type ReactNode,
 } from 'react'
+import { requestChatCompletion, type ChatApiMessage } from '../lib/chatApi'
 import { buildSystemPrompt, generateLocalReply } from '../lib/personality'
 import type { ThemeDefinition } from '../lib/themes'
 import {
@@ -237,17 +238,35 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
       dispatch({ type: 'SEND_USER', content })
 
-      // Local demo reply — swap for API call using buildSystemPrompt(settings).
-      window.setTimeout(() => {
+      const personalization = state.settings.personalization
+      const prompt = buildSystemPrompt(personalization)
+      const history: ChatApiMessage[] = [
+        ...state.messages
+          .filter((m) => m.role === 'user' || m.role === 'assistant')
+          .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
+        { role: 'user', content },
+      ]
+
+      // Keep isThinking true until ASSISTANT_DONE / ASSISTANT_FAIL (typing UI unchanged).
+      void (async () => {
         try {
-          const reply = generateLocalReply(content, state.settings.personalization)
+          const { content: reply } = await requestChatCompletion({
+            messages: history,
+            systemPrompt: prompt,
+          })
           dispatch({ type: 'ASSISTANT_DONE', content: reply })
         } catch {
-          dispatch({ type: 'ASSISTANT_FAIL' })
+          // API unavailable / failed — graceful local fallback.
+          try {
+            const reply = generateLocalReply(content, personalization)
+            dispatch({ type: 'ASSISTANT_DONE', content: reply })
+          } catch {
+            dispatch({ type: 'ASSISTANT_FAIL' })
+          }
         }
-      }, 450 + Math.random() * 350)
+      })()
     },
-    [state.isThinking, state.settings.personalization],
+    [state.isThinking, state.messages, state.settings.personalization],
   )
 
   const systemPrompt = useMemo(
