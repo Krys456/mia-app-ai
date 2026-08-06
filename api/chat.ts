@@ -2,8 +2,8 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { waitUntil } from '@vercel/functions'
 import OpenAI from 'openai'
 
-// Memory is OPTIONAL: only dynamic-imported after a successful reply so a
-// missing/broken memory module cannot take down /api/chat at load time.
+// Memory is OPTIONAL: dynamic-imported so a missing/broken memory module
+// cannot take down /api/chat at load time.
 
 export const config = {
   runtime: 'nodejs',
@@ -32,14 +32,59 @@ function scheduleMemoryPipeline(userMessage: string, assistantMessage: string) {
   }
 }
 
+/**
+ * Retrieve relevant memories for the latest user turn.
+ * On any failure, returns '' so chat continues normally.
+ */
+async function loadRelevantMemoryBlock(userMessage: string): Promise<string> {
+  try {
+    const { MemoryService } = await import('../server/memory/MemoryService')
+    const service = new MemoryService()
+    const memories = await service.searchMemory(userMessage, { limit: 5 })
+
+    if (!Array.isArray(memories) || memories.length === 0) {
+      return ''
+    }
+
+    const lines = memories
+      .map((memory) => {
+        const title = typeof memory.title === 'string' ? memory.title.trim() : ''
+        const content = typeof memory.content === 'string' ? memory.content.trim() : ''
+        if (!title && !content) return null
+        if (!title) return `- ${content}`
+        if (!content) return `- ${title}`
+        return `- ${title}: ${content}`
+      })
+      .filter((line): line is string => Boolean(line))
+
+    if (lines.length === 0) {
+      return ''
+    }
+
+    return `Relevant user memories:\n${lines.join('\n')}`
+  } catch {
+    return ''
+  }
+}
+
 const SYSTEM_PROMPT = `Sei LAIfe, un assistente AI avanzato.
 Adatta SEMPRE la tua lingua a quella usata dall'utente (se l'utente scrive in italiano, rispondi esclusivamente in italiano fluido e naturale).
 Fornisci risposte chiare, esaustive e ben strutturate, evitando di essere troppo sbrigativo.`
 
-function buildInstructions(clientSystemPrompt: string): string {
+function buildInstructions(clientSystemPrompt: string, memoryBlock = ''): string {
+  const parts = [SYSTEM_PROMPT]
+
   const personalization = clientSystemPrompt.trim()
-  if (!personalization) return SYSTEM_PROMPT
-  return `${SYSTEM_PROMPT}\n\n## Personalizzazione\n${personalization}`
+  if (personalization) {
+    parts.push(`## Personalizzazione\n${personalization}`)
+  }
+
+  const memories = memoryBlock.trim()
+  if (memories) {
+    parts.push(memories)
+  }
+
+  return parts.join('\n\n')
 }
 
 type ChatRole = 'user' | 'assistant' | 'system'
@@ -133,9 +178,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
     const model = process.env.OPENAI_MODEL?.trim() || 'gpt-4o-mini'
 
+    const lastUserMessage = [...messages].reverse().find((msg) => msg.role === 'user')
+    const memoryBlock = lastUserMessage?.content
+      ? await loadRelevantMemoryBlock(lastUserMessage.content)
+      : ''
+
     const response = await client.responses.create({
       model,
-      instructions: buildInstructions(clientSystemPrompt),
+      instructions: buildInstructions(clientSystemPrompt, memoryBlock),
       temperature: 0.8,
       input: messages.map((msg) => ({
         type: 'message' as const,
@@ -149,7 +199,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return sendJson(res, 502, { error: 'Empty response from OpenAI' })
     }
 
-    const lastUserMessage = [...messages].reverse().find((msg) => msg.role === 'user')
     if (lastUserMessage?.content) {
       // Background only — do not await; response format stays { content }.
       scheduleMemoryPipeline(lastUserMessage.content, content)

@@ -2,7 +2,6 @@
  * BrAIn Memory Service
  *
  * Persists and retrieves long-term memories.
- * Only saveMemory is implemented so far; other methods stay unimplemented.
  */
 
 import { getServiceSupabase } from '../../api/_lib/supabase'
@@ -36,6 +35,22 @@ export type SearchMemoryOptions = {
   limit?: number
 }
 
+export type MemorySearchResult = {
+  id: string
+  category: string
+  title: string
+  content: string
+  importance: number
+}
+
+function tokenize(query: string): string[] {
+  return query
+    .toLowerCase()
+    .split(/[^a-z0-9àèéìòù]+/i)
+    .map((token) => token.trim())
+    .filter((token) => token.length > 1)
+}
+
 export class MemoryService {
   async saveMemory(input: SaveMemoryInput): Promise<void> {
     const supabase = getServiceSupabase()
@@ -66,11 +81,74 @@ export class MemoryService {
     throw new Error('MemoryService.deleteMemory is not implemented')
   }
 
+  /**
+   * Returns the most relevant memories for a query (keyword + importance ranking).
+   */
   async searchMemory(
-    _query: string,
-    _options?: SearchMemoryOptions,
-  ): Promise<unknown[]> {
-    throw new Error('MemoryService.searchMemory is not implemented')
+    query: string,
+    options?: SearchMemoryOptions,
+  ): Promise<MemorySearchResult[]> {
+    const supabase = getServiceSupabase()
+    const userId = options?.userId ?? (await this.ensureDefaultUserId())
+    const limit = Math.min(Math.max(options?.limit ?? 5, 1), 20)
+
+    let request = supabase
+      .from('memories')
+      .select('id, category, title, content, importance')
+      .eq('user_id', userId)
+      .order('importance', { ascending: false })
+      .limit(100)
+
+    if (options?.category) {
+      request = request.eq('category', options.category)
+    }
+
+    const { data, error } = await request
+    if (error) {
+      throw new Error(error.message)
+    }
+
+    const rows = (data ?? []).map((row) => ({
+      id: String(row.id),
+      category: String(row.category ?? ''),
+      title: String(row.title ?? ''),
+      content: String(row.content ?? ''),
+      importance:
+        typeof row.importance === 'number' && Number.isFinite(row.importance)
+          ? row.importance
+          : 0,
+    }))
+
+    if (rows.length === 0) {
+      return []
+    }
+
+    const tokens = tokenize(query)
+    const scored = rows.map((row) => {
+      const haystack = `${row.title} ${row.content} ${row.category}`.toLowerCase()
+      let score = row.importance
+      let matched = tokens.length === 0
+
+      for (const token of tokens) {
+        if (haystack.includes(token)) {
+          matched = true
+          score += 4
+          if (row.title.toLowerCase().includes(token)) score += 3
+        }
+      }
+
+      return { row, score, matched }
+    })
+
+    const relevant = tokens.length > 0 ? scored.filter((item) => item.matched) : scored
+
+    // No keyword hits — fall back to highest-importance memories as general context.
+    const pool = relevant.length > 0 ? relevant : scored
+
+    return pool
+      .sort((a, b) => b.score - a.score || b.row.importance - a.row.importance)
+      .slice(0, limit)
+      .map((item) => item.row)
   }
 
   private async ensureDefaultUserId(): Promise<string> {
