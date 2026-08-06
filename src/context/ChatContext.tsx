@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from 'react'
 import { requestChatCompletion, type ChatApiMessage } from '../lib/chatApi'
-import { buildSystemPrompt, generateLocalReply } from '../lib/personality'
+import { buildSystemPrompt } from '../lib/personality'
 import type { ThemeDefinition } from '../lib/themes'
 import {
   DEFAULT_PERSONALIZATION,
@@ -113,7 +113,7 @@ type Action =
   | { type: 'UPDATE_THEME'; payload: Partial<ThemeSettings> }
   | { type: 'SEND_USER'; content: string }
   | { type: 'ASSISTANT_DONE'; content: string }
-  | { type: 'ASSISTANT_FAIL' }
+  | { type: 'ASSISTANT_FAIL'; error: string }
 
 function createInitialState(): AppState {
   return {
@@ -188,8 +188,19 @@ function reducer(state: AppState, action: Action): AppState {
         isThinking: false,
       }
     }
-    case 'ASSISTANT_FAIL':
-      return { ...state, isThinking: false }
+    case 'ASSISTANT_FAIL': {
+      const assistantMsg: ChatMessage = {
+        id: uid(),
+        role: 'assistant',
+        content: action.error,
+        createdAt: Date.now(),
+      }
+      return {
+        ...state,
+        messages: [...state.messages, assistantMsg],
+        isThinking: false,
+      }
+    }
     default:
       return state
   }
@@ -255,14 +266,10 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             systemPrompt: prompt,
           })
           dispatch({ type: 'ASSISTANT_DONE', content: reply })
-        } catch {
-          // API unavailable / failed — graceful local fallback.
-          try {
-            const reply = generateLocalReply(content, personalization)
-            dispatch({ type: 'ASSISTANT_DONE', content: reply })
-          } catch {
-            dispatch({ type: 'ASSISTANT_FAIL' })
-          }
+        } catch (error) {
+          // Temporary: no local demo fallback — surface the real API error.
+          const message = error instanceof Error ? error.message : String(error)
+          dispatch({ type: 'ASSISTANT_FAIL', error: message })
         }
       })()
     },
