@@ -5,7 +5,7 @@
   flex-shrink: 0;
   pointer-events: auto;
   isolation: isolate;
-  background: color-mix(in srgb, var(--laife-black) 72%, transparent);
+  background: color-mix(in srgb, var(--bg) 72%, transparent);
   backdrop-filter: blur(18px) saturate(1.25);
   -webkit-backdrop-filter: blur(18px) saturate(1.25);
   border-bottom: 1px solid var(--border);
@@ -60,20 +60,20 @@
 
 .header-btn:hover {
   color: var(--text);
-  background: color-mix(in srgb, var(--laife-soft) 80%, transparent);
+  background: color-mix(in srgb, var(--surface-2) 80%, transparent);
   border-color: var(--border);
 }
 
 .header-btn--active,
 .header-btn[aria-pressed='true'] {
-  color: var(--laife-cyan);
-  border-color: color-mix(in srgb, var(--laife-cyan) 35%, transparent);
-  background: color-mix(in srgb, var(--laife-cyan) 10%, transparent);
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
   box-shadow: var(--glow-cyan);
 }
 
 .header-btn:focus-visible {
-  outline: 2px solid var(--laife-cyan);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 

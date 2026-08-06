@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef } from 'react'
 import { useChat } from '../context/ChatContext'
 import type { PersonalizationSettings } from '../types'
+import { ThemeSettings } from './ThemeSettings'
 import './SettingsDrawer.css'
 
 export function SettingsDrawer() {
@@ -81,65 +82,76 @@ export function SettingsDrawer() {
         </div>
 
         <div className="settings-drawer__body">
-          <label className="field">
-            <span className="field__label">Your name</span>
-            <input
-              type="text"
-              value={p.displayName}
-              onChange={(e) => set('displayName', e.target.value)}
-              placeholder="How should LAIfe call you?"
-              autoComplete="nickname"
-            />
-          </label>
+          <ThemeSettings />
 
-          <label className="field">
-            <span className="field__label">Tone</span>
-            <select
-              value={p.tone}
-              onChange={(e) => set('tone', e.target.value as PersonalizationSettings['tone'])}
-            >
-              <option value="warm">Warm &amp; encouraging</option>
-              <option value="playful">Playful</option>
-              <option value="calm">Calm</option>
-              <option value="professional">Professional</option>
-            </select>
-          </label>
+          <div className="settings-divider" role="separator" />
 
-          <label className="field">
-            <span className="field__label">Reply length</span>
-            <select
-              value={p.replyLength}
-              onChange={(e) =>
-                set('replyLength', e.target.value as PersonalizationSettings['replyLength'])
-              }
-            >
-              <option value="concise">Concise</option>
-              <option value="balanced">Balanced</option>
-              <option value="detailed">Detailed</option>
-            </select>
-          </label>
+          <section className="settings-personality" aria-labelledby="personality-title">
+            <h3 id="personality-title" className="settings-section-title">
+              Assistant
+            </h3>
 
-          <label className="field field--row">
-            <span className="field__label">Use emojis</span>
-            <input
-              type="checkbox"
-              checked={p.useEmojis}
-              onChange={(e) => set('useEmojis', e.target.checked)}
-            />
-          </label>
+            <label className="field">
+              <span className="field__label">Your name</span>
+              <input
+                type="text"
+                value={p.displayName}
+                onChange={(e) => set('displayName', e.target.value)}
+                placeholder="How should LAIfe call you?"
+                autoComplete="nickname"
+              />
+            </label>
 
-          <label className="field">
-            <span className="field__label">Custom instructions</span>
-            <textarea
-              rows={4}
-              value={p.customInstructions}
-              onChange={(e) => set('customInstructions', e.target.value)}
-              placeholder="Anything LAIfe should always keep in mind…"
-            />
-          </label>
+            <label className="field">
+              <span className="field__label">Tone</span>
+              <select
+                value={p.tone}
+                onChange={(e) => set('tone', e.target.value as PersonalizationSettings['tone'])}
+              >
+                <option value="warm">Warm &amp; encouraging</option>
+                <option value="playful">Playful</option>
+                <option value="calm">Calm</option>
+                <option value="professional">Professional</option>
+              </select>
+            </label>
+
+            <label className="field">
+              <span className="field__label">Reply length</span>
+              <select
+                value={p.replyLength}
+                onChange={(e) =>
+                  set('replyLength', e.target.value as PersonalizationSettings['replyLength'])
+                }
+              >
+                <option value="concise">Concise</option>
+                <option value="balanced">Balanced</option>
+                <option value="detailed">Detailed</option>
+              </select>
+            </label>
+
+            <label className="field field--row">
+              <span className="field__label">Use emojis</span>
+              <input
+                type="checkbox"
+                checked={p.useEmojis}
+                onChange={(e) => set('useEmojis', e.target.checked)}
+              />
+            </label>
+
+            <label className="field">
+              <span className="field__label">Custom instructions</span>
+              <textarea
+                rows={4}
+                value={p.customInstructions}
+                onChange={(e) => set('customInstructions', e.target.value)}
+                placeholder="Anything LAIfe should always keep in mind…"
+              />
+            </label>
+          </section>
 
           <p className="settings-note">
-            Preferences save on this device and shape LAIfe’s system prompt for future replies.
+            Theme and assistant preferences save on this device. Themes reshape the whole interface;
+            personality settings shape LAIfe’s system prompt for future replies.
           </p>
         </div>
       </aside>

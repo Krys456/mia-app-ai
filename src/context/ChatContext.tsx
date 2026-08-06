@@ -8,28 +8,79 @@ import {
   type ReactNode,
 } from 'react'
 import { buildSystemPrompt, generateLocalReply } from '../lib/personality'
+import type { ThemeDefinition } from '../lib/themes'
 import {
   DEFAULT_PERSONALIZATION,
+  DEFAULT_THEME_SETTINGS,
   type AppSettings,
   type ChatMessage,
   type PersonalizationSettings,
+  type ThemeSettings,
 } from '../types'
 
-const STORAGE_KEY = 'laife.settings.v1'
+const STORAGE_KEY = 'laife.settings.v2'
+
+function sanitizeCustomThemes(raw: unknown): ThemeDefinition[] {
+  if (!Array.isArray(raw)) return []
+  return raw
+    .filter((item): item is ThemeDefinition => {
+      if (!item || typeof item !== 'object') return false
+      const t = item as ThemeDefinition
+      return (
+        typeof t.id === 'string' &&
+        typeof t.name === 'string' &&
+        t.builtin === false &&
+        !!t.colors &&
+        typeof t.colors.bg === 'string'
+      )
+    })
+    .map((t) => ({
+      ...t,
+      builtin: false,
+      official: false,
+      description: t.description || 'Custom palette',
+      colorScheme: t.colorScheme === 'light' ? 'light' : 'dark',
+      colors: {
+        bg: t.colors.bg,
+        surface: t.colors.surface,
+        surface2: t.colors.surface2,
+        text: t.colors.text,
+        textMuted: t.colors.textMuted,
+        accent: t.colors.accent,
+        accentSecondary: t.colors.accentSecondary,
+        accentTertiary: t.colors.accentTertiary,
+        accentQuaternary: t.colors.accentQuaternary,
+      },
+    }))
+}
 
 function loadSettings(): AppSettings {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return { personalization: { ...DEFAULT_PERSONALIZATION } }
-    const parsed = JSON.parse(raw) as Partial<AppSettings>
+    const raw = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem('laife.settings.v1')
+    if (!raw) {
+      return {
+        personalization: { ...DEFAULT_PERSONALIZATION },
+        theme: { ...DEFAULT_THEME_SETTINGS, customThemes: [] },
+      }
+    }
+    const parsed = JSON.parse(raw) as Partial<AppSettings> & {
+      theme?: Partial<ThemeSettings>
+    }
     return {
       personalization: {
         ...DEFAULT_PERSONALIZATION,
         ...parsed.personalization,
       },
+      theme: {
+        activeThemeId: parsed.theme?.activeThemeId ?? DEFAULT_THEME_SETTINGS.activeThemeId,
+        customThemes: sanitizeCustomThemes(parsed.theme?.customThemes),
+      },
     }
   } catch {
-    return { personalization: { ...DEFAULT_PERSONALIZATION } }
+    return {
+      personalization: { ...DEFAULT_PERSONALIZATION },
+      theme: { ...DEFAULT_THEME_SETTINGS, customThemes: [] },
+    }
   }
 }
 
@@ -58,6 +109,7 @@ type Action =
   | { type: 'CLOSE_SETTINGS' }
   | { type: 'TOGGLE_SETTINGS' }
   | { type: 'UPDATE_PERSONALIZATION'; payload: Partial<PersonalizationSettings> }
+  | { type: 'UPDATE_THEME'; payload: Partial<ThemeSettings> }
   | { type: 'SEND_USER'; content: string }
   | { type: 'ASSISTANT_DONE'; content: string }
   | { type: 'ASSISTANT_FAIL' }
@@ -88,9 +140,22 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, settingsOpen: !state.settingsOpen }
     case 'UPDATE_PERSONALIZATION': {
       const next: AppSettings = {
+        ...state.settings,
         personalization: {
           ...state.settings.personalization,
           ...action.payload,
+        },
+      }
+      saveSettings(next)
+      return { ...state, settings: next }
+    }
+    case 'UPDATE_THEME': {
+      const next: AppSettings = {
+        ...state.settings,
+        theme: {
+          ...state.settings.theme,
+          ...action.payload,
+          customThemes: action.payload.customThemes ?? state.settings.theme.customThemes,
         },
       }
       saveSettings(next)
@@ -140,6 +205,7 @@ interface ChatContextValue {
   closeSettings: () => void
   toggleSettings: () => void
   updatePersonalization: (patch: Partial<PersonalizationSettings>) => void
+  updateTheme: (patch: Partial<ThemeSettings>) => void
   sendMessage: (content: string) => void
 }
 
@@ -159,6 +225,10 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     },
     [],
   )
+
+  const updateTheme = useCallback((payload: Partial<ThemeSettings>) => {
+    dispatch({ type: 'UPDATE_THEME', payload })
+  }, [])
 
   const sendMessage = useCallback(
     (raw: string) => {
@@ -197,6 +267,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       closeSettings,
       toggleSettings,
       updatePersonalization,
+      updateTheme,
       sendMessage,
     }),
     [
@@ -210,6 +281,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       closeSettings,
       toggleSettings,
       updatePersonalization,
+      updateTheme,
       sendMessage,
     ],
   )
