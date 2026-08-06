@@ -1,4 +1,4 @@
-import type { MemoryCategory, MemoryDraft, MemoryItem } from './memory'
+import type { MemoryDraft, MemoryItem } from './memory'
 import { getOrCreateUserId } from './userId'
 
 export class MemoryApiError extends Error {
@@ -9,6 +9,13 @@ export class MemoryApiError extends Error {
     this.name = 'MemoryApiError'
     this.status = status
   }
+}
+
+export type BrainMemoryCreateInput = {
+  category: string
+  title: string
+  content: string
+  importance: number
 }
 
 function resolveBase(): string {
@@ -48,7 +55,7 @@ async function parseJson<T>(response: Response): Promise<T> {
 }
 
 export async function listMemories(options?: {
-  category?: MemoryCategory | 'All'
+  category?: string
   q?: string
 }): Promise<MemoryItem[]> {
   const category = options?.category && options.category !== 'All' ? options.category : undefined
@@ -62,6 +69,17 @@ export async function listMemories(options?: {
     ),
   )
   return data.memories
+}
+
+/** Creates a memory via POST /api/memories (Supabase-backed). Returns void on success. */
+export async function createBrainMemory(input: BrainMemoryCreateInput): Promise<void> {
+  await parseJson<{ success: boolean }>(
+    await fetch(memoriesUrl(), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    }),
+  )
 }
 
 export async function createMemory(draft: MemoryDraft): Promise<MemoryItem> {
