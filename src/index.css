@@ -1,0 +1,62 @@
+:root {
+  --bg: #0a0a0b;
+  --surface: #141417;
+  --surface-2: #1c1c21;
+  --border: rgba(255, 255, 255, 0.08);
+  --text: #f3f1f5;
+  --text-muted: #9a96a3;
+  --accent: #00d4e0;
+  --accent-soft: #7ae8ef;
+  --content-max: 46rem;
+  --font-sans: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Instrument Serif', Georgia, serif;
+
+  color-scheme: dark;
+  font-family: var(--font-sans);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: var(--bg);
+  color: var(--text);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  min-width: 320px;
+  background:
+    radial-gradient(1200px 600px at 10% -10%, rgba(0, 212, 224, 0.12), transparent 55%),
+    radial-gradient(900px 500px at 100% 0%, rgba(255, 107, 157, 0.1), transparent 50%),
+    var(--bg);
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
