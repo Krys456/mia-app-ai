@@ -1,6 +1,10 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import OpenAI from 'openai'
 
+// TODO(memory): Long-term user memory must stay OPTIONAL and must never be a
+// hard import here. If reintroduced, use a dynamic/optional path that cannot
+// crash /api/chat when the database module is unavailable on Vercel.
+
 export const config = {
   runtime: 'nodejs',
   maxDuration: 60,
