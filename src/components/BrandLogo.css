@@ -5,16 +5,17 @@
 }
 
 .brand-logo--full {
-  width: min(100%, 18rem);
+  width: min(100%, 19rem);
   height: auto;
-  filter: drop-shadow(0 0 28px rgba(0, 210, 255, 0.22))
-    drop-shadow(0 0 40px rgba(255, 0, 127, 0.16));
+  filter: drop-shadow(0 0 22px rgba(0, 210, 255, 0.35))
+    drop-shadow(0 0 48px rgba(255, 0, 127, 0.22));
 }
 
 .brand-logo--mark {
-  width: 2.15rem;
-  height: 2.15rem;
-  border-radius: 0.55rem;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.6rem;
   object-fit: cover;
-  box-shadow: var(--glow-brand);
+  background: #000;
+  box-shadow: 0 0 16px rgba(0, 210, 255, 0.28), 0 0 28px rgba(255, 0, 127, 0.16);
 }

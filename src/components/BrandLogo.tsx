@@ -11,7 +11,7 @@ export function BrandLogo({
   className = '',
   priority = false,
 }: BrandLogoProps) {
-  const src = variant === 'mark' ? '/laife-mark.jpg' : '/laife-logo.jpg'
+  const src = variant === 'mark' ? '/laife-mark.png' : '/laife-logo.png'
   const alt =
     variant === 'mark'
       ? 'LAIfe'
