@@ -1,13 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import OpenAI from 'openai'
-import {
-  ensureMemoriesTable,
-  formatMemoriesForPrompt,
-  listMemoriesForUser,
-  sanitizeUserId,
-  tryGetSql,
-} from '../server/db'
-import { extractAndStoreMemories } from '../server/memoryExtract'
 
 export const config = {
   runtime: 'nodejs',
@@ -40,8 +32,23 @@ interface ChatApiRequestBody {
   userId?: string
 }
 
+interface MemoryRecordLike {
+  id: string
+  category: string
+  title: string
+  content: string
+}
+
 function isChatRole(value: unknown): value is ChatRole {
   return value === 'user' || value === 'assistant' || value === 'system'
+}
+
+function sanitizeUserId(value: unknown): string | null {
+  if (typeof value !== 'string') return null
+  const trimmed = value.trim()
+  if (!trimmed || trimmed.length > 80) return null
+  if (!/^[a-zA-Z0-9_-]+$/.test(trimmed)) return null
+  return trimmed
 }
 
 function sanitizeMessages(raw: unknown): ChatApiMessage[] {
@@ -86,6 +93,58 @@ function readUserId(req: VercelRequest, body: ChatApiRequestBody): string | null
   return sanitizeUserId(body.userId)
 }
 
+/**
+ * Optional memory layer. Loaded dynamically so /api/chat keeps working
+ * even when the DB helper is missing or DATABASE_URL is unset.
+ */
+async function loadMemoryContext(userId: string | null): Promise<{
+  memoryBlock: string
+  existingMemories: MemoryRecordLike[]
+}> {
+  if (!userId) return { memoryBlock: '', existingMemories: [] }
+
+  try {
+    const db = await import('./_lib/db')
+    const sql = db.tryGetSql()
+    if (!sql) return { memoryBlock: '', existingMemories: [] }
+
+    await db.ensureMemoriesTable(sql)
+    const existingMemories = await db.listMemoriesForUser(sql, userId, { limit: 60 })
+    return {
+      memoryBlock: db.formatMemoriesForPrompt(existingMemories),
+      existingMemories,
+    }
+  } catch (error) {
+    console.error('[api/chat] memory load skipped', error)
+    return { memoryBlock: '', existingMemories: [] }
+  }
+}
+
+async function maybeExtractMemories(options: {
+  client: OpenAI
+  model: string
+  userId: string | null
+  userMessage: string | undefined
+  existingMemories: MemoryRecordLike[]
+}): Promise<number> {
+  const { client, model, userId, userMessage, existingMemories } = options
+  if (!userId || !userMessage) return 0
+
+  try {
+    const { extractAndStoreMemories } = await import('./_lib/memoryExtract')
+    return await extractAndStoreMemories({
+      client,
+      model,
+      userId,
+      userMessage,
+      existing: existingMemories as never,
+    })
+  } catch (error) {
+    console.error('[api/chat] memory extract skipped', error)
+    return 0
+  }
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Origin', '*')
@@ -128,18 +187,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
     const model = process.env.OPENAI_MODEL?.trim() || 'gpt-4o-mini'
 
-    let memoryBlock = ''
-    let existingMemories: Awaited<ReturnType<typeof listMemoriesForUser>> = []
-    const sql = tryGetSql()
-    if (sql && userId) {
-      try {
-        await ensureMemoriesTable(sql)
-        existingMemories = await listMemoriesForUser(sql, userId, { limit: 60 })
-        memoryBlock = formatMemoriesForPrompt(existingMemories)
-      } catch (memoryError) {
-        console.error('[api/chat] memory load failed', memoryError)
-      }
-    }
+    const { memoryBlock, existingMemories } = await loadMemoryContext(userId)
 
     const response = await client.responses.create({
       model,
@@ -157,21 +205,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return sendJson(res, 502, { error: 'Empty response from OpenAI' })
     }
 
-    let memoriesSaved = 0
     const latestUserMessage = [...messages].reverse().find((m) => m.role === 'user')?.content
-    if (sql && userId && latestUserMessage) {
-      try {
-        memoriesSaved = await extractAndStoreMemories({
-          client,
-          model,
-          userId,
-          userMessage: latestUserMessage,
-          existing: existingMemories,
-        })
-      } catch (extractError) {
-        console.error('[api/chat] memory extract failed', extractError)
-      }
-    }
+    const memoriesSaved = await maybeExtractMemories({
+      client,
+      model,
+      userId,
+      userMessage: latestUserMessage,
+      existingMemories,
+    })
 
     return sendJson(res, 200, { content, memoriesSaved })
   } catch (error) {

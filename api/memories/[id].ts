@@ -8,7 +8,7 @@ import {
   sanitizeUserId,
   updateMemoryForUser,
   type MemoryCategory,
-} from '../../../server/db'
+} from '../../_lib/db'
 
 export const config = {
   runtime: 'nodejs',
