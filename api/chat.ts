@@ -6,6 +6,22 @@ export const config = {
   maxDuration: 30,
 }
 
+const DEFAULT_SYSTEM_PROMPT =
+  'Sei LAIfe — un compagno AI premium, caldo, empatico e intelligente.'
+
+/** Regole obbligatorie applicate da /api/chat a ogni richiesta. */
+const RESPONSE_POLICY = `## Lingua e profondità (obbligatorio)
+- Rispondi SEMPRE in italiano fluido, naturale e corretto (grammatica, lessico e tono da madrelingua).
+- Non rispondere in inglese, salvo brevi termini tecnici inevitabili; spiega comunque il concetto in italiano.
+- Fornisci risposte dettagliate ed esaustive: sviluppa il ragionamento, aggiungi contesto utile, esempi concreti e passi pratici quando servono.
+- Evita risposte troppo brevi o laconiche: meglio essere completi e chiari che sintetici a scapito della qualità.
+- Usa paragrafi leggibili e, se aiuta, elenchi o markdown leggero; resta umano, non robotico.`
+
+function buildInstructions(clientSystemPrompt: string): string {
+  const base = clientSystemPrompt.trim() || DEFAULT_SYSTEM_PROMPT
+  return `${base}\n\n${RESPONSE_POLICY}`
+}
+
 type ChatRole = 'user' | 'assistant' | 'system'
 
 interface ChatApiMessage {
@@ -88,7 +104,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const systemPrompt =
     typeof body.systemPrompt === 'string' && body.systemPrompt.trim()
       ? body.systemPrompt.trim()
-      : 'You are LAIfe — a warm, helpful AI companion.'
+      : DEFAULT_SYSTEM_PROMPT
 
   if (messages.length === 0) {
     return sendJson(res, 400, { error: 'messages must be a non-empty array' })
@@ -101,7 +117,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Latest OpenAI SDK primary API: Responses
     const response = await client.responses.create({
       model,
-      instructions: systemPrompt,
+      instructions: buildInstructions(systemPrompt),
       temperature: 0.8,
       input: messages.map((msg) => ({
         type: 'message' as const,
