@@ -1,9 +1,14 @@
 /**
- * BrAIn Memory Service — architecture surface only.
+ * BrAIn Memory Service
  *
- * Method signatures are defined here with no implementation and no callers yet.
- * Do not import this into chat or API routes until a later step.
+ * Persists and retrieves long-term memories.
+ * Only saveMemory is implemented so far; other methods stay unimplemented.
  */
+
+import { getServiceSupabase } from '../../api/_lib/supabase'
+
+const DEFAULT_API_USER_EMAIL = 'brain-api@local'
+const DEFAULT_API_USER_NAME = 'BrAIn API'
 
 export type SaveMemoryInput = {
   category: string
@@ -32,8 +37,21 @@ export type SearchMemoryOptions = {
 }
 
 export class MemoryService {
-  async saveMemory(_input: SaveMemoryInput): Promise<void> {
-    throw new Error('MemoryService.saveMemory is not implemented')
+  async saveMemory(input: SaveMemoryInput): Promise<void> {
+    const supabase = getServiceSupabase()
+    const userId = input.userId ?? (await this.ensureDefaultUserId())
+
+    const { error: insertError } = await supabase.from('memories').insert({
+      user_id: userId,
+      category: input.category,
+      title: input.title,
+      content: input.content,
+      importance: input.importance,
+    })
+
+    if (insertError) {
+      throw new Error(insertError.message)
+    }
   }
 
   async getMemories(_options?: GetMemoriesOptions): Promise<unknown[]> {
@@ -53,5 +71,40 @@ export class MemoryService {
     _options?: SearchMemoryOptions,
   ): Promise<unknown[]> {
     throw new Error('MemoryService.searchMemory is not implemented')
+  }
+
+  private async ensureDefaultUserId(): Promise<string> {
+    const supabase = getServiceSupabase()
+
+    const { data: existing, error: lookupError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', DEFAULT_API_USER_EMAIL)
+      .maybeSingle()
+
+    if (lookupError) {
+      throw new Error(`Failed to look up default user: ${lookupError.message}`)
+    }
+
+    if (existing?.id) {
+      return String(existing.id)
+    }
+
+    const { data: created, error: createError } = await supabase
+      .from('users')
+      .insert({
+        email: DEFAULT_API_USER_EMAIL,
+        display_name: DEFAULT_API_USER_NAME,
+      })
+      .select('id')
+      .single()
+
+    if (createError || !created?.id) {
+      throw new Error(
+        `Failed to create default user: ${createError?.message ?? 'unknown error'}`,
+      )
+    }
+
+    return String(created.id)
   }
 }
