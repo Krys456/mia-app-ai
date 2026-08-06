@@ -43,10 +43,48 @@
 
 .memory-lead {
   margin: 0.45rem 0 0;
-  max-width: 28rem;
+  max-width: 32rem;
   color: var(--text-muted);
   font-size: 0.92rem;
   line-height: 1.5;
+}
+
+.memory-profile {
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--border));
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--surface-solid) 84%, transparent);
+  padding: 0.9rem 1rem;
+  box-shadow: var(--glow-cyan);
+}
+
+.memory-profile__title {
+  margin: 0 0 0.55rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.memory-profile__list {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  color: var(--text);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.memory-profile__cat {
+  display: inline-block;
+  margin-right: 0.35rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+  font-weight: 600;
 }
 
 .memory-search {

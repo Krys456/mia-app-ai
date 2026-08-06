@@ -12,6 +12,7 @@ export type MemoryCategory = (typeof MEMORY_CATEGORIES)[number]
 
 export interface MemoryItem {
   id: string
+  userId?: string
   category: MemoryCategory
   title: string
   content: string

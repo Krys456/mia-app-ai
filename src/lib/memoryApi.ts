@@ -1,4 +1,5 @@
 import type { MemoryCategory, MemoryDraft, MemoryItem } from './memory'
+import { getOrCreateUserId } from './userId'
 
 export class MemoryApiError extends Error {
   readonly status: number
@@ -25,6 +26,14 @@ function memoriesUrl(path = '', query?: Record<string, string | undefined>) {
   return url.toString()
 }
 
+function authHeaders(json = false): HeadersInit {
+  const headers: Record<string, string> = {
+    'X-LAIfe-User-Id': getOrCreateUserId(),
+  }
+  if (json) headers['Content-Type'] = 'application/json'
+  return headers
+}
+
 async function parseJson<T>(response: Response): Promise<T> {
   let data: T & { error?: string }
   try {
@@ -49,6 +58,7 @@ export async function listMemories(options?: {
         category,
         q: options?.q?.trim() || undefined,
       }),
+      { headers: authHeaders() },
     ),
   )
   return data.memories
@@ -58,7 +68,7 @@ export async function createMemory(draft: MemoryDraft): Promise<MemoryItem> {
   const data = await parseJson<{ memory: MemoryItem }>(
     await fetch(memoriesUrl(), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders(true),
       body: JSON.stringify(draft),
     }),
   )
@@ -69,7 +79,7 @@ export async function updateMemory(id: string, draft: MemoryDraft): Promise<Memo
   const data = await parseJson<{ memory: MemoryItem }>(
     await fetch(memoriesUrl(`/${encodeURIComponent(id)}`), {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders(true),
       body: JSON.stringify(draft),
     }),
   )
@@ -80,6 +90,7 @@ export async function deleteMemory(id: string): Promise<void> {
   await parseJson<{ ok: boolean }>(
     await fetch(memoriesUrl(`/${encodeURIComponent(id)}`), {
       method: 'DELETE',
+      headers: authHeaders(),
     }),
   )
 }

@@ -1,19 +1,30 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import OpenAI from 'openai'
+import {
+  ensureMemoriesTable,
+  formatMemoriesForPrompt,
+  listMemoriesForUser,
+  sanitizeUserId,
+  tryGetSql,
+} from '../server/db'
+import { extractAndStoreMemories } from '../server/memoryExtract'
 
 export const config = {
   runtime: 'nodejs',
-  maxDuration: 30,
+  maxDuration: 60,
 }
 
 const SYSTEM_PROMPT = `Sei LAIfe, un assistente AI avanzato.
 Adatta SEMPRE la tua lingua a quella usata dall'utente (se l'utente scrive in italiano, rispondi esclusivamente in italiano fluido e naturale).
-Fornisci risposte chiare, esaustive e ben strutturate, evitando di essere troppo sbrigativo.`
+Fornisci risposte chiare, esaustive e ben strutturate, evitando di essere troppo sbrigativo.
+Quando conosci obiettivi, interessi o preferenze dell'utente dalla memoria a lungo termine, usali in modo naturale nelle risposte future.`
 
-function buildInstructions(clientSystemPrompt: string): string {
+function buildInstructions(clientSystemPrompt: string, memoryBlock: string): string {
+  const parts = [SYSTEM_PROMPT]
   const personalization = clientSystemPrompt.trim()
-  if (!personalization) return SYSTEM_PROMPT
-  return `${SYSTEM_PROMPT}\n\n## Personalizzazione\n${personalization}`
+  if (personalization) parts.push(`## Personalizzazione\n${personalization}`)
+  if (memoryBlock.trim()) parts.push(memoryBlock.trim())
+  return parts.join('\n\n')
 }
 
 type ChatRole = 'user' | 'assistant' | 'system'
@@ -26,6 +37,7 @@ interface ChatApiMessage {
 interface ChatApiRequestBody {
   messages?: ChatApiMessage[]
   systemPrompt?: string
+  userId?: string
 }
 
 function isChatRole(value: unknown): value is ChatRole {
@@ -65,11 +77,20 @@ function sendJson(res: VercelResponse, status: number, payload: Record<string, u
   return res.status(status).json(payload)
 }
 
+function readUserId(req: VercelRequest, body: ChatApiRequestBody): string | null {
+  const header = req.headers['x-laife-user-id']
+  if (typeof header === 'string') {
+    const fromHeader = sanitizeUserId(header)
+    if (fromHeader) return fromHeader
+  }
+  return sanitizeUserId(body.userId)
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Origin', '*')
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-LAIfe-User-Id')
     return res.status(204).end()
   }
 
@@ -97,6 +118,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   )
   const clientSystemPrompt =
     typeof body.systemPrompt === 'string' ? body.systemPrompt.trim() : ''
+  const userId = readUserId(req, body)
 
   if (messages.length === 0) {
     return sendJson(res, 400, { error: 'messages must be a non-empty array' })
@@ -106,10 +128,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
     const model = process.env.OPENAI_MODEL?.trim() || 'gpt-4o-mini'
 
-    // Latest OpenAI SDK primary API: Responses
+    let memoryBlock = ''
+    let existingMemories: Awaited<ReturnType<typeof listMemoriesForUser>> = []
+    const sql = tryGetSql()
+    if (sql && userId) {
+      try {
+        await ensureMemoriesTable(sql)
+        existingMemories = await listMemoriesForUser(sql, userId, { limit: 60 })
+        memoryBlock = formatMemoriesForPrompt(existingMemories)
+      } catch (memoryError) {
+        console.error('[api/chat] memory load failed', memoryError)
+      }
+    }
+
     const response = await client.responses.create({
       model,
-      instructions: buildInstructions(clientSystemPrompt),
+      instructions: buildInstructions(clientSystemPrompt, memoryBlock),
       temperature: 0.8,
       input: messages.map((msg) => ({
         type: 'message' as const,
@@ -123,7 +157,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return sendJson(res, 502, { error: 'Empty response from OpenAI' })
     }
 
-    return sendJson(res, 200, { content })
+    let memoriesSaved = 0
+    const latestUserMessage = [...messages].reverse().find((m) => m.role === 'user')?.content
+    if (sql && userId && latestUserMessage) {
+      try {
+        memoriesSaved = await extractAndStoreMemories({
+          client,
+          model,
+          userId,
+          userMessage: latestUserMessage,
+          existing: existingMemories,
+        })
+      } catch (extractError) {
+        console.error('[api/chat] memory extract failed', extractError)
+      }
+    }
+
+    return sendJson(res, 200, { content, memoriesSaved })
   } catch (error) {
     console.error(error)
 

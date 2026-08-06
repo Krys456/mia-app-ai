@@ -9,6 +9,7 @@
 - Full theme personalization: built-in themes + custom theme creator
 - Chat shell with sticky header & fixed composer
 - **Memory** page with categorized, searchable, database-backed notes
+- Long-term user profile memory injected into chat (goals/interests/preferences)
 - Slide-out settings drawer (theme + assistant personalization)
 - OpenAI chat via Vercel `/api/chat`
 

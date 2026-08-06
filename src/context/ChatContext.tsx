@@ -9,6 +9,7 @@ import {
 } from 'react'
 import { requestChatCompletion, type ChatApiMessage } from '../lib/chatApi'
 import { buildSystemPrompt } from '../lib/personality'
+import { getOrCreateUserId } from '../lib/userId'
 import type { ThemeDefinition } from '../lib/themes'
 import {
   DEFAULT_PERSONALIZATION,
@@ -264,6 +265,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           const { content: reply } = await requestChatCompletion({
             messages: history,
             systemPrompt: prompt,
+            userId: getOrCreateUserId(),
           })
           dispatch({ type: 'ASSISTANT_DONE', content: reply })
         } catch (error) {

@@ -67,6 +67,13 @@ export function MemoryPage() {
     return map
   }, [memories])
 
+  const profileHighlights = useMemo(() => {
+    const priority: MemoryCategory[] = ['Profile', 'Goals', 'Preferences']
+    return priority.flatMap((category) =>
+      memories.filter((m) => m.category === category).slice(0, 3),
+    )
+  }, [memories])
+
   const openCreate = () => {
     setEditingId(null)
     setDraft({
@@ -142,17 +149,32 @@ export function MemoryPage() {
       <div className="memory-page__inner">
         <header className="memory-page__header">
           <div>
-            <p className="memory-kicker">Personal knowledge</p>
+            <p className="memory-kicker">User profile & memory</p>
             <h1 id="memory-page-title">Memory</h1>
             <p className="memory-lead">
-              Save what matters — profile details, preferences, goals, and more. Memories persist in
-              your database.
+              LAIfe remembers your goals, interests, and preferences across sessions — including
+              facts learned from chat (for example, training for the full planche).
             </p>
           </div>
           <button type="button" className="memory-btn memory-btn--primary" onClick={openCreate}>
             New memory
           </button>
         </header>
+
+        {!loading && filter === 'All' && !query && profileHighlights.length > 0 ? (
+          <section className="memory-profile" aria-label="Profile highlights">
+            <h2 className="memory-profile__title">Profile highlights</h2>
+            <ul className="memory-profile__list">
+              {profileHighlights.map((item) => (
+                <li key={item.id}>
+                  <span className="memory-profile__cat">{item.category}</span>
+                  <strong>{item.title}</strong>
+                  {item.content ? <span> — {item.content}</span> : null}
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
 
         <form className="memory-search" onSubmit={submitSearch} role="search">
           <label className="sr-only" htmlFor="memory-search-input">
