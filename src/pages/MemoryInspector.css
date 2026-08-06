@@ -1,0 +1,266 @@
+.memory-inspector {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  position: relative;
+}
+
+.memory-inspector::before {
+  content: '';
+  position: absolute;
+  inset: 6% 4% auto;
+  height: 36%;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 30% 40%, var(--atmosphere-1), transparent 55%),
+    radial-gradient(circle at 75% 35%, var(--atmosphere-2), transparent 50%);
+  filter: blur(22px);
+  pointer-events: none;
+  animation: memory-inspector-glow 6s ease-in-out infinite;
+}
+
+.memory-inspector__inner {
+  position: relative;
+  z-index: 1;
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: 0.35rem 1rem 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.memory-inspector__header {
+  animation: memory-inspector-rise 480ms var(--ease-out) both;
+}
+
+.memory-inspector__kicker {
+  margin: 0 0 0.3rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 600;
+  background: var(--gradient-brand);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.memory-inspector__header h1 {
+  margin: 0;
+  font-size: 1.7rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.memory-inspector__lead {
+  margin: 0.35rem 0 0;
+  max-width: 34rem;
+  color: var(--text-muted);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.memory-inspector__toolbar {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.65rem;
+}
+
+@media (min-width: 640px) {
+  .memory-inspector__toolbar {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.memory-inspector__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.memory-inspector__field select {
+  width: 100%;
+  margin: 0;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--surface-solid) 88%, transparent);
+  color: var(--text);
+  font: inherit;
+}
+
+.memory-inspector__field select:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 70%, transparent);
+  outline-offset: 2px;
+}
+
+.memory-inspector__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.memory-inspector__empty,
+.memory-inspector__card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--surface-solid) 88%, transparent);
+  padding: 1rem 1.05rem;
+  animation: memory-inspector-rise 520ms var(--ease-out) both;
+}
+
+.memory-inspector__empty p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.memory-inspector__card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.45rem;
+}
+
+.memory-inspector__category {
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.memory-inspector__source {
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 600;
+  padding: 0.2rem 0.45rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+.memory-inspector__source--manual {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.memory-inspector__source--automatic {
+  color: var(--accent-pink);
+  border-color: color-mix(in srgb, var(--accent-pink) 35%, var(--border));
+  background: color-mix(in srgb, var(--accent-pink) 10%, transparent);
+}
+
+.memory-inspector__card h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
+.memory-inspector__content {
+  margin: 0.4rem 0 0.75rem;
+  color: var(--text-muted);
+  font-size: 0.92rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.memory-inspector__importance {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.85rem;
+}
+
+.memory-inspector__meta-label,
+.memory-inspector__meta-value {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.memory-inspector__dots {
+  display: inline-flex;
+  gap: 0.2rem;
+}
+
+.memory-inspector__dot {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text-muted) 35%, transparent);
+}
+
+.memory-inspector__dot--on {
+  background: var(--accent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.memory-inspector__meta {
+  margin: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.55rem;
+}
+
+@media (min-width: 560px) {
+  .memory-inspector__meta {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.memory-inspector__meta > div {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.55rem 0.65rem;
+  background: color-mix(in srgb, var(--surface-2) 35%, transparent);
+}
+
+.memory-inspector__meta dt {
+  margin: 0;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.memory-inspector__meta dd {
+  margin: 0.25rem 0 0;
+  font-size: 0.88rem;
+  color: var(--text);
+}
+
+@keyframes memory-inspector-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes memory-inspector-glow {
+  0%,
+  100% {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.03);
+  }
+}

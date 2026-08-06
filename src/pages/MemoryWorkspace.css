@@ -1,0 +1,57 @@
+.memory-workspace {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.memory-workspace__tabs {
+  flex-shrink: 0;
+  display: flex;
+  gap: 0.4rem;
+  max-width: var(--content-max);
+  width: 100%;
+  margin: 0 auto;
+  padding: 0.75rem 1rem 0;
+}
+
+.memory-workspace__tab {
+  margin: 0;
+  padding: 0.45rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--surface-solid) 80%, transparent);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    color var(--duration) var(--ease-out),
+    border-color var(--duration) var(--ease-out),
+    background var(--duration) var(--ease-out),
+    box-shadow var(--duration) var(--ease-out);
+}
+
+.memory-workspace__tab:hover {
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--accent) 28%, var(--border));
+}
+
+.memory-workspace__tab--active {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  box-shadow: var(--glow-cyan);
+}
+
+.memory-workspace__tab:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 70%, transparent);
+  outline-offset: 2px;
+}
+
+.memory-workspace > :last-child {
+  flex: 1;
+  min-height: 0;
+}
