@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { MemoryService } from '../_lib/MemoryService'
+import { listMemories, saveMemory } from '../_lib/brain-memory'
 
 export const config = {
   runtime: 'nodejs',
@@ -96,12 +96,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return sendJson(res, 200, { success: true })
     }
 
-    const memoryService = new MemoryService()
-
     if (req.method === 'GET') {
       const category =
         typeof req.query.category === 'string' ? req.query.category.trim() : undefined
-      const memories = await memoryService.getMemories({
+      const memories = await listMemories({
         category: category || undefined,
       })
       return sendJson(res, 200, { success: true, memories })
@@ -136,7 +134,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       })
     }
 
-    await memoryService.saveMemory(validated.data)
+    await saveMemory(validated.data)
     return sendJson(res, 201, { success: true })
   } catch (error) {
     console.error('[api/memories]', error)

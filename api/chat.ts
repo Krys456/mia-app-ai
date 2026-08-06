@@ -1,11 +1,9 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { waitUntil } from '@vercel/functions'
 import OpenAI from 'openai'
-import { MemoryPipeline } from './_lib/MemoryPipeline'
-import { MemoryService } from './_lib/MemoryService'
 
-// Memory modules are statically imported so Vercel NFT includes them.
-// Runtime usage stays try/catch-guarded so chat still answers if memory fails.
+// Memory must stay OPTIONAL at load time: only dynamic-import brain-memory
+// after the handler starts so a broken memory module cannot take down chat.
 
 export const config = {
   runtime: 'nodejs',
@@ -19,8 +17,8 @@ export const config = {
 function scheduleMemoryPipeline(userMessage: string, assistantMessage: string) {
   const task = (async () => {
     try {
-      const pipeline = new MemoryPipeline()
-      await pipeline.run({ userMessage, assistantMessage })
+      const { runMemoryPipeline } = await import('./_lib/brain-memory')
+      await runMemoryPipeline({ userMessage, assistantMessage })
     } catch {
       // Ignore — memory must never affect the chat response.
     }
@@ -39,8 +37,8 @@ function scheduleMemoryPipeline(userMessage: string, assistantMessage: string) {
  */
 async function loadRelevantMemoryBlock(userMessage: string): Promise<string> {
   try {
-    const service = new MemoryService()
-    const memories = await service.searchMemory(userMessage, { limit: 5 })
+    const { searchMemories } = await import('./_lib/brain-memory')
+    const memories = await searchMemories(userMessage, { limit: 5 })
 
     if (!Array.isArray(memories) || memories.length === 0) {
       return ''
