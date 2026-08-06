@@ -31,7 +31,8 @@ export async function getServiceSupabase(): Promise<SupabaseClient> {
     )
   }
 
-  const { createClient } = await import('@supabase/supabase-js')
+  const spec = '@supabase/' + 'supabase-js'
+  const { createClient } = await import(spec)
   client = createClient(url, key, {
     auth: {
       persistSession: false,
