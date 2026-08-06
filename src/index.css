@@ -1,15 +1,53 @@
 :root {
-  --bg: #0a0a0b;
-  --surface: #141417;
-  --surface-2: #1c1c21;
+  /* LAIfe brand theme — derived from official logo */
+  --laife-black: #000000;
+  --laife-dark: #111111;
+  --laife-soft: #222222;
+  --laife-cyan: #00d2ff;
+  --laife-blue: #2b7bff;
+  --laife-purple: #b24dff;
+  --laife-pink: #ff007f;
+  --laife-magenta: #ff2bd6;
+
+  --bg: var(--laife-black);
+  --surface: rgba(17, 17, 17, 0.82);
+  --surface-solid: #111111;
+  --surface-2: #222222;
   --border: rgba(255, 255, 255, 0.08);
-  --text: #f3f1f5;
-  --text-muted: #9a96a3;
-  --accent: #00d4e0;
-  --accent-soft: #7ae8ef;
+  --border-glow: color-mix(in srgb, var(--laife-cyan) 28%, transparent);
+  --text: #ffffff;
+  --text-muted: #a8a8b3;
+  --accent: var(--laife-cyan);
+  --accent-pink: var(--laife-pink);
+  --accent-soft: color-mix(in srgb, var(--laife-cyan) 70%, white);
+
+  --gradient-brand: linear-gradient(
+    115deg,
+    var(--laife-cyan) 0%,
+    var(--laife-blue) 28%,
+    var(--laife-purple) 58%,
+    var(--laife-pink) 100%
+  );
+  --gradient-brand-soft: linear-gradient(
+    135deg,
+    rgba(0, 210, 255, 0.18),
+    rgba(178, 77, 255, 0.12),
+    rgba(255, 0, 127, 0.16)
+  );
+  --glow-cyan: 0 0 24px rgba(0, 210, 255, 0.28);
+  --glow-pink: 0 0 24px rgba(255, 0, 127, 0.22);
+  --glow-brand: 0 0 28px rgba(0, 210, 255, 0.2), 0 0 48px rgba(255, 0, 127, 0.12);
+
+  --radius-sm: 0.75rem;
+  --radius-md: 1.1rem;
+  --radius-lg: 1.5rem;
+  --radius-xl: 1.85rem;
+
   --content-max: 46rem;
-  --font-sans: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
-  --font-display: 'Instrument Serif', Georgia, serif;
+  --header-h: 3.75rem;
+  --font-sans: 'Outfit', ui-sans-serif, system-ui, sans-serif;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration: 220ms;
 
   color-scheme: dark;
   font-family: var(--font-sans);
@@ -37,9 +75,10 @@ body,
 body {
   min-width: 320px;
   background:
-    radial-gradient(1200px 600px at 10% -10%, rgba(0, 212, 224, 0.12), transparent 55%),
-    radial-gradient(900px 500px at 100% 0%, rgba(255, 107, 157, 0.1), transparent 50%),
-    var(--bg);
+    radial-gradient(900px 520px at 15% -5%, rgba(0, 210, 255, 0.16), transparent 55%),
+    radial-gradient(780px 480px at 95% 0%, rgba(255, 0, 127, 0.14), transparent 50%),
+    radial-gradient(640px 420px at 50% 110%, rgba(178, 77, 255, 0.1), transparent 55%),
+    var(--laife-black);
 }
 
 button,
@@ -47,6 +86,11 @@ input,
 textarea,
 select {
   font: inherit;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--laife-cyan) 35%, transparent);
+  color: #fff;
 }
 
 .sr-only {
@@ -59,4 +103,19 @@ select {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+
+/* Shared brand utilities */
+.brand-gradient-text {
+  background: var(--gradient-brand);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.glass {
+  background: color-mix(in srgb, var(--laife-dark) 78%, transparent);
+  backdrop-filter: blur(18px) saturate(1.2);
+  -webkit-backdrop-filter: blur(18px) saturate(1.2);
+  border: 1px solid var(--border);
 }

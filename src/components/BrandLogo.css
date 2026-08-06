@@ -1,0 +1,20 @@
+.brand-logo {
+  display: block;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.brand-logo--full {
+  width: min(100%, 18rem);
+  height: auto;
+  filter: drop-shadow(0 0 28px rgba(0, 210, 255, 0.22))
+    drop-shadow(0 0 40px rgba(255, 0, 127, 0.16));
+}
+
+.brand-logo--mark {
+  width: 2.15rem;
+  height: 2.15rem;
+  border-radius: 0.55rem;
+  object-fit: cover;
+  box-shadow: var(--glow-brand);
+}

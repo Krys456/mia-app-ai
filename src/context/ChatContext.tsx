@@ -62,17 +62,9 @@ type Action =
   | { type: 'ASSISTANT_DONE'; content: string }
   | { type: 'ASSISTANT_FAIL' }
 
-const WELCOME: ChatMessage = {
-  id: 'welcome',
-  role: 'assistant',
-  content:
-    "Hey — I'm **LAIfe**. ✨ Your space to think out loud, feel heard, and get clear. What's going on?",
-  createdAt: Date.now(),
-}
-
 function createInitialState(): AppState {
   return {
-    messages: [WELCOME],
+    messages: [],
     settings: loadSettings(),
     settingsOpen: false,
     isThinking: false,
@@ -84,13 +76,7 @@ function reducer(state: AppState, action: Action): AppState {
     case 'NEW_CHAT':
       return {
         ...state,
-        messages: [
-          {
-            ...WELCOME,
-            id: uid(),
-            createdAt: Date.now(),
-          },
-        ],
+        messages: [],
         isThinking: false,
         settingsOpen: false,
       }

@@ -5,9 +5,9 @@
   flex-shrink: 0;
   pointer-events: auto;
   isolation: isolate;
-  background: color-mix(in srgb, var(--bg) 82%, transparent);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  background: color-mix(in srgb, var(--laife-black) 72%, transparent);
+  backdrop-filter: blur(18px) saturate(1.25);
+  -webkit-backdrop-filter: blur(18px) saturate(1.25);
   border-bottom: 1px solid var(--border);
 }
 
@@ -18,8 +18,8 @@
   gap: 0.75rem;
   max-width: var(--content-max);
   margin: 0 auto;
-  padding: 0.7rem 1rem;
-  min-height: 3.5rem;
+  padding: 0.65rem 1rem;
+  min-height: var(--header-h);
 }
 
 .app-header__actions {
@@ -38,12 +38,12 @@
   align-items: center;
   justify-content: center;
   gap: 0.55rem;
-  min-width: 2.5rem;
-  min-height: 2.5rem;
+  min-width: 2.55rem;
+  min-height: 2.55rem;
   padding: 0.45rem;
   margin: 0;
   border: 1px solid transparent;
-  border-radius: 0.75rem;
+  border-radius: var(--radius-md);
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
@@ -51,20 +51,29 @@
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
   transition:
-    color 160ms ease,
-    background 160ms ease,
-    border-color 160ms ease,
-    transform 160ms ease;
+    color var(--duration) var(--ease-out),
+    background var(--duration) var(--ease-out),
+    border-color var(--duration) var(--ease-out),
+    box-shadow var(--duration) var(--ease-out),
+    transform 160ms var(--ease-out);
 }
 
 .header-btn:hover {
   color: var(--text);
-  background: var(--surface-2);
+  background: color-mix(in srgb, var(--laife-soft) 80%, transparent);
   border-color: var(--border);
 }
 
+.header-btn--active,
+.header-btn[aria-pressed='true'] {
+  color: var(--laife-cyan);
+  border-color: color-mix(in srgb, var(--laife-cyan) 35%, transparent);
+  background: color-mix(in srgb, var(--laife-cyan) 10%, transparent);
+  box-shadow: var(--glow-cyan);
+}
+
 .header-btn:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--laife-cyan);
   outline-offset: 2px;
 }
 
@@ -73,18 +82,40 @@
 }
 
 .header-btn--brand {
-  padding: 0.35rem 0.55rem 0.35rem 0.35rem;
+  padding: 0.25rem 0.55rem 0.25rem 0.25rem;
   color: var(--text);
+  min-width: 0;
 }
 
-.brand-name {
-  font-family: var(--font-display);
-  font-size: 1.45rem;
-  letter-spacing: 0.01em;
-  line-height: 1;
+.brand-wordmark {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.05rem;
+  min-width: 0;
 }
 
-.logo-mark {
-  display: block;
-  flex-shrink: 0;
+.brand-wordmark__name {
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1.1;
+  background: var(--gradient-brand);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.brand-wordmark__tag {
+  font-size: 0.58rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+@media (max-width: 380px) {
+  .brand-wordmark__tag {
+    display: none;
+  }
 }

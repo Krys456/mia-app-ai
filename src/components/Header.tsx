@@ -1,33 +1,6 @@
+import { BrandLogo } from './BrandLogo'
 import { useChat } from '../context/ChatContext'
 import './Header.css'
-
-function LogoMark() {
-  return (
-    <svg
-      className="logo-mark"
-      viewBox="0 0 48 48"
-      width="28"
-      height="28"
-      aria-hidden="true"
-      focusable="false"
-    >
-      <defs>
-        <linearGradient id="laifeGrad" x1="8" y1="8" x2="40" y2="40">
-          <stop stopColor="#00F0FF" />
-          <stop offset="1" stopColor="#FF6B9D" />
-        </linearGradient>
-      </defs>
-      <rect width="48" height="48" rx="10" fill="#121214" />
-      <path
-        d="M24 9 V24 M24 24 L12 39 M24 24 L36 39"
-        stroke="url(#laifeGrad)"
-        strokeWidth="5"
-        strokeLinecap="round"
-        fill="none"
-      />
-    </svg>
-  )
-}
 
 function IconNewChat() {
   return (
@@ -35,7 +8,7 @@ function IconNewChat() {
       <path
         d="M12 5v14M5 12h14"
         stroke="currentColor"
-        strokeWidth="2"
+        strokeWidth="1.8"
         strokeLinecap="round"
       />
     </svg>
@@ -45,23 +18,19 @@ function IconNewChat() {
 function IconSettings() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="12" cy="12" r="3.1" stroke="currentColor" strokeWidth="1.7" />
       <path
-        d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"
+        d="M12 3.5v1.6M12 18.9v1.6M20.5 12h-1.6M5.1 12H3.5M17.9 6.1l-1.1 1.1M7.2 16.8l-1.1 1.1M17.9 17.9l-1.1-1.1M7.2 7.2 6.1 6.1"
         stroke="currentColor"
-        strokeWidth="1.8"
-      />
-      <path
-        d="M19.4 13.5a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V19.5a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.1-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.55-1H4.5a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.55-1.1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H10a1.7 1.7 0 0 0 1-1.55V4.5a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V10c.1.66.6 1.2 1.55 1.3h.09a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1.2Z"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinejoin="round"
+        strokeWidth="1.7"
+        strokeLinecap="round"
       />
     </svg>
   )
 }
 
 export function Header() {
-  const { newChat, openSettings } = useChat()
+  const { newChat, openSettings, settingsOpen } = useChat()
 
   return (
     <header className="app-header" role="banner">
@@ -73,8 +42,11 @@ export function Header() {
           aria-label="LAIfe home — start fresh chat"
           title="LAIfe"
         >
-          <LogoMark />
-          <span className="brand-name">LAIfe</span>
+          <BrandLogo variant="mark" />
+          <span className="brand-wordmark">
+            <span className="brand-wordmark__name">LAIfe</span>
+            <span className="brand-wordmark__tag">Your AI, Your Life.</span>
+          </span>
         </button>
 
         <div className="app-header__actions">
@@ -89,10 +61,11 @@ export function Header() {
           </button>
           <button
             type="button"
-            className="header-btn"
+            className={`header-btn${settingsOpen ? ' header-btn--active' : ''}`}
             onClick={openSettings}
             aria-label="Settings and personalization"
             title="Settings"
+            aria-pressed={settingsOpen}
           >
             <IconSettings />
           </button>

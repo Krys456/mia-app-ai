@@ -38,7 +38,7 @@ export function Composer() {
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={onKeyDown}
-          placeholder="Talk to LAIfe…"
+          placeholder="Message LAIfe…"
           disabled={isThinking}
           enterKeyHint="send"
         />
