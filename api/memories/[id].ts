@@ -1,9 +1,12 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import {
+  deleteMemoryForUser,
   ensureMemoriesTable,
   getSql,
   isMemoryCategory,
-  mapMemoryRow,
+  listMemoriesForUser,
+  sanitizeUserId,
+  updateMemoryForUser,
   type MemoryCategory,
 } from '../../../server/db'
 
@@ -35,12 +38,24 @@ function getId(req: VercelRequest): string {
   return ''
 }
 
+function readUserId(req: VercelRequest): string | null {
+  const header = req.headers['x-laife-user-id']
+  if (typeof header === 'string') return sanitizeUserId(header)
+  if (Array.isArray(header)) return sanitizeUserId(header[0])
+  return null
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Origin', '*')
     res.setHeader('Access-Control-Allow-Methods', 'GET, PUT, DELETE, OPTIONS')
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-LAIfe-User-Id')
     return res.status(204).end()
+  }
+
+  const userId = readUserId(req)
+  if (!userId) {
+    return sendJson(res, 400, { error: 'Missing or invalid X-LAIfe-User-Id' })
   }
 
   const id = getId(req)
@@ -53,17 +68,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     await ensureMemoriesTable(sql)
 
     if (req.method === 'GET') {
-      const rows = (await sql`
-        SELECT id, category, title, content, created_at, updated_at
-        FROM memories
-        WHERE id = ${id}
-        LIMIT 1
-      `) as Record<string, unknown>[]
-
-      if (!rows[0]) {
+      const memories = await listMemoriesForUser(sql, userId, { limit: 200 })
+      const memory = memories.find((m) => m.id === id)
+      if (!memory) {
         return sendJson(res, 404, { error: 'Memory not found' })
       }
-      return sendJson(res, 200, { memory: mapMemoryRow(rows[0]) })
+      return sendJson(res, 200, { memory })
     }
 
     if (req.method === 'PUT') {
@@ -85,31 +95,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return sendJson(res, 400, { error: 'Title is required' })
       }
 
-      const rows = (await sql`
-        UPDATE memories
-        SET
-          category = ${category as MemoryCategory},
-          title = ${title},
-          content = ${content},
-          updated_at = NOW()
-        WHERE id = ${id}
-        RETURNING id, category, title, content, created_at, updated_at
-      `) as Record<string, unknown>[]
+      const memory = await updateMemoryForUser(sql, {
+        id,
+        userId,
+        category: category as MemoryCategory,
+        title,
+        content,
+      })
 
-      if (!rows[0]) {
+      if (!memory) {
         return sendJson(res, 404, { error: 'Memory not found' })
       }
-      return sendJson(res, 200, { memory: mapMemoryRow(rows[0]) })
+      return sendJson(res, 200, { memory })
     }
 
     if (req.method === 'DELETE') {
-      const rows = (await sql`
-        DELETE FROM memories
-        WHERE id = ${id}
-        RETURNING id
-      `) as Record<string, unknown>[]
-
-      if (!rows[0]) {
+      const ok = await deleteMemoryForUser(sql, id, userId)
+      if (!ok) {
         return sendJson(res, 404, { error: 'Memory not found' })
       }
       return sendJson(res, 200, { ok: true, id })

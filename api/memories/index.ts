@@ -1,10 +1,11 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import {
-  createMemoryId,
   ensureMemoriesTable,
   getSql,
+  insertMemory,
   isMemoryCategory,
-  mapMemoryRow,
+  listMemoriesForUser,
+  sanitizeUserId,
   type MemoryCategory,
 } from '../../server/db'
 
@@ -29,12 +30,25 @@ function parseBody(req: VercelRequest): Record<string, unknown> {
   throw new Error('Unsupported request body')
 }
 
+function readUserId(req: VercelRequest): string | null {
+  const header = req.headers['x-laife-user-id']
+  if (typeof header === 'string') return sanitizeUserId(header)
+  if (Array.isArray(header)) return sanitizeUserId(header[0])
+  if (typeof req.query.userId === 'string') return sanitizeUserId(req.query.userId)
+  return null
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Origin', '*')
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-LAIfe-User-Id')
     return res.status(204).end()
+  }
+
+  const userId = readUserId(req)
+  if (!userId) {
+    return sendJson(res, 400, { error: 'Missing or invalid X-LAIfe-User-Id' })
   }
 
   try {
@@ -42,44 +56,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     await ensureMemoriesTable(sql)
 
     if (req.method === 'GET') {
-      const category =
+      const categoryRaw =
         typeof req.query.category === 'string' ? req.query.category.trim() : ''
       const q = typeof req.query.q === 'string' ? req.query.q.trim() : ''
-      const like = q ? `%${q}%` : null
+      const category = isMemoryCategory(categoryRaw) ? categoryRaw : undefined
 
-      let rows: Record<string, unknown>[]
+      const memories = await listMemoriesForUser(sql, userId, {
+        category,
+        q: q || undefined,
+      })
 
-      if (category && isMemoryCategory(category) && like) {
-        rows = (await sql`
-          SELECT id, category, title, content, created_at, updated_at
-          FROM memories
-          WHERE category = ${category}
-            AND (title ILIKE ${like} OR content ILIKE ${like})
-          ORDER BY updated_at DESC
-        `) as Record<string, unknown>[]
-      } else if (category && isMemoryCategory(category)) {
-        rows = (await sql`
-          SELECT id, category, title, content, created_at, updated_at
-          FROM memories
-          WHERE category = ${category}
-          ORDER BY updated_at DESC
-        `) as Record<string, unknown>[]
-      } else if (like) {
-        rows = (await sql`
-          SELECT id, category, title, content, created_at, updated_at
-          FROM memories
-          WHERE title ILIKE ${like} OR content ILIKE ${like}
-          ORDER BY updated_at DESC
-        `) as Record<string, unknown>[]
-      } else {
-        rows = (await sql`
-          SELECT id, category, title, content, created_at, updated_at
-          FROM memories
-          ORDER BY updated_at DESC
-        `) as Record<string, unknown>[]
-      }
-
-      return sendJson(res, 200, { memories: rows.map(mapMemoryRow) })
+      return sendJson(res, 200, { memories })
     }
 
     if (req.method === 'POST') {
@@ -101,14 +88,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return sendJson(res, 400, { error: 'Title is required' })
       }
 
-      const id = createMemoryId()
-      const rows = (await sql`
-        INSERT INTO memories (id, category, title, content)
-        VALUES (${id}, ${category as MemoryCategory}, ${title}, ${content})
-        RETURNING id, category, title, content, created_at, updated_at
-      `) as Record<string, unknown>[]
+      const memory = await insertMemory(sql, {
+        userId,
+        category: category as MemoryCategory,
+        title,
+        content,
+      })
 
-      return sendJson(res, 201, { memory: mapMemoryRow(rows[0]) })
+      return sendJson(res, 201, { memory })
     }
 
     res.setHeader('Allow', 'GET, POST, OPTIONS')
@@ -116,7 +103,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   } catch (error) {
     console.error('[api/memories]', error)
     const message = error instanceof Error ? error.message : String(error)
-    const status = message.includes('DATABASE_URL') ? 500 : 500
-    return sendJson(res, status, { error: message })
+    return sendJson(res, 500, { error: message })
   }
 }

@@ -8,10 +8,12 @@ export interface ChatApiMessage {
 export interface ChatApiRequest {
   messages: ChatApiMessage[]
   systemPrompt: string
+  userId?: string
 }
 
 export interface ChatApiSuccess {
   content: string
+  memoriesSaved?: number
 }
 
 export interface ChatApiErrorBody {
@@ -44,10 +46,14 @@ export async function requestChatCompletion(
 ): Promise<ChatApiSuccess> {
   const response = await fetch(resolveChatEndpoint(), {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(payload.userId ? { 'X-LAIfe-User-Id': payload.userId } : {}),
+    },
     body: JSON.stringify({
       messages: payload.messages,
       systemPrompt: payload.systemPrompt,
+      userId: payload.userId,
     }),
     signal: init?.signal,
   })
@@ -71,5 +77,5 @@ export async function requestChatCompletion(
     throw new ChatApiError('Chat API returned an empty reply', response.status)
   }
 
-  return { content }
+  return { content, memoriesSaved: typeof data.memoriesSaved === 'number' ? data.memoriesSaved : 0 }
 }
