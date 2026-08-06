@@ -8,15 +8,12 @@ export const config = {
 
 const SYSTEM_PROMPT = `Sei LAIfe, un assistente AI avanzato.
 Adatta SEMPRE la tua lingua a quella usata dall'utente (se l'utente scrive in italiano, rispondi esclusivamente in italiano fluido e naturale).
-Fornisci risposte chiare, esaustive e ben strutturate, evitando di essere troppo sbrigativo.
-Quando conosci obiettivi, interessi o preferenze dell'utente dalla memoria a lungo termine, usali in modo naturale nelle risposte future.`
+Fornisci risposte chiare, esaustive e ben strutturate, evitando di essere troppo sbrigativo.`
 
-function buildInstructions(clientSystemPrompt: string, memoryBlock: string): string {
-  const parts = [SYSTEM_PROMPT]
+function buildInstructions(clientSystemPrompt: string): string {
   const personalization = clientSystemPrompt.trim()
-  if (personalization) parts.push(`## Personalizzazione\n${personalization}`)
-  if (memoryBlock.trim()) parts.push(memoryBlock.trim())
-  return parts.join('\n\n')
+  if (!personalization) return SYSTEM_PROMPT
+  return `${SYSTEM_PROMPT}\n\n## Personalizzazione\n${personalization}`
 }
 
 type ChatRole = 'user' | 'assistant' | 'system'
@@ -32,23 +29,8 @@ interface ChatApiRequestBody {
   userId?: string
 }
 
-interface MemoryRecordLike {
-  id: string
-  category: string
-  title: string
-  content: string
-}
-
 function isChatRole(value: unknown): value is ChatRole {
   return value === 'user' || value === 'assistant' || value === 'system'
-}
-
-function sanitizeUserId(value: unknown): string | null {
-  if (typeof value !== 'string') return null
-  const trimmed = value.trim()
-  if (!trimmed || trimmed.length > 80) return null
-  if (!/^[a-zA-Z0-9_-]+$/.test(trimmed)) return null
-  return trimmed
 }
 
 function sanitizeMessages(raw: unknown): ChatApiMessage[] {
@@ -84,67 +66,6 @@ function sendJson(res: VercelResponse, status: number, payload: Record<string, u
   return res.status(status).json(payload)
 }
 
-function readUserId(req: VercelRequest, body: ChatApiRequestBody): string | null {
-  const header = req.headers['x-laife-user-id']
-  if (typeof header === 'string') {
-    const fromHeader = sanitizeUserId(header)
-    if (fromHeader) return fromHeader
-  }
-  return sanitizeUserId(body.userId)
-}
-
-/**
- * Optional memory layer. Loaded dynamically so /api/chat keeps working
- * even when the DB helper is missing or DATABASE_URL is unset.
- */
-async function loadMemoryContext(userId: string | null): Promise<{
-  memoryBlock: string
-  existingMemories: MemoryRecordLike[]
-}> {
-  if (!userId) return { memoryBlock: '', existingMemories: [] }
-
-  try {
-    const db = await import('./_lib/db')
-    const sql = db.tryGetSql()
-    if (!sql) return { memoryBlock: '', existingMemories: [] }
-
-    await db.ensureMemoriesTable(sql)
-    const existingMemories = await db.listMemoriesForUser(sql, userId, { limit: 60 })
-    return {
-      memoryBlock: db.formatMemoriesForPrompt(existingMemories),
-      existingMemories,
-    }
-  } catch (error) {
-    console.error('[api/chat] memory load skipped', error)
-    return { memoryBlock: '', existingMemories: [] }
-  }
-}
-
-async function maybeExtractMemories(options: {
-  client: OpenAI
-  model: string
-  userId: string | null
-  userMessage: string | undefined
-  existingMemories: MemoryRecordLike[]
-}): Promise<number> {
-  const { client, model, userId, userMessage, existingMemories } = options
-  if (!userId || !userMessage) return 0
-
-  try {
-    const { extractAndStoreMemories } = await import('./_lib/memoryExtract')
-    return await extractAndStoreMemories({
-      client,
-      model,
-      userId,
-      userMessage,
-      existing: existingMemories as never,
-    })
-  } catch (error) {
-    console.error('[api/chat] memory extract skipped', error)
-    return 0
-  }
-}
-
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Origin', '*')
@@ -177,7 +98,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   )
   const clientSystemPrompt =
     typeof body.systemPrompt === 'string' ? body.systemPrompt.trim() : ''
-  const userId = readUserId(req, body)
 
   if (messages.length === 0) {
     return sendJson(res, 400, { error: 'messages must be a non-empty array' })
@@ -187,11 +107,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
     const model = process.env.OPENAI_MODEL?.trim() || 'gpt-4o-mini'
 
-    const { memoryBlock, existingMemories } = await loadMemoryContext(userId)
-
     const response = await client.responses.create({
       model,
-      instructions: buildInstructions(clientSystemPrompt, memoryBlock),
+      instructions: buildInstructions(clientSystemPrompt),
       temperature: 0.8,
       input: messages.map((msg) => ({
         type: 'message' as const,
@@ -205,16 +123,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return sendJson(res, 502, { error: 'Empty response from OpenAI' })
     }
 
-    const latestUserMessage = [...messages].reverse().find((m) => m.role === 'user')?.content
-    const memoriesSaved = await maybeExtractMemories({
-      client,
-      model,
-      userId,
-      userMessage: latestUserMessage,
-      existingMemories,
-    })
-
-    return sendJson(res, 200, { content, memoriesSaved })
+    return sendJson(res, 200, { content })
   } catch (error) {
     console.error(error)
 
