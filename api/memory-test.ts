@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { MemoryPipeline } from '../server/memory/MemoryPipeline'
+import { MemoryPipeline } from './_lib/memory/MemoryPipeline'
 
 export const config = {
   runtime: 'nodejs',

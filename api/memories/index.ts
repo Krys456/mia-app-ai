@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { MemoryService } from '../_lib/memory/MemoryService'
 
 export const config = {
   runtime: 'nodejs',
@@ -125,7 +126,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       })
     }
 
-    const { MemoryService } = await import('../../server/memory/MemoryService')
     const memoryService = new MemoryService()
     await memoryService.saveMemory(validated.data)
 
