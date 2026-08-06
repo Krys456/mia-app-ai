@@ -15,6 +15,10 @@ export type SaveMemoryInput = {
   content: string
   importance?: number
   userId?: string
+  tags?: string[]
+  source?: string
+  status?: string
+  confidence?: number
 }
 
 export type UpdateMemoryInput = {
@@ -62,6 +66,13 @@ export class MemoryService {
       title: input.title,
       content: input.content,
       importance: input.importance,
+      tags: input.tags ?? [],
+      source: input.source?.trim() || 'automatic',
+      status: input.status?.trim() || 'active',
+      confidence:
+        typeof input.confidence === 'number' && Number.isFinite(input.confidence)
+          ? input.confidence
+          : 1.0,
     })
 
     if (insertError) {
