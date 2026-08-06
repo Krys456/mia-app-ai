@@ -7,6 +7,7 @@ import {
   useReducer,
   type ReactNode,
 } from 'react'
+import { requestChatCompletion, type ChatApiMessage } from '../lib/chatApi'
 import { buildSystemPrompt, generateLocalReply } from '../lib/personality'
 import type { ThemeDefinition } from '../lib/themes'
 import {
@@ -17,49 +18,6 @@ import {
   type PersonalizationSettings,
   type ThemeSettings,
 } from '../types'
-
-type ChatApiRole = 'user' | 'assistant'
-
-interface ChatApiMessage {
-  role: ChatApiRole
-  content: string
-}
-
-/** Client call to Vercel `/api/chat` — never exposes OPENAI_API_KEY. */
-async function requestChatCompletion(payload: {
-  messages: ChatApiMessage[]
-  systemPrompt: string
-}): Promise<{ content: string }> {
-  const base = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim() ?? ''
-  const endpoint = base ? `${base.replace(/\/$/, '')}/api/chat` : '/api/chat'
-
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      messages: payload.messages,
-      systemPrompt: payload.systemPrompt,
-    }),
-  })
-
-  let data: { content?: string; error?: string } = {}
-  try {
-    data = (await response.json()) as { content?: string; error?: string }
-  } catch {
-    /* non-JSON */
-  }
-
-  if (!response.ok) {
-    throw new Error(data.error?.trim() || `Chat API request failed (${response.status})`)
-  }
-
-  const content = data.content?.trim()
-  if (!content) {
-    throw new Error('Chat API returned an empty reply')
-  }
-
-  return { content }
-}
 
 const STORAGE_KEY = 'laife.settings.v2'
 
@@ -285,7 +243,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       const history: ChatApiMessage[] = [
         ...state.messages
           .filter((m) => m.role === 'user' || m.role === 'assistant')
-          .map((m) => ({ role: m.role as ChatApiRole, content: m.content })),
+          .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
         { role: 'user', content },
       ]
 
