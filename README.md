@@ -8,8 +8,9 @@
 - Official **LAIfe Theme** by default (black + neon blue / cyan / purple / pink)
 - Full theme personalization: built-in themes + custom theme creator
 - Chat shell with sticky header & fixed composer
+- **Memory** page with categorized, searchable, database-backed notes
 - Slide-out settings drawer (theme + assistant personalization)
-- Local demo replies shaped by a configurable system personality prompt
+- OpenAI chat via Vercel `/api/chat`
 
 ## Quick start
 
@@ -37,7 +38,10 @@ Config file: [`vercel.json`](./vercel.json) (Vite framework, `dist` output, SPA 
 2. Framework preset: **Vite** (auto-detected)
 3. Build command: `npm run build`
 4. Output directory: `dist`
-5. Deploy
+5. Set environment variables:
+   - `OPENAI_API_KEY`
+   - `DATABASE_URL` (Postgres — required for Memory)
+6. Deploy
 
 CLI alternative:
 
