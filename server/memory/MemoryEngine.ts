@@ -1,8 +1,15 @@
 /**
  * BrAIn Memory Engine
  *
- * Rule-based conversation analysis. No database, no OpenAI, no callers yet.
+ * Delegates conversation analysis to a MemoryClassifier.
+ * No hardcoded save rules and no OpenAI calls in this layer.
  */
+
+import type {
+  ClassifierConversation,
+  MemoryClassification,
+  MemoryClassifier,
+} from './MemoryClassifier'
 
 export type ConversationMessage = {
   role: string
@@ -23,13 +30,7 @@ export type MemoryObject = {
 }
 
 /** Decision produced by analyzeConversation — not persisted by this engine. */
-export type MemoryDecision = {
-  save: boolean
-  category: string
-  title: string
-  content: string
-  importance: number
-}
+export type MemoryDecision = MemoryClassification
 
 const NO_SAVE: MemoryDecision = {
   save: false,
@@ -39,53 +40,31 @@ const NO_SAVE: MemoryDecision = {
   importance: 0,
 }
 
-/** Matches phrases like "My name is Cristian". */
-const NAME_PATTERN = /my\s+name\s+is\s+([^\n.!?,;:]+)/i
-
-function extractLatestByRole(
-  messages: ConversationMessage[],
-  role: string,
-): string {
-  for (let i = messages.length - 1; i >= 0; i -= 1) {
-    if (messages[i]?.role === role) {
-      return messages[i].content ?? ''
-    }
+/**
+ * Temporary no-op classifier used until a real AI implementation is wired.
+ * Always returns save=false. Not an AI model.
+ */
+class UnimplementedMemoryClassifier implements MemoryClassifier {
+  async classify(_conversation: ClassifierConversation): Promise<MemoryClassification> {
+    return { ...NO_SAVE }
   }
-  return ''
 }
 
 export class MemoryEngine {
+  private readonly classifier: MemoryClassifier
+
+  constructor(classifier?: MemoryClassifier) {
+    this.classifier = classifier ?? new UnimplementedMemoryClassifier()
+  }
+
   /**
-   * Inspect the latest user message and assistant response.
-   * Simple rule-based decisions only — does not save anything.
+   * Analyze a conversation via the injected MemoryClassifier.
+   * Does not save anything.
    */
   async analyzeConversation(
     messages: ConversationMessage[],
   ): Promise<MemoryDecision> {
-    const userMessage = extractLatestByRole(messages, 'user').trim()
-    const assistantResponse = extractLatestByRole(messages, 'assistant').trim()
-
-    // Assistant reply is inspected for presence; rules currently key off the user turn.
-    if (!userMessage) {
-      return { ...NO_SAVE }
-    }
-    void assistantResponse
-
-    const nameMatch = userMessage.match(NAME_PATTERN)
-    if (nameMatch?.[1]) {
-      const name = nameMatch[1].trim()
-      if (name) {
-        return {
-          save: true,
-          category: 'identity',
-          title: 'Name',
-          content: `User's name is ${name}.`,
-          importance: 8,
-        }
-      }
-    }
-
-    return { ...NO_SAVE }
+    return this.classifier.classify({ messages })
   }
 
   async shouldSave(_analysis: ConversationAnalysis): Promise<boolean> {
