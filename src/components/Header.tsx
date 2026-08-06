@@ -58,20 +58,16 @@ interface HeaderProps {
 export function Header({ view, onNavigate }: HeaderProps) {
   const { newChat, openSettings, settingsOpen } = useChat()
 
-  const goHomeChat = () => {
-    onNavigate('chat')
-    newChat()
-  }
-
   return (
     <header className="app-header" role="banner">
       <div className="app-header__inner">
         <button
           type="button"
-          className="header-btn header-btn--brand"
-          onClick={goHomeChat}
-          aria-label="LAIfe home — start fresh chat"
+          className={`header-btn header-btn--brand${view === 'home' ? ' header-btn--active' : ''}`}
+          onClick={() => onNavigate('home')}
+          aria-label="BrAIn dashboard home"
           title="LAIfe"
+          aria-pressed={view === 'home'}
         >
           <BrandLogo variant="mark" />
           <span className="brand-wordmark">
