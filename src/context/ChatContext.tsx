@@ -18,6 +18,49 @@ import {
   type ThemeSettings,
 } from '../types'
 
+type ChatApiRole = 'user' | 'assistant'
+
+interface ChatApiMessage {
+  role: ChatApiRole
+  content: string
+}
+
+/** Client call to Vercel `/api/chat` — never exposes OPENAI_API_KEY. */
+async function requestChatCompletion(payload: {
+  messages: ChatApiMessage[]
+  systemPrompt: string
+}): Promise<{ content: string }> {
+  const base = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim() ?? ''
+  const endpoint = base ? `${base.replace(/\/$/, '')}/api/chat` : '/api/chat'
+
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      messages: payload.messages,
+      systemPrompt: payload.systemPrompt,
+    }),
+  })
+
+  let data: { content?: string; error?: string } = {}
+  try {
+    data = (await response.json()) as { content?: string; error?: string }
+  } catch {
+    /* non-JSON */
+  }
+
+  if (!response.ok) {
+    throw new Error(data.error?.trim() || `Chat API request failed (${response.status})`)
+  }
+
+  const content = data.content?.trim()
+  if (!content) {
+    throw new Error('Chat API returned an empty reply')
+  }
+
+  return { content }
+}
+
 const STORAGE_KEY = 'laife.settings.v2'
 
 function sanitizeCustomThemes(raw: unknown): ThemeDefinition[] {
@@ -237,17 +280,35 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
       dispatch({ type: 'SEND_USER', content })
 
-      // Local demo reply — swap for API call using buildSystemPrompt(settings).
-      window.setTimeout(() => {
+      const personalization = state.settings.personalization
+      const prompt = buildSystemPrompt(personalization)
+      const history: ChatApiMessage[] = [
+        ...state.messages
+          .filter((m) => m.role === 'user' || m.role === 'assistant')
+          .map((m) => ({ role: m.role as ChatApiRole, content: m.content })),
+        { role: 'user', content },
+      ]
+
+      // Keep isThinking true until ASSISTANT_DONE / ASSISTANT_FAIL (typing UI unchanged).
+      void (async () => {
         try {
-          const reply = generateLocalReply(content, state.settings.personalization)
+          const { content: reply } = await requestChatCompletion({
+            messages: history,
+            systemPrompt: prompt,
+          })
           dispatch({ type: 'ASSISTANT_DONE', content: reply })
         } catch {
-          dispatch({ type: 'ASSISTANT_FAIL' })
+          // API unavailable / failed — graceful local fallback.
+          try {
+            const reply = generateLocalReply(content, personalization)
+            dispatch({ type: 'ASSISTANT_DONE', content: reply })
+          } catch {
+            dispatch({ type: 'ASSISTANT_FAIL' })
+          }
         }
-      }, 450 + Math.random() * 350)
+      })()
     },
-    [state.isThinking, state.settings.personalization],
+    [state.isThinking, state.messages, state.settings.personalization],
   )
 
   const systemPrompt = useMemo(
