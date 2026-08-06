@@ -1,9 +1,32 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { runMemoryPipeline } from './_lib/brain-memory'
 
 export const config = {
   runtime: 'nodejs',
   maxDuration: 15,
+}
+
+type MemoryDecision = {
+  save: boolean
+  category: string
+  title: string
+  content: string
+  importance: number
+}
+
+type SupabaseLike = {
+  from: (table: string) => any
+}
+
+const DEFAULT_API_USER_EMAIL = 'brain-api@local'
+const DEFAULT_API_USER_NAME = 'BrAIn API'
+const NAME_PATTERN = /my\s+name\s+is\s+([^\n.!?,;:]+)/i
+
+const NO_SAVE: MemoryDecision = {
+  save: false,
+  category: '',
+  title: '',
+  content: '',
+  importance: 0,
 }
 
 function sendJson(res: VercelResponse, status: number, payload: unknown) {
@@ -20,6 +43,112 @@ function parseBody(req: VercelRequest): Record<string, unknown> {
   }
   if (typeof req.body === 'object') return req.body as Record<string, unknown>
   throw new Error('Unsupported request body')
+}
+
+function analyzeConversation(
+  userMessage: string,
+  assistantMessage: string,
+): MemoryDecision {
+  const user = userMessage.trim()
+  void assistantMessage
+  if (!user) return { ...NO_SAVE }
+
+  const nameMatch = user.match(NAME_PATTERN)
+  if (nameMatch?.[1]) {
+    const name = nameMatch[1].trim()
+    if (name) {
+      return {
+        save: true,
+        category: 'identity',
+        title: 'Name',
+        content: `User's name is ${name}.`,
+        importance: 8,
+      }
+    }
+  }
+
+  return { ...NO_SAVE }
+}
+
+async function getSupabase(): Promise<SupabaseLike> {
+  const url =
+    process.env.SUPABASE_URL?.trim() || process.env.VITE_SUPABASE_URL?.trim() || ''
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || ''
+
+  if (!url) {
+    throw new Error(
+      'Missing SUPABASE_URL. Set SUPABASE_URL (preferred) or VITE_SUPABASE_URL in the environment.',
+    )
+  }
+
+  if (!key) {
+    throw new Error(
+      'Missing SUPABASE_SERVICE_ROLE_KEY. Set SUPABASE_SERVICE_ROLE_KEY in the environment for memory API inserts.',
+    )
+  }
+
+  const spec = '@supabase/' + 'supabase-js'
+  const { createClient } = await import(spec)
+  return createClient(url, key, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+  }) as unknown as SupabaseLike
+}
+
+async function ensureDefaultUserId(supabase: SupabaseLike): Promise<string> {
+  const { data: existing, error: lookupError } = await supabase
+    .from('users')
+    .select('id')
+    .eq('email', DEFAULT_API_USER_EMAIL)
+    .maybeSingle()
+
+  if (lookupError) {
+    throw new Error(`Failed to look up default user: ${lookupError.message}`)
+  }
+
+  if (existing?.id) {
+    return String(existing.id)
+  }
+
+  const { data: created, error: createError } = await supabase
+    .from('users')
+    .insert({
+      email: DEFAULT_API_USER_EMAIL,
+      display_name: DEFAULT_API_USER_NAME,
+    })
+    .select('id')
+    .single()
+
+  if (createError || !created?.id) {
+    throw new Error(
+      `Failed to create default user: ${createError?.message ?? 'unknown error'}`,
+    )
+  }
+
+  return String(created.id)
+}
+
+async function saveMemory(decision: MemoryDecision): Promise<void> {
+  const supabase = await getSupabase()
+  const userId = await ensureDefaultUserId(supabase)
+
+  const { error: insertError } = await supabase.from('memories').insert({
+    user_id: userId,
+    category: decision.category,
+    title: decision.title,
+    content: decision.content,
+    importance: decision.importance,
+    tags: [],
+    source: 'automatic',
+    status: 'active',
+    confidence: 1.0,
+  })
+
+  if (insertError) {
+    throw new Error(`Failed to insert into public.memories: ${insertError.message}`)
+  }
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -76,15 +205,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       })
     }
 
-    const result = await runMemoryPipeline({
-      userMessage,
-      assistantMessage,
-    })
+    const decision = analyzeConversation(userMessage, assistantMessage)
+    if (!decision.save) {
+      return sendJson(res, 200, { saved: false, decision })
+    }
 
-    return sendJson(res, 200, {
-      saved: result.saved,
-      decision: result.decision,
-    })
+    await saveMemory(decision)
+    return sendJson(res, 200, { saved: true, decision })
   } catch (error) {
     console.error('[api/memory-test]', error)
     const message = error instanceof Error ? error.message : String(error)
