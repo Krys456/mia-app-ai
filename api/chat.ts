@@ -17,7 +17,7 @@ export const config = {
 function scheduleMemoryPipeline(userMessage: string, assistantMessage: string) {
   const task = (async () => {
     try {
-      const { MemoryPipeline } = await import('./_lib/memory/MemoryPipeline')
+      const { MemoryPipeline } = await import('./_lib/MemoryPipeline')
       const pipeline = new MemoryPipeline()
       await pipeline.run({ userMessage, assistantMessage })
     } catch {
@@ -38,7 +38,7 @@ function scheduleMemoryPipeline(userMessage: string, assistantMessage: string) {
  */
 async function loadRelevantMemoryBlock(userMessage: string): Promise<string> {
   try {
-    const { MemoryService } = await import('./_lib/memory/MemoryService')
+    const { MemoryService } = await import('./_lib/MemoryService')
     const service = new MemoryService()
     const memories = await service.searchMemory(userMessage, { limit: 5 })
 

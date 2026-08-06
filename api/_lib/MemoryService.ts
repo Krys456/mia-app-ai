@@ -4,7 +4,7 @@
  * Persists and retrieves long-term memories.
  */
 
-import { getServiceSupabase } from '../supabase'
+import { getServiceSupabase } from './supabase'
 
 const DEFAULT_API_USER_EMAIL = 'brain-api@local'
 const DEFAULT_API_USER_NAME = 'BrAIn API'
@@ -80,8 +80,37 @@ export class MemoryService {
     }
   }
 
-  async getMemories(_options?: GetMemoriesOptions): Promise<unknown[]> {
-    throw new Error('MemoryService.getMemories is not implemented')
+  async getMemories(options?: GetMemoriesOptions): Promise<MemorySearchResult[]> {
+    const supabase = getServiceSupabase()
+    const userId = options?.userId ?? (await this.ensureDefaultUserId())
+    const limit = 100
+
+    let request = supabase
+      .from('memories')
+      .select('id, category, title, content, importance')
+      .eq('user_id', userId)
+      .order('updated_at', { ascending: false })
+      .limit(limit)
+
+    if (options?.category) {
+      request = request.eq('category', options.category)
+    }
+
+    const { data, error } = await request
+    if (error) {
+      throw new Error(`Failed to list public.memories: ${error.message}`)
+    }
+
+    return (data ?? []).map((row) => ({
+      id: String(row.id),
+      category: String(row.category ?? ''),
+      title: String(row.title ?? ''),
+      content: String(row.content ?? ''),
+      importance:
+        typeof row.importance === 'number' && Number.isFinite(row.importance)
+          ? row.importance
+          : 0,
+    }))
   }
 
   async updateMemory(_id: string, _input: UpdateMemoryInput): Promise<void> {

@@ -1,4 +1,4 @@
-/** Re-export for architecture path; runtime source of truth is api/_lib/memory. */
+/** Re-export for architecture path; runtime source of truth is api/_lib. */
 export {
   MemoryService,
   type SaveMemoryInput,
@@ -6,4 +6,4 @@ export {
   type GetMemoriesOptions,
   type SearchMemoryOptions,
   type MemorySearchResult,
-} from '../../api/_lib/memory/MemoryService'
+} from '../../api/_lib/MemoryService'

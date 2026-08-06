@@ -1,5 +1,4 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { MemoryService } from '../_lib/memory/MemoryService'
 
 export const config = {
   runtime: 'nodejs',
@@ -87,21 +86,35 @@ function validateMemoryCreate(body: Record<string, unknown>): ValidationResult {
   }
 }
 
+async function loadMemoryService() {
+  const mod = await import('../_lib/MemoryService')
+  return new mod.MemoryService()
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     if (req.method === 'OPTIONS') {
       res.setHeader('Access-Control-Allow-Origin', '*')
-      res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
-      res.setHeader('Content-Type', 'application/json; charset=utf-8')
-      return res.status(200).json({ success: true })
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-LAIfe-User-Id')
+      return sendJson(res, 200, { success: true })
+    }
+
+    if (req.method === 'GET') {
+      const memoryService = await loadMemoryService()
+      const category =
+        typeof req.query.category === 'string' ? req.query.category.trim() : undefined
+      const memories = await memoryService.getMemories({
+        category: category || undefined,
+      })
+      return sendJson(res, 200, { success: true, memories })
     }
 
     if (req.method !== 'POST') {
-      res.setHeader('Allow', 'POST, OPTIONS')
+      res.setHeader('Allow', 'GET, POST, OPTIONS')
       return sendJson(res, 500, {
         success: false,
-        error: 'Method not allowed. Only POST is supported.',
+        error: 'Method not allowed. Only GET and POST are supported.',
       })
     }
 
@@ -126,7 +139,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       })
     }
 
-    const memoryService = new MemoryService()
+    const memoryService = await loadMemoryService()
     await memoryService.saveMemory(validated.data)
 
     return sendJson(res, 201, { success: true })

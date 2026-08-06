@@ -1,6 +1,6 @@
-/** Re-export for architecture path; runtime source of truth is api/_lib/memory. */
+/** Re-export for architecture path; runtime source of truth is api/_lib. */
 export {
   MemoryPipeline,
   type MemoryPipelineInput,
   type MemoryPipelineResult,
-} from '../../api/_lib/memory/MemoryPipeline'
+} from '../../api/_lib/MemoryPipeline'

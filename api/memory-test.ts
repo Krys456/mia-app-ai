@@ -1,12 +1,9 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { MemoryPipeline } from './_lib/memory/MemoryPipeline'
 
 export const config = {
   runtime: 'nodejs',
   maxDuration: 15,
 }
-
-const pipeline = new MemoryPipeline()
 
 function sendJson(res: VercelResponse, status: number, payload: unknown) {
   res.setHeader('Content-Type', 'application/json; charset=utf-8')
@@ -25,58 +22,61 @@ function parseBody(req: VercelRequest): Record<string, unknown> {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method === 'OPTIONS') {
-    res.setHeader('Access-Control-Allow-Origin', '*')
-    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
-    return res.status(204).end()
-  }
-
-  if (req.method !== 'POST') {
-    res.setHeader('Allow', 'POST, OPTIONS')
-    return sendJson(res, 405, {
-      success: false,
-      error: 'Method not allowed. Only POST is supported.',
-    })
-  }
-
-  let body: Record<string, unknown>
   try {
-    body = parseBody(req)
-  } catch {
-    return sendJson(res, 400, {
-      success: false,
-      error: 'Invalid JSON body',
-    })
-  }
+    if (req.method === 'OPTIONS') {
+      res.setHeader('Access-Control-Allow-Origin', '*')
+      res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+      return sendJson(res, 200, { success: true })
+    }
 
-  const errors: Record<string, string> = {}
-  const userMessage =
-    typeof body.userMessage === 'string' ? body.userMessage.trim() : ''
-  const assistantMessage =
-    typeof body.assistantMessage === 'string' ? body.assistantMessage.trim() : ''
+    if (req.method !== 'POST') {
+      res.setHeader('Allow', 'POST, OPTIONS')
+      return sendJson(res, 500, {
+        success: false,
+        error: 'Method not allowed. Only POST is supported.',
+      })
+    }
 
-  if (typeof body.userMessage !== 'string') {
-    errors.userMessage = 'userMessage must be a string'
-  } else if (!userMessage) {
-    errors.userMessage = 'userMessage is required'
-  }
+    let body: Record<string, unknown>
+    try {
+      body = parseBody(req)
+    } catch (parseError) {
+      console.error('[api/memory-test] invalid JSON body', parseError)
+      return sendJson(res, 500, {
+        success: false,
+        error: 'Invalid JSON body',
+      })
+    }
 
-  if (typeof body.assistantMessage !== 'string') {
-    errors.assistantMessage = 'assistantMessage must be a string'
-  } else if (!assistantMessage) {
-    errors.assistantMessage = 'assistantMessage is required'
-  }
+    const errors: Record<string, string> = {}
+    const userMessage =
+      typeof body.userMessage === 'string' ? body.userMessage.trim() : ''
+    const assistantMessage =
+      typeof body.assistantMessage === 'string' ? body.assistantMessage.trim() : ''
 
-  if (Object.keys(errors).length > 0) {
-    return sendJson(res, 400, {
-      success: false,
-      error: 'Validation failed',
-      errors,
-    })
-  }
+    if (typeof body.userMessage !== 'string') {
+      errors.userMessage = 'userMessage must be a string'
+    } else if (!userMessage) {
+      errors.userMessage = 'userMessage is required'
+    }
 
-  try {
+    if (typeof body.assistantMessage !== 'string') {
+      errors.assistantMessage = 'assistantMessage must be a string'
+    } else if (!assistantMessage) {
+      errors.assistantMessage = 'assistantMessage is required'
+    }
+
+    if (Object.keys(errors).length > 0) {
+      return sendJson(res, 500, {
+        success: false,
+        error: 'Validation failed',
+        errors,
+      })
+    }
+
+    const { MemoryPipeline } = await import('./_lib/MemoryPipeline')
+    const pipeline = new MemoryPipeline()
     const result = await pipeline.run({
       userMessage,
       assistantMessage,
@@ -89,6 +89,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   } catch (error) {
     console.error('[api/memory-test]', error)
     const message = error instanceof Error ? error.message : String(error)
+    if (res.headersSent) return undefined
     return sendJson(res, 500, {
       success: false,
       error: message,
