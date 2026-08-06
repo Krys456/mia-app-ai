@@ -4,6 +4,11 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "installCommand": "npm install",
+  "functions": {
+    "api/**/*.ts": {
+      "includeFiles": "server/memory/**"
+    }
+  },
   "rewrites": [
     {
       "source": "/((?!api/).*)",
