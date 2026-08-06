@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { MemoryPipeline } from './_lib/MemoryPipeline'
+import { runMemoryPipeline } from './_lib/brain-memory'
 
 export const config = {
   runtime: 'nodejs',
@@ -76,8 +76,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       })
     }
 
-    const pipeline = new MemoryPipeline()
-    const result = await pipeline.run({
+    const result = await runMemoryPipeline({
       userMessage,
       assistantMessage,
     })

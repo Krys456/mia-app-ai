@@ -4,6 +4,17 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "installCommand": "npm install",
+  "functions": {
+    "api/chat.ts": {
+      "includeFiles": "api/_lib/brain-memory.ts"
+    },
+    "api/memories/index.ts": {
+      "includeFiles": "api/_lib/brain-memory.ts"
+    },
+    "api/memory-test.ts": {
+      "includeFiles": "api/_lib/brain-memory.ts"
+    }
+  },
   "rewrites": [
     {
       "source": "/((?!api/).*)",

@@ -1,4 +1,10 @@
-import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+/**
+ * Server-side Supabase client helper.
+ * Lazily loads @supabase/supabase-js so importing this module cannot crash
+ * Vercel function cold-start if the package graph misbehaves.
+ */
+
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 let client: SupabaseClient | null = null
 
@@ -6,7 +12,7 @@ let client: SupabaseClient | null = null
  * Server-side Supabase client for API routes / MemoryService.
  * Requires SUPABASE_URL (or VITE_SUPABASE_URL) and SUPABASE_SERVICE_ROLE_KEY.
  */
-export function getServiceSupabase(): SupabaseClient {
+export async function getServiceSupabase(): Promise<SupabaseClient> {
   if (client) return client
 
   const url =
@@ -25,13 +31,11 @@ export function getServiceSupabase(): SupabaseClient {
     )
   }
 
+  const { createClient } = await import('@supabase/supabase-js')
   client = createClient(url, key, {
     auth: {
       persistSession: false,
       autoRefreshToken: false,
-    },
-    db: {
-      schema: 'public',
     },
   })
 
