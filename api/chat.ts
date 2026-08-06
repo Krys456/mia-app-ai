@@ -6,20 +6,14 @@ export const config = {
   maxDuration: 30,
 }
 
-const DEFAULT_SYSTEM_PROMPT =
-  'Sei LAIfe — un compagno AI premium, caldo, empatico e intelligente.'
-
-/** Regole obbligatorie applicate da /api/chat a ogni richiesta. */
-const RESPONSE_POLICY = `## Lingua e profondità (obbligatorio)
-- Rispondi SEMPRE in italiano fluido, naturale e corretto (grammatica, lessico e tono da madrelingua).
-- Non rispondere in inglese, salvo brevi termini tecnici inevitabili; spiega comunque il concetto in italiano.
-- Fornisci risposte dettagliate ed esaustive: sviluppa il ragionamento, aggiungi contesto utile, esempi concreti e passi pratici quando servono.
-- Evita risposte troppo brevi o laconiche: meglio essere completi e chiari che sintetici a scapito della qualità.
-- Usa paragrafi leggibili e, se aiuta, elenchi o markdown leggero; resta umano, non robotico.`
+const SYSTEM_PROMPT = `Sei LAIfe, un assistente AI avanzato.
+Adatta SEMPRE la tua lingua a quella usata dall'utente (se l'utente scrive in italiano, rispondi esclusivamente in italiano fluido e naturale).
+Fornisci risposte chiare, esaustive e ben strutturate, evitando di essere troppo sbrigativo.`
 
 function buildInstructions(clientSystemPrompt: string): string {
-  const base = clientSystemPrompt.trim() || DEFAULT_SYSTEM_PROMPT
-  return `${base}\n\n${RESPONSE_POLICY}`
+  const personalization = clientSystemPrompt.trim()
+  if (!personalization) return SYSTEM_PROMPT
+  return `${SYSTEM_PROMPT}\n\n## Personalizzazione\n${personalization}`
 }
 
 type ChatRole = 'user' | 'assistant' | 'system'
@@ -101,10 +95,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const messages = sanitizeMessages(body.messages).filter(
     (msg) => msg.role === 'user' || msg.role === 'assistant',
   )
-  const systemPrompt =
-    typeof body.systemPrompt === 'string' && body.systemPrompt.trim()
-      ? body.systemPrompt.trim()
-      : DEFAULT_SYSTEM_PROMPT
+  const clientSystemPrompt =
+    typeof body.systemPrompt === 'string' ? body.systemPrompt.trim() : ''
 
   if (messages.length === 0) {
     return sendJson(res, 400, { error: 'messages must be a non-empty array' })
@@ -117,7 +109,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Latest OpenAI SDK primary API: Responses
     const response = await client.responses.create({
       model,
-      instructions: buildInstructions(systemPrompt),
+      instructions: buildInstructions(clientSystemPrompt),
       temperature: 0.8,
       input: messages.map((msg) => ({
         type: 'message' as const,
