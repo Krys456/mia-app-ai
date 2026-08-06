@@ -4,6 +4,7 @@ import { ChatThread } from './components/ChatThread'
 import { Composer } from './components/Composer'
 import { SettingsDrawer } from './components/SettingsDrawer'
 import { MemoryWorkspace } from './pages/MemoryWorkspace'
+import { Vision } from './pages/Vision'
 import { ChatProvider } from './context/ChatContext'
 import { ThemeProvider } from './context/ThemeContext'
 import type { AppView } from './types'
@@ -20,9 +21,11 @@ function AppShell() {
           <ChatThread />
           <Composer />
         </>
-      ) : (
+      ) : view === 'memory' ? (
         <MemoryWorkspace />
-      )}
+      ) : view === 'vision' ? (
+        <Vision />
+      ) : null}
       <SettingsDrawer />
     </div>
   )
