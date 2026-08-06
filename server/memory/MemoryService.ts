@@ -65,7 +65,7 @@ export class MemoryService {
       category: input.category,
       title: input.title,
       content: input.content,
-      importance: input.importance,
+      importance: input.importance ?? 1,
       tags: input.tags ?? [],
       source: input.source?.trim() || 'automatic',
       status: input.status?.trim() || 'active',
@@ -76,7 +76,7 @@ export class MemoryService {
     })
 
     if (insertError) {
-      throw new Error(insertError.message)
+      throw new Error(`Failed to insert into public.memories: ${insertError.message}`)
     }
   }
 
