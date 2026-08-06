@@ -25,6 +25,43 @@ npm run build
 npm run preview
 ```
 
+Production output is written to `dist/` (Vite default). Node **20+** required (see `.nvmrc`).
+
+## Deploy
+
+### Vercel
+
+Config file: [`vercel.json`](./vercel.json) (Vite framework, `dist` output, SPA rewrites).
+
+1. Import the GitHub repo in [Vercel](https://vercel.com/new)
+2. Framework preset: **Vite** (auto-detected)
+3. Build command: `npm run build`
+4. Output directory: `dist`
+5. Deploy
+
+CLI alternative:
+
+```bash
+npx vercel
+```
+
+### Netlify
+
+Config file: [`netlify.toml`](./netlify.toml) (build + SPA redirect + asset caching).
+
+1. Import the GitHub repo in [Netlify](https://app.netlify.com/start)
+2. Build command: `npm run build`
+3. Publish directory: `dist`
+4. Deploy
+
+CLI alternative:
+
+```bash
+npx netlify deploy --build --prod
+```
+
+Optional env vars: copy [`.env.example`](./.env.example) and set the same keys in the host’s Environment Variables UI (`VITE_*` are inlined at build time).
+
 ## Themes
 
 Open **Settings → Theme** to:
