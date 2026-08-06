@@ -86,8 +86,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res.status(200).json({ content })
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'OpenAI request failed'
-    console.error('[api/chat]', message)
+    console.error(error)
+
+    if (error instanceof OpenAI.APIError) {
+      console.error('[api/chat] OpenAI error details', {
+        status: error.status,
+        code: error.code,
+        type: error.type,
+        message: error.message,
+      })
+    }
+
     return res.status(502).json({ error: 'Failed to generate a reply' })
   }
 }
