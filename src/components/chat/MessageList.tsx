@@ -17,13 +17,17 @@ function MessageListComponent({ messages, isThinking, isStreaming }: MessageList
 
   return (
     <div className="message-list">
-      {messages.map((message) => (
-        <MessageBubble
-          key={message.id}
-          message={message}
-          isStreaming={message.id === streamingId}
-        />
-      ))}
+      {messages.map((message) => {
+        const isThisStreaming = message.id === streamingId
+        return (
+          <MessageBubble
+            key={message.id}
+            message={message}
+            isStreaming={isThisStreaming}
+            showActions={message.role === 'assistant' && !isThisStreaming}
+          />
+        )
+      })}
 
       {isThinking ? (
         <article

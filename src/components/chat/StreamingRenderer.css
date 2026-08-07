@@ -29,11 +29,11 @@
 }
 
 .md-body h1 {
-  font-size: 1.2rem;
+  font-size: 1.22rem;
 }
 
 .md-body h2 {
-  font-size: 1.08rem;
+  font-size: 1.1rem;
 }
 
 .md-body h3,
@@ -68,6 +68,26 @@
   margin-top: 0.35em;
 }
 
+.md-body ul.contains-task-list {
+  list-style: none;
+  padding-left: 0.15rem;
+}
+
+.md-body li.task-list-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+}
+
+.md-checkbox {
+  margin: 0.28rem 0 0;
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  accent-color: var(--accent);
+  pointer-events: none;
+}
+
 .md-body blockquote {
   margin: 0.55em 0 0.9em;
   padding: 0.2em 0 0.2em 0.9em;
@@ -75,7 +95,8 @@
   color: var(--text-muted);
 }
 
-.md-body code {
+.md-inline-code,
+.md-body code:not(.hljs) {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 0.88em;
   background: var(--code-bg);
@@ -84,21 +105,11 @@
 }
 
 .md-body pre {
-  margin: 0.6em 0 0.95em;
-  padding: 0.85rem 0.95rem;
-  overflow-x: auto;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: color-mix(in srgb, var(--code-bg) 88%, var(--bg));
-  scrollbar-width: thin;
-  scrollbar-color: color-mix(in srgb, var(--surface-2) 90%, transparent) transparent;
-}
-
-.md-body pre code {
+  margin: 0;
   padding: 0;
   background: transparent;
-  font-size: 0.84em;
-  line-height: 1.55;
+  border: 0;
+  overflow: visible;
 }
 
 .md-body hr {

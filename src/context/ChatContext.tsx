@@ -202,6 +202,7 @@ type Action =
   | { type: 'ASSISTANT_FINISH'; id: string; content: string; memoryEvent?: 'saved' | 'updated' | null }
   | { type: 'ASSISTANT_FAIL'; error: string }
   | { type: 'CLEAR_MEMORY_NOTICE' }
+  | { type: 'TRIM_TO'; count: number; thinking?: boolean }
 
 function createInitialState(): AppState {
   return {
@@ -325,6 +326,16 @@ function reducer(state: AppState, action: Action): AppState {
     }
     case 'CLEAR_MEMORY_NOTICE':
       return { ...state, memoryNotice: null }
+    case 'TRIM_TO': {
+      const count = Math.max(0, Math.min(action.count, state.messages.length))
+      return {
+        ...state,
+        messages: state.messages.slice(0, count),
+        isThinking: action.thinking === true,
+        isStreaming: false,
+        memoryNotice: null,
+      }
+    }
     default:
       return state
   }
@@ -346,6 +357,8 @@ interface ChatContextValue {
   updatePersonalization: (patch: Partial<PersonalizationSettings>) => void
   updateTheme: (patch: Partial<ThemeSettings>) => void
   sendMessage: (content: string) => void
+  /** Re-run the completion for an assistant message (drops that reply and regenerates). */
+  regenerateAssistant: (assistantId: string) => void
 }
 
 const ChatContext = createContext<ChatContextValue | null>(null)
@@ -374,22 +387,10 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'UPDATE_THEME', payload })
   }, [])
 
-  const sendMessage = useCallback(
-    (raw: string) => {
-      const content = raw.trim()
-      if (!content || state.isThinking || state.isStreaming) return
-
+  const runAssistantCompletion = useCallback(
+    (history: ChatApiMessage[], personalization: PersonalizationSettings) => {
       const generation = ++generationRef.current
-      dispatch({ type: 'SEND_USER', content })
-
-      const personalization = state.settings.personalization
       const prompt = buildSystemPrompt(personalization)
-      const history: ChatApiMessage[] = [
-        ...state.messages
-          .filter((m) => m.role === 'user' || m.role === 'assistant')
-          .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
-        { role: 'user', content },
-      ]
 
       void (async () => {
         try {
@@ -429,11 +430,60 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         }
       })()
     },
+    [],
+  )
+
+  const sendMessage = useCallback(
+    (raw: string) => {
+      const content = raw.trim()
+      if (!content || state.isThinking || state.isStreaming) return
+
+      const personalization = state.settings.personalization
+      const history: ChatApiMessage[] = [
+        ...state.messages
+          .filter((m) => m.role === 'user' || m.role === 'assistant')
+          .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
+        { role: 'user', content },
+      ]
+
+      dispatch({ type: 'SEND_USER', content })
+      runAssistantCompletion(history, personalization)
+    },
     [
       state.isThinking,
       state.isStreaming,
       state.messages,
       state.settings.personalization,
+      runAssistantCompletion,
+    ],
+  )
+
+  const regenerateAssistant = useCallback(
+    (assistantId: string) => {
+      if (state.isThinking || state.isStreaming) return
+
+      const msgs = state.messages
+      const idx = msgs.findIndex((m) => m.id === assistantId)
+      if (idx < 0 || msgs[idx]?.role !== 'assistant') return
+
+      let userIdx = idx - 1
+      while (userIdx >= 0 && msgs[userIdx]?.role !== 'user') userIdx -= 1
+      if (userIdx < 0) return
+
+      const kept = msgs.slice(0, userIdx + 1)
+      const history: ChatApiMessage[] = kept
+        .filter((m) => m.role === 'user' || m.role === 'assistant')
+        .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }))
+
+      dispatch({ type: 'TRIM_TO', count: kept.length, thinking: true })
+      runAssistantCompletion(history, state.settings.personalization)
+    },
+    [
+      state.isThinking,
+      state.isStreaming,
+      state.messages,
+      state.settings.personalization,
+      runAssistantCompletion,
     ],
   )
 
@@ -459,6 +509,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       updatePersonalization,
       updateTheme,
       sendMessage,
+      regenerateAssistant,
     }),
     [
       state.messages,
@@ -476,6 +527,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       updatePersonalization,
       updateTheme,
       sendMessage,
+      regenerateAssistant,
     ],
   )
 

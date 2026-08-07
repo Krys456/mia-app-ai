@@ -1,16 +1,70 @@
-import { memo } from 'react'
-import ReactMarkdown from 'react-markdown'
+import { memo, type ReactNode } from 'react'
+import ReactMarkdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { CodeBlock } from './CodeBlock'
 import './StreamingRenderer.css'
 
 interface StreamingRendererProps {
   content: string
 }
 
+function getText(node: ReactNode): string {
+  if (typeof node === 'string' || typeof node === 'number') return String(node)
+  if (Array.isArray(node)) return node.map(getText).join('')
+  if (node && typeof node === 'object' && 'props' in node) {
+    const props = (node as { props?: { children?: ReactNode } }).props
+    return getText(props?.children)
+  }
+  return ''
+}
+
+const markdownComponents: Components = {
+  pre({ children }) {
+    return <>{children}</>
+  },
+  code({ className, children }) {
+    const text = getText(children).replace(/\n$/, '')
+    const match = /language-([\w+-]+)/.exec(className || '')
+    const looksBlock = Boolean(match) || text.includes('\n')
+
+    if (!looksBlock) {
+      return <code className="md-inline-code">{text}</code>
+    }
+
+    return <CodeBlock code={text} language={match?.[1]} />
+  },
+  a({ href, children }) {
+    return (
+      <a href={href} target="_blank" rel="noreferrer noopener">
+        {children}
+      </a>
+    )
+  },
+  input({ type, checked, disabled, ...rest }) {
+    if (type === 'checkbox') {
+      return (
+        <input
+          {...rest}
+          type="checkbox"
+          className="md-checkbox"
+          checked={Boolean(checked)}
+          disabled={disabled ?? true}
+          readOnly
+          aria-hidden="true"
+          tabIndex={-1}
+        />
+      )
+    }
+    return <input type={type} checked={checked} disabled={disabled} {...rest} />
+  },
+}
+
 function StreamingRendererComponent({ content }: StreamingRendererProps) {
   return (
     <div className="md-body">
-      <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+      <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+        {content}
+      </ReactMarkdown>
     </div>
   )
 }
