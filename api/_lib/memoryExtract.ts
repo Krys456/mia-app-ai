@@ -2,17 +2,10 @@ import type OpenAI from 'openai'
 import {
   isMemoryCategory,
   upsertMemoryByTitle,
-  type MemoryCategory,
   type MemoryRecord,
   getSql,
   ensureMemoriesTable,
 } from './db'
-
-interface ExtractedMemory {
-  category: MemoryCategory
-  title: string
-  content: string
-}
 
 /**
  * Extract durable profile/goals/preferences facts from the latest user turn
