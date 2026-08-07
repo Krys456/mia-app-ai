@@ -69,7 +69,8 @@
   --radius-lg: 1.5rem;
   --radius-xl: 1.85rem;
 
-  --content-max: 46rem;
+  /* Edge-to-edge layout: shared side gutters (no centered content column). */
+  --page-gutter: 1rem;
   --header-h: 3.75rem;
   --font-sans: 'Outfit', ui-sans-serif, system-ui, sans-serif;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
@@ -144,4 +145,16 @@ select {
   backdrop-filter: blur(18px) saturate(1.2);
   -webkit-backdrop-filter: blur(18px) saturate(1.2);
   border: 1px solid var(--border);
+}
+
+@media (min-width: 768px) {
+  :root {
+    --page-gutter: 1.25rem;
+  }
+}
+
+@media (min-width: 1100px) {
+  :root {
+    --page-gutter: 1.5rem;
+  }
 }

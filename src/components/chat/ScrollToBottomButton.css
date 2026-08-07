@@ -1,6 +1,6 @@
 .scroll-bottom-btn {
   position: absolute;
-  right: max(1rem, calc((100% - var(--content-max)) / 2 + 1rem));
+  right: var(--page-gutter);
   bottom: 0.85rem;
   z-index: 40;
   display: inline-flex;

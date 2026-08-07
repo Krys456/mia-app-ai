@@ -1,7 +1,7 @@
 .message-list {
-  max-width: var(--content-max);
-  margin: 0 auto;
-  padding: 1.25rem 1rem 1.5rem;
+  width: 100%;
+  margin: 0;
+  padding: 1.25rem var(--page-gutter) 1.5rem;
   display: flex;
   flex-direction: column;
   gap: 1rem;

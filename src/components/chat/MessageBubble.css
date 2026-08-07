@@ -1,5 +1,5 @@
 .bubble {
-  max-width: min(100%, 42rem);
+  max-width: min(100%, 40rem);
   animation: chat-rise-in 320ms var(--ease-out) both;
 }
 

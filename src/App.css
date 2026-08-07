@@ -7,3 +7,28 @@
   position: relative;
   overflow: hidden;
 }
+
+.app-view {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  animation: app-view-enter 260ms var(--ease-out) both;
+}
+
+@keyframes app-view-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-view {
+    animation: none;
+  }
+}
