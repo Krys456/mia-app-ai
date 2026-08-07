@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
-// Memory + orchestrator stay fail-soft: dynamic-import lib/server only after the request starts.
+// Memory + Cognitive Engine stay fail-soft: dynamic-import lib/server after the request starts.
 // OpenAI loads after the handler starts.
 
 export const config = {
@@ -36,17 +36,14 @@ async function runMemoryIfEnabled(
  * When the client sends personalization, that block is the sole constitution
  * — do not prepend a second identity prompt (avoids redundancy/conflicts).
  */
-const FALLBACK_SYSTEM_PROMPT = `Sei LAIfe. Ragiona in silenzio prima di rispondere (non mostrare l'analisi):
-1) Comprensione: intento, tono, livello, brevità vs profondità, tipo di richiesta.
-2) Stile: lunghezza, tono, struttura adatti; adatta allo stile dell'utente nella chat.
-3) Costruzione: niente ridondanze/muri; Markdown utile; aperture e finali variati.
-4) Qualità: chiarezza, completezza, correttezza, naturalezza, leggibilità, continuità.
-Poi invia solo la risposta finale. Non sembrare un motore di ricerca.
-Non menzionare mai strumenti interni (memoria, ricerca, Vision, meteo, ecc.).`
+const FALLBACK_SYSTEM_PROMPT = `Sei il Writer di LAIfe. Un Cognitive Engine interno ha già pianificato la risposta (invisibile).
+Esegui il piano senza mostrarlo. Non elencare fasi. Non menzionare strumenti.
+Scrivi solo la risposta finale: chiara, naturale, coerente con la chat.
+Quality Control silenzioso prima di inviare. Non sembrare un motore di ricerca.`
 
 function buildInstructions(
   clientSystemPrompt: string,
-  orchestratorBlock = '',
+  cognitiveBlock = '',
 ): string {
   const parts: string[] = []
 
@@ -58,9 +55,9 @@ function buildInstructions(
     parts.push(FALLBACK_SYSTEM_PROMPT)
   }
 
-  const orchestrated = orchestratorBlock.trim()
-  if (orchestrated) {
-    parts.push(orchestrated)
+  const cognitive = cognitiveBlock.trim()
+  if (cognitive) {
+    parts.push(cognitive)
   }
 
   return parts.join('\n\n')
@@ -188,26 +185,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const lastUserMessage = [...messages].reverse().find((msg) => msg.role === 'user')
 
-    // Invisible orchestration: plan tools → retrieve → merge context.
+    // Cognitive Engine (invisible): understand → real goal → tools → structure → Writer handoff.
     // Fail-soft: any failure yields empty context and chat continues.
-    let orchestratorBlock = ''
+    let cognitiveBlock = ''
     if (lastUserMessage?.content) {
       try {
-        const { orchestrate } = await import('../lib/server/orchestrator.js')
-        const result = await orchestrate({
+        const { runCognitiveEngine } = await import('../lib/server/cognitive-engine.js')
+        const result = await runCognitiveEngine({
           userMessage: lastUserMessage.content,
           attachments,
           memoryEnabled,
         })
-        orchestratorBlock = result?.context || ''
+        cognitiveBlock = result?.context || ''
       } catch {
-        orchestratorBlock = ''
+        cognitiveBlock = ''
       }
     }
 
     const response = await client.responses.create({
       model,
-      instructions: buildInstructions(clientSystemPrompt, orchestratorBlock),
+      instructions: buildInstructions(clientSystemPrompt, cognitiveBlock),
       temperature: 0.85,
       max_output_tokens: 4096,
       input: messages.map((msg) => ({
