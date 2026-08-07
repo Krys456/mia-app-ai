@@ -4,10 +4,27 @@
   overflow-y: auto;
   width: min(100%, var(--content-max, 44rem));
   margin: 0 auto;
-  padding: 1.25rem 1rem 2.5rem;
+  padding: 0.85rem 1rem 2.5rem;
   display: flex;
   flex-direction: column;
   gap: 1.1rem;
+  animation: memory-manage-enter 280ms var(--ease-out);
+}
+
+@keyframes memory-manage-enter {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.memory-manage__nav {
+  display: flex;
+  align-items: center;
 }
 
 .memory-manage__head {

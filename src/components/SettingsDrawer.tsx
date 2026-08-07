@@ -95,16 +95,33 @@ export function SettingsDrawer({ onOpenMemory }: SettingsDrawerProps) {
               Memoria
             </h3>
 
-            <label className="field field--row">
-              <span className="field__label">Memoria</span>
-              <input
-                type="checkbox"
-                role="switch"
-                checked={p.memoryEnabled !== false}
-                onChange={(e) => set('memoryEnabled', e.target.checked)}
-                aria-checked={p.memoryEnabled !== false}
-              />
-            </label>
+            <div className="memory-toggle-row">
+              <span className="field__label" id="memory-toggle-label">
+                Memoria
+              </span>
+              <div
+                className="memory-toggle"
+                role="group"
+                aria-labelledby="memory-toggle-label"
+              >
+                <button
+                  type="button"
+                  className={`memory-toggle__opt${p.memoryEnabled === false ? ' memory-toggle__opt--active' : ''}`}
+                  aria-pressed={p.memoryEnabled === false}
+                  onClick={() => set('memoryEnabled', false)}
+                >
+                  OFF
+                </button>
+                <button
+                  type="button"
+                  className={`memory-toggle__opt${p.memoryEnabled !== false ? ' memory-toggle__opt--active' : ''}`}
+                  aria-pressed={p.memoryEnabled !== false}
+                  onClick={() => set('memoryEnabled', true)}
+                >
+                  ON
+                </button>
+              </div>
+            </div>
 
             <p className="settings-note settings-note--tight">
               Se attiva, LAIfe impara in automatico fatti utili a lungo termine. Nessun pulsante in
@@ -119,7 +136,7 @@ export function SettingsDrawer({ onOpenMemory }: SettingsDrawerProps) {
                 onOpenMemory?.()
               }}
             >
-              Gestisci memoria
+              Gestisci Memoria
             </button>
           </section>
 

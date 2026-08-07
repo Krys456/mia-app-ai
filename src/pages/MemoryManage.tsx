@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { PageBackButton } from '../components/PageBackButton'
 import type { MemoryItem } from '../lib/memory'
 import {
   deleteAllMemories,
@@ -18,7 +19,11 @@ function formatDate(value?: string | null): string {
   })
 }
 
-export function MemoryManage() {
+interface MemoryManageProps {
+  onBack: () => void
+}
+
+export function MemoryManage({ onBack }: MemoryManageProps) {
   const [memories, setMemories] = useState<MemoryItem[]>([])
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(true)
@@ -119,10 +124,14 @@ export function MemoryManage() {
 
   return (
     <main className="memory-manage" aria-labelledby="memory-manage-title">
+      <div className="memory-manage__nav">
+        <PageBackButton onClick={onBack} />
+      </div>
+
       <header className="memory-manage__head">
         <div>
-          <p className="memory-manage__kicker">Settings</p>
-          <h1 id="memory-manage-title">Memoria</h1>
+          <p className="memory-manage__kicker">Impostazioni</p>
+          <h1 id="memory-manage-title">Gestisci Memoria</h1>
           <p className="memory-manage__lead">
             LAIfe salva in automatico solo fatti utili a lungo termine. Qui puoi rivedere,
             modificare o cancellare tutto.
@@ -212,6 +221,7 @@ export function MemoryManage() {
                   <>
                     <div className="memory-manage__meta">
                       <span className="memory-manage__category">{item.category}</span>
+                      <span>Importanza {item.importance ?? '—'}</span>
                       <span>Creata {formatDate(item.createdAt)}</span>
                       <span>Usata {formatDate(item.lastUsedAt)}</span>
                       <span>Usi {item.usageCount ?? 0}</span>

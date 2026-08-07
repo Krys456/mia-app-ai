@@ -15,6 +15,8 @@ export interface ChatApiRequest {
 export interface ChatApiSuccess {
   content: string
   memoriesSaved?: number
+  /** Discrete UI hint when auto-memory wrote something. */
+  memoryEvent?: 'saved' | 'updated' | null
 }
 
 export interface ChatApiErrorBody {
@@ -79,5 +81,12 @@ export async function requestChatCompletion(
     throw new ChatApiError('Chat API returned an empty reply', response.status)
   }
 
-  return { content, memoriesSaved: typeof data.memoriesSaved === 'number' ? data.memoriesSaved : 0 }
+  const memoryEvent =
+    data.memoryEvent === 'saved' || data.memoryEvent === 'updated' ? data.memoryEvent : null
+
+  return {
+    content,
+    memoriesSaved: typeof data.memoriesSaved === 'number' ? data.memoriesSaved : 0,
+    memoryEvent,
+  }
 }
