@@ -1,8 +1,13 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react'
+import { PageHeader } from '../components/PageHeader'
 import { sendVisionImage, VisionApiError } from '../lib/visionApi'
 import './Vision.css'
 
-export function Vision() {
+interface VisionProps {
+  onBack: () => void
+}
+
+export function Vision({ onBack }: VisionProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -140,14 +145,12 @@ export function Vision() {
 
   return (
     <main className="brain-vision">
-      <div className="brain-vision__inner">
-        <header className="brain-vision__header">
-          <p className="brain-vision__kicker">BrAIn Vision</p>
-          <h1>Vision</h1>
-          <p className="brain-vision__lead">
-            Capture or upload an image, preview it, then send it. Analysis comes later.
-          </p>
-        </header>
+      <PageHeader title="Vision AI" onBack={onBack} />
+
+      <div className="brain-vision__body">
+        <p className="brain-vision__lead">
+          Capture or upload an image, preview it, then send it. Analysis comes later.
+        </p>
 
         <section className="brain-vision__actions" aria-label="Vision inputs">
           <button type="button" className="brain-vision__primary" onClick={() => void startCamera()}>

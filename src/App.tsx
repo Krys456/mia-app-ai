@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Header } from './components/Header'
 import { ChatContainer } from './components/chat'
 import { SettingsDrawer } from './components/SettingsDrawer'
@@ -12,30 +12,47 @@ import './App.css'
 
 function AppShell() {
   const [view, setView] = useState<AppView>('chat')
+  const previousViewRef = useRef<AppView>('chat')
   const { openSettings } = useChat()
 
+  const navigate = (next: AppView) => {
+    setView((current) => {
+      if (current !== next) previousViewRef.current = current
+      return next
+    })
+  }
+
   const openMemoryManage = () => {
-    setView('memory')
+    navigate('memory')
   }
 
   const backFromMemory = () => {
-    setView('chat')
+    navigate('chat')
     openSettings()
+  }
+
+  const backFromVision = () => {
+    const previous = previousViewRef.current
+    navigate(previous === 'vision' ? 'chat' : previous)
   }
 
   return (
     <div className="app-shell">
-      <Header view={view} onNavigate={setView} />
-      {view === 'chat' ? (
-        <>
-          <ChatContainer />
-          <MemoryToast />
-        </>
-      ) : view === 'memory' ? (
-        <MemoryManage onBack={backFromMemory} />
-      ) : view === 'vision' ? (
-        <Vision />
-      ) : null}
+      {view === 'chat' ? <Header view={view} onNavigate={navigate} /> : null}
+
+      <div className="app-view" key={view}>
+        {view === 'chat' ? (
+          <>
+            <ChatContainer />
+            <MemoryToast />
+          </>
+        ) : view === 'memory' ? (
+          <MemoryManage onBack={backFromMemory} />
+        ) : (
+          <Vision onBack={backFromVision} />
+        )}
+      </div>
+
       <SettingsDrawer onOpenMemory={openMemoryManage} />
     </div>
   )

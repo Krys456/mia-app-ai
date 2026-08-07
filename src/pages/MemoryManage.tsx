@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useMemo, useState } from 'react'
-import { PageBackButton } from '../components/PageBackButton'
+import { PageHeader } from '../components/PageHeader'
 import { useChat } from '../context/ChatContext'
 import type { MemoryItem } from '../lib/memory'
 import {
@@ -156,98 +156,93 @@ export function MemoryManage({ onBack }: MemoryManageProps) {
 
   return (
     <main className="memory-manage" aria-labelledby="memory-manage-title">
-      <div className="memory-manage__nav">
-        <PageBackButton onClick={onBack} />
-      </div>
+      <PageHeader
+        title="Memoria"
+        onBack={onBack}
+        actions={
+          <div
+            className="memory-toggle"
+            role="group"
+            aria-label="Attiva o disattiva memoria"
+          >
+            <button
+              type="button"
+              className={`memory-toggle__opt${!memoryEnabled ? ' memory-toggle__opt--active' : ''}`}
+              aria-pressed={!memoryEnabled}
+              onClick={() => updatePersonalization({ memoryEnabled: false })}
+            >
+              OFF
+            </button>
+            <button
+              type="button"
+              className={`memory-toggle__opt${memoryEnabled ? ' memory-toggle__opt--active' : ''}`}
+              aria-pressed={memoryEnabled}
+              onClick={() => updatePersonalization({ memoryEnabled: true })}
+            >
+              ON
+            </button>
+          </div>
+        }
+      />
 
-      <header className="memory-manage__head">
-        <p className="memory-manage__kicker">Impostazioni</p>
-        <h1 id="memory-manage-title">Memoria</h1>
-        <p className="memory-manage__lead">
+      <div className="memory-manage__body">
+        <p className="memory-manage__lead" id="memory-manage-title">
           Fatti che LAIfe ricorda per te. Tocca una card per i dettagli.
         </p>
-      </header>
 
-      <div className="memory-manage__toggle-row">
-        <span className="memory-manage__toggle-label" id="manage-memory-toggle-label">
-          Memoria
-        </span>
-        <div
-          className="memory-toggle"
-          role="group"
-          aria-labelledby="manage-memory-toggle-label"
-        >
+        <label className="memory-manage__search">
+          <span className="sr-only">Cerca memorie</span>
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Cerca…"
+            autoComplete="off"
+          />
+        </label>
+
+        {error && !selected ? (
+          <p className="memory-manage__error" role="alert">
+            {error}
+          </p>
+        ) : null}
+
+        {loading ? (
+          <p className="memory-manage__empty">Caricamento…</p>
+        ) : filtered.length === 0 ? (
+          <p className="memory-manage__empty">
+            {query.trim()
+              ? 'Nessun risultato.'
+              : 'Nessuna memoria ancora. Quando è ON, LAIfe impara in automatico.'}
+          </p>
+        ) : (
+          <ul className="memory-manage__grid">
+            {filtered.map((item) => (
+              <li key={item.id}>
+                <button
+                  type="button"
+                  className="memory-card"
+                  onClick={() => openCard(item)}
+                >
+                  <span className="memory-card__category">{item.category}</span>
+                  <span className="memory-card__title">{item.title}</span>
+                  <span className="memory-card__preview">{previewText(item.content)}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <div className="memory-manage__footer">
           <button
             type="button"
-            className={`memory-toggle__opt${!memoryEnabled ? ' memory-toggle__opt--active' : ''}`}
-            aria-pressed={!memoryEnabled}
-            onClick={() => updatePersonalization({ memoryEnabled: false })}
+            className="memory-manage__clear"
+            onClick={() => void clearAll()}
+            disabled={memories.length === 0 || busy}
           >
-            OFF
-          </button>
-          <button
-            type="button"
-            className={`memory-toggle__opt${memoryEnabled ? ' memory-toggle__opt--active' : ''}`}
-            aria-pressed={memoryEnabled}
-            onClick={() => updatePersonalization({ memoryEnabled: true })}
-          >
-            ON
+            Cancella tutto
           </button>
         </div>
-      </div>
-
-      <label className="memory-manage__search">
-        <span className="sr-only">Cerca memorie</span>
-        <input
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Cerca…"
-          autoComplete="off"
-        />
-      </label>
-
-      {error && !selected ? (
-        <p className="memory-manage__error" role="alert">
-          {error}
-        </p>
-      ) : null}
-
-      {loading ? (
-        <p className="memory-manage__empty">Caricamento…</p>
-      ) : filtered.length === 0 ? (
-        <p className="memory-manage__empty">
-          {query.trim()
-            ? 'Nessun risultato.'
-            : 'Nessuna memoria ancora. Quando è ON, LAIfe impara in automatico.'}
-        </p>
-      ) : (
-        <ul className="memory-manage__grid">
-          {filtered.map((item) => (
-            <li key={item.id}>
-              <button
-                type="button"
-                className="memory-card"
-                onClick={() => openCard(item)}
-              >
-                <span className="memory-card__category">{item.category}</span>
-                <span className="memory-card__title">{item.title}</span>
-                <span className="memory-card__preview">{previewText(item.content)}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      <div className="memory-manage__footer">
-        <button
-          type="button"
-          className="memory-manage__clear"
-          onClick={() => void clearAll()}
-          disabled={memories.length === 0 || busy}
-        >
-          Cancella tutto
-        </button>
       </div>
 
       {selected ? (

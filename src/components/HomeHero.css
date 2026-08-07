@@ -3,7 +3,7 @@
   min-height: 0;
   display: grid;
   place-items: center;
-  padding: 1.5rem 1.25rem 2rem;
+  padding: 1.5rem var(--page-gutter) 2rem;
   position: relative;
   overflow: hidden;
   animation: hero-fade 520ms var(--ease-out) both;

@@ -1,9 +1,10 @@
 .brain-vision {
   flex: 1;
   min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
   position: relative;
+  overflow: hidden;
 }
 
 .brain-vision::before {
@@ -20,44 +21,23 @@
   animation: brain-vision-glow 6s ease-in-out infinite;
 }
 
-.brain-vision__inner {
+.brain-vision__body {
   position: relative;
   z-index: 1;
-  max-width: var(--content-max);
-  margin: 0 auto;
-  padding: 1.25rem 1rem 2rem;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  width: 100%;
+  margin: 0;
+  padding: 1.1rem var(--page-gutter) 2rem;
   display: flex;
   flex-direction: column;
   gap: 1.1rem;
 }
 
-.brain-vision__header {
-  animation: brain-vision-rise 480ms var(--ease-out) both;
-}
-
-.brain-vision__kicker {
-  margin: 0 0 0.3rem;
-  font-size: 0.7rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  font-weight: 600;
-  background: var(--gradient-brand);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
-.brain-vision__header h1 {
-  margin: 0;
-  font-size: 1.7rem;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  color: var(--text);
-}
-
 .brain-vision__lead {
-  margin: 0.35rem 0 0;
-  max-width: 34rem;
+  margin: 0;
   color: var(--text-muted);
   font-size: 0.92rem;
   line-height: 1.5;
@@ -224,5 +204,12 @@
   50% {
     opacity: 1;
     transform: scale(1.03);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brain-vision::before,
+  .brain-vision__panel {
+    animation: none;
   }
 }
