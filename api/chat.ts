@@ -8,11 +8,17 @@ export const config = {
   maxDuration: 60,
 }
 
-function scheduleMemoryPipeline(userMessage: string, assistantMessage: string) {
+function scheduleMemoryPipeline(
+  userMessage: string,
+  assistantMessage: string,
+  memoryEnabled: boolean,
+) {
+  if (!memoryEnabled) return
+
   const task = (async () => {
     try {
       const { runMemoryPipeline } = await import('../lib/server/brain-memory.js')
-      await runMemoryPipeline({ userMessage, assistantMessage })
+      await runMemoryPipeline({ userMessage, assistantMessage, memoryEnabled: true })
     } catch {
       // Ignore — memory must never affect the chat response.
     }
@@ -89,6 +95,8 @@ interface ChatApiRequestBody {
   messages?: ChatApiMessage[]
   systemPrompt?: string
   userId?: string
+  /** When false, skip retrieval writes and auto-save. Default true. */
+  memoryEnabled?: boolean
 }
 
 function isChatRole(value: unknown): value is ChatRole {
@@ -160,6 +168,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   )
   const clientSystemPrompt =
     typeof body.systemPrompt === 'string' ? body.systemPrompt.trim() : ''
+  const memoryEnabled = body.memoryEnabled !== false
 
   if (messages.length === 0) {
     return sendJson(res, 400, { error: 'messages must be a non-empty array' })
@@ -171,9 +180,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const model = process.env.OPENAI_MODEL?.trim() || 'gpt-4o-mini'
 
     const lastUserMessage = [...messages].reverse().find((msg) => msg.role === 'user')
-    const memoryBlock = lastUserMessage?.content
-      ? await loadRelevantMemoryBlock(lastUserMessage.content)
-      : ''
+    const memoryBlock =
+      memoryEnabled && lastUserMessage?.content
+        ? await loadRelevantMemoryBlock(lastUserMessage.content)
+        : ''
 
     const response = await client.responses.create({
       model,
@@ -192,7 +202,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (lastUserMessage?.content) {
-      scheduleMemoryPipeline(lastUserMessage.content, content)
+      scheduleMemoryPipeline(lastUserMessage.content, content, memoryEnabled)
     }
 
     return sendJson(res, 200, { content })

@@ -1,14 +1,17 @@
 export const MEMORY_CATEGORIES = [
-  'Profile',
-  'Preferences',
-  'Goals',
-  'Projects',
-  'Routine',
-  'Reminders',
-  'Important',
+  'identity',
+  'preferences',
+  'hobbies',
+  'profession',
+  'goals',
+  'projects',
+  'relationships',
+  'tastes',
+  'settings',
+  'important',
 ] as const
 
-export type MemoryCategory = (typeof MEMORY_CATEGORIES)[number]
+export type MemoryCategory = (typeof MEMORY_CATEGORIES)[number] | string
 
 export interface MemoryItem {
   id: string
@@ -16,6 +19,9 @@ export interface MemoryItem {
   category: MemoryCategory
   title: string
   content: string
+  importance?: number
+  usageCount?: number
+  lastUsedAt?: string | null
   createdAt: string
   updatedAt: string
 }
@@ -26,6 +32,6 @@ export interface MemoryDraft {
   content: string
 }
 
-export function isMemoryCategory(value: string): value is MemoryCategory {
-  return (MEMORY_CATEGORIES as readonly string[]).includes(value)
+export function isMemoryCategory(value: string): boolean {
+  return value.trim().length > 0
 }

@@ -1,5 +1,9 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { listMemories, saveMemory } from '../../lib/server/brain-memory.js'
+import {
+  deleteAllMemories,
+  listMemories,
+  saveMemory,
+} from '../../lib/server/brain-memory.js'
 import { errorMessage, parseJsonBody, sendJson } from '../../lib/server/http.js'
 
 export const config = {
@@ -76,7 +80,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     if (req.method === 'OPTIONS') {
       res.setHeader('Access-Control-Allow-Origin', '*')
-      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS')
       res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-LAIfe-User-Id')
       return sendJson(res, 200, { success: true })
     }
@@ -84,17 +88,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method === 'GET') {
       const category =
         typeof req.query.category === 'string' ? req.query.category.trim() : undefined
+      const q = typeof req.query.q === 'string' ? req.query.q.trim() : undefined
       const memories = await listMemories({
         category: category || undefined,
+        q: q || undefined,
       })
       return sendJson(res, 200, { success: true, memories })
     }
 
+    if (req.method === 'DELETE') {
+      const clear =
+        req.query.clear === '1' ||
+        req.query.clear === 'true' ||
+        req.query.all === '1' ||
+        req.query.all === 'true'
+      if (!clear) {
+        return sendJson(res, 400, {
+          success: false,
+          error: 'Pass ?clear=1 to delete all memories',
+        })
+      }
+      const deleted = await deleteAllMemories()
+      return sendJson(res, 200, { success: true, deleted })
+    }
+
     if (req.method !== 'POST') {
-      res.setHeader('Allow', 'GET, POST, OPTIONS')
+      res.setHeader('Allow', 'GET, POST, DELETE, OPTIONS')
       return sendJson(res, 405, {
         success: false,
-        error: 'Method not allowed. Only GET and POST are supported.',
+        error: 'Method not allowed. Only GET, POST, and DELETE are supported.',
       })
     }
 

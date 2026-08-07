@@ -9,6 +9,7 @@ export interface ChatApiRequest {
   messages: ChatApiMessage[]
   systemPrompt: string
   userId?: string
+  memoryEnabled?: boolean
 }
 
 export interface ChatApiSuccess {
@@ -54,6 +55,7 @@ export async function requestChatCompletion(
       messages: payload.messages,
       systemPrompt: payload.systemPrompt,
       userId: payload.userId,
+      memoryEnabled: payload.memoryEnabled !== false,
     }),
     signal: init?.signal,
   })

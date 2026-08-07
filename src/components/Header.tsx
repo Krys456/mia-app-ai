@@ -111,8 +111,8 @@ export function Header({ view, onNavigate }: HeaderProps) {
             type="button"
             className={`header-btn${view === 'memory' ? ' header-btn--active' : ''}`}
             onClick={() => onNavigate('memory')}
-            aria-label="Memory"
-            title="Memory"
+            aria-label="Gestisci memoria"
+            title="Memoria"
             aria-pressed={view === 'memory'}
           >
             <IconMemory />
