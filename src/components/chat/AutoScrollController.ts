@@ -281,6 +281,3 @@ export class AutoScrollController {
     this.pinRafId = requestAnimationFrame(pinTick)
   }
 }
-
-/** @deprecated Use AutoScrollState */
-export type AutoScrollMode = AutoScrollState

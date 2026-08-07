@@ -38,7 +38,7 @@ function AppShell() {
 
   return (
     <div className="app-shell">
-      {view === 'chat' ? <Header view={view} onNavigate={navigate} /> : null}
+      {view === 'chat' ? <Header onNavigate={navigate} /> : null}
 
       <div className="app-view" key={view}>
         {view === 'chat' ? (

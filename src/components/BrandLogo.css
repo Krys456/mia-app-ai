@@ -7,15 +7,16 @@
 .brand-logo--full {
   width: min(100%, 19rem);
   height: auto;
-  filter: drop-shadow(0 0 22px rgba(43, 152, 255, 0.38))
-    drop-shadow(0 0 48px rgba(239, 8, 161, 0.24));
+  filter: drop-shadow(0 0 22px color-mix(in srgb, var(--accent) 38%, transparent))
+    drop-shadow(0 0 48px color-mix(in srgb, var(--accent-pink) 24%, transparent));
 }
 
 .brand-logo--mark {
   width: 2.25rem;
   height: 2.25rem;
-  border-radius: 0.6rem;
+  border-radius: var(--radius-sm);
   object-fit: cover;
-  background: #000;
-  box-shadow: 0 0 16px rgba(43, 152, 255, 0.3), 0 0 28px rgba(239, 8, 161, 0.18);
+  background: var(--bg);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--accent) 30%, transparent),
+    0 0 28px color-mix(in srgb, var(--accent-pink) 18%, transparent);
 }

@@ -1,19 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import {
-  AutoScrollController,
-  type AutoScrollState,
-} from './AutoScrollController'
+import { AutoScrollController } from './AutoScrollController'
 
 /**
  * React binding for AutoScrollController.
- * Scroll decisions live in the controller; this hook only mirrors UI state.
- * Attaches when the viewport element mounts (including after leaving the home hero).
+ * Scroll decisions live in the controller; this hook only mirrors UI state needed for chrome.
  */
 export function useAutoScroll(isStreaming: boolean) {
   const [scrollerEl, setScrollerEl] = useState<HTMLDivElement | null>(null)
   const controllerRef = useRef<AutoScrollController | null>(null)
   const pendingFollowRef = useRef(false)
-  const [state, setState] = useState<AutoScrollState>('IDLE')
   const [showButton, setShowButton] = useState(false)
 
   useEffect(() => {
@@ -25,8 +20,7 @@ export function useAutoScroll(isStreaming: boolean) {
     const controller = new AutoScrollController()
     controllerRef.current = controller
     const unsubscribe = controller.subscribe((snap) => {
-      setState(snap.state)
-      setShowButton(snap.showButton)
+      setShowButton((prev) => (prev === snap.showButton ? prev : snap.showButton))
     })
     controller.attach(scrollerEl)
     controller.setStreaming(isStreaming)
@@ -69,7 +63,6 @@ export function useAutoScroll(isStreaming: boolean) {
 
   return {
     scrollerRef: setScrollerEl,
-    state,
     showButton,
     scrollToBottom,
     onUserMessage,

@@ -110,24 +110,3 @@ export function buildSystemPrompt(settings: PersonalizationSettings): string {
 
   return parts.join('\n\n')
 }
-
-/** Lightweight offline stub — unused in production chat path. */
-export function generateLocalReply(
-  userText: string,
-  settings: PersonalizationSettings,
-): string {
-  const name = settings.displayName.trim()
-  const greeting = name ? `${name}, ` : ''
-  const emoji = settings.useEmojis
-  const lower = userText.toLowerCase()
-
-  if (/^(hi|hello|hey|ciao|salve)\b/.test(lower)) {
-    return emoji
-      ? `${greeting}hey — sono qui. ✨ Di cosa vuoi parlare?`
-      : `${greeting}hey — sono qui. Di cosa vuoi parlare?`
-  }
-
-  return emoji
-    ? `${greeting}grazie per avermelo detto. Raccontami un po' di più e troviamo insieme il prossimo passo. ✨`
-    : `${greeting}grazie per avermelo detto. Raccontami un po' di più e troviamo insieme il prossimo passo.`
-}

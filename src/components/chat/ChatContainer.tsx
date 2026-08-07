@@ -40,7 +40,7 @@ export function ChatContainer() {
     <div className="chat-container">
       <div className="chat-container__stage">
         <div
-          className="chat-container__viewport"
+          className="chat-container__viewport scroll-surface"
           ref={scrollerRef}
           role="log"
           aria-live="polite"

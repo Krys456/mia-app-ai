@@ -61,7 +61,7 @@
   border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--surface-solid) 78%, transparent);
   overflow: hidden;
-  transition: border-color var(--duration) ease, box-shadow var(--duration) ease;
+  transition: border-color var(--duration) var(--ease-out), box-shadow var(--duration) var(--ease-out);
 }
 
 .theme-card--active {
@@ -155,8 +155,14 @@
   font: inherit;
   font-weight: 550;
   cursor: pointer;
-  transition: transform 160ms var(--ease-out), opacity 160ms ease, border-color var(--duration) ease,
-    box-shadow var(--duration) ease, background var(--duration) ease;
+  transition: transform var(--duration-press) var(--ease-out), opacity var(--duration-press) var(--ease-out), border-color var(--duration) var(--ease-out),
+    box-shadow var(--duration) var(--ease-out), background var(--duration) var(--ease-out);
+}
+
+.theme-btn:focus-visible,
+.theme-mini-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .theme-btn {
@@ -193,8 +199,9 @@
 }
 
 .theme-mini-btn {
-  min-height: 1.85rem;
-  padding: 0.3rem 0.65rem;
+  min-width: 2.4rem;
+  min-height: 2.4rem;
+  padding: 0.35rem 0.65rem;
   border: 1px solid var(--border);
   background: color-mix(in srgb, var(--surface-2) 65%, transparent);
   color: var(--text-muted);
@@ -207,8 +214,8 @@
 }
 
 .theme-mini-btn--danger:hover {
-  color: #ff6b8a;
-  border-color: color-mix(in srgb, #ff6b8a 40%, transparent);
+  color: var(--danger-text);
+  border-color: var(--danger-border);
 }
 
 .theme-creator {

@@ -6,6 +6,7 @@ interface PageHeaderProps {
   title: string
   onBack: () => void
   backLabel?: string
+  titleId?: string
   /** Optional controls aligned to the right (same row as back + title). */
   actions?: ReactNode
 }
@@ -18,6 +19,7 @@ export function PageHeader({
   title,
   onBack,
   backLabel = 'Indietro',
+  titleId,
   actions,
 }: PageHeaderProps) {
   return (
@@ -26,7 +28,9 @@ export function PageHeader({
         <div className="page-header__start">
           <PageBackButton label={backLabel} onClick={onBack} />
         </div>
-        <h1 className="page-header__title">{title}</h1>
+        <h1 className="page-header__title" id={titleId}>
+          {title}
+        </h1>
         <div className="page-header__actions">{actions ?? null}</div>
       </div>
     </header>
