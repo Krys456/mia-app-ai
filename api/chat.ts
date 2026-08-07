@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
-// Memory stays fail-soft: dynamic-import lib/server only after the request starts.
+// Memory + orchestrator stay fail-soft: dynamic-import lib/server only after the request starts.
 // OpenAI loads after the handler starts.
 
 export const config = {
@@ -31,36 +31,6 @@ async function runMemoryIfEnabled(
   }
 }
 
-async function loadRelevantMemoryBlock(userMessage: string): Promise<string> {
-  try {
-    const { searchMemories } = await import('../lib/server/brain-memory.js')
-    const memories = await searchMemories(userMessage, { limit: 5 })
-
-    if (!Array.isArray(memories) || memories.length === 0) {
-      return ''
-    }
-
-    const lines = memories
-      .map((memory: { title?: string; content?: string }) => {
-        const title = typeof memory.title === 'string' ? memory.title.trim() : ''
-        const content = typeof memory.content === 'string' ? memory.content.trim() : ''
-        if (!title && !content) return null
-        if (!title) return `- ${content}`
-        if (!content) return `- ${title}`
-        return `- ${title}: ${content}`
-      })
-      .filter((line: string | null): line is string => Boolean(line))
-
-    if (lines.length === 0) {
-      return ''
-    }
-
-    return `Memorie rilevanti dell'utente (usale solo se aiutano; non inventare ricordi):\n${lines.join('\n')}`
-  } catch {
-    return ''
-  }
-}
-
 /**
  * Fallback only when the client omits systemPrompt.
  * When the client sends personalization, that block is the sole constitution
@@ -71,9 +41,13 @@ const FALLBACK_SYSTEM_PROMPT = `Sei LAIfe. Ragiona in silenzio prima di risponde
 2) Stile: lunghezza, tono, struttura adatti; adatta allo stile dell'utente nella chat.
 3) Costruzione: niente ridondanze/muri; Markdown utile; aperture e finali variati.
 4) Qualità: chiarezza, completezza, correttezza, naturalezza, leggibilità, continuità.
-Poi invia solo la risposta finale. Non sembrare un motore di ricerca.`
+Poi invia solo la risposta finale. Non sembrare un motore di ricerca.
+Non menzionare mai strumenti interni (memoria, ricerca, Vision, meteo, ecc.).`
 
-function buildInstructions(clientSystemPrompt: string, memoryBlock = ''): string {
+function buildInstructions(
+  clientSystemPrompt: string,
+  orchestratorBlock = '',
+): string {
   const parts: string[] = []
 
   const personalization = clientSystemPrompt.trim()
@@ -84,15 +58,21 @@ function buildInstructions(clientSystemPrompt: string, memoryBlock = ''): string
     parts.push(FALLBACK_SYSTEM_PROMPT)
   }
 
-  const memories = memoryBlock.trim()
-  if (memories) {
-    parts.push(memories)
+  const orchestrated = orchestratorBlock.trim()
+  if (orchestrated) {
+    parts.push(orchestrated)
   }
 
   return parts.join('\n\n')
 }
 
 type ChatRole = 'user' | 'assistant' | 'system'
+
+interface ChatAttachment {
+  type: 'image' | 'document'
+  name?: string
+  url?: string
+}
 
 interface ChatApiMessage {
   role: ChatRole
@@ -105,6 +85,8 @@ interface ChatApiRequestBody {
   userId?: string
   /** When false, skip retrieval writes and auto-save. Default true. */
   memoryEnabled?: boolean
+  /** Optional attachments for orchestrator routing (Vision / documents). */
+  attachments?: ChatAttachment[]
 }
 
 function isChatRole(value: unknown): value is ChatRole {
@@ -124,6 +106,22 @@ function sanitizeMessages(raw: unknown): ChatApiMessage[] {
       content: msg.content.trim(),
     }))
     .slice(-40)
+}
+
+function sanitizeAttachments(raw: unknown): ChatAttachment[] {
+  if (!Array.isArray(raw)) return []
+  return raw
+    .filter((item): item is ChatAttachment => {
+      if (!item || typeof item !== 'object') return false
+      const a = item as ChatAttachment
+      return a.type === 'image' || a.type === 'document'
+    })
+    .map((a) => ({
+      type: a.type,
+      name: typeof a.name === 'string' ? a.name : undefined,
+      url: typeof a.url === 'string' ? a.url : undefined,
+    }))
+    .slice(0, 8)
 }
 
 function parseBody(req: VercelRequest): ChatApiRequestBody {
@@ -177,6 +175,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const clientSystemPrompt =
     typeof body.systemPrompt === 'string' ? body.systemPrompt.trim() : ''
   const memoryEnabled = body.memoryEnabled !== false
+  const attachments = sanitizeAttachments(body.attachments)
 
   if (messages.length === 0) {
     return sendJson(res, 400, { error: 'messages must be a non-empty array' })
@@ -188,14 +187,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const model = process.env.OPENAI_MODEL?.trim() || 'gpt-4o-mini'
 
     const lastUserMessage = [...messages].reverse().find((msg) => msg.role === 'user')
-    const memoryBlock =
-      memoryEnabled && lastUserMessage?.content
-        ? await loadRelevantMemoryBlock(lastUserMessage.content)
-        : ''
+
+    // Invisible orchestration: plan tools → retrieve → merge context.
+    // Fail-soft: any failure yields empty context and chat continues.
+    let orchestratorBlock = ''
+    if (lastUserMessage?.content) {
+      try {
+        const { orchestrate } = await import('../lib/server/orchestrator.js')
+        const result = await orchestrate({
+          userMessage: lastUserMessage.content,
+          attachments,
+          memoryEnabled,
+        })
+        orchestratorBlock = result?.context || ''
+      } catch {
+        orchestratorBlock = ''
+      }
+    }
 
     const response = await client.responses.create({
       model,
-      instructions: buildInstructions(clientSystemPrompt, memoryBlock),
+      instructions: buildInstructions(clientSystemPrompt, orchestratorBlock),
       temperature: 0.85,
       max_output_tokens: 4096,
       input: messages.map((msg) => ({
