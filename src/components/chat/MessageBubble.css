@@ -1,14 +1,18 @@
 .bubble {
-  max-width: min(100%, 40rem);
+  width: 100%;
+  max-width: 100%;
   animation: chat-rise-in var(--duration-bubble) var(--ease-out) both;
 }
 
 .bubble--user {
   align-self: flex-end;
+  width: auto;
+  max-width: min(100%, 42rem);
 }
 
 .bubble--assistant {
-  align-self: flex-start;
+  align-self: stretch;
+  width: 100%;
 }
 
 .bubble__label {
@@ -66,6 +70,12 @@
   border-bottom-left-radius: var(--radius-xs);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
+}
+
+.bubble--actions-open .message-actions {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
 }
 
 @keyframes chat-rise-in {
