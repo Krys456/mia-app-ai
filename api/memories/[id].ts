@@ -1,14 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import {
-  deleteMemoryForUser,
-  ensureMemoriesTable,
-  getSql,
-  isMemoryCategory,
-  listMemoriesForUser,
-  sanitizeUserId,
-  updateMemoryForUser,
-  type MemoryCategory,
-} from '../../_lib/db'
+
+console.log('API loaded')
 
 export const config = {
   runtime: 'nodejs',
@@ -38,14 +30,9 @@ function getId(req: VercelRequest): string {
   return ''
 }
 
-function readUserId(req: VercelRequest): string | null {
-  const header = req.headers['x-laife-user-id']
-  if (typeof header === 'string') return sanitizeUserId(header)
-  if (Array.isArray(header)) return sanitizeUserId(header[0])
-  return null
-}
-
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  console.log('Handler started')
+
   if (req.method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Origin', '*')
     res.setHeader('Access-Control-Allow-Methods', 'GET, PUT, DELETE, OPTIONS')
@@ -53,7 +40,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(204).end()
   }
 
-  const userId = readUserId(req)
+  // Load DB helpers only after the request starts so neon import cannot crash cold-start.
+  const {
+    deleteMemoryForUser,
+    ensureMemoriesTable,
+    getSql,
+    isMemoryCategory,
+    listMemoriesForUser,
+    sanitizeUserId,
+    updateMemoryForUser,
+  } = await import('../../_lib/db')
+
+  function readUserId(): string | null {
+    const header = req.headers['x-laife-user-id']
+    if (typeof header === 'string') return sanitizeUserId(header)
+    if (Array.isArray(header)) return sanitizeUserId(header[0])
+    return null
+  }
+
+  const userId = readUserId()
   if (!userId) {
     return sendJson(res, 400, { error: 'Missing or invalid X-LAIfe-User-Id' })
   }
@@ -98,7 +103,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const memory = await updateMemoryForUser(sql, {
         id,
         userId,
-        category: category as MemoryCategory,
+        category,
         title,
         content,
       })

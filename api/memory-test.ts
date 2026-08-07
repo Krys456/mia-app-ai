@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import type { SupabaseClient } from '@supabase/supabase-js'
-import { getServiceSupabase } from './_lib/supabase'
+
+console.log('API loaded')
 
 export const config = {
   runtime: 'nodejs',
@@ -13,6 +13,10 @@ type MemoryDecision = {
   title: string
   content: string
   importance: number
+}
+
+type SupabaseClientLike = {
+  from: (table: string) => any
 }
 
 const DEFAULT_API_USER_EMAIL = 'brain-api@local'
@@ -68,7 +72,7 @@ function analyzeConversation(
   return { ...NO_SAVE }
 }
 
-async function ensureDefaultUserId(supabase: SupabaseClient): Promise<string> {
+async function ensureDefaultUserId(supabase: SupabaseClientLike): Promise<string> {
   const { data: existing, error: lookupError } = await supabase
     .from('users')
     .select('id')
@@ -102,6 +106,7 @@ async function ensureDefaultUserId(supabase: SupabaseClient): Promise<string> {
 }
 
 async function saveMemory(decision: MemoryDecision): Promise<void> {
+  const { getServiceSupabase } = await import('./_lib/supabase')
   const supabase = await getServiceSupabase()
   const userId = await ensureDefaultUserId(supabase)
 
@@ -123,6 +128,7 @@ async function saveMemory(decision: MemoryDecision): Promise<void> {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  console.log('Handler started')
   try {
     if (req.method === 'OPTIONS') {
       res.setHeader('Access-Control-Allow-Origin', '*')

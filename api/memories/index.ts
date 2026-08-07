@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import type { SupabaseClient } from '@supabase/supabase-js'
-import { getServiceSupabase } from '../_lib/supabase'
+
+console.log('API loaded')
 
 export const config = {
   runtime: 'nodejs',
@@ -17,6 +17,10 @@ type MemoryCreateInput = {
 type ValidationResult =
   | { ok: true; data: MemoryCreateInput }
   | { ok: false; errors: Record<string, string> }
+
+type SupabaseClientLike = {
+  from: (table: string) => any
+}
 
 const DEFAULT_API_USER_EMAIL = 'brain-api@local'
 const DEFAULT_API_USER_NAME = 'BrAIn API'
@@ -91,7 +95,7 @@ function validateMemoryCreate(body: Record<string, unknown>): ValidationResult {
   }
 }
 
-async function ensureDefaultUserId(supabase: SupabaseClient): Promise<string> {
+async function ensureDefaultUserId(supabase: SupabaseClientLike): Promise<string> {
   const { data: existing, error: lookupError } = await supabase
     .from('users')
     .select('id')
@@ -125,6 +129,7 @@ async function ensureDefaultUserId(supabase: SupabaseClient): Promise<string> {
 }
 
 async function saveMemory(input: MemoryCreateInput): Promise<void> {
+  const { getServiceSupabase } = await import('../_lib/supabase')
   const supabase = await getServiceSupabase()
   const userId = await ensureDefaultUserId(supabase)
 
@@ -146,6 +151,7 @@ async function saveMemory(input: MemoryCreateInput): Promise<void> {
 }
 
 async function listMemories(category?: string) {
+  const { getServiceSupabase } = await import('../_lib/supabase')
   const supabase = await getServiceSupabase()
   const userId = await ensureDefaultUserId(supabase)
 
@@ -178,6 +184,7 @@ async function listMemories(category?: string) {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  console.log('Handler started')
   try {
     if (req.method === 'OPTIONS') {
       res.setHeader('Access-Control-Allow-Origin', '*')
