@@ -41,7 +41,9 @@ Config file: [`vercel.json`](./vercel.json) (Vite framework, `dist` output, SPA 
 4. Output directory: `dist`
 5. Set environment variables:
    - `OPENAI_API_KEY`
-   - `DATABASE_URL` (Postgres — required for Memory)
+   - `SUPABASE_URL` (or `VITE_SUPABASE_URL` as URL fallback)
+   - `SUPABASE_SERVICE_ROLE_KEY` (server memory APIs)
+   - `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` (optional browser client)
 6. Deploy
 
 CLI alternative:
@@ -83,9 +85,12 @@ Preferences persist in `localStorage` (`laife.settings.v2`).
 src/
   components/     Header, ChatThread, Composer, SettingsDrawer, ThemeSettings
   context/        ChatProvider + ThemeProvider
-  lib/            themes, personality / local reply helper
+  lib/            themes, personality, browser supabase (src/lib/supabase.ts)
   types.ts
   App.tsx
+api/              Vercel serverless routes (chat, memories, vision)
+lib/server/       Shared server helpers — supabase.js is the ONLY backend Supabase client
+supabase/         SQL migrations for BrAIn schema
 ```
 
 ## Controls

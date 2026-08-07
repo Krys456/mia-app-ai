@@ -1,3 +1,8 @@
+/**
+ * ONLY browser-side Supabase client for this repo.
+ * Uses the anon key (safe with RLS). Server code must use
+ * lib/server/supabase.js → getServiceSupabase() instead.
+ */
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
 function readRequiredEnv(
@@ -21,7 +26,7 @@ function readRequiredEnv(
 let supabaseClient: SupabaseClient | null = null
 
 /**
- * Returns a configured Supabase client.
+ * Returns the singleton browser Supabase client (anon key).
  * Creates the client once; does not run queries or inserts.
  */
 export function getSupabase(): SupabaseClient {
