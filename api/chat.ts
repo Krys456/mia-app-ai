@@ -1,10 +1,11 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { runMemoryPipeline, searchMemories } from './_lib/brain-memory'
+import './_lib/supabase'
 
 console.log('API loaded')
 
-// Memory must stay OPTIONAL at load time: only dynamic-import brain-memory
-// after the handler starts so a broken memory module cannot take down chat.
-// OpenAI and waitUntil are also loaded only after the request starts.
+// Static relative imports ensure Vercel bundles api/_lib helpers into this function.
+// OpenAI and waitUntil stay dynamic (node_modules). Memory call sites remain try/catch.
 
 export const config = {
   runtime: 'nodejs',
@@ -18,7 +19,6 @@ export const config = {
 function scheduleMemoryPipeline(userMessage: string, assistantMessage: string) {
   const task = (async () => {
     try {
-      const { runMemoryPipeline } = await import('./_lib/brain-memory')
       await runMemoryPipeline({ userMessage, assistantMessage })
     } catch {
       // Ignore — memory must never affect the chat response.
@@ -41,7 +41,6 @@ function scheduleMemoryPipeline(userMessage: string, assistantMessage: string) {
  */
 async function loadRelevantMemoryBlock(userMessage: string): Promise<string> {
   try {
-    const { searchMemories } = await import('./_lib/brain-memory')
     const memories = await searchMemories(userMessage, { limit: 5 })
 
     if (!Array.isArray(memories) || memories.length === 0) {
