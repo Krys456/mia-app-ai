@@ -1,9 +1,10 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { waitUntil } from '@vercel/functions'
-import OpenAI from 'openai'
+
+console.log('API loaded')
 
 // Memory must stay OPTIONAL at load time: only dynamic-import brain-memory
 // after the handler starts so a broken memory module cannot take down chat.
+// OpenAI and waitUntil are also loaded only after the request starts.
 
 export const config = {
   runtime: 'nodejs',
@@ -24,11 +25,14 @@ function scheduleMemoryPipeline(userMessage: string, assistantMessage: string) {
     }
   })()
 
-  try {
-    waitUntil(task)
-  } catch {
-    void task
-  }
+  void (async () => {
+    try {
+      const { waitUntil } = await import('@vercel/functions')
+      waitUntil(task)
+    } catch {
+      void task
+    }
+  })()
 }
 
 /**
@@ -136,6 +140,8 @@ function sendJson(res: VercelResponse, status: number, payload: Record<string, u
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  console.log('Handler started')
+
   if (req.method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Origin', '*')
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
@@ -173,6 +179,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
+    const OpenAI = (await import('openai')).default
     const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
     const model = process.env.OPENAI_MODEL?.trim() || 'gpt-4o-mini'
 
@@ -206,24 +213,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   } catch (error) {
     console.error(error)
 
-    if (error instanceof OpenAI.APIError) {
-      console.error('[api/chat] OpenAI error details', {
-        status: error.status,
-        code: error.code,
-        type: error.type,
-        message: error.message,
-      })
+    try {
+      const OpenAI = (await import('openai')).default
+      if (error instanceof OpenAI.APIError) {
+        console.error('[api/chat] OpenAI error details', {
+          status: error.status,
+          code: error.code,
+          type: error.type,
+          message: error.message,
+        })
 
-      const status =
-        typeof error.status === 'number' && error.status >= 400 && error.status < 600
-          ? error.status
-          : 502
+        const status =
+          typeof error.status === 'number' && error.status >= 400 && error.status < 600
+            ? error.status
+            : 502
 
-      return sendJson(res, status, {
-        error: error.message,
-        code: error.code,
-        type: error.type,
-      })
+        return sendJson(res, status, {
+          error: error.message,
+          code: error.code,
+          type: error.type,
+        })
+      }
+    } catch {
+      // Fall through to generic error if OpenAI module cannot be loaded.
     }
 
     return sendJson(res, 500, {
