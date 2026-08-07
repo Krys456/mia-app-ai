@@ -104,6 +104,7 @@ interface AppState {
   settings: AppSettings
   settingsOpen: boolean
   isThinking: boolean
+  memoryNotice: 'saved' | 'updated' | null
 }
 
 type Action =
@@ -114,8 +115,9 @@ type Action =
   | { type: 'UPDATE_PERSONALIZATION'; payload: Partial<PersonalizationSettings> }
   | { type: 'UPDATE_THEME'; payload: Partial<ThemeSettings> }
   | { type: 'SEND_USER'; content: string }
-  | { type: 'ASSISTANT_DONE'; content: string }
+  | { type: 'ASSISTANT_DONE'; content: string; memoryEvent?: 'saved' | 'updated' | null }
   | { type: 'ASSISTANT_FAIL'; error: string }
+  | { type: 'CLEAR_MEMORY_NOTICE' }
 
 function createInitialState(): AppState {
   return {
@@ -123,6 +125,7 @@ function createInitialState(): AppState {
     settings: loadSettings(),
     settingsOpen: false,
     isThinking: false,
+    memoryNotice: null,
   }
 }
 
@@ -134,6 +137,7 @@ function reducer(state: AppState, action: Action): AppState {
         messages: [],
         isThinking: false,
         settingsOpen: false,
+        memoryNotice: null,
       }
     case 'OPEN_SETTINGS':
       return { ...state, settingsOpen: true }
@@ -175,6 +179,7 @@ function reducer(state: AppState, action: Action): AppState {
         ...state,
         messages: [...state.messages, userMsg],
         isThinking: true,
+        memoryNotice: null,
       }
     }
     case 'ASSISTANT_DONE': {
@@ -188,6 +193,10 @@ function reducer(state: AppState, action: Action): AppState {
         ...state,
         messages: [...state.messages, assistantMsg],
         isThinking: false,
+        memoryNotice:
+          action.memoryEvent === 'saved' || action.memoryEvent === 'updated'
+            ? action.memoryEvent
+            : null,
       }
     }
     case 'ASSISTANT_FAIL': {
@@ -201,8 +210,11 @@ function reducer(state: AppState, action: Action): AppState {
         ...state,
         messages: [...state.messages, assistantMsg],
         isThinking: false,
+        memoryNotice: null,
       }
     }
+    case 'CLEAR_MEMORY_NOTICE':
+      return { ...state, memoryNotice: null }
     default:
       return state
   }
@@ -213,11 +225,13 @@ interface ChatContextValue {
   settings: AppSettings
   settingsOpen: boolean
   isThinking: boolean
+  memoryNotice: 'saved' | 'updated' | null
   systemPrompt: string
   newChat: () => void
   openSettings: () => void
   closeSettings: () => void
   toggleSettings: () => void
+  clearMemoryNotice: () => void
   updatePersonalization: (patch: Partial<PersonalizationSettings>) => void
   updateTheme: (patch: Partial<ThemeSettings>) => void
   sendMessage: (content: string) => void
@@ -232,6 +246,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const openSettings = useCallback(() => dispatch({ type: 'OPEN_SETTINGS' }), [])
   const closeSettings = useCallback(() => dispatch({ type: 'CLOSE_SETTINGS' }), [])
   const toggleSettings = useCallback(() => dispatch({ type: 'TOGGLE_SETTINGS' }), [])
+  const clearMemoryNotice = useCallback(() => dispatch({ type: 'CLEAR_MEMORY_NOTICE' }), [])
 
   const updatePersonalization = useCallback(
     (payload: Partial<PersonalizationSettings>) => {
@@ -263,13 +278,17 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       // Keep isThinking true until ASSISTANT_DONE / ASSISTANT_FAIL (typing UI unchanged).
       void (async () => {
         try {
-          const { content: reply } = await requestChatCompletion({
+          const { content: reply, memoryEvent } = await requestChatCompletion({
             messages: history,
             systemPrompt: prompt,
             userId: getOrCreateUserId(),
             memoryEnabled: personalization.memoryEnabled !== false,
           })
-          dispatch({ type: 'ASSISTANT_DONE', content: reply })
+          dispatch({
+            type: 'ASSISTANT_DONE',
+            content: reply,
+            memoryEvent: memoryEvent ?? null,
+          })
         } catch (error) {
           // Temporary: no local demo fallback — surface the real API error.
           const message = error instanceof Error ? error.message : String(error)
@@ -291,11 +310,13 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       settings: state.settings,
       settingsOpen: state.settingsOpen,
       isThinking: state.isThinking,
+      memoryNotice: state.memoryNotice,
       systemPrompt,
       newChat,
       openSettings,
       closeSettings,
       toggleSettings,
+      clearMemoryNotice,
       updatePersonalization,
       updateTheme,
       sendMessage,
@@ -305,11 +326,13 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       state.settings,
       state.settingsOpen,
       state.isThinking,
+      state.memoryNotice,
       systemPrompt,
       newChat,
       openSettings,
       closeSettings,
       toggleSettings,
+      clearMemoryNotice,
       updatePersonalization,
       updateTheme,
       sendMessage,

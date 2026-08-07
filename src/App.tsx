@@ -3,15 +3,26 @@ import { Header } from './components/Header'
 import { ChatThread } from './components/ChatThread'
 import { Composer } from './components/Composer'
 import { SettingsDrawer } from './components/SettingsDrawer'
+import { MemoryToast } from './components/MemoryToast'
 import { MemoryManage } from './pages/MemoryManage'
 import { Vision } from './pages/Vision'
-import { ChatProvider } from './context/ChatContext'
+import { ChatProvider, useChat } from './context/ChatContext'
 import { ThemeProvider } from './context/ThemeContext'
 import type { AppView } from './types'
 import './App.css'
 
 function AppShell() {
   const [view, setView] = useState<AppView>('chat')
+  const { openSettings } = useChat()
+
+  const openMemoryManage = () => {
+    setView('memory')
+  }
+
+  const backFromMemory = () => {
+    setView('chat')
+    openSettings()
+  }
 
   return (
     <div className="app-shell">
@@ -20,17 +31,14 @@ function AppShell() {
         <>
           <ChatThread />
           <Composer />
+          <MemoryToast />
         </>
       ) : view === 'memory' ? (
-        <MemoryManage />
+        <MemoryManage onBack={backFromMemory} />
       ) : view === 'vision' ? (
         <Vision />
       ) : null}
-      <SettingsDrawer
-        onOpenMemory={() => {
-          setView('memory')
-        }}
-      />
+      <SettingsDrawer onOpenMemory={openMemoryManage} />
     </div>
   )
 }

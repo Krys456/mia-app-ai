@@ -1,37 +1,34 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
 // Memory stays fail-soft: dynamic-import lib/server only after the request starts.
-// OpenAI / waitUntil also load after the handler starts.
+// OpenAI loads after the handler starts.
 
 export const config = {
   runtime: 'nodejs',
   maxDuration: 60,
 }
 
-function scheduleMemoryPipeline(
+async function runMemoryIfEnabled(
   userMessage: string,
   assistantMessage: string,
   memoryEnabled: boolean,
-) {
-  if (!memoryEnabled) return
+): Promise<'saved' | 'updated' | null> {
+  if (!memoryEnabled) return null
 
-  const task = (async () => {
-    try {
-      const { runMemoryPipeline } = await import('../lib/server/brain-memory.js')
-      await runMemoryPipeline({ userMessage, assistantMessage, memoryEnabled: true })
-    } catch {
-      // Ignore — memory must never affect the chat response.
-    }
-  })()
+  try {
+    const { runMemoryPipeline } = await import('../lib/server/brain-memory.js')
+    const result = await runMemoryPipeline({
+      userMessage,
+      assistantMessage,
+      memoryEnabled: true,
+    })
 
-  void (async () => {
-    try {
-      const { waitUntil } = await import('@vercel/functions')
-      waitUntil(task)
-    } catch {
-      void task
-    }
-  })()
+    if (result?.updated) return 'updated'
+    if (result?.saved) return 'saved'
+    return null
+  } catch {
+    return null
+  }
 }
 
 async function loadRelevantMemoryBlock(userMessage: string): Promise<string> {
@@ -202,10 +199,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (lastUserMessage?.content) {
-      scheduleMemoryPipeline(lastUserMessage.content, content, memoryEnabled)
+      const memoryEvent = await runMemoryIfEnabled(
+        lastUserMessage.content,
+        content,
+        memoryEnabled,
+      )
+      return sendJson(res, 200, { content, memoryEvent })
     }
 
-    return sendJson(res, 200, { content })
+    return sendJson(res, 200, { content, memoryEvent: null })
   } catch (error) {
     console.error(error)
 
