@@ -1,4 +1,4 @@
-.composer-dock {
+.input-bar-dock {
   position: sticky;
   bottom: 0;
   z-index: 90;
@@ -12,7 +12,7 @@
   );
 }
 
-.composer {
+.input-bar {
   display: flex;
   align-items: flex-end;
   gap: 0.55rem;
@@ -28,13 +28,13 @@
   transition: border-color var(--duration) var(--ease-out), box-shadow var(--duration) var(--ease-out);
 }
 
-.composer:focus-within {
+.input-bar:focus-within {
   border-color: color-mix(in srgb, var(--accent) 42%, transparent);
   box-shadow: 0 -10px 36px var(--shadow-lift), 0 0 0 1px color-mix(in srgb, var(--accent) 12%, transparent),
     var(--glow-brand);
 }
 
-.composer__input {
+.input-bar__input {
   flex: 1;
   resize: none;
   min-height: 2.65rem;
@@ -49,15 +49,15 @@
   field-sizing: content;
 }
 
-.composer__input::placeholder {
+.input-bar__input::placeholder {
   color: var(--text-muted);
 }
 
-.composer__input:disabled {
+.input-bar__input:disabled {
   opacity: 0.65;
 }
 
-.composer__send {
+.input-bar__send {
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
@@ -75,23 +75,23 @@
     filter 160ms var(--ease-out);
 }
 
-.composer__send:hover:not(:disabled) {
+.input-bar__send:hover:not(:disabled) {
   transform: scale(1.05);
   filter: brightness(1.06);
 }
 
-.composer__send:disabled {
+.input-bar__send:disabled {
   opacity: 0.38;
   cursor: not-allowed;
   box-shadow: none;
 }
 
-.composer__send:focus-visible {
+.input-bar__send:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
-.composer__hint {
+.input-bar__hint {
   max-width: var(--content-max);
   margin: 0.5rem auto 0;
   text-align: center;

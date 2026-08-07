@@ -1,8 +1,13 @@
 import { useState, type FormEvent, type KeyboardEvent } from 'react'
-import { useChat } from '../context/ChatContext'
-import './Composer.css'
+import { useChat } from '../../context/ChatContext'
+import './InputBar.css'
 
-export function Composer() {
+interface InputBarProps {
+  /** Called after a message is successfully queued for send. */
+  onMessageSent?: () => void
+}
+
+export function InputBar({ onMessageSent }: InputBarProps) {
   const { sendMessage, isThinking, isStreaming } = useChat()
   const [value, setValue] = useState('')
   const busy = isThinking || isStreaming
@@ -12,6 +17,7 @@ export function Composer() {
     if (!text || busy) return
     sendMessage(text)
     setValue('')
+    onMessageSent?.()
   }
 
   const onSubmit = (e: FormEvent) => {
@@ -27,14 +33,14 @@ export function Composer() {
   }
 
   return (
-    <div className="composer-dock">
-      <form className="composer" onSubmit={onSubmit}>
+    <div className="input-bar-dock">
+      <form className="input-bar" onSubmit={onSubmit}>
         <label className="sr-only" htmlFor="laife-input">
           Message LAIfe
         </label>
         <textarea
           id="laife-input"
-          className="composer__input"
+          className="input-bar__input"
           rows={1}
           value={value}
           onChange={(e) => setValue(e.target.value)}
@@ -45,7 +51,7 @@ export function Composer() {
         />
         <button
           type="submit"
-          className="composer__send"
+          className="input-bar__send"
           disabled={busy || !value.trim()}
           aria-label="Send message"
         >
@@ -60,7 +66,7 @@ export function Composer() {
           </svg>
         </button>
       </form>
-      <p className="composer__hint">Enter to send · Shift+Enter for new line</p>
+      <p className="input-bar__hint">Enter to send · Shift+Enter for new line</p>
     </div>
   )
 }

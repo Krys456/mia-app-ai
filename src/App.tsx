@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { Header } from './components/Header'
-import { ChatThread } from './components/ChatThread'
-import { Composer } from './components/Composer'
+import { ChatContainer } from './components/chat'
 import { SettingsDrawer } from './components/SettingsDrawer'
 import { MemoryToast } from './components/MemoryToast'
 import { MemoryManage } from './pages/MemoryManage'
@@ -29,8 +28,7 @@ function AppShell() {
       <Header view={view} onNavigate={setView} />
       {view === 'chat' ? (
         <>
-          <ChatThread />
-          <Composer />
+          <ChatContainer />
           <MemoryToast />
         </>
       ) : view === 'memory' ? (
