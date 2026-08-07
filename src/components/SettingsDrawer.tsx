@@ -159,34 +159,38 @@ export function SettingsDrawer({ onOpenMemory }: SettingsDrawerProps) {
             </label>
 
             <label className="field">
-              <span className="field__label">Tone</span>
+              <span className="field__label">Personalità</span>
               <select
-                value={p.tone}
-                onChange={(e) => set('tone', e.target.value as PersonalizationSettings['tone'])}
+                value={p.personality}
+                onChange={(e) =>
+                  set('personality', e.target.value as PersonalizationSettings['personality'])
+                }
               >
-                <option value="warm">Warm &amp; encouraging</option>
-                <option value="playful">Playful</option>
-                <option value="calm">Calm</option>
-                <option value="professional">Professional</option>
+                <option value="automatic">Automatica (predefinita)</option>
+                <option value="friendly">Amichevole</option>
+                <option value="professional">Professionale</option>
+                <option value="teacher">Insegnante</option>
+                <option value="analytical">Analitica</option>
+                <option value="motivational">Motivazionale</option>
               </select>
             </label>
 
             <label className="field">
-              <span className="field__label">Reply length</span>
+              <span className="field__label">Lunghezza risposte</span>
               <select
                 value={p.replyLength}
                 onChange={(e) =>
                   set('replyLength', e.target.value as PersonalizationSettings['replyLength'])
                 }
               >
-                <option value="concise">Concise</option>
-                <option value="balanced">Balanced</option>
-                <option value="detailed">Detailed</option>
+                <option value="concise">Concisa</option>
+                <option value="balanced">Bilanciata</option>
+                <option value="detailed">Dettagliata</option>
               </select>
             </label>
 
             <label className="field field--row">
-              <span className="field__label">Use emojis</span>
+              <span className="field__label">Emoji</span>
               <input
                 type="checkbox"
                 checked={p.useEmojis}
