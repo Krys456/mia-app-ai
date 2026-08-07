@@ -1,4 +1,4 @@
-import '../components/Header.css'
+import './Header.css'
 import './PageBackButton.css'
 
 interface PageBackButtonProps {
