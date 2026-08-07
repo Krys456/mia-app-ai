@@ -8,28 +8,58 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 let client: SupabaseClient | null = null
 
+function isValidHttpUrl(value: string): boolean {
+  try {
+    const parsed = new URL(value)
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Startup validation for Supabase server env.
+ * Logs presence/validity checks only — never logs secret values.
+ */
+export function validateSupabaseStartupEnv(): {
+  url: string
+  key: string
+} {
+  const url = process.env.SUPABASE_URL?.trim() || ''
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || ''
+  const urlExists = Boolean(url)
+  const urlValid = urlExists && isValidHttpUrl(url)
+  const keyExists = Boolean(key)
+
+  console.info('[supabase] startup validation', {
+    SUPABASE_URL_exists: urlExists,
+    SUPABASE_URL_valid: urlValid,
+    SUPABASE_SERVICE_ROLE_KEY_exists: keyExists,
+  })
+
+  if (!urlExists) {
+    throw new Error('Missing SUPABASE_URL')
+  }
+
+  if (!urlValid) {
+    throw new Error('Invalid SUPABASE_URL')
+  }
+
+  if (!keyExists) {
+    throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY')
+  }
+
+  return { url, key }
+}
+
 /**
  * Server-side Supabase client for API routes / MemoryService.
- * Requires SUPABASE_URL (or VITE_SUPABASE_URL) and SUPABASE_SERVICE_ROLE_KEY.
+ * Requires SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.
  */
 export async function getServiceSupabase(): Promise<SupabaseClient> {
   if (client) return client
 
-  const url =
-    process.env.SUPABASE_URL?.trim() || process.env.VITE_SUPABASE_URL?.trim() || ''
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || ''
-
-  if (!url) {
-    throw new Error(
-      'Missing SUPABASE_URL. Set SUPABASE_URL (preferred) or VITE_SUPABASE_URL in the environment.',
-    )
-  }
-
-  if (!key) {
-    throw new Error(
-      'Missing SUPABASE_SERVICE_ROLE_KEY. Set SUPABASE_SERVICE_ROLE_KEY in the environment for memory API inserts.',
-    )
-  }
+  const { url, key } = validateSupabaseStartupEnv()
 
   const spec = '@supabase/' + 'supabase-js'
   const { createClient } = await import(spec)
