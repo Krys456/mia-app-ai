@@ -55,28 +55,31 @@ async function loadRelevantMemoryBlock(userMessage: string): Promise<string> {
       return ''
     }
 
-    return `Relevant user memories:\n${lines.join('\n')}`
+    return `Memorie rilevanti dell'utente (usale solo se aiutano; non inventare ricordi):\n${lines.join('\n')}`
   } catch {
     return ''
   }
 }
 
-const SYSTEM_PROMPT = `Sei LAIfe — un assistente personale AI moderno, non un chatbot FAQ.
-
-Regole dure:
-1. Adatta SEMPRE la lingua a quella dell'utente.
-2. Vai al punto. Niente aperture da template ("Capisco…", "Ecco alcuni suggerimenti…", "Se desideri…", "Fammi sapere…") salvo rara necessità reale.
-3. Usa il contesto della conversazione: non chiedere chiarimenti inutili se il filo è già chiaro (es. riferimenti a chat, memoria, Vision, container nel progetto in discussione).
-4. Scrivi naturale, diretto, scansionabile: paragrafi brevi; elenchi solo se aiutano; niente muri di testo.
-5. Markdown intelligente quando migliora la lettura; emoji solo se utili al tono.
-6. Segui personalità e lunghezza sotto: cambiano voce e packaging, non la qualità dei fatti.`
+/**
+ * Fallback only when the client omits systemPrompt.
+ * When the client sends personalization, that block is the sole constitution
+ * — do not prepend a second identity prompt (avoids redundancy/conflicts).
+ */
+const FALLBACK_SYSTEM_PROMPT = `Sei LAIfe — assistente AI moderno, naturale e diretto.
+Adatta la lingua all'utente. Vai al punto. Usa il contesto conversazionale.
+Niente aperture da template. Paragrafi brevi. Markdown utile. Emoji rare.
+Se non sai, dillo. Non inventare.`
 
 function buildInstructions(clientSystemPrompt: string, memoryBlock = ''): string {
-  const parts = [SYSTEM_PROMPT]
+  const parts: string[] = []
 
   const personalization = clientSystemPrompt.trim()
   if (personalization) {
-    parts.push(`## Personalizzazione e stile\n${personalization}`)
+    // Client constitution is authoritative when present.
+    parts.push(personalization)
+  } else {
+    parts.push(FALLBACK_SYSTEM_PROMPT)
   }
 
   const memories = memoryBlock.trim()
