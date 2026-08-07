@@ -5,6 +5,7 @@ import {
   useContext,
   useMemo,
   useReducer,
+  useRef,
   type ReactNode,
 } from 'react'
 import { requestChatCompletion, type ChatApiMessage } from '../lib/chatApi'
@@ -124,11 +125,67 @@ function uid(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`
 }
 
+/**
+ * Reveal reply text gradually so the chat can follow the "writing" line.
+ * Batches by words via rAF — avoids huge one-shot layout jumps.
+ */
+function revealReplyText(
+  fullText: string,
+  onProgress: (partial: string) => void,
+  isCancelled: () => boolean,
+): Promise<void> {
+  const text = fullText.trim()
+  if (!text) {
+    onProgress('')
+    return Promise.resolve()
+  }
+
+  // Short replies appear quickly in a couple of frames.
+  if (text.length < 80) {
+    onProgress(text)
+    return Promise.resolve()
+  }
+
+  const tokens = text.split(/(\s+)/)
+  let index = 0
+  let acc = ''
+
+  // Aim for ~1.5–2.5s of reveal for typical replies, longer for very long ones.
+  const framesTarget = Math.min(180, Math.max(36, Math.ceil(tokens.length / 3)))
+  const perFrame = Math.max(1, Math.ceil(tokens.length / framesTarget))
+
+  return new Promise((resolve) => {
+    const step = () => {
+      if (isCancelled()) {
+        resolve()
+        return
+      }
+
+      let n = 0
+      while (n < perFrame && index < tokens.length) {
+        acc += tokens[index]
+        index += 1
+        n += 1
+      }
+      onProgress(acc)
+
+      if (index < tokens.length) {
+        requestAnimationFrame(step)
+      } else {
+        resolve()
+      }
+    }
+
+    requestAnimationFrame(step)
+  })
+}
+
 interface AppState {
   messages: ChatMessage[]
   settings: AppSettings
   settingsOpen: boolean
   isThinking: boolean
+  isStreaming: boolean
   memoryNotice: 'saved' | 'updated' | null
 }
 
@@ -140,7 +197,9 @@ type Action =
   | { type: 'UPDATE_PERSONALIZATION'; payload: Partial<PersonalizationSettings> }
   | { type: 'UPDATE_THEME'; payload: Partial<ThemeSettings> }
   | { type: 'SEND_USER'; content: string }
-  | { type: 'ASSISTANT_DONE'; content: string; memoryEvent?: 'saved' | 'updated' | null }
+  | { type: 'ASSISTANT_START'; id: string }
+  | { type: 'ASSISTANT_PROGRESS'; id: string; content: string }
+  | { type: 'ASSISTANT_FINISH'; id: string; content: string; memoryEvent?: 'saved' | 'updated' | null }
   | { type: 'ASSISTANT_FAIL'; error: string }
   | { type: 'CLEAR_MEMORY_NOTICE' }
 
@@ -150,6 +209,7 @@ function createInitialState(): AppState {
     settings: loadSettings(),
     settingsOpen: false,
     isThinking: false,
+    isStreaming: false,
     memoryNotice: null,
   }
 }
@@ -161,6 +221,7 @@ function reducer(state: AppState, action: Action): AppState {
         ...state,
         messages: [],
         isThinking: false,
+        isStreaming: false,
         settingsOpen: false,
         memoryNotice: null,
       }
@@ -204,20 +265,43 @@ function reducer(state: AppState, action: Action): AppState {
         ...state,
         messages: [...state.messages, userMsg],
         isThinking: true,
+        isStreaming: false,
         memoryNotice: null,
       }
     }
-    case 'ASSISTANT_DONE': {
+    case 'ASSISTANT_START': {
       const assistantMsg: ChatMessage = {
-        id: uid(),
+        id: action.id,
         role: 'assistant',
-        content: action.content,
+        content: '',
         createdAt: Date.now(),
       }
       return {
         ...state,
         messages: [...state.messages, assistantMsg],
         isThinking: false,
+        isStreaming: true,
+      }
+    }
+    case 'ASSISTANT_PROGRESS': {
+      let changed = false
+      const messages = state.messages.map((msg) => {
+        if (msg.id !== action.id) return msg
+        changed = true
+        return { ...msg, content: action.content }
+      })
+      if (!changed) return state
+      return { ...state, messages, isStreaming: true, isThinking: false }
+    }
+    case 'ASSISTANT_FINISH': {
+      const messages = state.messages.map((msg) =>
+        msg.id === action.id ? { ...msg, content: action.content } : msg,
+      )
+      return {
+        ...state,
+        messages,
+        isThinking: false,
+        isStreaming: false,
         memoryNotice:
           action.memoryEvent === 'saved' || action.memoryEvent === 'updated'
             ? action.memoryEvent
@@ -235,6 +319,7 @@ function reducer(state: AppState, action: Action): AppState {
         ...state,
         messages: [...state.messages, assistantMsg],
         isThinking: false,
+        isStreaming: false,
         memoryNotice: null,
       }
     }
@@ -250,6 +335,7 @@ interface ChatContextValue {
   settings: AppSettings
   settingsOpen: boolean
   isThinking: boolean
+  isStreaming: boolean
   memoryNotice: 'saved' | 'updated' | null
   systemPrompt: string
   newChat: () => void
@@ -266,8 +352,12 @@ const ChatContext = createContext<ChatContextValue | null>(null)
 
 export function ChatProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, undefined, createInitialState)
+  const generationRef = useRef(0)
 
-  const newChat = useCallback(() => dispatch({ type: 'NEW_CHAT' }), [])
+  const newChat = useCallback(() => {
+    generationRef.current += 1
+    dispatch({ type: 'NEW_CHAT' })
+  }, [])
   const openSettings = useCallback(() => dispatch({ type: 'OPEN_SETTINGS' }), [])
   const closeSettings = useCallback(() => dispatch({ type: 'CLOSE_SETTINGS' }), [])
   const toggleSettings = useCallback(() => dispatch({ type: 'TOGGLE_SETTINGS' }), [])
@@ -287,8 +377,9 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const sendMessage = useCallback(
     (raw: string) => {
       const content = raw.trim()
-      if (!content || state.isThinking) return
+      if (!content || state.isThinking || state.isStreaming) return
 
+      const generation = ++generationRef.current
       dispatch({ type: 'SEND_USER', content })
 
       const personalization = state.settings.personalization
@@ -300,7 +391,6 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         { role: 'user', content },
       ]
 
-      // Keep isThinking true until ASSISTANT_DONE / ASSISTANT_FAIL (typing UI unchanged).
       void (async () => {
         try {
           const { content: reply, memoryEvent } = await requestChatCompletion({
@@ -309,19 +399,42 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             userId: getOrCreateUserId(),
             memoryEnabled: personalization.memoryEnabled !== false,
           })
+
+          if (generation !== generationRef.current) return
+
+          const assistantId = uid()
+          dispatch({ type: 'ASSISTANT_START', id: assistantId })
+
+          await revealReplyText(
+            reply,
+            (partial) => {
+              if (generation !== generationRef.current) return
+              dispatch({ type: 'ASSISTANT_PROGRESS', id: assistantId, content: partial })
+            },
+            () => generation !== generationRef.current,
+          )
+
+          if (generation !== generationRef.current) return
+
           dispatch({
-            type: 'ASSISTANT_DONE',
+            type: 'ASSISTANT_FINISH',
+            id: assistantId,
             content: reply,
             memoryEvent: memoryEvent ?? null,
           })
         } catch (error) {
-          // Temporary: no local demo fallback — surface the real API error.
+          if (generation !== generationRef.current) return
           const message = error instanceof Error ? error.message : String(error)
           dispatch({ type: 'ASSISTANT_FAIL', error: message })
         }
       })()
     },
-    [state.isThinking, state.messages, state.settings.personalization],
+    [
+      state.isThinking,
+      state.isStreaming,
+      state.messages,
+      state.settings.personalization,
+    ],
   )
 
   const systemPrompt = useMemo(
@@ -335,6 +448,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       settings: state.settings,
       settingsOpen: state.settingsOpen,
       isThinking: state.isThinking,
+      isStreaming: state.isStreaming,
       memoryNotice: state.memoryNotice,
       systemPrompt,
       newChat,
@@ -351,6 +465,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       state.settings,
       state.settingsOpen,
       state.isThinking,
+      state.isStreaming,
       state.memoryNotice,
       systemPrompt,
       newChat,

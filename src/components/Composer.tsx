@@ -3,12 +3,13 @@ import { useChat } from '../context/ChatContext'
 import './Composer.css'
 
 export function Composer() {
-  const { sendMessage, isThinking } = useChat()
+  const { sendMessage, isThinking, isStreaming } = useChat()
   const [value, setValue] = useState('')
+  const busy = isThinking || isStreaming
 
   const submit = () => {
     const text = value.trim()
-    if (!text || isThinking) return
+    if (!text || busy) return
     sendMessage(text)
     setValue('')
   }
@@ -39,13 +40,13 @@ export function Composer() {
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={onKeyDown}
           placeholder="Message LAIfe…"
-          disabled={isThinking}
+          disabled={busy}
           enterKeyHint="send"
         />
         <button
           type="submit"
           className="composer__send"
-          disabled={isThinking || !value.trim()}
+          disabled={busy || !value.trim()}
           aria-label="Send message"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">

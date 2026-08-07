@@ -4,81 +4,191 @@ import { useChat } from '../context/ChatContext'
 import { HomeHero } from './HomeHero'
 import './ChatThread.css'
 
-const NEAR_BOTTOM_PX = 96
+const NEAR_BOTTOM_PX = 72
 
 function isNearBottom(el: HTMLElement): boolean {
   return el.scrollHeight - el.scrollTop - el.clientHeight <= NEAR_BOTTOM_PX
 }
 
+/**
+ * Smooth chat scrolling:
+ * - rAF follow keeps the last written line in view while streaming
+ * - any user gesture detaches follow immediately
+ * - Scroll-to-bottom reattaches and can resume follow
+ */
 export function ChatThread() {
-  const { messages, isThinking } = useChat()
-  const endRef = useRef<HTMLDivElement>(null)
+  const { messages, isThinking, isStreaming } = useChat()
   const scrollerRef = useRef<HTMLDivElement>(null)
   const stickToBottomRef = useRef(true)
-  const programmaticScrollRef = useRef(false)
+  const ignoreScrollRef = useRef(false)
+  const followRafRef = useRef<number | null>(null)
+  const pinRafRef = useRef<number | null>(null)
+  const isStreamingRef = useRef(isStreaming)
   const [showScrollButton, setShowScrollButton] = useState(false)
-  const isHome = messages.length === 0 && !isThinking
+  const isHome = messages.length === 0 && !isThinking && !isStreaming
 
-  const syncStickFromScroll = () => {
-    if (programmaticScrollRef.current) return
-    const el = scrollerRef.current
-    if (!el) return
-    const near = isNearBottom(el)
-    stickToBottomRef.current = near
-    setShowScrollButton(!near)
+  isStreamingRef.current = isStreaming
+
+  const stopFollowLoop = () => {
+    if (followRafRef.current != null) {
+      cancelAnimationFrame(followRafRef.current)
+      followRafRef.current = null
+    }
   }
 
-  const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
+  const stopPinLoop = () => {
+    if (pinRafRef.current != null) {
+      cancelAnimationFrame(pinRafRef.current)
+      pinRafRef.current = null
+    }
+  }
+
+  const setScrollTop = (el: HTMLElement, value: number) => {
+    ignoreScrollRef.current = true
+    el.scrollTop = value
+    ignoreScrollRef.current = false
+  }
+
+  const detachFollow = () => {
+    if (!stickToBottomRef.current) {
+      setShowScrollButton(true)
+      return
+    }
+    stickToBottomRef.current = false
+    stopFollowLoop()
+    stopPinLoop()
+    setShowScrollButton(true)
+  }
+
+  const followTick = () => {
+    followRafRef.current = null
+    if (!stickToBottomRef.current) return
+
+    const el = scrollerRef.current
+    if (!el) return
+
+    const target = el.scrollHeight - el.clientHeight
+    const current = el.scrollTop
+    const delta = target - current
+
+    if (delta > 0.5) {
+      const step = Math.max(6, Math.min(delta, delta * 0.28 + 4))
+      setScrollTop(el, current + step)
+    }
+
+    if (stickToBottomRef.current && (isStreamingRef.current || delta > 0.5)) {
+      followRafRef.current = requestAnimationFrame(followTick)
+    }
+  }
+
+  const ensureFollowLoop = () => {
+    if (!stickToBottomRef.current) return
+    if (followRafRef.current != null) return
+    followRafRef.current = requestAnimationFrame(followTick)
+  }
+
+  const scrollToBottomSmooth = () => {
     const el = scrollerRef.current
     if (!el) return
 
     stickToBottomRef.current = true
     setShowScrollButton(false)
-    programmaticScrollRef.current = true
-    el.scrollTo({ top: el.scrollHeight, behavior })
+    stopFollowLoop()
+    stopPinLoop()
 
-    window.setTimeout(
-      () => {
-        programmaticScrollRef.current = false
-        if (scrollerRef.current) {
-          stickToBottomRef.current = isNearBottom(scrollerRef.current)
-          setShowScrollButton(!stickToBottomRef.current)
-        }
-      },
-      behavior === 'smooth' ? 450 : 50,
-    )
+    const animate = () => {
+      pinRafRef.current = null
+      if (!stickToBottomRef.current) return
+
+      const scroller = scrollerRef.current
+      if (!scroller) return
+
+      const target = scroller.scrollHeight - scroller.clientHeight
+      const current = scroller.scrollTop
+      const delta = target - current
+
+      if (delta <= 1) {
+        setScrollTop(scroller, target)
+        if (isStreamingRef.current) ensureFollowLoop()
+        return
+      }
+
+      setScrollTop(scroller, current + Math.max(10, delta * 0.22))
+      pinRafRef.current = requestAnimationFrame(animate)
+    }
+
+    pinRafRef.current = requestAnimationFrame(animate)
   }
 
   useEffect(() => {
     if (isHome) {
       stickToBottomRef.current = true
       setShowScrollButton(false)
+      stopFollowLoop()
+      stopPinLoop()
       return
     }
 
     const el = scrollerRef.current
     if (!el) return
 
-    syncStickFromScroll()
-    el.addEventListener('scroll', syncStickFromScroll, { passive: true })
-    return () => el.removeEventListener('scroll', syncStickFromScroll)
+    const onUserIntent = () => detachFollow()
+
+    const onScroll = () => {
+      if (ignoreScrollRef.current) return
+      if (!stickToBottomRef.current) {
+        setShowScrollButton(true)
+        return
+      }
+      // Scrollbar drag / unexpected jump away from bottom.
+      if (!isNearBottom(el)) {
+        detachFollow()
+      }
+    }
+
+    el.addEventListener('wheel', onUserIntent, { passive: true })
+    el.addEventListener('touchmove', onUserIntent, { passive: true })
+    el.addEventListener('scroll', onScroll, { passive: true })
+
+    return () => {
+      el.removeEventListener('wheel', onUserIntent)
+      el.removeEventListener('touchmove', onUserIntent)
+      el.removeEventListener('scroll', onScroll)
+      stopFollowLoop()
+      stopPinLoop()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isHome])
+
+  const lastMessage = messages[messages.length - 1]
+  const lastContent = lastMessage?.content ?? ''
+  const lastRole = lastMessage?.role
 
   useEffect(() => {
     if (isHome) return
 
-    const last = messages[messages.length - 1]
-    const userJustSent = last?.role === 'user'
-
-    if (userJustSent || stickToBottomRef.current) {
-      requestAnimationFrame(() => {
-        scrollToBottom('smooth')
-      })
+    if (lastRole === 'user') {
+      stickToBottomRef.current = true
+      setShowScrollButton(false)
+      scrollToBottomSmooth()
       return
     }
 
-    setShowScrollButton(true)
-  }, [messages, isThinking, isHome])
+    if (!stickToBottomRef.current) {
+      setShowScrollButton(true)
+      return
+    }
+
+    ensureFollowLoop()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lastContent, lastRole, isThinking, isStreaming, isHome, messages.length])
+
+  useEffect(() => {
+    return () => {
+      stopFollowLoop()
+      stopPinLoop()
+    }
+  }, [])
 
   if (isHome) {
     return <HomeHero />
@@ -99,7 +209,15 @@ export function ChatThread() {
               )}
               <div className="bubble__body">
                 {msg.role === 'assistant' ? (
-                  <ReactMarkdown>{msg.content}</ReactMarkdown>
+                  msg.content ? (
+                    <ReactMarkdown>{msg.content}</ReactMarkdown>
+                  ) : (
+                    <div className="typing" aria-hidden="true">
+                      <span />
+                      <span />
+                      <span />
+                    </div>
+                  )
                 ) : (
                   <p>{msg.content}</p>
                 )}
@@ -121,7 +239,7 @@ export function ChatThread() {
             </article>
           )}
 
-          <div ref={endRef} className="chat-thread__end" />
+          <div className="chat-thread__end" />
         </div>
       </div>
 
@@ -132,7 +250,7 @@ export function ChatThread() {
         title="Vai in fondo"
         tabIndex={showScrollButton ? 0 : -1}
         aria-hidden={!showScrollButton}
-        onClick={() => scrollToBottom('smooth')}
+        onClick={scrollToBottomSmooth}
       >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path
