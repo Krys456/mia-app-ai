@@ -2,6 +2,7 @@ import { useCallback, useEffect, useId, useMemo, useState } from 'react'
 import { PageHeader } from '../components/PageHeader'
 import { useChat } from '../context/ChatContext'
 import type { MemoryItem } from '../lib/memory'
+import { memoryCategoryLabel } from '../lib/memory'
 import {
   deleteAllMemories,
   deleteMemory,
@@ -235,7 +236,7 @@ export function MemoryManage({ onBack }: MemoryManageProps) {
                   className="memory-card"
                   onClick={() => openCard(item)}
                 >
-                  <span className="memory-card__category">{item.category}</span>
+                  <span className="memory-card__category">{memoryCategoryLabel(item.category)}</span>
                   <span className="memory-card__title">{item.title}</span>
                   <span className="memory-card__preview">{previewText(item.content)}</span>
                 </button>
@@ -325,7 +326,7 @@ export function MemoryManage({ onBack }: MemoryManageProps) {
                 <dl className="memory-panel__meta">
                   <div>
                     <dt>Categoria</dt>
-                    <dd>{selected.category}</dd>
+                    <dd>{memoryCategoryLabel(selected.category)}</dd>
                   </div>
                   <div>
                     <dt>Importanza</dt>

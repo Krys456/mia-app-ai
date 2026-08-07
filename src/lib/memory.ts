@@ -1,13 +1,24 @@
+/**
+ * Memory domain types / category labels for the UI.
+ * Storage stays free-text on the existing `category` column (no schema change).
+ */
 export const MEMORY_CATEGORIES = [
   'identity',
   'preferences',
+  'projects',
+  'goals',
+  'relationships',
+  'skills',
+  'habits',
+  'events',
+  'settings',
+] as const
+
+/** Older automatic categories that may still exist in stored rows. */
+export const LEGACY_MEMORY_CATEGORIES = [
   'hobbies',
   'profession',
-  'goals',
-  'projects',
-  'relationships',
   'tastes',
-  'settings',
   'important',
 ] as const
 
@@ -34,4 +45,24 @@ export interface MemoryDraft {
 
 export function isMemoryCategory(value: string): boolean {
   return value.trim().length > 0
+}
+
+/** Short Italian labels for intelligent categories (UI only). */
+export function memoryCategoryLabel(category: string): string {
+  const map: Record<string, string> = {
+    identity: 'Identità',
+    preferences: 'Preferenze',
+    projects: 'Progetti',
+    goals: 'Obiettivi',
+    relationships: 'Relazioni',
+    skills: 'Competenze',
+    habits: 'Abitudini',
+    events: 'Eventi importanti',
+    settings: 'Impostazioni personali',
+    hobbies: 'Abitudini',
+    profession: 'Competenze',
+    tastes: 'Preferenze',
+    important: 'Eventi importanti',
+  }
+  return map[category] || category
 }
