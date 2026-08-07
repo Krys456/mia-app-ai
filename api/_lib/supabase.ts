@@ -19,7 +19,7 @@ function isValidHttpUrl(value: string): boolean {
 
 /**
  * Startup validation for Supabase server env.
- * Logs presence/validity checks only — never logs secret values.
+ * Logs URL presence/shape diagnostics only — never logs secret keys.
  */
 export function validateSupabaseStartupEnv(): {
   url: string
@@ -31,10 +31,19 @@ export function validateSupabaseStartupEnv(): {
   const urlValid = urlExists && isValidHttpUrl(url)
   const keyExists = Boolean(key)
 
+  const prefix =
+    url.length === 0
+      ? ''
+      : url.length <= 20
+        ? url
+        : `${url.slice(0, 20)}...`
+
   console.info('[supabase] startup validation', {
     SUPABASE_URL_exists: urlExists,
+    SUPABASE_URL_length: url.length,
+    SUPABASE_URL_starts_with_https: url.startsWith('https://'),
+    SUPABASE_URL_prefix: prefix,
     SUPABASE_URL_valid: urlValid,
-    SUPABASE_SERVICE_ROLE_KEY_exists: keyExists,
   })
 
   if (!urlExists) {
