@@ -6,6 +6,8 @@ import './StreamingRenderer.css'
 
 interface StreamingRendererProps {
   content: string
+  /** Show a soft caret while text is still revealing. */
+  isStreaming?: boolean
 }
 
 function getText(node: ReactNode): string {
@@ -59,12 +61,16 @@ const markdownComponents: Components = {
   },
 }
 
-function StreamingRendererComponent({ content }: StreamingRendererProps) {
+function StreamingRendererComponent({
+  content,
+  isStreaming = false,
+}: StreamingRendererProps) {
   return (
-    <div className="md-body">
+    <div className={`md-body${isStreaming ? ' md-body--streaming' : ''}`}>
       <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
         {content}
       </ReactMarkdown>
+      {isStreaming ? <span className="md-caret" aria-hidden="true" /> : null}
     </div>
   )
 }

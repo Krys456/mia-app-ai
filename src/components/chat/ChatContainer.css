@@ -4,6 +4,7 @@
   flex: 1;
   flex-direction: column;
   min-height: 0;
+  width: 100%;
 }
 
 .chat-container--home {
@@ -16,14 +17,18 @@
   flex: 1;
   flex-direction: column;
   min-height: 0;
+  width: 100%;
 }
 
 .chat-container__viewport {
   flex: 1;
   min-height: 0;
+  width: 100%;
+  overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
   /* Programmatic follow uses rAF deltas — keep CSS scroll-behavior off. */
   scroll-behavior: auto;
 }

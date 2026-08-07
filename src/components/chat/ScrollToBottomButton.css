@@ -17,13 +17,15 @@
   cursor: pointer;
   pointer-events: none;
   opacity: 0;
-  transform: translateY(10px) scale(0.92);
+  visibility: hidden;
+  transform: translateY(8px) scale(0.94);
   box-shadow: var(--shadow-card);
   backdrop-filter: blur(14px) saturate(1.2);
   -webkit-backdrop-filter: blur(14px) saturate(1.2);
   transition:
     opacity var(--duration) var(--ease-out),
     transform var(--duration) var(--ease-out),
+    visibility var(--duration) var(--ease-out),
     border-color var(--duration) var(--ease-out),
     box-shadow var(--duration) var(--ease-out),
     background var(--duration) var(--ease-out);
@@ -31,6 +33,7 @@
 
 .scroll-bottom-btn--visible {
   opacity: 1;
+  visibility: visible;
   transform: translateY(0) scale(1);
   pointer-events: auto;
 }

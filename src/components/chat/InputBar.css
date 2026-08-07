@@ -3,11 +3,12 @@
   bottom: 0;
   z-index: 90;
   flex-shrink: 0;
+  width: 100%;
   pointer-events: auto;
-  padding: 0.75rem var(--page-gutter) calc(0.85rem + env(safe-area-inset-bottom));
+  padding: 0.7rem var(--page-gutter) calc(0.8rem + env(safe-area-inset-bottom, 0px));
   background: linear-gradient(
     to top,
-    var(--bg) 48%,
+    var(--bg) 52%,
     color-mix(in srgb, var(--bg) 55%, transparent)
   );
 }
@@ -46,6 +47,7 @@
   font: inherit;
   line-height: 1.45;
   padding: 0.55rem 0;
+  overflow-y: auto;
   field-sizing: content;
 }
 

@@ -7,6 +7,7 @@ import { MemoryManage } from './pages/MemoryManage'
 import { Vision } from './pages/Vision'
 import { ChatProvider, useChat } from './context/ChatContext'
 import { ThemeProvider } from './context/ThemeContext'
+import { useVisualViewportHeight } from './hooks/useVisualViewportHeight'
 import type { AppView } from './types'
 import './App.css'
 
@@ -14,6 +15,7 @@ function AppShell() {
   const [view, setView] = useState<AppView>('chat')
   const previousViewRef = useRef<AppView>('chat')
   const { openSettings } = useChat()
+  useVisualViewportHeight()
 
   const navigate = (next: AppView) => {
     setView((current) => {
