@@ -192,6 +192,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const { runCognitiveEngine } = await import('../lib/server/cognitive-engine.js')
         const result = await runCognitiveEngine({
           userMessage: lastUserMessage.content,
+          messages,
           attachments,
           memoryEnabled,
         })
