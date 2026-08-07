@@ -1,0 +1,29 @@
+.chat-container {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.chat-container--home {
+  min-height: 0;
+}
+
+.chat-container__stage {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.chat-container__viewport {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  /* Programmatic follow uses rAF deltas — keep CSS scroll-behavior off. */
+  scroll-behavior: auto;
+}

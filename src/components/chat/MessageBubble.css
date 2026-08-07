@@ -1,0 +1,65 @@
+.bubble {
+  max-width: min(100%, 42rem);
+  animation: chat-rise-in 320ms var(--ease-out) both;
+}
+
+.bubble--user {
+  align-self: flex-end;
+}
+
+.bubble--assistant {
+  align-self: flex-start;
+}
+
+.bubble__label {
+  display: block;
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin-bottom: 0.4rem;
+  font-weight: 600;
+  background: var(--gradient-brand);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.bubble__body {
+  padding: 0.9rem 1.05rem;
+  border-radius: var(--radius-lg);
+}
+
+.bubble--user .bubble__body {
+  background: var(--bubble-user-bg);
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, transparent);
+  color: var(--text);
+  border-bottom-right-radius: 0.4rem;
+  box-shadow: var(--glow-brand);
+}
+
+.bubble--user .bubble__body p {
+  margin: 0;
+  line-height: 1.55;
+  font-size: 0.98rem;
+  white-space: pre-wrap;
+}
+
+.bubble--assistant .bubble__body {
+  background: color-mix(in srgb, var(--surface-solid) 88%, transparent);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-bottom-left-radius: 0.4rem;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+@keyframes chat-rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
