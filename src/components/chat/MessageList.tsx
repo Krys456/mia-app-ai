@@ -1,4 +1,4 @@
-import { memo, useMemo } from 'react'
+import { memo } from 'react'
 import type { ChatMessage } from '../../types'
 import { MessageBubble } from './MessageBubble'
 import { TypingAnimation } from './TypingAnimation'
@@ -11,11 +11,9 @@ interface MessageListProps {
 }
 
 function MessageListComponent({ messages, isThinking, isStreaming }: MessageListProps) {
-  const streamingId = useMemo(() => {
-    if (!isStreaming) return null
-    const last = messages[messages.length - 1]
-    return last?.role === 'assistant' ? last.id : null
-  }, [messages, isStreaming])
+  const last = messages[messages.length - 1]
+  const streamingId =
+    isStreaming && last?.role === 'assistant' ? last.id : null
 
   return (
     <div className="message-list">
@@ -29,11 +27,13 @@ function MessageListComponent({ messages, isThinking, isStreaming }: MessageList
 
       {isThinking ? (
         <article
-          className="bubble bubble--assistant bubble--thinking"
-          aria-label="LAIfe is thinking"
+          className="bubble bubble--assistant"
+          aria-label="LAIfe sta pensando"
         >
           <span className="bubble__label">LAIfe</span>
-          <TypingAnimation />
+          <div className="bubble__body bubble__body--typing">
+            <TypingAnimation />
+          </div>
         </article>
       ) : null}
 

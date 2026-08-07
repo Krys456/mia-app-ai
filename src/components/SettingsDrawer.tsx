@@ -3,6 +3,7 @@ import { useChat } from '../context/ChatContext'
 import type { PersonalizationSettings } from '../types'
 import { ThemeSettings } from './ThemeSettings'
 import './SettingsDrawer.css'
+import './MemoryToggle.css'
 
 interface SettingsDrawerProps {
   onOpenMemory?: () => void

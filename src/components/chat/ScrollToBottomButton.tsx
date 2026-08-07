@@ -21,7 +21,7 @@ function ScrollToBottomButtonComponent({ visible, onClick }: ScrollToBottomButto
         <path
           d="M6 9l6 6 6-6"
           stroke="currentColor"
-          strokeWidth="1.9"
+          strokeWidth="1.8"
           strokeLinecap="round"
           strokeLinejoin="round"
         />

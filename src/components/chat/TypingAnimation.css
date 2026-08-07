@@ -1,18 +1,18 @@
 .typing {
   display: inline-flex;
   gap: 0.4rem;
-  padding: 1rem 1.15rem;
+  padding: 0.9rem 1.05rem;
   background: color-mix(in srgb, var(--surface-solid) 88%, transparent);
   border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
   border-radius: var(--radius-lg);
-  border-bottom-left-radius: 0.4rem;
+  border-bottom-left-radius: var(--radius-xs);
   box-shadow: var(--glow-cyan);
 }
 
 .typing span {
   width: 0.42rem;
   height: 0.42rem;
-  border-radius: 50%;
+  border-radius: var(--radius-pill);
   background: var(--gradient-brand);
   animation: chat-typing-bounce 1.15s infinite ease-in-out;
   box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 45%, transparent);

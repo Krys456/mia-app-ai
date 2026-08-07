@@ -55,7 +55,7 @@ export function Vision({ onBack }: VisionProps) {
     setStatus(null)
 
     if (!navigator.mediaDevices?.getUserMedia) {
-      setCameraError('Camera is not supported in this browser.')
+      setCameraError('La fotocamera non è supportata in questo browser.')
       return
     }
 
@@ -72,7 +72,7 @@ export function Vision({ onBack }: VisionProps) {
       }
       setCameraOn(true)
     } catch {
-      setCameraError('Unable to access the camera. Check permissions and try again.')
+      setCameraError('Impossibile accedere alla fotocamera. Controlla i permessi e riprova.')
       setCameraOn(false)
     }
   }
@@ -94,7 +94,7 @@ export function Vision({ onBack }: VisionProps) {
       canvas.toBlob((result) => resolve(result), 'image/jpeg', 0.92),
     )
     if (!blob) {
-      setError('Failed to capture photo.')
+      setError('Acquisizione foto non riuscita.')
       return
     }
 
@@ -106,7 +106,7 @@ export function Vision({ onBack }: VisionProps) {
     event.target.value = ''
     if (!file) return
     if (!file.type.startsWith('image/')) {
-      setError('Please choose an image file.')
+      setError('Seleziona un file immagine.')
       return
     }
     setPreviewFromBlob(file, file.name || 'upload.jpg')
@@ -125,7 +125,7 @@ export function Vision({ onBack }: VisionProps) {
 
   const sendImage = async () => {
     if (!imageBlob) {
-      setError('Capture or upload an image first.')
+      setError('Acquisisci o carica prima un’immagine.')
       return
     }
 
@@ -134,7 +134,7 @@ export function Vision({ onBack }: VisionProps) {
     setStatus(null)
     try {
       await sendVisionImage(imageBlob, fileName)
-      setStatus('Image received by BrAIn Vision.')
+      setStatus('Immagine ricevuta da BrAIn Vision.')
     } catch (err) {
       const message = err instanceof VisionApiError ? err.message : String(err)
       setError(message)
@@ -147,14 +147,14 @@ export function Vision({ onBack }: VisionProps) {
     <main className="brain-vision">
       <PageHeader title="Vision AI" onBack={onBack} />
 
-      <div className="brain-vision__body">
+      <div className="brain-vision__body scroll-surface">
         <p className="brain-vision__lead">
-          Capture or upload an image, preview it, then send it. Analysis comes later.
+          Scatta o carica un’immagine, controlla l’anteprima e inviala. L’analisi arriverà in seguito.
         </p>
 
-        <section className="brain-vision__actions" aria-label="Vision inputs">
+        <section className="brain-vision__actions" aria-label="Azioni Vision">
           <button type="button" className="brain-vision__primary" onClick={() => void startCamera()}>
-            {cameraOn ? 'Restart camera' : 'Open camera'}
+            {cameraOn ? 'Riavvia fotocamera' : 'Apri fotocamera'}
           </button>
           <button
             type="button"
@@ -162,18 +162,18 @@ export function Vision({ onBack }: VisionProps) {
             onClick={capturePhoto}
             disabled={!cameraOn}
           >
-            Capture photo
+            Scatta foto
           </button>
           <button
             type="button"
             className="brain-vision__ghost"
             onClick={() => fileInputRef.current?.click()}
           >
-            Upload image
+            Carica immagine
           </button>
           {cameraOn ? (
             <button type="button" className="brain-vision__ghost" onClick={stopCamera}>
-              Stop camera
+              Ferma fotocamera
             </button>
           ) : null}
           <input
@@ -192,30 +192,30 @@ export function Vision({ onBack }: VisionProps) {
           </p>
         ) : null}
 
-        <section className="brain-vision__stage" aria-label="Camera and preview">
+        <section className="brain-vision__stage" aria-label="Fotocamera e anteprima">
           <div className="brain-vision__panel">
-            <h2>Camera</h2>
+            <h2>Fotocamera</h2>
             <div className="brain-vision__frame">
               <video
                 ref={videoRef}
                 className="brain-vision__video"
                 playsInline
                 muted
-                aria-label="Live camera preview"
+                aria-label="Anteprima fotocamera live"
               />
               {!cameraOn ? (
-                <p className="brain-vision__placeholder">Camera is off</p>
+                <p className="brain-vision__placeholder">Fotocamera spenta</p>
               ) : null}
             </div>
           </div>
 
           <div className="brain-vision__panel">
-            <h2>Preview</h2>
+            <h2>Anteprima</h2>
             <div className="brain-vision__frame">
               {previewUrl ? (
-                <img src={previewUrl} alt="Selected vision preview" className="brain-vision__preview" />
+                <img src={previewUrl} alt="Anteprima immagine selezionata" className="brain-vision__preview" />
               ) : (
-                <p className="brain-vision__placeholder">No image selected</p>
+                <p className="brain-vision__placeholder">Nessuna immagine selezionata</p>
               )}
             </div>
           </div>
@@ -229,8 +229,9 @@ export function Vision({ onBack }: VisionProps) {
             className="brain-vision__primary"
             onClick={() => void sendImage()}
             disabled={!imageBlob || sending}
+            aria-busy={sending}
           >
-            {sending ? 'Sending…' : 'Send image'}
+            {sending ? 'Invio…' : 'Invia immagine'}
           </button>
           <button
             type="button"
@@ -238,7 +239,7 @@ export function Vision({ onBack }: VisionProps) {
             onClick={clearPreview}
             disabled={!previewUrl || sending}
           >
-            Clear
+            Cancella
           </button>
         </section>
 

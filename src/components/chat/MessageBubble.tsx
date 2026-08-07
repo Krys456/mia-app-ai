@@ -17,10 +17,10 @@ function MessageBubbleComponent({ message, isStreaming = false }: MessageBubbleP
   return (
     <article
       className={`bubble bubble--${message.role}`}
-      aria-label={message.role === 'user' ? 'You' : 'LAIfe'}
+      aria-label={message.role === 'user' ? 'Tu' : 'LAIfe'}
     >
       {isAssistant ? <span className="bubble__label">LAIfe</span> : null}
-      <div className="bubble__body">
+      <div className={`bubble__body${isEmptyStream ? ' bubble__body--typing' : ''}`}>
         {isAssistant ? (
           isEmptyStream ? (
             <TypingAnimation />

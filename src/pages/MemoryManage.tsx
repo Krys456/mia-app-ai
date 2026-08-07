@@ -9,6 +9,7 @@ import {
   updateMemory,
 } from '../lib/memoryApi'
 import './MemoryManage.css'
+import '../components/MemoryToggle.css'
 
 function formatDate(value?: string | null): string {
   if (!value) return '—'
@@ -98,7 +99,16 @@ export function MemoryManage({ onBack }: MemoryManageProps) {
       if (e.key === 'Escape') closePanel()
     }
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    const previouslyFocused = document.activeElement as HTMLElement | null
+    window.setTimeout(() => {
+      document
+        .querySelector<HTMLElement>('.memory-panel button, .memory-panel input, .memory-panel textarea')
+        ?.focus()
+    }, 0)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      previouslyFocused?.focus?.()
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- closePanel is local
   }, [selectedId, busy])
 
@@ -158,6 +168,7 @@ export function MemoryManage({ onBack }: MemoryManageProps) {
     <main className="memory-manage" aria-labelledby="memory-manage-title">
       <PageHeader
         title="Memoria"
+        titleId="memory-manage-title"
         onBack={onBack}
         actions={
           <div
@@ -185,8 +196,8 @@ export function MemoryManage({ onBack }: MemoryManageProps) {
         }
       />
 
-      <div className="memory-manage__body">
-        <p className="memory-manage__lead" id="memory-manage-title">
+      <div className="memory-manage__body scroll-surface">
+        <p className="memory-manage__lead">
           Fatti che LAIfe ricorda per te. Tocca una card per i dettagli.
         </p>
 
@@ -233,16 +244,18 @@ export function MemoryManage({ onBack }: MemoryManageProps) {
           </ul>
         )}
 
-        <div className="memory-manage__footer">
-          <button
-            type="button"
-            className="memory-manage__clear"
-            onClick={() => void clearAll()}
-            disabled={memories.length === 0 || busy}
-          >
-            Cancella tutto
-          </button>
-        </div>
+        {memories.length > 0 ? (
+          <div className="memory-manage__footer">
+            <button
+              type="button"
+              className="memory-manage__clear"
+              onClick={() => void clearAll()}
+              disabled={busy}
+            >
+              Cancella tutto
+            </button>
+          </div>
+        ) : null}
       </div>
 
       {selected ? (

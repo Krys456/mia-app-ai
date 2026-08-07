@@ -22,16 +22,16 @@ function IconMemory() {
       <path
         d="M6.5 7.5h11v11a2 2 0 0 1-2 2h-7a2 2 0 0 1-2-2v-11Z"
         stroke="currentColor"
-        strokeWidth="1.7"
+        strokeWidth="1.8"
         strokeLinejoin="round"
       />
       <path
         d="M9 7.5V5.8A1.8 1.8 0 0 1 10.8 4h2.4A1.8 1.8 0 0 1 15 5.8V7.5"
         stroke="currentColor"
-        strokeWidth="1.7"
+        strokeWidth="1.8"
         strokeLinecap="round"
       />
-      <path d="M9.5 12h5M9.5 15.5h5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+      <path d="M9.5 12h5M9.5 15.5h5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
     </svg>
   )
 }
@@ -42,10 +42,10 @@ function IconVision() {
       <path
         d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"
         stroke="currentColor"
-        strokeWidth="1.7"
+        strokeWidth="1.8"
         strokeLinejoin="round"
       />
-      <circle cx="12" cy="12" r="2.5" stroke="currentColor" strokeWidth="1.7" />
+      <circle cx="12" cy="12" r="2.5" stroke="currentColor" strokeWidth="1.8" />
     </svg>
   )
 }
@@ -53,11 +53,11 @@ function IconVision() {
 function IconSettings() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <circle cx="12" cy="12" r="3.1" stroke="currentColor" strokeWidth="1.7" />
+      <circle cx="12" cy="12" r="3.1" stroke="currentColor" strokeWidth="1.8" />
       <path
         d="M12 3.5v1.6M12 18.9v1.6M20.5 12h-1.6M5.1 12H3.5M17.9 6.1l-1.1 1.1M7.2 16.8l-1.1 1.1M17.9 17.9l-1.1-1.1M7.2 7.2 6.1 6.1"
         stroke="currentColor"
-        strokeWidth="1.7"
+        strokeWidth="1.8"
         strokeLinecap="round"
       />
     </svg>
@@ -65,11 +65,10 @@ function IconSettings() {
 }
 
 interface HeaderProps {
-  view: AppView
   onNavigate: (view: AppView) => void
 }
 
-export function Header({ view, onNavigate }: HeaderProps) {
+export function Header({ onNavigate }: HeaderProps) {
   const { newChat, openSettings, settingsOpen } = useChat()
 
   const goHomeChat = () => {
@@ -84,7 +83,7 @@ export function Header({ view, onNavigate }: HeaderProps) {
           type="button"
           className="header-btn header-btn--brand"
           onClick={goHomeChat}
-          aria-label="LAIfe home — start fresh chat"
+          aria-label="LAIfe — nuova chat"
           title="LAIfe"
         >
           <BrandLogo variant="mark" />
@@ -102,28 +101,26 @@ export function Header({ view, onNavigate }: HeaderProps) {
               onNavigate('chat')
               newChat()
             }}
-            aria-label="New chat"
-            title="New chat"
+            aria-label="Nuova chat"
+            title="Nuova chat"
           >
             <IconNewChat />
           </button>
           <button
             type="button"
-            className={`header-btn${view === 'memory' ? ' header-btn--active' : ''}`}
+            className="header-btn"
             onClick={() => onNavigate('memory')}
             aria-label="Gestisci memoria"
             title="Memoria"
-            aria-pressed={view === 'memory'}
           >
             <IconMemory />
           </button>
           <button
             type="button"
-            className={`header-btn${view === 'vision' ? ' header-btn--active' : ''}`}
+            className="header-btn"
             onClick={() => onNavigate('vision')}
-            aria-label="Vision"
-            title="Vision"
-            aria-pressed={view === 'vision'}
+            aria-label="Vision AI"
+            title="Vision AI"
           >
             <IconVision />
           </button>
@@ -131,8 +128,8 @@ export function Header({ view, onNavigate }: HeaderProps) {
             type="button"
             className={`header-btn${settingsOpen ? ' header-btn--active' : ''}`}
             onClick={openSettings}
-            aria-label="Settings and personalization"
-            title="Settings"
+            aria-label="Impostazioni"
+            title="Impostazioni"
             aria-pressed={settingsOpen}
           >
             <IconSettings />
