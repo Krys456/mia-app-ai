@@ -5,14 +5,25 @@
   "outputDirectory": "dist",
   "installCommand": "npm install",
   "functions": {
-    "api/**/*.ts": {
-      "includeFiles": "api/_lib/supabase.ts"
-    },
     "api/chat.ts": {
-      "includeFiles": "api/_lib/{brain-memory.ts,supabase.ts}"
+      "includeFiles": "api/_lib/**",
+      "maxDuration": 60
+    },
+    "api/memory-test.ts": {
+      "includeFiles": "api/_lib/**",
+      "maxDuration": 15
+    },
+    "api/vision.ts": {
+      "includeFiles": "api/_lib/**",
+      "maxDuration": 15
+    },
+    "api/memories/index.ts": {
+      "includeFiles": "api/_lib/**",
+      "maxDuration": 15
     },
     "api/memories/[id].ts": {
-      "includeFiles": "api/_lib/{db.ts,supabase.ts}"
+      "includeFiles": "api/_lib/**",
+      "maxDuration": 15
     }
   },
   "rewrites": [
