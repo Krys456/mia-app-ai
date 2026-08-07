@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { getServiceSupabase } from '../_lib/supabase'
 
 console.log('API loaded')
 
@@ -129,7 +130,6 @@ async function ensureDefaultUserId(supabase: SupabaseClientLike): Promise<string
 }
 
 async function saveMemory(input: MemoryCreateInput): Promise<void> {
-  const { getServiceSupabase } = await import('../_lib/supabase')
   const supabase = await getServiceSupabase()
   const userId = await ensureDefaultUserId(supabase)
 
@@ -151,7 +151,6 @@ async function saveMemory(input: MemoryCreateInput): Promise<void> {
 }
 
 async function listMemories(category?: string) {
-  const { getServiceSupabase } = await import('../_lib/supabase')
   const supabase = await getServiceSupabase()
   const userId = await ensureDefaultUserId(supabase)
 

@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import './_lib/supabase'
 
 console.log('API loaded')
 
