@@ -72,6 +72,7 @@ function loadSettings(): AppSettings {
       personalization: {
         ...DEFAULT_PERSONALIZATION,
         ...parsed.personalization,
+        memoryEnabled: parsed.personalization?.memoryEnabled !== false,
       },
       theme: {
         activeThemeId: parsed.theme?.activeThemeId ?? DEFAULT_THEME_SETTINGS.activeThemeId,
@@ -266,6 +267,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             messages: history,
             systemPrompt: prompt,
             userId: getOrCreateUserId(),
+            memoryEnabled: personalization.memoryEnabled !== false,
           })
           dispatch({ type: 'ASSISTANT_DONE', content: reply })
         } catch (error) {

@@ -4,7 +4,11 @@ import type { PersonalizationSettings } from '../types'
 import { ThemeSettings } from './ThemeSettings'
 import './SettingsDrawer.css'
 
-export function SettingsDrawer() {
+interface SettingsDrawerProps {
+  onOpenMemory?: () => void
+}
+
+export function SettingsDrawer({ onOpenMemory }: SettingsDrawerProps) {
   const {
     settingsOpen,
     closeSettings,
@@ -86,6 +90,41 @@ export function SettingsDrawer() {
 
           <div className="settings-divider" role="separator" />
 
+          <section className="settings-memory" aria-labelledby="memory-settings-title">
+            <h3 id="memory-settings-title" className="settings-section-title">
+              Memoria
+            </h3>
+
+            <label className="field field--row">
+              <span className="field__label">Memoria</span>
+              <input
+                type="checkbox"
+                role="switch"
+                checked={p.memoryEnabled !== false}
+                onChange={(e) => set('memoryEnabled', e.target.checked)}
+                aria-checked={p.memoryEnabled !== false}
+              />
+            </label>
+
+            <p className="settings-note settings-note--tight">
+              Se attiva, LAIfe impara in automatico fatti utili a lungo termine. Nessun pulsante in
+              chat: tutto avviene in background.
+            </p>
+
+            <button
+              type="button"
+              className="settings-link-btn"
+              onClick={() => {
+                closeSettings()
+                onOpenMemory?.()
+              }}
+            >
+              Gestisci memoria
+            </button>
+          </section>
+
+          <div className="settings-divider" role="separator" />
+
           <section className="settings-personality" aria-labelledby="personality-title">
             <h3 id="personality-title" className="settings-section-title">
               Assistant
@@ -150,8 +189,8 @@ export function SettingsDrawer() {
           </section>
 
           <p className="settings-note">
-            Theme and assistant preferences save on this device. Themes reshape the whole interface;
-            personality settings shape LAIfe’s system prompt for future replies.
+            Theme and assistant preferences save on this device. Memory can be turned off anytime;
+            when off, LAIfe neither reads nor writes memories during chat.
           </p>
         </div>
       </aside>

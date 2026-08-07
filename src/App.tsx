@@ -3,7 +3,7 @@ import { Header } from './components/Header'
 import { ChatThread } from './components/ChatThread'
 import { Composer } from './components/Composer'
 import { SettingsDrawer } from './components/SettingsDrawer'
-import { MemoryWorkspace } from './pages/MemoryWorkspace'
+import { MemoryManage } from './pages/MemoryManage'
 import { Vision } from './pages/Vision'
 import { ChatProvider } from './context/ChatContext'
 import { ThemeProvider } from './context/ThemeContext'
@@ -22,11 +22,15 @@ function AppShell() {
           <Composer />
         </>
       ) : view === 'memory' ? (
-        <MemoryWorkspace />
+        <MemoryManage />
       ) : view === 'vision' ? (
         <Vision />
       ) : null}
-      <SettingsDrawer />
+      <SettingsDrawer
+        onOpenMemory={() => {
+          setView('memory')
+        }}
+      />
     </div>
   )
 }

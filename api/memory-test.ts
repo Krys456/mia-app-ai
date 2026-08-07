@@ -61,9 +61,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       })
     }
 
-    const result = await runMemoryPipeline({ userMessage, assistantMessage })
+    const result = await runMemoryPipeline({
+      userMessage,
+      assistantMessage,
+      memoryEnabled: body.memoryEnabled !== false,
+    })
     return sendJson(res, 200, {
       saved: result.saved,
+      updated: result.updated === true,
+      skipped: result.skipped === true,
       decision: result.decision,
     })
   } catch (error) {

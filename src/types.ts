@@ -18,6 +18,8 @@ export interface PersonalizationSettings {
   replyLength: 'concise' | 'balanced' | 'detailed'
   useEmojis: boolean
   customInstructions: string
+  /** When false, chat never reads or writes memories. */
+  memoryEnabled: boolean
 }
 
 export interface ThemeSettings {
@@ -38,6 +40,7 @@ export const DEFAULT_PERSONALIZATION: PersonalizationSettings = {
   replyLength: 'concise',
   useEmojis: true,
   customInstructions: '',
+  memoryEnabled: true,
 }
 
 export const DEFAULT_THEME_SETTINGS: ThemeSettings = {
