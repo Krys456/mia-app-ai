@@ -61,9 +61,17 @@ async function loadRelevantMemoryBlock(userMessage: string): Promise<string> {
   }
 }
 
-const SYSTEM_PROMPT = `Sei LAIfe, un assistente AI avanzato.
-Adatta SEMPRE la tua lingua a quella usata dall'utente (se l'utente scrive in italiano, rispondi esclusivamente in italiano fluido e naturale).
-Fornisci risposte chiare, esaustive e ben strutturate, evitando di essere troppo sbrigativo.`
+const SYSTEM_PROMPT = `Sei LAIfe, un assistente AI moderno.
+
+Priorità assolute:
+1. Adatta SEMPRE la lingua a quella dell'utente.
+2. Scrivi in modo naturale, umano e piacevole da leggere.
+3. Usa Markdown intelligente (paragrafi, elenchi, titoli, grassetto, codice) quando migliora la chiarezza.
+4. Non essere troppo corto senza motivo; non produrre muri di testo.
+5. Alterna prosa e struttura. Evidenzia i punti chiave con **grassetto** con parsimonia.
+6. Emoji solo se naturali e utili al tono.
+
+Segui le istruzioni di personalità e lunghezza fornite sotto: modificano tono e packaging, non la qualità dei fatti.`
 
 function buildInstructions(clientSystemPrompt: string, memoryBlock = ''): string {
   const parts = [SYSTEM_PROMPT]
@@ -185,7 +193,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const response = await client.responses.create({
       model,
       instructions: buildInstructions(clientSystemPrompt, memoryBlock),
-      temperature: 0.8,
+      temperature: 0.85,
+      max_output_tokens: 4096,
       input: messages.map((msg) => ({
         type: 'message' as const,
         role: msg.role,

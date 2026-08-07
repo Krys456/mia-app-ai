@@ -12,9 +12,28 @@ export interface ChatMessage {
   createdAt: number
 }
 
+/** Conversational personality modes for LAIfe. */
+export type PersonalityMode =
+  | 'automatic'
+  | 'friendly'
+  | 'professional'
+  | 'teacher'
+  | 'analytical'
+  | 'motivational'
+
+export const PERSONALITY_MODES: readonly PersonalityMode[] = [
+  'automatic',
+  'friendly',
+  'professional',
+  'teacher',
+  'analytical',
+  'motivational',
+] as const
+
 export interface PersonalizationSettings {
   displayName: string
-  tone: 'warm' | 'playful' | 'professional' | 'calm'
+  /** Primary conversational personality. */
+  personality: PersonalityMode
   replyLength: 'concise' | 'balanced' | 'detailed'
   useEmojis: boolean
   customInstructions: string
@@ -36,8 +55,8 @@ export interface AppSettings {
 
 export const DEFAULT_PERSONALIZATION: PersonalizationSettings = {
   displayName: '',
-  tone: 'warm',
-  replyLength: 'concise',
+  personality: 'automatic',
+  replyLength: 'balanced',
   useEmojis: true,
   customInstructions: '',
   memoryEnabled: true,
@@ -46,4 +65,26 @@ export const DEFAULT_PERSONALIZATION: PersonalizationSettings = {
 export const DEFAULT_THEME_SETTINGS: ThemeSettings = {
   activeThemeId: DEFAULT_THEME_ID,
   customThemes: [],
+}
+
+export function isPersonalityMode(value: unknown): value is PersonalityMode {
+  return (
+    typeof value === 'string' &&
+    (PERSONALITY_MODES as readonly string[]).includes(value)
+  )
+}
+
+/** Map legacy tone values (pre-personality) onto the new modes. */
+export function migrateLegacyTone(tone: unknown): PersonalityMode | null {
+  switch (tone) {
+    case 'warm':
+    case 'playful':
+      return 'friendly'
+    case 'professional':
+      return 'professional'
+    case 'calm':
+      return 'automatic'
+    default:
+      return null
+  }
 }

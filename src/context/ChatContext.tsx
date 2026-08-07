@@ -14,6 +14,8 @@ import type { ThemeDefinition } from '../lib/themes'
 import {
   DEFAULT_PERSONALIZATION,
   DEFAULT_THEME_SETTINGS,
+  isPersonalityMode,
+  migrateLegacyTone,
   type AppSettings,
   type ChatMessage,
   type PersonalizationSettings,
@@ -56,6 +58,32 @@ function sanitizeCustomThemes(raw: unknown): ThemeDefinition[] {
     }))
 }
 
+function normalizePersonalization(
+  raw: Partial<PersonalizationSettings> & { tone?: unknown } | undefined,
+): PersonalizationSettings {
+  const merged: PersonalizationSettings = {
+    ...DEFAULT_PERSONALIZATION,
+    ...raw,
+    memoryEnabled: raw?.memoryEnabled !== false,
+  }
+
+  if (isPersonalityMode(raw?.personality)) {
+    merged.personality = raw.personality
+  } else {
+    merged.personality = migrateLegacyTone(raw?.tone) ?? DEFAULT_PERSONALIZATION.personality
+  }
+
+  if (raw?.replyLength !== 'concise' && raw?.replyLength !== 'balanced' && raw?.replyLength !== 'detailed') {
+    merged.replyLength = DEFAULT_PERSONALIZATION.replyLength
+  }
+
+  if (typeof raw?.useEmojis !== 'boolean') {
+    merged.useEmojis = DEFAULT_PERSONALIZATION.useEmojis
+  }
+
+  return merged
+}
+
 function loadSettings(): AppSettings {
   try {
     const raw = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem('laife.settings.v1')
@@ -67,13 +95,10 @@ function loadSettings(): AppSettings {
     }
     const parsed = JSON.parse(raw) as Partial<AppSettings> & {
       theme?: Partial<ThemeSettings>
+      personalization?: Partial<PersonalizationSettings> & { tone?: unknown }
     }
     return {
-      personalization: {
-        ...DEFAULT_PERSONALIZATION,
-        ...parsed.personalization,
-        memoryEnabled: parsed.personalization?.memoryEnabled !== false,
-      },
+      personalization: normalizePersonalization(parsed.personalization),
       theme: {
         activeThemeId: parsed.theme?.activeThemeId ?? DEFAULT_THEME_SETTINGS.activeThemeId,
         customThemes: sanitizeCustomThemes(parsed.theme?.customThemes),
