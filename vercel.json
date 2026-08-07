@@ -6,7 +6,7 @@
   "installCommand": "npm install",
   "functions": {
     "api/chat.ts": {
-      "includeFiles": "api/_lib/brain-memory.js"
+      "includeFiles": "api/_lib/{brain-memory.ts,supabase.ts}"
     }
   },
   "rewrites": [

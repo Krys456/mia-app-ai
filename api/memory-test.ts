@@ -1,4 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import { getServiceSupabase } from './_lib/supabase'
 
 export const config = {
   runtime: 'nodejs',
@@ -11,10 +13,6 @@ type MemoryDecision = {
   title: string
   content: string
   importance: number
-}
-
-type SupabaseLike = {
-  from: (table: string) => any
 }
 
 const DEFAULT_API_USER_EMAIL = 'brain-api@local'
@@ -70,34 +68,7 @@ function analyzeConversation(
   return { ...NO_SAVE }
 }
 
-async function getSupabase(): Promise<SupabaseLike> {
-  const url =
-    process.env.SUPABASE_URL?.trim() || process.env.VITE_SUPABASE_URL?.trim() || ''
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || ''
-
-  if (!url) {
-    throw new Error(
-      'Missing SUPABASE_URL. Set SUPABASE_URL (preferred) or VITE_SUPABASE_URL in the environment.',
-    )
-  }
-
-  if (!key) {
-    throw new Error(
-      'Missing SUPABASE_SERVICE_ROLE_KEY. Set SUPABASE_SERVICE_ROLE_KEY in the environment for memory API inserts.',
-    )
-  }
-
-  const spec = '@supabase/' + 'supabase-js'
-  const { createClient } = await import(spec)
-  return createClient(url, key, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
-  }) as unknown as SupabaseLike
-}
-
-async function ensureDefaultUserId(supabase: SupabaseLike): Promise<string> {
+async function ensureDefaultUserId(supabase: SupabaseClient): Promise<string> {
   const { data: existing, error: lookupError } = await supabase
     .from('users')
     .select('id')
@@ -131,7 +102,7 @@ async function ensureDefaultUserId(supabase: SupabaseLike): Promise<string> {
 }
 
 async function saveMemory(decision: MemoryDecision): Promise<void> {
-  const supabase = await getSupabase()
+  const supabase = await getServiceSupabase()
   const userId = await ensureDefaultUserId(supabase)
 
   const { error: insertError } = await supabase.from('memories').insert({
