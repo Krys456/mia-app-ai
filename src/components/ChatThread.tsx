@@ -4,189 +4,223 @@ import { useChat } from '../context/ChatContext'
 import { HomeHero } from './HomeHero'
 import './ChatThread.css'
 
-const NEAR_BOTTOM_PX = 72
+/** Distance from bottom that counts as "near" for auto re-attach. */
+const NEAR_BOTTOM_PX = 40
 
-function isNearBottom(el: HTMLElement): boolean {
-  return el.scrollHeight - el.scrollTop - el.clientHeight <= NEAR_BOTTOM_PX
+function distanceFromBottom(el: HTMLElement): number {
+  return el.scrollHeight - el.scrollTop - el.clientHeight
+}
+
+function isEditableTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false
+  const tag = target.tagName
+  return (
+    tag === 'INPUT' ||
+    tag === 'TEXTAREA' ||
+    tag === 'SELECT' ||
+    target.isContentEditable
+  )
 }
 
 /**
- * Smooth chat scrolling:
- * - rAF follow keeps the last written line in view while streaming
- * - any user gesture detaches follow immediately
- * - Scroll-to-bottom reattaches and can resume follow
+ * ChatGPT-style "follow output":
+ * - While following, each frame applies only the content growth
+ *   (scrollTop += ΔscrollHeight) — never jumps with scrollIntoView
+ *   or scrollTop = scrollHeight.
+ * - User wheel / touch / keys / drag away from bottom detaches immediately.
+ * - Returning within NEAR_BOTTOM_PX re-attaches follow.
  */
 export function ChatThread() {
   const { messages, isThinking, isStreaming } = useChat()
   const scrollerRef = useRef<HTMLDivElement>(null)
-  const stickToBottomRef = useRef(true)
+  const followRef = useRef(true)
+  const lastHeightRef = useRef(0)
   const ignoreScrollRef = useRef(false)
-  const followRafRef = useRef<number | null>(null)
+  const rafRef = useRef<number | null>(null)
   const pinRafRef = useRef<number | null>(null)
-  const isStreamingRef = useRef(isStreaming)
   const [showScrollButton, setShowScrollButton] = useState(false)
   const isHome = messages.length === 0 && !isThinking && !isStreaming
 
-  isStreamingRef.current = isStreaming
-
-  const stopFollowLoop = () => {
-    if (followRafRef.current != null) {
-      cancelAnimationFrame(followRafRef.current)
-      followRafRef.current = null
-    }
+  const syncHeight = (el: HTMLElement) => {
+    lastHeightRef.current = el.scrollHeight
   }
 
-  const stopPinLoop = () => {
+  const applyScrollDelta = (el: HTMLElement, delta: number) => {
+    if (delta === 0) return
+    ignoreScrollRef.current = true
+    el.scrollTop += delta
+    ignoreScrollRef.current = false
+  }
+
+  const attachFollow = () => {
+    const el = scrollerRef.current
+    followRef.current = true
+    setShowScrollButton(false)
+    if (el) syncHeight(el)
+  }
+
+  const detachFollow = () => {
+    if (!followRef.current) {
+      setShowScrollButton(true)
+      return
+    }
+    followRef.current = false
     if (pinRafRef.current != null) {
       cancelAnimationFrame(pinRafRef.current)
       pinRafRef.current = null
     }
-  }
-
-  const setScrollTop = (el: HTMLElement, value: number) => {
-    ignoreScrollRef.current = true
-    el.scrollTop = value
-    ignoreScrollRef.current = false
-  }
-
-  const detachFollow = () => {
-    if (!stickToBottomRef.current) {
-      setShowScrollButton(true)
-      return
-    }
-    stickToBottomRef.current = false
-    stopFollowLoop()
-    stopPinLoop()
     setShowScrollButton(true)
   }
 
-  const followTick = () => {
-    followRafRef.current = null
-    if (!stickToBottomRef.current) return
+  /** Continuous rAF loop: follow content growth only. */
+  useEffect(() => {
+    if (isHome) {
+      followRef.current = true
+      setShowScrollButton(false)
+      if (rafRef.current != null) {
+        cancelAnimationFrame(rafRef.current)
+        rafRef.current = null
+      }
+      return
+    }
 
     const el = scrollerRef.current
     if (!el) return
 
-    const target = el.scrollHeight - el.clientHeight
-    const current = el.scrollTop
-    const delta = target - current
+    syncHeight(el)
 
-    if (delta > 0.5) {
-      const step = Math.max(6, Math.min(delta, delta * 0.28 + 4))
-      setScrollTop(el, current + step)
-    }
-
-    if (stickToBottomRef.current && (isStreamingRef.current || delta > 0.5)) {
-      followRafRef.current = requestAnimationFrame(followTick)
-    }
-  }
-
-  const ensureFollowLoop = () => {
-    if (!stickToBottomRef.current) return
-    if (followRafRef.current != null) return
-    followRafRef.current = requestAnimationFrame(followTick)
-  }
-
-  const scrollToBottomSmooth = () => {
-    const el = scrollerRef.current
-    if (!el) return
-
-    stickToBottomRef.current = true
-    setShowScrollButton(false)
-    stopFollowLoop()
-    stopPinLoop()
-
-    const animate = () => {
-      pinRafRef.current = null
-      if (!stickToBottomRef.current) return
+    const tick = () => {
+      rafRef.current = requestAnimationFrame(tick)
 
       const scroller = scrollerRef.current
       if (!scroller) return
 
-      const target = scroller.scrollHeight - scroller.clientHeight
-      const current = scroller.scrollTop
-      const delta = target - current
+      const height = scroller.scrollHeight
+      const growth = height - lastHeightRef.current
+      lastHeightRef.current = height
 
-      if (delta <= 1) {
-        setScrollTop(scroller, target)
-        if (isStreamingRef.current) ensureFollowLoop()
-        return
+      if (followRef.current && growth > 0) {
+        applyScrollDelta(scroller, growth)
       }
-
-      setScrollTop(scroller, current + Math.max(10, delta * 0.22))
-      pinRafRef.current = requestAnimationFrame(animate)
     }
 
-    pinRafRef.current = requestAnimationFrame(animate)
-  }
+    rafRef.current = requestAnimationFrame(tick)
 
+    return () => {
+      if (rafRef.current != null) {
+        cancelAnimationFrame(rafRef.current)
+        rafRef.current = null
+      }
+    }
+  }, [isHome])
+
+  /** User intent + near-bottom re-attach. */
   useEffect(() => {
-    if (isHome) {
-      stickToBottomRef.current = true
-      setShowScrollButton(false)
-      stopFollowLoop()
-      stopPinLoop()
-      return
-    }
-
+    if (isHome) return
     const el = scrollerRef.current
     if (!el) return
 
-    const onUserIntent = () => detachFollow()
-
-    const onScroll = () => {
-      if (ignoreScrollRef.current) return
-      if (!stickToBottomRef.current) {
-        setShowScrollButton(true)
-        return
-      }
-      // Scrollbar drag / unexpected jump away from bottom.
-      if (!isNearBottom(el)) {
+    const onWheel = (event: WheelEvent) => {
+      // Scroll up → leave follow. Scroll down only detaches if already away from bottom.
+      if (event.deltaY < 0 || distanceFromBottom(el) > NEAR_BOTTOM_PX) {
         detachFollow()
       }
     }
 
-    el.addEventListener('wheel', onUserIntent, { passive: true })
-    el.addEventListener('touchmove', onUserIntent, { passive: true })
+    const onTouchMove = () => {
+      detachFollow()
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (isEditableTarget(event.target)) return
+      if (
+        event.key === 'PageUp' ||
+        event.key === 'Home' ||
+        event.key === 'ArrowUp' ||
+        (event.key === 'PageDown' && distanceFromBottom(el) > NEAR_BOTTOM_PX) ||
+        (event.key === 'ArrowDown' && distanceFromBottom(el) > NEAR_BOTTOM_PX) ||
+        (event.key === ' ' && !event.shiftKey && distanceFromBottom(el) > NEAR_BOTTOM_PX)
+      ) {
+        detachFollow()
+      }
+    }
+
+    const onScroll = () => {
+      if (ignoreScrollRef.current) return
+
+      const near = distanceFromBottom(el) <= NEAR_BOTTOM_PX
+
+      if (followRef.current) {
+        if (!near) detachFollow()
+        return
+      }
+
+      // Detached: re-attach when user returns near the bottom.
+      if (near) {
+        attachFollow()
+      } else {
+        setShowScrollButton(true)
+      }
+    }
+
+    el.addEventListener('wheel', onWheel, { passive: true })
+    el.addEventListener('touchmove', onTouchMove, { passive: true })
     el.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('keydown', onKeyDown)
 
     return () => {
-      el.removeEventListener('wheel', onUserIntent)
-      el.removeEventListener('touchmove', onUserIntent)
+      el.removeEventListener('wheel', onWheel)
+      el.removeEventListener('touchmove', onTouchMove)
       el.removeEventListener('scroll', onScroll)
-      stopFollowLoop()
-      stopPinLoop()
+      window.removeEventListener('keydown', onKeyDown)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isHome])
 
-  const lastMessage = messages[messages.length - 1]
-  const lastContent = lastMessage?.content ?? ''
-  const lastRole = lastMessage?.role
+  /** Scroll-to-bottom button: ease toward bottom, then attach follow. */
+  const scrollToBottomFollow = () => {
+    const el = scrollerRef.current
+    if (!el) return
 
-  useEffect(() => {
-    if (isHome) return
-
-    if (lastRole === 'user') {
-      stickToBottomRef.current = true
-      setShowScrollButton(false)
-      scrollToBottomSmooth()
-      return
+    if (pinRafRef.current != null) {
+      cancelAnimationFrame(pinRafRef.current)
+      pinRafRef.current = null
     }
 
-    if (!stickToBottomRef.current) {
-      setShowScrollButton(true)
-      return
+    setShowScrollButton(false)
+
+    const pinTick = () => {
+      pinRafRef.current = null
+      const scroller = scrollerRef.current
+      if (!scroller) return
+
+      const remaining = distanceFromBottom(scroller)
+
+      if (remaining <= NEAR_BOTTOM_PX) {
+        // Close enough — attach follow; growth loop keeps us synced.
+        // Nudge remaining distance in small steps (never one-shot to max).
+        if (remaining > 0) {
+          applyScrollDelta(scroller, remaining)
+        }
+        syncHeight(scroller)
+        attachFollow()
+        return
+      }
+
+      // Ease a fraction of the remaining distance each frame.
+      const step = Math.max(12, remaining * 0.2)
+      applyScrollDelta(scroller, step)
+      syncHeight(scroller)
+      pinRafRef.current = requestAnimationFrame(pinTick)
     }
 
-    ensureFollowLoop()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lastContent, lastRole, isThinking, isStreaming, isHome, messages.length])
+    followRef.current = true
+    pinRafRef.current = requestAnimationFrame(pinTick)
+  }
 
   useEffect(() => {
     return () => {
-      stopFollowLoop()
-      stopPinLoop()
+      if (pinRafRef.current != null) cancelAnimationFrame(pinRafRef.current)
     }
   }, [])
 
@@ -250,7 +284,7 @@ export function ChatThread() {
         title="Vai in fondo"
         tabIndex={showScrollButton ? 0 : -1}
         aria-hidden={!showScrollButton}
-        onClick={scrollToBottomSmooth}
+        onClick={scrollToBottomFollow}
       >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path
