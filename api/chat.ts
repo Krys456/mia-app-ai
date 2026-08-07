@@ -17,7 +17,7 @@ export const config = {
 function scheduleMemoryPipeline(userMessage: string, assistantMessage: string) {
   const task = (async () => {
     try {
-      const { runMemoryPipeline } = await import('./_lib/brain-memory.js')
+      const { runMemoryPipeline } = await import('./_lib/brain-memory')
       await runMemoryPipeline({ userMessage, assistantMessage })
     } catch {
       // Ignore — memory must never affect the chat response.
@@ -37,7 +37,7 @@ function scheduleMemoryPipeline(userMessage: string, assistantMessage: string) {
  */
 async function loadRelevantMemoryBlock(userMessage: string): Promise<string> {
   try {
-    const { searchMemories } = await import('./_lib/brain-memory.js')
+    const { searchMemories } = await import('./_lib/brain-memory')
     const memories = await searchMemories(userMessage, { limit: 5 })
 
     if (!Array.isArray(memories) || memories.length === 0) {

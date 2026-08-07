@@ -1,4 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import { getServiceSupabase } from '../_lib/supabase'
 
 export const config = {
   runtime: 'nodejs',
@@ -15,10 +17,6 @@ type MemoryCreateInput = {
 type ValidationResult =
   | { ok: true; data: MemoryCreateInput }
   | { ok: false; errors: Record<string, string> }
-
-type SupabaseLike = {
-  from: (table: string) => any
-}
 
 const DEFAULT_API_USER_EMAIL = 'brain-api@local'
 const DEFAULT_API_USER_NAME = 'BrAIn API'
@@ -93,35 +91,7 @@ function validateMemoryCreate(body: Record<string, unknown>): ValidationResult {
   }
 }
 
-async function getSupabase(): Promise<SupabaseLike> {
-  const url =
-    process.env.SUPABASE_URL?.trim() || process.env.VITE_SUPABASE_URL?.trim() || ''
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || ''
-
-  if (!url) {
-    throw new Error(
-      'Missing SUPABASE_URL. Set SUPABASE_URL (preferred) or VITE_SUPABASE_URL in the environment.',
-    )
-  }
-
-  if (!key) {
-    throw new Error(
-      'Missing SUPABASE_SERVICE_ROLE_KEY. Set SUPABASE_SERVICE_ROLE_KEY in the environment for memory API inserts.',
-    )
-  }
-
-  // Hide the specifier from static bundlers that hoist dynamic imports into cold-start.
-  const spec = '@supabase/' + 'supabase-js'
-  const { createClient } = await import(spec)
-  return createClient(url, key, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
-  }) as unknown as SupabaseLike
-}
-
-async function ensureDefaultUserId(supabase: SupabaseLike): Promise<string> {
+async function ensureDefaultUserId(supabase: SupabaseClient): Promise<string> {
   const { data: existing, error: lookupError } = await supabase
     .from('users')
     .select('id')
@@ -155,7 +125,7 @@ async function ensureDefaultUserId(supabase: SupabaseLike): Promise<string> {
 }
 
 async function saveMemory(input: MemoryCreateInput): Promise<void> {
-  const supabase = await getSupabase()
+  const supabase = await getServiceSupabase()
   const userId = await ensureDefaultUserId(supabase)
 
   const { error: insertError } = await supabase.from('memories').insert({
@@ -176,7 +146,7 @@ async function saveMemory(input: MemoryCreateInput): Promise<void> {
 }
 
 async function listMemories(category?: string) {
-  const supabase = await getSupabase()
+  const supabase = await getServiceSupabase()
   const userId = await ensureDefaultUserId(supabase)
 
   let request = supabase
@@ -195,7 +165,7 @@ async function listMemories(category?: string) {
     throw new Error(`Failed to list public.memories: ${error.message}`)
   }
 
-  return (data ?? []).map((row: Record<string, unknown>) => ({
+  return (data ?? []).map((row) => ({
     id: String(row.id),
     category: String(row.category ?? ''),
     title: String(row.title ?? ''),
