@@ -1,10 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { runMemoryPipeline, searchMemories } from './_lib/brain-memory'
-import './_lib/supabase'
+import { runMemoryPipeline, searchMemories } from '../lib/server/brain-memory.js'
 
-console.log('API loaded')
-
-// Static relative imports ensure Vercel bundles api/_lib helpers into this function.
 // OpenAI and waitUntil stay dynamic (node_modules). Memory call sites remain try/catch.
 
 export const config = {
@@ -139,8 +135,6 @@ function sendJson(res: VercelResponse, status: number, payload: Record<string, u
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  console.log('Handler started')
-
   if (req.method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Origin', '*')
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')

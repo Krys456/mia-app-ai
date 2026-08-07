@@ -6,23 +6,22 @@
   "installCommand": "npm install",
   "functions": {
     "api/chat.ts": {
-      "includeFiles": "api/_lib/**",
+      "includeFiles": "lib/server/**",
       "maxDuration": 60
     },
     "api/memory-test.ts": {
-      "includeFiles": "api/_lib/**",
+      "includeFiles": "lib/server/**",
       "maxDuration": 15
     },
     "api/vision.ts": {
-      "includeFiles": "api/_lib/**",
       "maxDuration": 15
     },
     "api/memories/index.ts": {
-      "includeFiles": "api/_lib/**",
+      "includeFiles": "lib/server/**",
       "maxDuration": 15
     },
     "api/memories/[id].ts": {
-      "includeFiles": "api/_lib/**",
+      "includeFiles": "lib/server/**",
       "maxDuration": 15
     }
   },

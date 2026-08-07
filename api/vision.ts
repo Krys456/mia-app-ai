@@ -1,7 +1,4 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import './_lib/supabase'
-
-console.log('API loaded')
 
 export const config = {
   runtime: 'nodejs',
@@ -18,8 +15,6 @@ function sendJson(res: VercelResponse, status: number, payload: unknown) {
  * Phase 1: acknowledge receipt only — no AI analysis.
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  console.log('Handler started')
-
   if (req.method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Origin', '*')
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
