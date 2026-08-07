@@ -6,8 +6,12 @@ export {
   saveMemory,
   listMemories,
   searchMemories,
+  getMemoryById,
+  updateMemory,
+  deleteMemory,
   analyzeConversation,
   runMemoryPipeline,
+  ensureDefaultUserId,
 } from '../../lib/server/brain-memory.js'
 
 export type SaveMemoryInput = {

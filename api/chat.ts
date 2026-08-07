@@ -1,20 +1,17 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { runMemoryPipeline, searchMemories } from '../lib/server/brain-memory.js'
 
-// OpenAI and waitUntil stay dynamic (node_modules). Memory call sites remain try/catch.
+// Memory stays fail-soft: dynamic-import lib/server only after the request starts.
+// OpenAI / waitUntil also load after the handler starts.
 
 export const config = {
   runtime: 'nodejs',
   maxDuration: 60,
 }
 
-/**
- * Fire-and-forget memory pipeline. Never throws to the chat path.
- * Failures are ignored so chat always returns normally.
- */
 function scheduleMemoryPipeline(userMessage: string, assistantMessage: string) {
   const task = (async () => {
     try {
+      const { runMemoryPipeline } = await import('../lib/server/brain-memory.js')
       await runMemoryPipeline({ userMessage, assistantMessage })
     } catch {
       // Ignore — memory must never affect the chat response.
@@ -31,12 +28,9 @@ function scheduleMemoryPipeline(userMessage: string, assistantMessage: string) {
   })()
 }
 
-/**
- * Retrieve relevant memories for the latest user turn.
- * On any failure, returns '' so chat continues normally.
- */
 async function loadRelevantMemoryBlock(userMessage: string): Promise<string> {
   try {
+    const { searchMemories } = await import('../lib/server/brain-memory.js')
     const memories = await searchMemories(userMessage, { limit: 5 })
 
     if (!Array.isArray(memories) || memories.length === 0) {
@@ -44,7 +38,7 @@ async function loadRelevantMemoryBlock(userMessage: string): Promise<string> {
     }
 
     const lines = memories
-      .map((memory) => {
+      .map((memory: { title?: string; content?: string }) => {
         const title = typeof memory.title === 'string' ? memory.title.trim() : ''
         const content = typeof memory.content === 'string' ? memory.content.trim() : ''
         if (!title && !content) return null
@@ -52,7 +46,7 @@ async function loadRelevantMemoryBlock(userMessage: string): Promise<string> {
         if (!content) return `- ${title}`
         return `- ${title}: ${content}`
       })
-      .filter((line): line is string => Boolean(line))
+      .filter((line: string | null): line is string => Boolean(line))
 
     if (lines.length === 0) {
       return ''
@@ -173,7 +167,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const OpenAI = (await import('openai')).default
-    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+    const client = new OpenAI({ apiKey })
     const model = process.env.OPENAI_MODEL?.trim() || 'gpt-4o-mini'
 
     const lastUserMessage = [...messages].reverse().find((msg) => msg.role === 'user')
@@ -198,7 +192,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (lastUserMessage?.content) {
-      // Background only — do not await; response format stays { content }.
       scheduleMemoryPipeline(lastUserMessage.content, content)
     }
 
@@ -209,13 +202,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     try {
       const OpenAI = (await import('openai')).default
       if (error instanceof OpenAI.APIError) {
-        console.error('[api/chat] OpenAI error details', {
-          status: error.status,
-          code: error.code,
-          type: error.type,
-          message: error.message,
-        })
-
         const status =
           typeof error.status === 'number' && error.status >= 400 && error.status < 600
             ? error.status
@@ -228,7 +214,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         })
       }
     } catch {
-      // Fall through to generic error if OpenAI module cannot be loaded.
+      // Fall through
     }
 
     return sendJson(res, 500, {
