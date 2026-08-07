@@ -1,7 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { getServiceSupabase } from '../_lib/supabase'
-
-console.log('API loaded')
+import { getServiceSupabase } from '../../lib/server/supabase.js'
 
 export const config = {
   runtime: 'nodejs',
@@ -183,7 +181,6 @@ async function listMemories(category?: string) {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  console.log('Handler started')
   try {
     if (req.method === 'OPTIONS') {
       res.setHeader('Access-Control-Allow-Origin', '*')

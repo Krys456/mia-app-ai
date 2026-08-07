@@ -2,11 +2,19 @@
  * BrAIn Memory Pipeline — orchestrates analyze → optional save.
  */
 
-import { runMemoryPipeline, type MemoryDecision } from './brain-memory'
+import { runMemoryPipeline } from '../../lib/server/brain-memory.js'
 
 export type MemoryPipelineInput = {
   userMessage: string
   assistantMessage: string
+}
+
+export type MemoryDecision = {
+  save: boolean
+  category: string
+  title: string
+  content: string
+  importance: number
 }
 
 export type MemoryPipelineResult = {

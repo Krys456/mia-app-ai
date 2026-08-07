@@ -1,8 +1,8 @@
 /**
- * BrAIn Memory Engine — rule-based analysis via brain-memory runtime.
+ * BrAIn Memory Engine — rule-based analysis via lib/server/brain-memory.js
  */
 
-import { analyzeConversation, type MemoryDecision } from './brain-memory'
+import { analyzeConversation } from '../../lib/server/brain-memory.js'
 
 export type ConversationMessage = {
   role: string
@@ -22,7 +22,13 @@ export type MemoryObject = {
   importance: number
 }
 
-export type { MemoryDecision }
+export type MemoryDecision = {
+  save: boolean
+  category: string
+  title: string
+  content: string
+  importance: number
+}
 
 export class MemoryEngine {
   async analyzeConversation(

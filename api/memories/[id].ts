@@ -7,10 +7,7 @@ import {
   listMemoriesForUser,
   sanitizeUserId,
   updateMemoryForUser,
-} from '../../_lib/db'
-import '../../_lib/supabase'
-
-console.log('API loaded')
+} from '../../lib/server/db.js'
 
 export const config = {
   runtime: 'nodejs',
@@ -48,8 +45,6 @@ function readUserId(req: VercelRequest): string | null {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  console.log('Handler started')
-
   if (req.method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Origin', '*')
     res.setHeader('Access-Control-Allow-Methods', 'GET, PUT, DELETE, OPTIONS')

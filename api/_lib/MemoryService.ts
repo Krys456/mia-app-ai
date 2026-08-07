@@ -1,17 +1,23 @@
 /**
- * BrAIn Memory Service — thin wrapper over brain-memory runtime.
+ * BrAIn Memory Service — thin wrapper over lib/server/brain-memory.js
  */
 
 import {
   listMemories,
   saveMemory as saveMemoryRuntime,
   searchMemories,
-  type MemoryRecord,
-  type SaveMemoryInput as RuntimeSaveInput,
-} from './brain-memory'
+} from '../../lib/server/brain-memory.js'
 
-export type SaveMemoryInput = RuntimeSaveInput & {
+export type SaveMemoryInput = {
+  category: string
+  title: string
+  content: string
+  importance?: number
   userId?: string
+  tags?: string[]
+  source?: string
+  status?: string
+  confidence?: number
 }
 
 export type UpdateMemoryInput = {
@@ -32,7 +38,13 @@ export type SearchMemoryOptions = {
   limit?: number
 }
 
-export type MemorySearchResult = MemoryRecord
+export type MemorySearchResult = {
+  id: string
+  category: string
+  title: string
+  content: string
+  importance: number
+}
 
 export class MemoryService {
   async saveMemory(input: SaveMemoryInput): Promise<void> {
