@@ -10,6 +10,7 @@ import {
 } from 'react'
 import { requestChatCompletion, type ChatApiMessage } from '../lib/chatApi'
 import { buildSystemPrompt } from '../lib/personality'
+import { revealReplyText } from '../lib/revealText'
 import { getOrCreateUserId } from '../lib/userId'
 import type { ThemeDefinition } from '../lib/themes'
 import {
@@ -123,61 +124,6 @@ function saveSettings(settings: AppSettings) {
 
 function uid(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`
-}
-
-/**
- * Reveal reply text gradually so the chat can follow the "writing" line.
- * Batches by words via rAF — avoids huge one-shot layout jumps.
- */
-function revealReplyText(
-  fullText: string,
-  onProgress: (partial: string) => void,
-  isCancelled: () => boolean,
-): Promise<void> {
-  const text = fullText.trim()
-  if (!text) {
-    onProgress('')
-    return Promise.resolve()
-  }
-
-  // Short replies appear quickly in a couple of frames.
-  if (text.length < 80) {
-    onProgress(text)
-    return Promise.resolve()
-  }
-
-  const tokens = text.split(/(\s+)/)
-  let index = 0
-  let acc = ''
-
-  // Aim for ~1.5–2.5s of reveal for typical replies, longer for very long ones.
-  const framesTarget = Math.min(180, Math.max(36, Math.ceil(tokens.length / 3)))
-  const perFrame = Math.max(1, Math.ceil(tokens.length / framesTarget))
-
-  return new Promise((resolve) => {
-    const step = () => {
-      if (isCancelled()) {
-        resolve()
-        return
-      }
-
-      let n = 0
-      while (n < perFrame && index < tokens.length) {
-        acc += tokens[index]
-        index += 1
-        n += 1
-      }
-      onProgress(acc)
-
-      if (index < tokens.length) {
-        requestAnimationFrame(step)
-      } else {
-        resolve()
-      }
-    }
-
-    requestAnimationFrame(step)
-  })
 }
 
 interface AppState {

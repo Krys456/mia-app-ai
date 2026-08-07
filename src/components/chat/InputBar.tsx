@@ -1,4 +1,4 @@
-import { useState, type FormEvent, type KeyboardEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { useChat } from '../../context/ChatContext'
 import './InputBar.css'
 
@@ -10,7 +10,15 @@ interface InputBarProps {
 export function InputBar({ onMessageSent }: InputBarProps) {
   const { sendMessage, isThinking, isStreaming } = useChat()
   const [value, setValue] = useState('')
+  const inputRef = useRef<HTMLTextAreaElement>(null)
   const busy = isThinking || isStreaming
+
+  useEffect(() => {
+    const el = inputRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${Math.min(el.scrollHeight, 128)}px`
+  }, [value])
 
   const submit = () => {
     const text = value.trim()
@@ -39,6 +47,7 @@ export function InputBar({ onMessageSent }: InputBarProps) {
           Messaggio per LAIfe
         </label>
         <textarea
+          ref={inputRef}
           id="laife-input"
           className="input-bar__input"
           rows={1}
@@ -48,6 +57,9 @@ export function InputBar({ onMessageSent }: InputBarProps) {
           placeholder="Messaggio a LAIfe…"
           disabled={busy}
           enterKeyHint="send"
+          autoComplete="off"
+          autoCorrect="on"
+          spellCheck
         />
         <button
           type="submit"

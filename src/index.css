@@ -76,7 +76,8 @@
 
   /* Edge-to-edge layout: shared side gutters (no centered content column). */
   --page-gutter: 1rem;
-  --space-page-y: 1.15rem;
+  --space-page-y: 1.05rem;
+  --app-height: 100dvh;
   --header-h: 3.75rem;
   --header-pad-y: 0.65rem;
 

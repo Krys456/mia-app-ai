@@ -1,9 +1,10 @@
 .code-block {
-  margin: 0.65em 0 1em;
+  margin: 0.75em 0 1.05em;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: color-mix(in srgb, var(--code-bg) 88%, var(--bg));
   overflow: hidden;
+  max-width: 100%;
   animation: code-block-in var(--duration) var(--ease-out) both;
 }
 
@@ -62,10 +63,13 @@
 
 .code-block__pre {
   margin: 0;
-  padding: 0.85rem 0.95rem;
+  padding: 0.9rem 1rem;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
   background: transparent;
   border: 0;
+  scrollbar-width: thin;
 }
 
 .code-block__pre code {

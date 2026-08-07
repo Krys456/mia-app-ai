@@ -55,19 +55,24 @@ function MessageBubbleComponent({
     <article
       className={`bubble bubble--${message.role}${actionsPinned ? ' bubble--actions-open' : ''}`}
       aria-label={message.role === 'user' ? 'Tu' : 'LAIfe'}
+      tabIndex={isAssistant && showActions ? 0 : undefined}
       onPointerDown={onPointerDown}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
       onPointerLeave={onPointerUp}
       onKeyDown={onKeyDown}
     >
-      {isAssistant ? <span className="bubble__label">LAIfe</span> : null}
+      {isAssistant ? (
+        <span className="bubble__label">LAIfe</span>
+      ) : (
+        <span className="bubble__label bubble__label--user">Tu</span>
+      )}
       <div className={`bubble__body${isEmptyStream ? ' bubble__body--typing' : ''}`}>
         {isAssistant ? (
           isEmptyStream ? (
             <TypingAnimation />
           ) : (
-            <StreamingRenderer content={message.content} />
+            <StreamingRenderer content={message.content} isStreaming={isStreaming} />
           )
         ) : (
           <p>{message.content}</p>

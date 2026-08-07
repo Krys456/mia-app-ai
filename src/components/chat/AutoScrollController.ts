@@ -16,7 +16,7 @@ export type AutoScrollListener = (snapshot: {
   showButton: boolean
 }) => void
 
-const NEAR_BOTTOM_PX = 40
+const NEAR_BOTTOM_PX = 56
 
 function distanceFromBottom(el: HTMLElement): number {
   return el.scrollHeight - el.scrollTop - el.clientHeight
@@ -42,6 +42,8 @@ export class AutoScrollController {
   private pinRafId: number | null = null
   private streaming = false
   private hasUnseenGrowth = false
+  /** Residual growth to ease in when a single frame adds a large block. */
+  private pendingDelta = 0
   private listeners = new Set<AutoScrollListener>()
   private bound = false
 
@@ -89,6 +91,7 @@ export class AutoScrollController {
 
     if (near) {
       this.hasUnseenGrowth = false
+      this.pendingDelta = 0
       this.setState(this.streaming ? 'FOLLOWING' : 'IDLE')
       return
     }
@@ -133,9 +136,11 @@ export class AutoScrollController {
     if (next === 'FOLLOWING' && this.scroller) {
       this.lastHeight = this.scroller.scrollHeight
       this.hasUnseenGrowth = false
+      this.pendingDelta = 0
     }
     if (next !== 'FOLLOWING') {
       this.stopPin()
+      this.pendingDelta = 0
     }
     this.emit()
   }
@@ -192,6 +197,7 @@ export class AutoScrollController {
   /** User sent a message — always resume following the new turn. */
   onUserMessage() {
     this.hasUnseenGrowth = false
+    this.pendingDelta = 0
     this.setState('FOLLOWING')
     this.scrollToBottom()
   }
@@ -211,6 +217,27 @@ export class AutoScrollController {
     this.ignoreScroll = false
   }
 
+  /**
+   * Follow content growth smoothly: small deltas apply immediately;
+   * large spikes are eased over a few frames so scroll never jumps.
+   */
+  private followGrowth(growth: number) {
+    this.pendingDelta += growth
+    if (this.pendingDelta <= 0) {
+      this.pendingDelta = 0
+      return
+    }
+
+    // Soft follow: take most of the pending delta each frame, never all of a huge spike at once.
+    const step =
+      this.pendingDelta <= 24
+        ? this.pendingDelta
+        : Math.max(16, this.pendingDelta * 0.42)
+
+    this.applyDelta(step)
+    this.pendingDelta -= step
+  }
+
   private tick = () => {
     this.rafId = requestAnimationFrame(this.tick)
     const el = this.scroller
@@ -220,12 +247,16 @@ export class AutoScrollController {
     const growth = height - this.lastHeight
     this.lastHeight = height
 
-    if (growth <= 0) return
-
     if (this.state === 'FOLLOWING') {
-      this.applyDelta(growth)
+      if (growth > 0) {
+        this.followGrowth(growth)
+      } else if (this.pendingDelta > 0.5) {
+        this.followGrowth(0)
+      }
       return
     }
+
+    if (growth <= 0) return
 
     // New content while paused / idle away from bottom → show jump button.
     if (this.state === 'PAUSED_BY_USER' || distanceFromBottom(el) > NEAR_BOTTOM_PX) {
@@ -258,6 +289,7 @@ export class AutoScrollController {
 
     this.stopPin()
     this.hasUnseenGrowth = false
+    this.pendingDelta = 0
     this.setState('FOLLOWING')
 
     const pinTick = () => {
@@ -266,14 +298,17 @@ export class AutoScrollController {
       if (!scroller || this.state === 'PAUSED_BY_USER') return
 
       const remaining = distanceFromBottom(scroller)
-      if (remaining <= NEAR_BOTTOM_PX) {
+      if (remaining <= 2) {
         if (remaining > 0) this.applyDelta(remaining)
         this.lastHeight = scroller.scrollHeight
+        this.pendingDelta = 0
         this.setState(this.streaming ? 'FOLLOWING' : 'IDLE')
         return
       }
 
-      this.applyDelta(Math.max(12, remaining * 0.2))
+      // Ease-out toward bottom — never teleport.
+      const step = Math.max(10, remaining * 0.18)
+      this.applyDelta(step)
       this.lastHeight = scroller.scrollHeight
       this.pinRafId = requestAnimationFrame(pinTick)
     }
