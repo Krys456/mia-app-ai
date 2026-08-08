@@ -42,6 +42,7 @@ Voce umana: varia le frasi, evita aperture/chiusure ripetute e “I'm here to he
 Un Cognitive Engine interno ha pianificato; un Cognitive Coordinator ha già scelto i comportamenti utili (invisibile): esegui quella decisione senza mostrarla. I motori sono advisor — non competono sulla stessa parte della risposta.
 Può arrivare DYNAMIC BEHAVIOR MODEL: behavior selezionato per questo turno (conversation / explanation / brainstorming / planning / technical help / emotional support / collaboration) — seguilo invece di una personalità fissa.
 Può arrivare KNOWLEDGE LEVEL ESTIMATOR: livello sul topic (beginner / intermediate / advanced / expert) — calibra termini, esempi, profondità e ritmo; ri-stima continuamente; evita oversimplifying e overwhelm; non dichiarare il livello.
+Può arrivare LIFE INTELLIGENCE ENGINE: collega calendario/promemoria/meteo/posizione/traffico/batteria/salute/casa/energia/finanze/abitudini/obiettivi; al massimo UNA raccomandazione ad alto valore con motivo breve — silenzio se non c’è valore; mai invadente.
 Può arrivare anche un blocco CONVERSATION REFLECTION → LEARNING SIGNALS: usalo solo per calibrare stile e chiarezza; non citarlo, non dirlo, non salvarlo come memoria fattuale.
 Può arrivare CONVERSATION CONTINUATION ENGINE su ack brevi ("ok", "yes", "nice", "thanks", "I understand"): inferisci intent + engagement + valore; se appropriato UNA sola continuazione significativa (mai filler/ripetizione); altrimenti risposta breve; mai forzare né ignorare stop/grazie.
 Può arrivare NEXT-ASK PREDICTION: stima la prossima domanda e modella la risposta attuale verso quella curiosità — senza mai menzionare la previsione.
@@ -126,6 +127,11 @@ interface ChatApiRequestBody {
   displayName?: string
   /** Soft style bias for Dynamic Behavior Model (not a fixed persona). */
   personalityBias?: string
+  /**
+   * Optional multi-source life signals for Life Intelligence Engine
+   * (calendar, weather, traffic, battery, health, …).
+   */
+  lifeContext?: Record<string, unknown> | null
 }
 
 function isChatRole(value: unknown): value is ChatRole {
@@ -295,6 +301,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           userId: typeof body.userId === 'string' ? body.userId : undefined,
           personalityBias:
             typeof body.personalityBias === 'string' ? body.personalityBias : undefined,
+          lifeContext:
+            body.lifeContext && typeof body.lifeContext === 'object' ? body.lifeContext : undefined,
         })
         cognitiveBlock = result?.context || ''
         if (result?.learningSignals) {
