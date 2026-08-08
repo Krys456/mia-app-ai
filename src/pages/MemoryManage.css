@@ -244,7 +244,7 @@
 .memory-panel {
   position: relative;
   z-index: 1;
-  width: min(100%, 28rem);
+  width: 100%;
   max-height: min(88vh, 40rem);
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -280,6 +280,7 @@
   }
 
   .memory-panel {
+    width: min(100%, 28rem);
     border-radius: var(--radius-md);
     margin: 1rem;
   }
