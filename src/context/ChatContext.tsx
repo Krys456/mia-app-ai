@@ -21,6 +21,12 @@ import {
   sanitizeConversationMemoryMap,
 } from '../lib/conversationMemoryMap'
 import {
+  clearConversationPreferenceProfile,
+  getConversationPreferenceProfile,
+  saveConversationPreferenceProfile,
+  sanitizeConversationPreferenceProfile,
+} from '../lib/conversationPreferenceProfile'
+import {
   getPendingAutomation,
   savePendingAutomation,
 } from '../lib/pendingAutomation'
@@ -354,6 +360,12 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     } catch {
       /* ignore */
     }
+    // Conversation Preference Profile is session-scoped — reset on new chat.
+    try {
+      clearConversationPreferenceProfile()
+    } catch {
+      /* ignore */
+    }
     dispatch({ type: 'NEW_CHAT' })
   }, [abortActiveCompletion])
   const openSettings = useCallback(() => dispatch({ type: 'OPEN_SETTINGS' }), [])
@@ -390,6 +402,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             welcomeSession,
             pendingAutomation,
             conversationMemoryMap,
+            conversationPreferenceProfile,
           } =
             await requestChatCompletion(
             {
@@ -403,6 +416,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
               personalityBias: personalization.personality || 'automatic',
               pendingAutomation: getPendingAutomation() || undefined,
               conversationMemoryMap: getConversationMemoryMap() || undefined,
+              conversationPreferenceProfile:
+                getConversationPreferenceProfile() || undefined,
             },
             { signal: controller.signal },
           )
@@ -462,6 +477,16 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             try {
               const cleaned = sanitizeConversationMemoryMap(conversationMemoryMap)
               if (cleaned) saveConversationMemoryMap(cleaned)
+            } catch {
+              /* ignore */
+            }
+          }
+          if (conversationPreferenceProfile) {
+            try {
+              const cleaned = sanitizeConversationPreferenceProfile(
+                conversationPreferenceProfile,
+              )
+              if (cleaned) saveConversationPreferenceProfile(cleaned)
             } catch {
               /* ignore */
             }

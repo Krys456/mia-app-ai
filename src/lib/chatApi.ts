@@ -3,6 +3,7 @@ import {
   type LearningSignals,
 } from './learningSignals'
 import { sanitizeConversationMemoryMap } from './conversationMemoryMap'
+import { sanitizeConversationPreferenceProfile } from './conversationPreferenceProfile'
 
 export type ChatApiRole = 'user' | 'assistant' | 'system'
 
@@ -36,6 +37,8 @@ export interface ChatApiRequest {
   pendingAutomation?: Record<string, unknown> | null
   /** Conversation Memory Map — explored topics, goals, explanations, … */
   conversationMemoryMap?: Record<string, unknown> | null
+  /** Conversation Preference Profile — style prefs from feedback. */
+  conversationPreferenceProfile?: Record<string, unknown> | null
 }
 
 export interface ChatApiSuccess {
@@ -53,6 +56,8 @@ export interface ChatApiSuccess {
   pendingAutomation?: Record<string, unknown> | null
   /** Internal only — Conversation Memory Map echo. */
   conversationMemoryMap?: Record<string, unknown> | null
+  /** Internal only — Conversation Preference Profile echo. */
+  conversationPreferenceProfile?: Record<string, unknown> | null
 }
 
 export interface ChatApiErrorBody {
@@ -108,6 +113,9 @@ export async function requestChatCompletion(
       ...(payload.conversationMemoryMap
         ? { conversationMemoryMap: payload.conversationMemoryMap }
         : {}),
+      ...(payload.conversationPreferenceProfile
+        ? { conversationPreferenceProfile: payload.conversationPreferenceProfile }
+        : {}),
     }),
     signal: init?.signal,
   })
@@ -150,5 +158,8 @@ export async function requestChatCompletion(
           ? data.pendingAutomation
           : undefined,
     conversationMemoryMap: sanitizeConversationMemoryMap(data.conversationMemoryMap),
+    conversationPreferenceProfile: sanitizeConversationPreferenceProfile(
+      data.conversationPreferenceProfile,
+    ),
   }
 }
