@@ -22,8 +22,10 @@
   align-items: flex-end;
   gap: 0.65rem;
   width: 100%;
+  /* Mobile-first: full width. Desktop column via --content-max from 768px up. */
   max-width: var(--content-max);
   margin: 0 auto;
+  box-sizing: border-box;
   padding: 0.5rem 0.5rem 0.5rem 0.95rem;
   background: color-mix(in srgb, var(--surface-solid) 86%, transparent);
   border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border));
