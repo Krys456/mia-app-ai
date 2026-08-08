@@ -266,6 +266,7 @@ function reducer(state: AppState, action: Action): AppState {
         role: 'assistant',
         content: action.error,
         createdAt: Date.now(),
+        kind: 'error',
       }
       return {
         ...state,
@@ -299,7 +300,6 @@ interface ChatContextValue {
   isThinking: boolean
   isStreaming: boolean
   memoryNotice: 'saved' | 'updated' | null
-  systemPrompt: string
   newChat: () => void
   openSettings: () => void
   closeSettings: () => void
@@ -314,12 +314,29 @@ interface ChatContextValue {
 
 const ChatContext = createContext<ChatContextValue | null>(null)
 
+function isAbortError(error: unknown): boolean {
+  return (
+    (error instanceof DOMException && error.name === 'AbortError') ||
+    (error instanceof Error && error.name === 'AbortError')
+  )
+}
+
 export function ChatProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, undefined, createInitialState)
   const generationRef = useRef(0)
+  /** Sync guard — React state lags one frame behind double Enter / double tap. */
+  const inFlightRef = useRef(false)
+  const abortRef = useRef<AbortController | null>(null)
+
+  const abortActiveCompletion = useCallback(() => {
+    abortRef.current?.abort()
+    abortRef.current = null
+  }, [])
 
   const newChat = useCallback(() => {
     generationRef.current += 1
+    inFlightRef.current = false
+    abortActiveCompletion()
     // Close the conversation: keep preference/mistake signals, drop turn noise.
     // Invisible — never surfaces in UI; never writes factual memory.
     try {
@@ -328,7 +345,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       /* ignore */
     }
     dispatch({ type: 'NEW_CHAT' })
-  }, [])
+  }, [abortActiveCompletion])
   const openSettings = useCallback(() => dispatch({ type: 'OPEN_SETTINGS' }), [])
   const closeSettings = useCallback(() => dispatch({ type: 'CLOSE_SETTINGS' }), [])
   const toggleSettings = useCallback(() => dispatch({ type: 'TOGGLE_SETTINGS' }), [])
@@ -347,18 +364,25 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
   const runAssistantCompletion = useCallback(
     (history: ChatApiMessage[], personalization: PersonalizationSettings) => {
+      abortActiveCompletion()
+      const controller = new AbortController()
+      abortRef.current = controller
       const generation = ++generationRef.current
+      inFlightRef.current = true
       const prompt = buildSystemPrompt(personalization)
 
       void (async () => {
         try {
-          const { content: reply, memoryEvent, learningSignals } = await requestChatCompletion({
-            messages: history,
-            systemPrompt: prompt,
-            userId: getOrCreateUserId(),
-            memoryEnabled: personalization.memoryEnabled !== false,
-            learningSignals: getLearningSignals(),
-          })
+          const { content: reply, memoryEvent, learningSignals } = await requestChatCompletion(
+            {
+              messages: history,
+              systemPrompt: prompt,
+              userId: getOrCreateUserId(),
+              memoryEnabled: personalization.memoryEnabled !== false,
+              learningSignals: getLearningSignals(),
+            },
+            { signal: controller.signal },
+          )
 
           if (generation !== generationRef.current) return
 
@@ -393,27 +417,35 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           })
         } catch (error) {
           if (generation !== generationRef.current) return
+          if (isAbortError(error) || controller.signal.aborted) return
           const message = error instanceof Error ? error.message : String(error)
           dispatch({ type: 'ASSISTANT_FAIL', error: message })
+        } finally {
+          if (generation === generationRef.current) {
+            inFlightRef.current = false
+            if (abortRef.current === controller) abortRef.current = null
+          }
         }
       })()
     },
-    [],
+    [abortActiveCompletion],
   )
 
   const sendMessage = useCallback(
     (raw: string) => {
       const content = raw.trim()
-      if (!content || state.isThinking || state.isStreaming) return
+      if (!content || inFlightRef.current || state.isThinking || state.isStreaming) return
 
       const personalization = state.settings.personalization
       const history: ChatApiMessage[] = [
         ...state.messages
           .filter((m) => m.role === 'user' || m.role === 'assistant')
+          .filter((m) => m.kind !== 'error')
           .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
         { role: 'user', content },
       ]
 
+      inFlightRef.current = true
       dispatch({ type: 'SEND_USER', content })
       runAssistantCompletion(history, personalization)
     },
@@ -428,11 +460,12 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
   const regenerateAssistant = useCallback(
     (assistantId: string) => {
-      if (state.isThinking || state.isStreaming) return
+      if (inFlightRef.current || state.isThinking || state.isStreaming) return
 
       const msgs = state.messages
       const idx = msgs.findIndex((m) => m.id === assistantId)
       if (idx < 0 || msgs[idx]?.role !== 'assistant') return
+      if (msgs[idx]?.kind === 'error') return
 
       let userIdx = idx - 1
       while (userIdx >= 0 && msgs[userIdx]?.role !== 'user') userIdx -= 1
@@ -441,8 +474,10 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       const kept = msgs.slice(0, userIdx + 1)
       const history: ChatApiMessage[] = kept
         .filter((m) => m.role === 'user' || m.role === 'assistant')
+        .filter((m) => m.kind !== 'error')
         .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }))
 
+      inFlightRef.current = true
       dispatch({ type: 'TRIM_TO', count: kept.length, thinking: true })
       runAssistantCompletion(history, state.settings.personalization)
     },
@@ -455,11 +490,6 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     ],
   )
 
-  const systemPrompt = useMemo(
-    () => buildSystemPrompt(state.settings.personalization),
-    [state.settings.personalization],
-  )
-
   const value = useMemo<ChatContextValue>(
     () => ({
       messages: state.messages,
@@ -468,7 +498,6 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       isThinking: state.isThinking,
       isStreaming: state.isStreaming,
       memoryNotice: state.memoryNotice,
-      systemPrompt,
       newChat,
       openSettings,
       closeSettings,
@@ -486,7 +515,6 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       state.isThinking,
       state.isStreaming,
       state.memoryNotice,
-      systemPrompt,
       newChat,
       openSettings,
       closeSettings,

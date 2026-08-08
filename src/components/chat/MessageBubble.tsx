@@ -30,7 +30,8 @@ function MessageBubbleComponent({
 }: MessageBubbleProps) {
   const { regenerateAssistant, isThinking, isStreaming: chatStreaming } = useChat()
   const isAssistant = message.role === 'assistant'
-  const isEmptyStream = isAssistant && !message.content && isStreaming
+  const isError = isAssistant && message.kind === 'error'
+  const isEmptyStream = isAssistant && !message.content && isStreaming && !isError
   const [actionsPinned, setActionsPinned] = useState(false)
   const longPressTimer = useRef<number | null>(null)
 
@@ -44,7 +45,7 @@ function MessageBubbleComponent({
   useEffect(() => () => clearLongPress(), [clearLongPress])
 
   const onPointerDown = (event: PointerEvent<HTMLElement>) => {
-    if (!isAssistant || isStreaming || !showActions) return
+    if (!isAssistant || isStreaming || !showActions || isError) return
     if (event.pointerType === 'mouse') return
     clearLongPress()
     longPressTimer.current = window.setTimeout(() => {
@@ -61,9 +62,10 @@ function MessageBubbleComponent({
 
   return (
     <article
-      className={`bubble bubble--${message.role}${actionsPinned ? ' bubble--actions-open' : ''}`}
-      aria-label={message.role === 'user' ? 'Tu' : 'LAIfe'}
-      tabIndex={isAssistant && showActions ? 0 : undefined}
+      className={`bubble bubble--${message.role}${isError ? ' bubble--error' : ''}${actionsPinned ? ' bubble--actions-open' : ''}`}
+      aria-label={message.role === 'user' ? 'Tu' : isError ? 'Errore' : 'LAIfe'}
+      role={isError ? 'alert' : undefined}
+      tabIndex={isAssistant && showActions && !isError ? 0 : undefined}
       onPointerDown={onPointerDown}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
@@ -74,11 +76,15 @@ function MessageBubbleComponent({
         <>
           <div className="bubble__meta">
             <LaifeMark />
-            <span className="bubble__label">LAIfe</span>
+            <span className="bubble__label">{isError ? 'Errore' : 'LAIfe'}</span>
           </div>
-          <div className={`bubble__body${isEmptyStream ? ' bubble__body--typing' : ''}`}>
+          <div className={`bubble__body${isEmptyStream ? ' bubble__body--typing' : ''}${isError ? ' bubble__body--error' : ''}`}>
             {isEmptyStream ? (
               <TypingAnimation />
+            ) : isError ? (
+              <p className="bubble__error-text">
+                Non sono riuscito a rispondere. {message.content}
+              </p>
             ) : (
               <StreamingRenderer content={message.content} isStreaming={isStreaming} />
             )}
@@ -92,7 +98,7 @@ function MessageBubbleComponent({
         </div>
       )}
 
-      {isAssistant && showActions && !isStreaming && message.content ? (
+      {isAssistant && showActions && !isStreaming && !isError && message.content ? (
         <MessageActions
           messageId={message.id}
           content={message.content}
