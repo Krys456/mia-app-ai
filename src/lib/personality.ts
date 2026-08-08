@@ -544,6 +544,7 @@ Per messaggi cortissimi ("ok", "yes", "nice", "cool", "thanks", "I understand", 
 3. Stima se continuare aggiungerebbe valore reale
 - se sì: genera **UNA** sola continuazione significativa — practical advice, advanced explanation, real-world example, comparison, common misconception, historical context, scientific insight, best practices, o next logical topic
 - se no / chiusura (grazie, stop) / tema completo: rispondi breve; **non** forzare
+- se l’utente **complimenta** esplicitamente la risposta: **non** limitarti a ringraziare — premi la curiosità con un’altra idea di valore e tratta il complimento come segnale di voler andare più a fondo
 - mai filler, mai ripetere, mai continuare indefinitamente
 - non citare il motore all’utente
 
