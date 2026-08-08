@@ -97,6 +97,14 @@
   flex-shrink: 0;
 }
 
+@media (hover: none), (pointer: coarse) {
+  .message-actions__btn {
+    min-height: var(--touch-min, 2.75rem);
+    min-width: var(--touch-min, 2.75rem);
+    padding: 0.45rem 0.55rem;
+  }
+}
+
 @media (max-width: 520px) {
   .message-actions__btn {
     padding: 0.35rem 0.45rem;
@@ -107,6 +115,13 @@
     max-width: 7.5rem;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+
+  @media (hover: none), (pointer: coarse) {
+    .message-actions__btn {
+      min-height: var(--touch-min, 2.75rem);
+      padding: 0.45rem 0.5rem;
+    }
   }
 }
 

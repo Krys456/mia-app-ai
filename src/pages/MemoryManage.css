@@ -11,13 +11,16 @@
 .memory-manage__body {
   flex: 1;
   min-height: 0;
+  overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   width: 100%;
-  padding: var(--space-page-y) var(--page-gutter) 2.25rem;
+  padding: var(--space-page-y) var(--page-gutter) calc(2.25rem + var(--safe-bottom));
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  box-sizing: border-box;
 }
 
 .memory-manage__lead {
@@ -40,6 +43,7 @@
   background: var(--bg);
   color: var(--text);
   font: inherit;
+  font-size: 1rem; /* avoid iOS zoom on focus */
   padding: 0.7rem 0.85rem;
   transition: border-color var(--duration) var(--ease-out), box-shadow var(--duration) var(--ease-out);
 }
@@ -142,7 +146,7 @@
   font-size: 0.85rem;
   font-weight: 600;
   padding: 0.55rem 1rem;
-  min-height: var(--btn-icon);
+  min-height: max(var(--btn-icon), var(--touch-min));
   cursor: pointer;
   transition: opacity var(--duration) var(--ease-out), box-shadow var(--duration) var(--ease-out);
 }
@@ -208,8 +212,10 @@
   width: min(100%, 28rem);
   max-height: min(88vh, 40rem);
   overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   margin: 0;
-  padding: 1.1rem 1.15rem 1.25rem;
+  padding: 1.1rem 1.15rem calc(1.25rem + var(--safe-bottom));
   border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border));
   border-radius: var(--radius-md) var(--radius-md) 0 0;
   background: color-mix(in srgb, var(--surface-solid) 94%, transparent);
@@ -264,14 +270,16 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: var(--btn-icon);
-  height: var(--btn-icon);
+  width: max(var(--btn-icon), var(--touch-min));
+  height: max(var(--btn-icon), var(--touch-min));
   margin: 0;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: color-mix(in srgb, var(--surface-2) 70%, transparent);
   color: var(--text-muted);
   cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
   transition: color var(--duration) var(--ease-out), border-color var(--duration) var(--ease-out);
 }
 
@@ -353,8 +361,10 @@
   font-size: 0.85rem;
   font-weight: 600;
   padding: 0.55rem 0.9rem;
-  min-height: 2.4rem;
+  min-height: var(--touch-min);
   cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
   transition: border-color var(--duration) var(--ease-out), background var(--duration) var(--ease-out);
 }
 

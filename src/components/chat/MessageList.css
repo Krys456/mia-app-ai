@@ -2,13 +2,25 @@
   width: 100%;
   max-width: var(--content-max);
   margin: 0 auto;
-  padding: var(--space-page-y) var(--page-gutter) 1.75rem;
+  padding: var(--space-page-y) var(--page-gutter) 1.5rem;
   display: flex;
   flex-direction: column;
-  gap: 1.65rem;
+  gap: 1.5rem;
+  box-sizing: border-box;
 }
 
 .message-list__end {
-  height: 1.75rem;
+  height: 1.5rem;
   flex-shrink: 0;
+}
+
+@media (min-width: 768px) {
+  .message-list {
+    padding: var(--space-page-y) var(--page-gutter) 1.75rem;
+    gap: 1.65rem;
+  }
+
+  .message-list__end {
+    height: 1.75rem;
+  }
 }

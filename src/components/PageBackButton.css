@@ -2,7 +2,8 @@
   align-self: flex-start;
   gap: 0.35rem;
   padding-inline: 0.55rem 0.75rem;
-  min-width: auto;
+  min-width: max(var(--btn-icon), var(--touch-min));
+  min-height: max(var(--btn-icon), var(--touch-min));
 }
 
 .page-back-btn__label {

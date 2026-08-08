@@ -26,14 +26,17 @@
   z-index: 1;
   flex: 1;
   min-height: 0;
+  overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   width: 100%;
   margin: 0;
-  padding: var(--space-page-y) var(--page-gutter) 2rem;
+  padding: var(--space-page-y) var(--page-gutter) calc(2rem + var(--safe-bottom));
   display: flex;
   flex-direction: column;
   gap: 1.1rem;
+  box-sizing: border-box;
 }
 
 .brain-vision__lead {
@@ -61,12 +64,15 @@
   align-items: center;
   justify-content: center;
   margin: 0;
+  min-height: var(--touch-min);
   padding: 0.65rem 0.95rem;
   border-radius: var(--radius-sm);
   font: inherit;
   font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
   transition:
     background var(--duration) var(--ease-out),
     border-color var(--duration) var(--ease-out),
