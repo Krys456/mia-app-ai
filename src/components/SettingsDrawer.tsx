@@ -193,21 +193,25 @@ export function SettingsDrawer({ onOpenMemory }: SettingsDrawerProps) {
             </label>
 
             <label className="field">
-              <span className="field__label">Personalità</span>
+              <span className="field__label">Stile (bias leggero)</span>
               <select
                 value={p.personality}
                 onChange={(e) =>
                   set('personality', e.target.value as PersonalizationSettings['personality'])
                 }
               >
-                <option value="automatic">Automatica (predefinita)</option>
-                <option value="friendly">Amichevole</option>
-                <option value="professional">Professionale</option>
-                <option value="teacher">Insegnante</option>
-                <option value="analytical">Analitica</option>
-                <option value="motivational">Motivazionale</option>
+                <option value="automatic">Adattivo — Dynamic Behavior (consigliato)</option>
+                <option value="friendly">Lean: calore</option>
+                <option value="professional">Lean: sobrietà</option>
+                <option value="teacher">Lean: didattica</option>
+                <option value="analytical">Lean: analitico</option>
+                <option value="motivational">Lean: slancio</option>
               </select>
             </label>
+            <p className="settings-note" style={{ marginTop: '-0.35rem' }}>
+              LAIfe non usa una personalità fissa: seleziona il comportamento a ogni turno. Questa
+              scelta è solo un bias leggero.
+            </p>
 
             <label className="field">
               <span className="field__label">Lunghezza risposte</span>

@@ -27,6 +27,8 @@ export interface ChatApiRequest {
   /** Welcome Engine session — used greeting ids. */
   welcomeSession?: Record<string, unknown> | null
   displayName?: string
+  /** Soft style bias for Dynamic Behavior Model. */
+  personalityBias?: string
 }
 
 export interface ChatApiSuccess {
@@ -87,6 +89,7 @@ export async function requestChatCompletion(
       ...(payload.voiceSession ? { voiceSession: payload.voiceSession } : {}),
       ...(payload.welcomeSession ? { welcomeSession: payload.welcomeSession } : {}),
       ...(payload.displayName ? { displayName: payload.displayName } : {}),
+      ...(payload.personalityBias ? { personalityBias: payload.personalityBias } : {}),
     }),
     signal: init?.signal,
   })

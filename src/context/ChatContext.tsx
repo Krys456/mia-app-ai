@@ -384,6 +384,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
               learningSignals: getLearningSignals(),
               welcomeSession: getWelcomeSession(),
               displayName: personalization.displayName?.trim() || undefined,
+              personalityBias: personalization.personality || 'automatic',
             },
             { signal: controller.signal },
           )
