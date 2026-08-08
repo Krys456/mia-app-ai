@@ -1,12 +1,20 @@
 import { memo } from 'react'
 import './TypingAnimation.css'
 
-function TypingAnimationComponent() {
+interface TypingAnimationProps {
+  /** Optional visible status for premium presence (still decorative to AT). */
+  label?: string
+}
+
+function TypingAnimationComponent({ label }: TypingAnimationProps) {
   return (
-    <div className="typing" aria-hidden="true">
-      <span />
-      <span />
-      <span />
+    <div className={`typing${label ? ' typing--labeled' : ''}`} aria-hidden="true">
+      <span className="typing__dots">
+        <span />
+        <span />
+        <span />
+      </span>
+      {label ? <span className="typing__label">{label}</span> : null}
     </div>
   )
 }

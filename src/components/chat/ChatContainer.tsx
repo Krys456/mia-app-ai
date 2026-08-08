@@ -38,7 +38,8 @@ export function ChatContainer() {
             className="chat-container__viewport scroll-surface"
             ref={scrollerRef}
             role="log"
-            aria-live="polite"
+            aria-live="off"
+            aria-relevant="additions"
           >
             <MessageList
               messages={messages}

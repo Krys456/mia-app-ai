@@ -102,6 +102,11 @@
   border-color: color-mix(in srgb, var(--accent) 28%, var(--border));
 }
 
+.brain-vision__primary:active:not(:disabled),
+.brain-vision__ghost:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
 .brain-vision__primary:disabled,
 .brain-vision__ghost:disabled {
   opacity: 0.55;
