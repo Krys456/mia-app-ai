@@ -14,7 +14,7 @@ export interface ChatMessage {
   kind?: 'error'
 }
 
-/** Conversational personality modes for LAIfe. */
+/** Soft style bias for the Dynamic Behavior Model (not a fixed persona). */
 export type PersonalityMode =
   | 'automatic'
   | 'friendly'
@@ -34,7 +34,11 @@ export const PERSONALITY_MODES: readonly PersonalityMode[] = [
 
 export interface PersonalizationSettings {
   displayName: string
-  /** Primary conversational personality. */
+  /**
+   * Soft style bias only. Behavior is selected dynamically each turn
+   * (conversation / explanation / brainstorming / planning / technical help /
+   * emotional support / collaboration). Prefer `automatic`.
+   */
   personality: PersonalityMode
   replyLength: 'concise' | 'balanced' | 'detailed'
   useEmojis: boolean

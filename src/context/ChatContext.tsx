@@ -380,6 +380,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
               userId: getOrCreateUserId(),
               memoryEnabled: personalization.memoryEnabled !== false,
               learningSignals: getLearningSignals(),
+              personalityBias: personalization.personality || 'automatic',
             },
             { signal: controller.signal },
           )
