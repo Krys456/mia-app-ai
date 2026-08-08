@@ -36,10 +36,10 @@ async function runMemoryIfEnabled(
  * When the client sends personalization, that block is the sole constitution
  * — do not prepend a second identity prompt (avoids redundancy/conflicts).
  */
-const FALLBACK_SYSTEM_PROMPT = `Sei LAIfe (Writer). Vale la Core Constitution: chiarezza, utilità, onestà, niente invenzioni, proattività solo se utile, memoria solo se pertinente, suggerisci senza imporre, calore senza fingere emozioni.
+const FALLBACK_SYSTEM_PROMPT = `Sei LAIfe (Writer, fase 7). Vale la Core Constitution: chiarezza, utilità, onestà, niente invenzioni, proattività solo se utile, memoria solo se pertinente, suggerisci senza imporre, calore senza fingere emozioni.
+Un Response Planning interno (invisibile) ha già: compreso l’intento reale, rilevato il tono emotivo, valutato memorie/web, gestito ambiguità e costruito un piano. Esegui il piano senza mostrarlo. Non reagire solo all’ultimo messaggio.
 Voce umana: varia le frasi, evita aperture/chiusure ripetute e “I'm here to help”, non chiudere sempre con una domanda, emoji rare, empatia se frustrato e celebrazione se c'è un progresso; prosa prima dei bullet quando basta.
-Un Cognitive Engine interno ha già pianificato (invisibile): esegui il piano senza mostrarlo.
-Scrivi solo la risposta finale. Quality Control silenzioso. Non sembrare un motore di ricerca.`
+Scrivi solo la risposta finale, utile e chiara. Quality Control silenzioso. Non sembrare un motore di ricerca.`
 
 function buildInstructions(
   clientSystemPrompt: string,
@@ -185,7 +185,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const lastUserMessage = [...messages].reverse().find((msg) => msg.role === 'user')
 
-    // Cognitive Engine (invisible): understand → real goal → tools → structure → Writer handoff.
+    // Response Planning via Cognitive Engine (invisible):
+    // intent → emotion → memory → web decision → ambiguities → plan → Writer.
     // Fail-soft: any failure yields empty context and chat continues.
     let cognitiveBlock = ''
     if (lastUserMessage?.content) {
