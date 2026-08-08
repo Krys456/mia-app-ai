@@ -16,6 +16,11 @@ import {
 } from '../lib/learningSignals'
 import { getWelcomeSession, saveWelcomeSession } from '../lib/welcomeSession'
 import {
+  getConversationMemoryMap,
+  saveConversationMemoryMap,
+  sanitizeConversationMemoryMap,
+} from '../lib/conversationMemoryMap'
+import {
   getPendingAutomation,
   savePendingAutomation,
 } from '../lib/pendingAutomation'
@@ -384,6 +389,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             learningSignals,
             welcomeSession,
             pendingAutomation,
+            conversationMemoryMap,
           } =
             await requestChatCompletion(
             {
@@ -396,6 +402,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
               displayName: personalization.displayName?.trim() || undefined,
               personalityBias: personalization.personality || 'automatic',
               pendingAutomation: getPendingAutomation() || undefined,
+              conversationMemoryMap: getConversationMemoryMap() || undefined,
             },
             { signal: controller.signal },
           )
@@ -447,6 +454,14 @@ export function ChatProvider({ children }: { children: ReactNode }) {
                   ? (pendingAutomation as Record<string, unknown>)
                   : null,
               )
+            } catch {
+              /* ignore */
+            }
+          }
+          if (conversationMemoryMap) {
+            try {
+              const cleaned = sanitizeConversationMemoryMap(conversationMemoryMap)
+              if (cleaned) saveConversationMemoryMap(cleaned)
             } catch {
               /* ignore */
             }

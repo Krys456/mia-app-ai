@@ -2,6 +2,7 @@ import {
   sanitizeLearningSignals,
   type LearningSignals,
 } from './learningSignals'
+import { sanitizeConversationMemoryMap } from './conversationMemoryMap'
 
 export type ChatApiRole = 'user' | 'assistant' | 'system'
 
@@ -33,6 +34,8 @@ export interface ChatApiRequest {
   lifeContext?: Record<string, unknown> | null
   /** NL Automation draft awaiting confirm/edit. */
   pendingAutomation?: Record<string, unknown> | null
+  /** Conversation Memory Map — explored topics, goals, explanations, … */
+  conversationMemoryMap?: Record<string, unknown> | null
 }
 
 export interface ChatApiSuccess {
@@ -48,6 +51,8 @@ export interface ChatApiSuccess {
   welcomeSession?: Record<string, unknown> | null
   /** Internal only — NL automation draft awaiting confirm/edit. */
   pendingAutomation?: Record<string, unknown> | null
+  /** Internal only — Conversation Memory Map echo. */
+  conversationMemoryMap?: Record<string, unknown> | null
 }
 
 export interface ChatApiErrorBody {
@@ -100,6 +105,9 @@ export async function requestChatCompletion(
       ...(payload.pendingAutomation
         ? { pendingAutomation: payload.pendingAutomation }
         : {}),
+      ...(payload.conversationMemoryMap
+        ? { conversationMemoryMap: payload.conversationMemoryMap }
+        : {}),
     }),
     signal: init?.signal,
   })
@@ -141,5 +149,6 @@ export async function requestChatCompletion(
         : data.pendingAutomation && typeof data.pendingAutomation === 'object'
           ? data.pendingAutomation
           : undefined,
+    conversationMemoryMap: sanitizeConversationMemoryMap(data.conversationMemoryMap),
   }
 }
