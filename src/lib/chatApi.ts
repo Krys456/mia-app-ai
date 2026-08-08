@@ -29,6 +29,8 @@ export interface ChatApiRequest {
   displayName?: string
   /** Soft style bias for Dynamic Behavior Model. */
   personalityBias?: string
+  /** Optional multi-source life signals (calendar, weather, traffic, …). */
+  lifeContext?: Record<string, unknown> | null
 }
 
 export interface ChatApiSuccess {
@@ -90,6 +92,7 @@ export async function requestChatCompletion(
       ...(payload.welcomeSession ? { welcomeSession: payload.welcomeSession } : {}),
       ...(payload.displayName ? { displayName: payload.displayName } : {}),
       ...(payload.personalityBias ? { personalityBias: payload.personalityBias } : {}),
+      ...(payload.lifeContext ? { lifeContext: payload.lifeContext } : {}),
     }),
     signal: init?.signal,
   })
