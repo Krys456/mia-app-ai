@@ -1,10 +1,11 @@
-import { memo, useCallback, useEffect, useState } from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import {
   getMessageFeedback,
   setMessageFeedback,
   subscribeMessageFeedback,
   type MessageFeedbackValue,
 } from '../../lib/messageFeedback'
+import { copyText } from '../../lib/clipboard'
 import './MessageActions.css'
 
 interface MessageActionsProps {
@@ -14,28 +15,6 @@ interface MessageActionsProps {
   onRegenerate: () => void
   /** Force visible (keyboard / long-press). */
   forceVisible?: boolean
-}
-
-async function copyText(text: string): Promise<boolean> {
-  try {
-    await navigator.clipboard.writeText(text)
-    return true
-  } catch {
-    try {
-      const area = document.createElement('textarea')
-      area.value = text
-      area.setAttribute('readonly', '')
-      area.style.position = 'fixed'
-      area.style.opacity = '0'
-      document.body.appendChild(area)
-      area.select()
-      const ok = document.execCommand('copy')
-      document.body.removeChild(area)
-      return ok
-    } catch {
-      return false
-    }
-  }
 }
 
 function MessageActionsComponent({
@@ -49,6 +28,7 @@ function MessageActionsComponent({
   const [feedback, setFeedback] = useState<MessageFeedbackValue | null>(() =>
     getMessageFeedback(messageId),
   )
+  const copiedTimerRef = useRef<number | null>(null)
 
   useEffect(() => {
     setFeedback(getMessageFeedback(messageId))
@@ -57,11 +37,22 @@ function MessageActionsComponent({
     })
   }, [messageId])
 
+  useEffect(
+    () => () => {
+      if (copiedTimerRef.current != null) window.clearTimeout(copiedTimerRef.current)
+    },
+    [],
+  )
+
   const onCopy = useCallback(async () => {
     const ok = await copyText(content)
     if (!ok) return
     setCopied(true)
-    window.setTimeout(() => setCopied(false), 1500)
+    if (copiedTimerRef.current != null) window.clearTimeout(copiedTimerRef.current)
+    copiedTimerRef.current = window.setTimeout(() => {
+      copiedTimerRef.current = null
+      setCopied(false)
+    }, 1500)
   }, [content])
 
   const onFeedback = useCallback(

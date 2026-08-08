@@ -1,5 +1,4 @@
 import { memo, useCallback, useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
-import { useChat } from '../../context/ChatContext'
 import type { ChatMessage } from '../../types'
 import { MessageActions } from './MessageActions'
 import { StreamingRenderer } from './StreamingRenderer'
@@ -11,6 +10,8 @@ interface MessageBubbleProps {
   /** True while this assistant bubble is still receiving streamed text. */
   isStreaming?: boolean
   showActions?: boolean
+  canRegenerate?: boolean
+  onRegenerate?: (messageId: string) => void
 }
 
 const LONG_PRESS_MS = 480
@@ -27,8 +28,9 @@ function MessageBubbleComponent({
   message,
   isStreaming = false,
   showActions = false,
+  canRegenerate = false,
+  onRegenerate,
 }: MessageBubbleProps) {
-  const { regenerateAssistant, isThinking, isStreaming: chatStreaming } = useChat()
   const isAssistant = message.role === 'assistant'
   const isEmptyStream = isAssistant && !message.content && isStreaming
   const [actionsPinned, setActionsPinned] = useState(false)
@@ -96,9 +98,9 @@ function MessageBubbleComponent({
         <MessageActions
           messageId={message.id}
           content={message.content}
-          canRegenerate={!isThinking && !chatStreaming}
+          canRegenerate={canRegenerate}
           forceVisible={actionsPinned}
-          onRegenerate={() => regenerateAssistant(message.id)}
+          onRegenerate={() => onRegenerate?.(message.id)}
         />
       ) : null}
     </article>

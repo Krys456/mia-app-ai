@@ -12,6 +12,7 @@ export function Vision({ onBack }: VisionProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
+  const previewUrlRef = useRef<string | null>(null)
 
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [imageBlob, setImageBlob] = useState<Blob | null>(null)
@@ -26,9 +27,11 @@ export function Vision({ onBack }: VisionProps) {
     return () => {
       streamRef.current?.getTracks().forEach((track) => track.stop())
       streamRef.current = null
-      if (previewUrl) URL.revokeObjectURL(previewUrl)
+      if (previewUrlRef.current) {
+        URL.revokeObjectURL(previewUrlRef.current)
+        previewUrlRef.current = null
+      }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- cleanup on unmount only
   }, [])
 
   const setPreviewFromBlob = (blob: Blob, name: string) => {
@@ -38,7 +41,9 @@ export function Vision({ onBack }: VisionProps) {
     setError(null)
     setPreviewUrl((prev) => {
       if (prev) URL.revokeObjectURL(prev)
-      return URL.createObjectURL(blob)
+      const next = URL.createObjectURL(blob)
+      previewUrlRef.current = next
+      return next
     })
   }
 
@@ -119,6 +124,7 @@ export function Vision({ onBack }: VisionProps) {
     setError(null)
     setPreviewUrl((prev) => {
       if (prev) URL.revokeObjectURL(prev)
+      previewUrlRef.current = null
       return null
     })
   }
