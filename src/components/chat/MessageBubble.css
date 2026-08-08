@@ -1,6 +1,6 @@
 .bubble {
   width: 100%;
-  max-width: none;
+  max-width: 100%;
   animation: chat-rise-in var(--duration-bubble) var(--ease-out) both;
 }
 
@@ -68,7 +68,7 @@
 
 .bubble--assistant .bubble__body {
   width: 100%;
-  max-width: min(100%, 46rem);
+  max-width: 100%;
   margin: 0;
   padding: 0;
   border: 0;
@@ -92,7 +92,7 @@
 }
 
 .bubble--assistant .bubble__body--error {
-  max-width: min(100%, 46rem);
+  max-width: 100%;
   padding: 0.75rem 0.9rem;
   border-radius: var(--radius-md);
   border: 1px solid color-mix(in srgb, var(--danger, #c44) 35%, transparent);
@@ -107,7 +107,7 @@
 }
 
 .bubble--assistant .message-actions {
-  max-width: min(100%, 46rem);
+  max-width: 100%;
 }
 
 /* —— User: compact, right-aligned, clearly different —— */
@@ -163,12 +163,5 @@
 @media (prefers-reduced-motion: reduce) {
   .bubble {
     animation: none;
-  }
-}
-
-@media (min-width: 1100px) {
-  .bubble--assistant .bubble__body,
-  .bubble--assistant .message-actions {
-    max-width: min(100%, 52rem);
   }
 }

@@ -18,7 +18,8 @@
   align-items: flex-end;
   gap: 0.55rem;
   width: 100%;
-  margin: 0;
+  max-width: var(--content-max);
+  margin: 0 auto;
   padding: 0.55rem 0.55rem 0.55rem 0.95rem;
   background: color-mix(in srgb, var(--surface-solid) 86%, transparent);
   border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border));
