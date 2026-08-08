@@ -7,11 +7,26 @@ interface InputBarProps {
   onMessageSent?: () => void
 }
 
+function useShowKeyboardHint() {
+  const [show, setShow] = useState(false)
+
+  useEffect(() => {
+    const mq = window.matchMedia('(hover: hover) and (pointer: fine)')
+    const sync = () => setShow(mq.matches)
+    sync()
+    mq.addEventListener('change', sync)
+    return () => mq.removeEventListener('change', sync)
+  }, [])
+
+  return show
+}
+
 export function InputBar({ onMessageSent }: InputBarProps) {
   const { sendMessage, isThinking, isStreaming } = useChat()
   const [value, setValue] = useState('')
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const busy = isThinking || isStreaming
+  const showKeyboardHint = useShowKeyboardHint()
 
   useEffect(() => {
     const el = inputRef.current
@@ -78,7 +93,9 @@ export function InputBar({ onMessageSent }: InputBarProps) {
           </svg>
         </button>
       </form>
-      <p className="input-bar__hint">Invio per mandare · Shift+Invio per andare a capo</p>
+      {showKeyboardHint ? (
+        <p className="input-bar__hint">Invio per mandare · Shift+Invio per andare a capo</p>
+      ) : null}
     </div>
   )
 }

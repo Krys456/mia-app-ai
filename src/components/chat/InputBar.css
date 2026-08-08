@@ -102,45 +102,30 @@
   outline-offset: 2px;
 }
 
+/* Mobile-first: keyboard shortcut hint is hidden unless a fine pointer is present. */
 .input-bar__hint {
-  width: 100%;
-  max-width: var(--content-max);
-  margin: 0.45rem auto 0;
-  text-align: center;
-  font-size: 0.72rem;
-  letter-spacing: 0.03em;
-  color: var(--text-muted);
+  display: none;
 }
 
-/* Touch devices: hide keyboard shortcut hint */
-@media (hover: none), (pointer: coarse) {
+.input-bar-dock {
+  padding-bottom: calc(0.55rem + var(--safe-bottom));
+}
+
+/* Desktop / trackpad / mouse: keep the Enter hint visible */
+@media (hover: hover) and (pointer: fine) {
   .input-bar__hint {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
+    display: block;
+    width: 100%;
+    max-width: var(--content-max);
+    margin: 0.45rem auto 0;
+    text-align: center;
+    font-size: 0.72rem;
+    letter-spacing: 0.03em;
+    color: var(--text-muted);
   }
 
   .input-bar-dock {
-    padding-bottom: calc(0.55rem + var(--safe-bottom));
-  }
-}
-
-/* Desktop / precise pointer: keep hint visible */
-@media (hover: hover) and (pointer: fine) {
-  .input-bar__hint {
-    position: static;
-    width: 100%;
-    height: auto;
-    margin: 0.45rem auto 0;
-    overflow: visible;
-    clip: auto;
-    white-space: normal;
+    padding-bottom: calc(0.65rem + var(--safe-bottom));
   }
 }
 
