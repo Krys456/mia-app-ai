@@ -45,7 +45,7 @@ Può arrivare INFORMATION VALUE ESTIMATOR: valuta usefulness/novelty/relevance/a
 Può arrivare DYNAMIC BEHAVIOR MODEL: behavior selezionato per questo turno (conversation / explanation / brainstorming / planning / technical help / emotional support / collaboration) — seguilo invece di una personalità fissa.
 Può arrivare KNOWLEDGE LEVEL ESTIMATOR: livello sul topic (beginner / intermediate / advanced / expert) — calibra termini, esempi, profondità e ritmo; ri-stima continuamente; evita oversimplifying e overwhelm; non dichiarare il livello.
 Può arrivare INTELLECTUAL HONESTY: classifica ogni affermazione (fatto stabilito / evidenza forte / inferenza / speculazione / opinione) e allinea la certezza; mai speculazione come fatto; confidenza = evidenza.
-Può arrivare FEEDBACK INTERPRETATION: feedback sull’assistente ("No emojis?", "Too short.", "Too formal.", "You can do better.", "That was nice.") — non è una domanda fattuale; ack naturale; adatta subito nella stessa risposta; niente lezioni ovvie né “Vuoi che…?”.
+Può arrivare FEEDBACK INTERPRETATION: feedback sull’assistente ("Too short.", "Too long.", "More emojis.", "Less emojis.", "Too technical.", "Go deeper.") — non è una domanda fattuale; aggiorna un Conversation Preference Profile temporaneo; ack naturale; adatta subito; preferenze persistono per la chat; non menzionare il profilo.
 Può arrivare LIFE INTELLIGENCE ENGINE: collega calendario/promemoria/meteo/posizione/traffico/batteria/salute/casa/energia/finanze/abitudini/obiettivi; al massimo UNA raccomandazione ad alto valore con motivo breve — silenzio se non c’è valore; mai invadente.
 Può arrivare NATURAL LANGUAGE AUTOMATION BUILDER: l’utente descrive un’automazione in linguaggio naturale → rileva trigger/condizioni/azioni → bozza modificabile → spiega PRIMA di attivare; attiva solo dopo conferma.
 Può arrivare UNIVERSAL DEVICE MANAGER: dispositivi via adapter (capability/state/actions); ragiona senza API di marca; nuovo device = nuovo adapter; mai fingere successi se non connesso.
@@ -145,6 +145,8 @@ interface ChatApiRequestBody {
   pendingAutomation?: Record<string, unknown> | null
   /** Conversation Memory Map — evolved session map (client echoes back). */
   conversationMemoryMap?: Record<string, unknown> | null
+  /** Conversation Preference Profile — style prefs from feedback (client echoes back). */
+  conversationPreferenceProfile?: Record<string, unknown> | null
 }
 
 function isChatRole(value: unknown): value is ChatRole {
@@ -284,6 +286,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (body.conversationMemoryMap && typeof body.conversationMemoryMap === 'object') {
     conversationMemoryMapIn = body.conversationMemoryMap as Record<string, unknown>
   }
+  let conversationPreferenceProfileIn: Record<string, unknown> | null = null
+  if (
+    body.conversationPreferenceProfile &&
+    typeof body.conversationPreferenceProfile === 'object'
+  ) {
+    conversationPreferenceProfileIn = body.conversationPreferenceProfile as Record<string, unknown>
+  }
   const displayName =
     typeof body.displayName === 'string' ? body.displayName.trim().slice(0, 40) : ''
 
@@ -307,6 +316,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let welcomeSessionOut: Record<string, unknown> | null = null
     let pendingAutomationOut: Record<string, unknown> | null | undefined = undefined
     let conversationMemoryMapOut: Record<string, unknown> | null = null
+    let conversationPreferenceProfileOut: Record<string, unknown> | null = null
     if (lastUserMessage?.content) {
       try {
         const { runCognitiveEngine } = await import('../lib/server/cognitive-engine.js')
@@ -328,6 +338,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             body.lifeContext && typeof body.lifeContext === 'object' ? body.lifeContext : undefined,
           pendingAutomation: pendingAutomationIn,
           conversationMemoryMap: conversationMemoryMapIn,
+          conversationPreferenceProfile: conversationPreferenceProfileIn,
         })
         cognitiveBlock = result?.context || ''
         if (result?.learningSignals) {
@@ -341,6 +352,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
         if (result?.conversationMemoryMap && typeof result.conversationMemoryMap === 'object') {
           conversationMemoryMapOut = result.conversationMemoryMap as Record<string, unknown>
+        }
+        if (
+          result?.conversationPreferenceProfile &&
+          typeof result.conversationPreferenceProfile === 'object'
+        ) {
+          conversationPreferenceProfileOut =
+            result.conversationPreferenceProfile as Record<string, unknown>
         }
         if (result?.pendingAutomation && typeof result.pendingAutomation === 'object') {
           pendingAutomationOut = result.pendingAutomation as Record<string, unknown>
@@ -478,6 +496,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ...(conversationMemoryMapOut
           ? { conversationMemoryMap: conversationMemoryMapOut }
           : {}),
+        ...(conversationPreferenceProfileOut
+          ? { conversationPreferenceProfile: conversationPreferenceProfileOut }
+          : {}),
         ...(pendingAutomationOut !== undefined
           ? { pendingAutomation: pendingAutomationOut }
           : {}),
@@ -492,6 +513,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ...(welcomeSessionOut ? { welcomeSession: welcomeSessionOut } : {}),
       ...(conversationMemoryMapOut
         ? { conversationMemoryMap: conversationMemoryMapOut }
+        : {}),
+      ...(conversationPreferenceProfileOut
+        ? { conversationPreferenceProfile: conversationPreferenceProfileOut }
         : {}),
       ...(pendingAutomationOut !== undefined
         ? { pendingAutomation: pendingAutomationOut }
