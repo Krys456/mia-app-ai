@@ -38,30 +38,65 @@ export class AutoScrollController {
   private state: AutoScrollState = 'IDLE'
   private lastHeight = 0
   private ignoreScroll = false
+  private ignoreScrollRaf: number | null = null
   private rafId: number | null = null
   private pinRafId: number | null = null
   private streaming = false
   private hasUnseenGrowth = false
   /** Residual growth to ease in when a single frame adds a large block. */
   private pendingDelta = 0
+  /** Real user input (wheel/touch/key/drag) — not programmatic soft-follow. */
+  private userIntent = false
+  private lastTouchY: number | null = null
   private listeners = new Set<AutoScrollListener>()
   private bound = false
+
+  private markUserIntent() {
+    this.userIntent = true
+  }
 
   private onWheel = (event: WheelEvent) => {
     if (!this.scroller) return
     if (event.deltaY < 0 || distanceFromBottom(this.scroller) > NEAR_BOTTOM_PX) {
+      this.markUserIntent()
       this.pauseByUser()
     }
   }
 
-  private onTouchMove = () => {
-    this.pauseByUser()
+  private onTouchStart = (event: TouchEvent) => {
+    this.lastTouchY = event.touches[0]?.clientY ?? null
+  }
+
+  private onTouchMove = (event: TouchEvent) => {
+    if (!this.scroller) return
+    const y = event.touches[0]?.clientY
+    if (y == null) return
+
+    if (this.lastTouchY == null) {
+      this.lastTouchY = y
+      return
+    }
+
+    const dy = y - this.lastTouchY
+    this.lastTouchY = y
+
+    // Finger moving down → content scrolls up (reading earlier messages).
+    // Also pause if already away from bottom (user is browsing history).
+    if (dy > 6 || distanceFromBottom(this.scroller) > NEAR_BOTTOM_PX) {
+      this.markUserIntent()
+      this.pauseByUser()
+    }
+  }
+
+  private onTouchEnd = () => {
+    this.lastTouchY = null
   }
 
   private onPointerMove = (event: PointerEvent) => {
     // Mouse / pen drag on the scroller (scrollbar or content drag).
     if (event.pointerType === 'touch') return
     if (event.buttons === 0) return
+    this.markUserIntent()
     this.pauseByUser()
   }
 
@@ -76,6 +111,7 @@ export class AutoScrollController {
       (event.key === 'ArrowDown' && away) ||
       (event.key === ' ' && !event.shiftKey && away)
     ) {
+      this.markUserIntent()
       this.pauseByUser()
     }
   }
@@ -85,9 +121,13 @@ export class AutoScrollController {
     const near = distanceFromBottom(this.scroller) <= NEAR_BOTTOM_PX
 
     if (this.state === 'FOLLOWING') {
-      if (!near) this.pauseByUser()
+      // Soft-follow intentionally lags true bottom. Only pause on real user intent.
+      if (this.userIntent && !near) this.pauseByUser()
+      this.userIntent = false
       return
     }
+
+    this.userIntent = false
 
     if (near) {
       this.hasUnseenGrowth = false
@@ -137,6 +177,7 @@ export class AutoScrollController {
       this.lastHeight = this.scroller.scrollHeight
       this.hasUnseenGrowth = false
       this.pendingDelta = 0
+      this.userIntent = false
     }
     if (next !== 'FOLLOWING') {
       this.stopPin()
@@ -152,7 +193,10 @@ export class AutoScrollController {
     this.bound = true
 
     scroller.addEventListener('wheel', this.onWheel, { passive: true })
+    scroller.addEventListener('touchstart', this.onTouchStart, { passive: true })
     scroller.addEventListener('touchmove', this.onTouchMove, { passive: true })
+    scroller.addEventListener('touchend', this.onTouchEnd, { passive: true })
+    scroller.addEventListener('touchcancel', this.onTouchEnd, { passive: true })
     scroller.addEventListener('pointermove', this.onPointerMove, { passive: true })
     scroller.addEventListener('scroll', this.onScroll, { passive: true })
     window.addEventListener('keydown', this.onKeyDown)
@@ -164,15 +208,25 @@ export class AutoScrollController {
   detach() {
     this.stopLoop()
     this.stopPin()
+    if (this.ignoreScrollRaf != null) {
+      cancelAnimationFrame(this.ignoreScrollRaf)
+      this.ignoreScrollRaf = null
+    }
     if (this.scroller && this.bound) {
       this.scroller.removeEventListener('wheel', this.onWheel)
+      this.scroller.removeEventListener('touchstart', this.onTouchStart)
       this.scroller.removeEventListener('touchmove', this.onTouchMove)
+      this.scroller.removeEventListener('touchend', this.onTouchEnd)
+      this.scroller.removeEventListener('touchcancel', this.onTouchEnd)
       this.scroller.removeEventListener('pointermove', this.onPointerMove)
       this.scroller.removeEventListener('scroll', this.onScroll)
       window.removeEventListener('keydown', this.onKeyDown)
     }
     this.scroller = null
     this.bound = false
+    this.lastTouchY = null
+    this.userIntent = false
+    this.ignoreScroll = false
   }
 
   setStreaming(streaming: boolean) {
@@ -198,6 +252,7 @@ export class AutoScrollController {
   onUserMessage() {
     this.hasUnseenGrowth = false
     this.pendingDelta = 0
+    this.userIntent = false
     this.setState('FOLLOWING')
     this.scrollToBottom()
   }
@@ -214,7 +269,12 @@ export class AutoScrollController {
     if (!this.scroller || delta === 0) return
     this.ignoreScroll = true
     this.scroller.scrollTop += delta
-    this.ignoreScroll = false
+    // Clear after paint so async scroll events from this write are ignored.
+    if (this.ignoreScrollRaf != null) cancelAnimationFrame(this.ignoreScrollRaf)
+    this.ignoreScrollRaf = requestAnimationFrame(() => {
+      this.ignoreScrollRaf = null
+      this.ignoreScroll = false
+    })
   }
 
   /**
@@ -290,6 +350,7 @@ export class AutoScrollController {
     this.stopPin()
     this.hasUnseenGrowth = false
     this.pendingDelta = 0
+    this.userIntent = false
     this.setState('FOLLOWING')
 
     const pinTick = () => {

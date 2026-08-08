@@ -10,6 +10,7 @@ import './ChatContainer.css'
 /**
  * Top-level chat shell.
  * Owns layout + auto-scroll wiring. Message formatting and input live in children.
+ * Composer stays mounted across home ↔ thread so focus survives the first send.
  */
 export function ChatContainer() {
   const { messages, isThinking, isStreaming } = useChat()
@@ -27,33 +28,28 @@ export function ChatContainer() {
     wasHomeRef.current = isHome
   }, [isHome, onUserMessage])
 
-  if (isHome) {
-    return (
-      <div className="chat-container chat-container--home">
-        <HomeHero />
-        <InputBar onMessageSent={onUserMessage} />
-      </div>
-    )
-  }
-
   return (
-    <div className="chat-container">
-      <div className="chat-container__stage">
-        <div
-          className="chat-container__viewport scroll-surface"
-          ref={scrollerRef}
-          role="log"
-          aria-live="polite"
-        >
-          <MessageList
-            messages={messages}
-            isThinking={isThinking}
-            isStreaming={isStreaming}
-          />
-        </div>
+    <div className={`chat-container${isHome ? ' chat-container--home' : ''}`}>
+      {isHome ? (
+        <HomeHero />
+      ) : (
+        <div className="chat-container__stage">
+          <div
+            className="chat-container__viewport scroll-surface"
+            ref={scrollerRef}
+            role="log"
+            aria-live="polite"
+          >
+            <MessageList
+              messages={messages}
+              isThinking={isThinking}
+              isStreaming={isStreaming}
+            />
+          </div>
 
-        <ScrollToBottomButton visible={showButton} onClick={scrollToBottom} />
-      </div>
+          <ScrollToBottomButton visible={showButton} onClick={scrollToBottom} />
+        </div>
+      )}
 
       <InputBar onMessageSent={onUserMessage} />
     </div>

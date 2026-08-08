@@ -42,18 +42,27 @@ function AppShell() {
     <div className="app-shell">
       {view === 'chat' ? <Header onNavigate={navigate} /> : null}
 
-      <div className="app-view" key={view}>
-        {view === 'chat' ? (
-          <>
-            <ChatContainer />
-            <MemoryToast />
-          </>
-        ) : view === 'memory' ? (
-          <MemoryManage onBack={backFromMemory} />
-        ) : (
-          <Vision onBack={backFromVision} />
-        )}
+      {/* Keep chat mounted so scroll position and composer state survive Memory/Vision. */}
+      <div
+        className="app-view app-view--chat"
+        hidden={view !== 'chat'}
+        inert={view !== 'chat' ? true : undefined}
+      >
+        <ChatContainer />
+        <MemoryToast />
       </div>
+
+      {view === 'memory' ? (
+        <div className="app-view" key="memory">
+          <MemoryManage onBack={backFromMemory} />
+        </div>
+      ) : null}
+
+      {view === 'vision' ? (
+        <div className="app-view" key="vision">
+          <Vision onBack={backFromVision} />
+        </div>
+      ) : null}
 
       <SettingsDrawer onOpenMemory={openMemoryManage} />
     </div>
