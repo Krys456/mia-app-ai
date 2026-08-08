@@ -65,12 +65,21 @@ function StreamingRendererComponent({
   content,
   isStreaming = false,
 }: StreamingRendererProps) {
+  // During reveal, skip full markdown/highlight to keep scroll + input smooth.
+  if (isStreaming) {
+    return (
+      <div className="md-body md-body--streaming md-body--plain">
+        <p className="md-plain">{content}</p>
+        <span className="md-caret" aria-hidden="true" />
+      </div>
+    )
+  }
+
   return (
-    <div className={`md-body${isStreaming ? ' md-body--streaming' : ''}`}>
+    <div className="md-body">
       <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
         {content}
       </ReactMarkdown>
-      {isStreaming ? <span className="md-caret" aria-hidden="true" /> : null}
     </div>
   )
 }

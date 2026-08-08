@@ -1,4 +1,5 @@
-import { memo } from 'react'
+import { memo, useCallback } from 'react'
+import { useChat } from '../../context/ChatContext'
 import type { ChatMessage } from '../../types'
 import { MessageBubble } from './MessageBubble'
 import { TypingAnimation } from './TypingAnimation'
@@ -12,9 +13,18 @@ interface MessageListProps {
 }
 
 function MessageListComponent({ messages, isThinking, isStreaming }: MessageListProps) {
+  const { regenerateAssistant } = useChat()
   const last = messages[messages.length - 1]
   const streamingId =
     isStreaming && last?.role === 'assistant' ? last.id : null
+  const canRegenerate = !isThinking && !isStreaming
+
+  const onRegenerate = useCallback(
+    (messageId: string) => {
+      regenerateAssistant(messageId)
+    },
+    [regenerateAssistant],
+  )
 
   return (
     <div className="message-list">
@@ -25,11 +35,17 @@ function MessageListComponent({ messages, isThinking, isStreaming }: MessageList
             key={message.id}
             message={message}
             isStreaming={isThisStreaming}
+<<<<<<< HEAD
             showActions={
               message.role === 'assistant' &&
               message.kind !== 'error' &&
               !isThisStreaming
             }
+=======
+            showActions={message.role === 'assistant' && !isThisStreaming}
+            canRegenerate={canRegenerate}
+            onRegenerate={onRegenerate}
+>>>>>>> origin/cursor/ux-perf-leaks-284c
           />
         )
       })}

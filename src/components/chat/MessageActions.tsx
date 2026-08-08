@@ -5,6 +5,7 @@ import {
   subscribeMessageFeedback,
   type MessageFeedbackValue,
 } from '../../lib/messageFeedback'
+import { copyText } from '../../lib/clipboard'
 import './MessageActions.css'
 
 interface MessageActionsProps {
@@ -16,28 +17,6 @@ interface MessageActionsProps {
   forceVisible?: boolean
   /** Fired after any toolbar action (helps dismiss touch pin). */
   onAction?: () => void
-}
-
-async function copyText(text: string): Promise<boolean> {
-  try {
-    await navigator.clipboard.writeText(text)
-    return true
-  } catch {
-    try {
-      const area = document.createElement('textarea')
-      area.value = text
-      area.setAttribute('readonly', '')
-      area.style.position = 'fixed'
-      area.style.opacity = '0'
-      document.body.appendChild(area)
-      area.select()
-      const ok = document.execCommand('copy')
-      document.body.removeChild(area)
-      return ok
-    } catch {
-      return false
-    }
-  }
 }
 
 function MessageActionsComponent({
@@ -78,7 +57,11 @@ function MessageActionsComponent({
       copiedTimerRef.current = null
       setCopied(false)
     }, 1500)
+<<<<<<< HEAD
   }, [content, onAction])
+=======
+  }, [content])
+>>>>>>> origin/cursor/ux-perf-leaks-284c
 
   const onFeedback = useCallback(
     (value: MessageFeedbackValue) => {

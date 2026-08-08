@@ -1,4 +1,4 @@
-import { memo, useCallback, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import hljs from 'highlight.js/lib/core'
 import javascript from 'highlight.js/lib/languages/javascript'
 import typescript from 'highlight.js/lib/languages/typescript'
@@ -16,6 +16,7 @@ import csharp from 'highlight.js/lib/languages/csharp'
 import php from 'highlight.js/lib/languages/php'
 import ruby from 'highlight.js/lib/languages/ruby'
 import yaml from 'highlight.js/lib/languages/yaml'
+import { copyText } from '../../lib/clipboard'
 import './CodeBlock.css'
 
 hljs.registerLanguage('javascript', javascript)
@@ -83,38 +84,28 @@ function escapeHtml(value: string): string {
     .replaceAll('"', '&quot;')
 }
 
-async function copyText(text: string): Promise<boolean> {
-  try {
-    await navigator.clipboard.writeText(text)
-    return true
-  } catch {
-    try {
-      const area = document.createElement('textarea')
-      area.value = text
-      area.setAttribute('readonly', '')
-      area.style.position = 'fixed'
-      area.style.opacity = '0'
-      document.body.appendChild(area)
-      area.select()
-      const ok = document.execCommand('copy')
-      document.body.removeChild(area)
-      return ok
-    } catch {
-      return false
-    }
-  }
-}
-
 function CodeBlockComponent({ code, language }: CodeBlockProps) {
   const [copied, setCopied] = useState(false)
-  const { lang, html } = detectLanguage(code, language)
+  const copiedTimerRef = useRef<number | null>(null)
+  const { lang, html } = useMemo(() => detectLanguage(code, language), [code, language])
   const label = lang && lang !== 'text' ? lang : 'code'
+
+  useEffect(
+    () => () => {
+      if (copiedTimerRef.current != null) window.clearTimeout(copiedTimerRef.current)
+    },
+    [],
+  )
 
   const onCopy = useCallback(async () => {
     const ok = await copyText(code)
     if (!ok) return
     setCopied(true)
-    window.setTimeout(() => setCopied(false), 1600)
+    if (copiedTimerRef.current != null) window.clearTimeout(copiedTimerRef.current)
+    copiedTimerRef.current = window.setTimeout(() => {
+      copiedTimerRef.current = null
+      setCopied(false)
+    }, 1600)
   }, [code])
 
   return (
