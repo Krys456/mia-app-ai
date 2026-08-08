@@ -14,7 +14,9 @@ import './App.css'
 function AppShell() {
   const [view, setView] = useState<AppView>('chat')
   const previousViewRef = useRef<AppView>('chat')
-  const { openSettings } = useChat()
+  /** When true, leaving Memory should reopen Settings (entry was the drawer). */
+  const memoryReturnToSettingsRef = useRef(false)
+  const { openSettings, closeSettings } = useChat()
   useVisualViewportHeight()
 
   const navigate = (next: AppView) => {
@@ -22,15 +24,25 @@ function AppShell() {
       if (current !== next) previousViewRef.current = current
       return next
     })
+    // Leaving chat / opening another view must never leave Settings covering the page.
+    if (next !== 'chat') closeSettings()
   }
 
-  const openMemoryManage = () => {
+  const openMemoryManage = (fromSettings = true) => {
+    memoryReturnToSettingsRef.current = fromSettings
+    navigate('memory')
+  }
+
+  const openMemoryFromHeader = () => {
+    memoryReturnToSettingsRef.current = false
     navigate('memory')
   }
 
   const backFromMemory = () => {
+    const reopenSettings = memoryReturnToSettingsRef.current
+    memoryReturnToSettingsRef.current = false
     navigate('chat')
-    openSettings()
+    if (reopenSettings) openSettings()
   }
 
   const backFromVision = () => {
@@ -40,7 +52,9 @@ function AppShell() {
 
   return (
     <div className="app-shell">
-      {view === 'chat' ? <Header onNavigate={navigate} /> : null}
+      {view === 'chat' ? (
+        <Header onNavigate={navigate} onOpenMemory={openMemoryFromHeader} />
+      ) : null}
 
       <div className="app-view" key={view}>
         {view === 'chat' ? (
@@ -55,7 +69,7 @@ function AppShell() {
         )}
       </div>
 
-      <SettingsDrawer onOpenMemory={openMemoryManage} />
+      <SettingsDrawer onOpenMemory={() => openMemoryManage(true)} />
     </div>
   )
 }

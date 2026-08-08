@@ -66,13 +66,19 @@ function IconSettings() {
 
 interface HeaderProps {
   onNavigate: (view: AppView) => void
+  /** Open Memory without treating Settings as the return target. */
+  onOpenMemory?: () => void
 }
 
-export function Header({ onNavigate }: HeaderProps) {
-  const { newChat, openSettings, settingsOpen } = useChat()
+export function Header({ onNavigate, onOpenMemory }: HeaderProps) {
+  const { newChat, toggleSettings, settingsOpen, messages } = useChat()
 
   const goHomeChat = () => {
     onNavigate('chat')
+    if (messages.length > 0) {
+      const ok = window.confirm('Avviare una nuova chat? La conversazione corrente verrà chiusa.')
+      if (!ok) return
+    }
     newChat()
   }
 
@@ -99,6 +105,12 @@ export function Header({ onNavigate }: HeaderProps) {
             className="header-btn"
             onClick={() => {
               onNavigate('chat')
+              if (messages.length > 0) {
+                const ok = window.confirm(
+                  'Avviare una nuova chat? La conversazione corrente verrà chiusa.',
+                )
+                if (!ok) return
+              }
               newChat()
             }}
             aria-label="Nuova chat"
@@ -109,7 +121,10 @@ export function Header({ onNavigate }: HeaderProps) {
           <button
             type="button"
             className="header-btn"
-            onClick={() => onNavigate('memory')}
+            onClick={() => {
+              if (onOpenMemory) onOpenMemory()
+              else onNavigate('memory')
+            }}
             aria-label="Gestisci memoria"
             title="Memoria"
           >
@@ -127,7 +142,7 @@ export function Header({ onNavigate }: HeaderProps) {
           <button
             type="button"
             className={`header-btn${settingsOpen ? ' header-btn--active' : ''}`}
-            onClick={openSettings}
+            onClick={toggleSettings}
             aria-label="Impostazioni"
             title="Impostazioni"
             aria-pressed={settingsOpen}

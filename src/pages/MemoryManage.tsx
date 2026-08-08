@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useMemo, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { PageHeader } from '../components/PageHeader'
 import { useChat } from '../context/ChatContext'
 import type { MemoryItem } from '../lib/memory'
@@ -47,23 +47,27 @@ export function MemoryManage({ onBack }: MemoryManageProps) {
   const [draftCategory, setDraftCategory] = useState('')
   const [busy, setBusy] = useState(false)
   const dialogTitleId = useId()
-
-  const refresh = useCallback(async () => {
-    setLoading(true)
-    setError('')
-    try {
-      const rows = await listMemories()
-      setMemories(rows)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+  const busyRef = useRef(busy)
+  busyRef.current = busy
 
   useEffect(() => {
-    void refresh()
-  }, [refresh])
+    let cancelled = false
+    void (async () => {
+      setLoading(true)
+      setError('')
+      try {
+        const rows = await listMemories()
+        if (!cancelled) setMemories(rows)
+      } catch (err) {
+        if (!cancelled) setError(err instanceof Error ? err.message : String(err))
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -88,16 +92,39 @@ export function MemoryManage({ onBack }: MemoryManageProps) {
     setError('')
   }
 
-  const closePanel = () => {
-    if (busy) return
+  const closePanel = useCallback(() => {
+    if (busyRef.current) return
     setSelectedId(null)
     setEditing(false)
-  }
+  }, [])
 
   useEffect(() => {
     if (!selectedId) return
+    const FOCUSABLE =
+      'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') closePanel()
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        closePanel()
+        return
+      }
+      if (e.key !== 'Tab') return
+      const panel = document.querySelector<HTMLElement>('.memory-panel')
+      if (!panel) return
+      const nodes = [...panel.querySelectorAll<HTMLElement>(FOCUSABLE)].filter(
+        (el) => el.offsetParent !== null,
+      )
+      if (nodes.length === 0) return
+      const first = nodes[0]
+      const last = nodes[nodes.length - 1]
+      const active = document.activeElement as HTMLElement | null
+      if (e.shiftKey && active === first) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault()
+        first.focus()
+      }
     }
     window.addEventListener('keydown', onKey)
     const previouslyFocused = document.activeElement as HTMLElement | null
@@ -110,8 +137,7 @@ export function MemoryManage({ onBack }: MemoryManageProps) {
       window.removeEventListener('keydown', onKey)
       previouslyFocused?.focus?.()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- closePanel is local
-  }, [selectedId, busy])
+  }, [selectedId, closePanel])
 
   const saveEdit = async () => {
     if (!selected) return
@@ -135,6 +161,7 @@ export function MemoryManage({ onBack }: MemoryManageProps) {
 
   const removeOne = async () => {
     if (!selected) return
+    if (!window.confirm('Eliminare questa memoria?')) return
     setBusy(true)
     setError('')
     try {
@@ -151,6 +178,13 @@ export function MemoryManage({ onBack }: MemoryManageProps) {
 
   const clearAll = async () => {
     if (memories.length === 0) return
+    if (
+      !window.confirm(
+        `Eliminare tutte le ${memories.length} memorie? L’operazione non si può annullare.`,
+      )
+    ) {
+      return
+    }
     setBusy(true)
     setError('')
     try {

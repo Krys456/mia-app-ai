@@ -216,7 +216,7 @@ function CustomThemeEditor({
   )
 }
 
-export function ThemeSettings() {
+export function ThemeSettings({ active = true }: { active?: boolean }) {
   const {
     activeTheme,
     builtinThemes,
@@ -234,6 +234,14 @@ export function ThemeSettings() {
     theme: ThemeDefinition
     mode: 'create' | 'edit'
   } | null>(null)
+
+  // When the parent drawer closes, drop the editor so preview cannot stick.
+  useEffect(() => {
+    if (active) return
+    if (!editing) return
+    setEditing(null)
+    clearPreview()
+  }, [active, editing, clearPreview])
 
   const openCreator = () => {
     setEditing({ theme: createCustomThemeFromActive(), mode: 'create' })
