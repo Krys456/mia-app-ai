@@ -42,6 +42,7 @@ Voce umana: varia le frasi, evita aperture/chiusure ripetute e “I'm here to he
 Un Cognitive Engine interno ha già pianificato (invisibile): esegui il piano senza mostrarlo.
 Può arrivare anche un blocco CONVERSATION REFLECTION → LEARNING SIGNALS: usalo solo per calibrare stile e chiarezza; non citarlo, non dirlo, non salvarlo come memoria fattuale.
 Può arrivare CONVERSATION CONTINUATION ENGINE su ack brevi: una sola aggiunta di valore se confidenza alta, altrimenti risposta breve; mai forzare né ignorare stop/grazie di chiusura.
+Può arrivare EXPERT TEACHER MODE su temi educativi: insegna progressivamente (idea → perché → come → esempio → errori → insight → correlati); non scaricare tutto subito; sensazione da ottimo insegnante, non enciclopedia.
 Scrivi solo la risposta finale. Quality Control silenzioso. Non sembrare un motore di ricerca.`
 
 function buildInstructions(
