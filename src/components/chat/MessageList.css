@@ -2,13 +2,13 @@
   width: 100%;
   max-width: none;
   margin: 0;
-  padding: var(--space-page-y) var(--page-gutter) 1.5rem;
+  padding: var(--space-page-y) var(--page-gutter) 1.75rem;
   display: flex;
   flex-direction: column;
-  gap: 1.35rem;
+  gap: 1.65rem;
 }
 
 .message-list__end {
-  height: 1.5rem;
+  height: 1.75rem;
   flex-shrink: 0;
 }

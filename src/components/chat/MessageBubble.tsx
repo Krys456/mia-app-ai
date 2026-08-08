@@ -15,6 +15,14 @@ interface MessageBubbleProps {
 
 const LONG_PRESS_MS = 480
 
+function LaifeMark() {
+  return (
+    <span className="bubble__avatar bubble__avatar--assistant" aria-hidden="true">
+      <span className="bubble__avatar-mark">L</span>
+    </span>
+  )
+}
+
 function MessageBubbleComponent({
   message,
   isStreaming = false,
@@ -63,21 +71,26 @@ function MessageBubbleComponent({
       onKeyDown={onKeyDown}
     >
       {isAssistant ? (
-        <span className="bubble__label">LAIfe</span>
+        <>
+          <div className="bubble__meta">
+            <LaifeMark />
+            <span className="bubble__label">LAIfe</span>
+          </div>
+          <div className={`bubble__body${isEmptyStream ? ' bubble__body--typing' : ''}`}>
+            {isEmptyStream ? (
+              <TypingAnimation />
+            ) : (
+              <StreamingRenderer content={message.content} isStreaming={isStreaming} />
+            )}
+          </div>
+        </>
       ) : (
-        <span className="bubble__label bubble__label--user">Tu</span>
+        <div className="bubble__user-row">
+          <div className="bubble__body">
+            <p>{message.content}</p>
+          </div>
+        </div>
       )}
-      <div className={`bubble__body${isEmptyStream ? ' bubble__body--typing' : ''}`}>
-        {isAssistant ? (
-          isEmptyStream ? (
-            <TypingAnimation />
-          ) : (
-            <StreamingRenderer content={message.content} isStreaming={isStreaming} />
-          )
-        ) : (
-          <p>{message.content}</p>
-        )}
-      </div>
 
       {isAssistant && showActions && !isStreaming && message.content ? (
         <MessageActions
