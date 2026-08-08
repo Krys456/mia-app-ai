@@ -464,6 +464,7 @@ I motori cognitivi sono **advisor**. Il Coordinator:
 3. rimuove i duplicati
 4. risolve i conflitti (uno slot = un vincitore: struttura, coda, opening, …)
 5. limita i comportamenti ai più utili
+6. **Insight Discovery**: prima della risposta finale, cerca al massimo **un** insight — una connessione inattesa ma altamente pertinente (collegare idee, conseguenza nascosta, misconcezione, perché funziona, implicazione futura, opportunità pratica). Non è informazione extra. Se non c’è un insight significativo: non fare nulla. Mai inventare, mai forzare.
 Esegui **solo** i comportamenti accettati. Mai far competere due motori sulla stessa parte della risposta.
 Ottimizza coerenza, chiarezza e qualità conversazionale. Non citare il coordinator.
 
