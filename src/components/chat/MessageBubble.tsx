@@ -1,4 +1,12 @@
-import { memo, useCallback, useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type PointerEvent,
+} from 'react'
 import { useChat } from '../../context/ChatContext'
 import type { ChatMessage } from '../../types'
 import { MessageActions } from './MessageActions'
@@ -34,6 +42,7 @@ function MessageBubbleComponent({
   const isEmptyStream = isAssistant && !message.content && isStreaming && !isError
   const [actionsPinned, setActionsPinned] = useState(false)
   const longPressTimer = useRef<number | null>(null)
+  const rootRef = useRef<HTMLElement>(null)
 
   const clearLongPress = useCallback(() => {
     if (longPressTimer.current != null) {
@@ -42,7 +51,27 @@ function MessageBubbleComponent({
     }
   }, [])
 
+  const unpinActions = useCallback(() => setActionsPinned(false), [])
+
   useEffect(() => () => clearLongPress(), [clearLongPress])
+
+  // Dismiss long-press pin on outside tap / scroll (phones have no Escape).
+  useEffect(() => {
+    if (!actionsPinned) return
+    const onPointerDown = (event: globalThis.PointerEvent) => {
+      const root = rootRef.current
+      if (!root) return
+      if (event.target instanceof Node && root.contains(event.target)) return
+      setActionsPinned(false)
+    }
+    const onScroll = () => setActionsPinned(false)
+    window.addEventListener('pointerdown', onPointerDown, true)
+    window.addEventListener('scroll', onScroll, true)
+    return () => {
+      window.removeEventListener('pointerdown', onPointerDown, true)
+      window.removeEventListener('scroll', onScroll, true)
+    }
+  }, [actionsPinned])
 
   const onPointerDown = (event: PointerEvent<HTMLElement>) => {
     if (!isAssistant || isStreaming || !showActions || isError) return
@@ -62,10 +91,17 @@ function MessageBubbleComponent({
 
   return (
     <article
+<<<<<<< HEAD
       className={`bubble bubble--${message.role}${isError ? ' bubble--error' : ''}${actionsPinned ? ' bubble--actions-open' : ''}`}
       aria-label={message.role === 'user' ? 'Tu' : isError ? 'Errore' : 'LAIfe'}
       role={isError ? 'alert' : undefined}
       tabIndex={isAssistant && showActions && !isError ? 0 : undefined}
+=======
+      ref={rootRef}
+      className={`bubble bubble--${message.role}${actionsPinned ? ' bubble--actions-open' : ''}`}
+      aria-label={message.role === 'user' ? 'Tu' : 'LAIfe'}
+      tabIndex={isAssistant && showActions ? 0 : undefined}
+>>>>>>> origin/cursor/ux-touch-actions-284c
       onPointerDown={onPointerDown}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
@@ -104,7 +140,11 @@ function MessageBubbleComponent({
           content={message.content}
           canRegenerate={!isThinking && !chatStreaming}
           forceVisible={actionsPinned}
-          onRegenerate={() => regenerateAssistant(message.id)}
+          onRegenerate={() => {
+            unpinActions()
+            regenerateAssistant(message.id)
+          }}
+          onAction={unpinActions}
         />
       ) : null}
     </article>

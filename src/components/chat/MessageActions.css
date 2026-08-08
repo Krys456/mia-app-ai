@@ -21,13 +21,15 @@
 }
 
 @media (hover: none) {
+  /* Touch: always show a compact row — long-press pin is optional emphasis only. */
   .message-actions {
-    opacity: 0;
+    opacity: 0.95;
+    transform: none;
+    pointer-events: auto;
   }
 
   .message-actions--visible {
     opacity: 1;
-    pointer-events: auto;
   }
 }
 
