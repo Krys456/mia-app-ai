@@ -74,7 +74,8 @@
   --btn-send: 2.6rem;
   --composer-h: 5.75rem;
 
-  /* Edge-to-edge layout: shared side gutters (no centered content column). */
+  /* Centered chat column: near-full on mobile, capped on tablet/desktop. */
+  --content-max: 46rem;
   --page-gutter: 1rem;
   --space-page-y: 1.05rem;
   --app-height: 100dvh;
@@ -177,6 +178,7 @@ select {
 @media (min-width: 1100px) {
   :root {
     --page-gutter: 1.5rem;
+    --content-max: 52rem;
   }
 }
 
