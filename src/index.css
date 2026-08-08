@@ -197,6 +197,36 @@ select {
   }
 }
 
+/*
+ * Mobile hard-lock (<768px).
+ * Reasserts full-bleed layout even if a later rule resets --content-max
+ * on :root (the desktop-column regression that made phones look like
+ * a scaled-down desktop shell).
+ */
+@media (max-width: 767.98px) {
+  :root {
+    --content-max: 100%;
+  }
+
+  .app-shell,
+  .app-view,
+  .chat-container,
+  .chat-container__stage,
+  .chat-container__viewport {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .app-header__inner,
+  .message-list,
+  .input-bar {
+    width: 100%;
+    max-width: 100%;
+    margin-left: 0;
+    margin-right: 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

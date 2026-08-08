@@ -8,6 +8,8 @@
   overflow: hidden;
   width: 100%;
   max-width: 100%;
+  margin: 0;
+  /* Safe areas already applied via padding; never center as a desktop column. */
   padding-left: var(--safe-left);
   padding-right: var(--safe-right);
 }
