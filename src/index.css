@@ -70,17 +70,22 @@
   --radius-xl: 1.85rem;
   --radius-pill: 999px;
 
-  --btn-icon: 2.55rem;
-  --btn-send: 2.6rem;
+  --btn-icon: 2.75rem;
+  --btn-send: 2.75rem;
   --composer-h: 5.75rem;
+  --touch-min: 2.75rem; /* 44px — Apple HIG minimum */
 
   /* Centered chat column: near-full on mobile, capped on tablet/desktop. */
   --content-max: 46rem;
-  --page-gutter: 1rem;
-  --space-page-y: 1.05rem;
+  --page-gutter: 1rem; /* ~px-4 */
+  --space-page-y: 1rem;
   --app-height: 100dvh;
-  --header-h: 3.75rem;
-  --header-pad-y: 0.65rem;
+  --header-h: 3.85rem;
+  --header-pad-y: 0.7rem;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
 
   --font-sans: 'Outfit', ui-sans-serif, system-ui, sans-serif;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
@@ -111,10 +116,15 @@ body,
 #root {
   height: 100%;
   margin: 0;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 body {
   min-width: 320px;
+  overscroll-behavior-y: none;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
   background:
     radial-gradient(900px 520px at 15% -5%, var(--atmosphere-1), transparent 55%),
     radial-gradient(780px 480px at 95% 0%, var(--atmosphere-2), transparent 50%),
@@ -172,6 +182,10 @@ select {
 @media (min-width: 768px) {
   :root {
     --page-gutter: 1.25rem;
+    --header-h: 3.75rem;
+    --header-pad-y: 0.65rem;
+    --btn-icon: 2.55rem;
+    --btn-send: 2.6rem;
   }
 }
 

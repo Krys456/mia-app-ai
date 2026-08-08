@@ -12,11 +12,19 @@
 }
 
 .brand-logo--mark {
-  width: 2.25rem;
-  height: 2.25rem;
+  width: 2.55rem;
+  height: 2.55rem;
   border-radius: var(--radius-sm);
   object-fit: cover;
   background: var(--bg);
   box-shadow: 0 0 16px color-mix(in srgb, var(--accent) 30%, transparent),
     0 0 28px color-mix(in srgb, var(--accent-pink) 18%, transparent);
+  flex-shrink: 0;
+}
+
+@media (min-width: 768px) {
+  .brand-logo--mark {
+    width: 2.25rem;
+    height: 2.25rem;
+  }
 }

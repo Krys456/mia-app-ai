@@ -37,6 +37,10 @@
   flex-direction: column;
   width: min(100%, 22.5rem);
   height: 100%;
+  max-height: 100%;
+  padding-top: var(--safe-top);
+  padding-right: var(--safe-right);
+  padding-bottom: var(--safe-bottom);
   background: color-mix(in srgb, var(--surface-solid) 92%, transparent);
   border-left: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border));
   backdrop-filter: blur(22px) saturate(1.25);
@@ -45,6 +49,7 @@
   transform: translateX(105%);
   transition: transform var(--duration-drawer) var(--ease-out);
   pointer-events: auto;
+  overflow: hidden;
 }
 
 .settings-root--open .settings-drawer {
@@ -84,14 +89,16 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: var(--btn-icon);
-  height: var(--btn-icon);
+  width: max(var(--btn-icon), var(--touch-min));
+  height: max(var(--btn-icon), var(--touch-min));
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: color-mix(in srgb, var(--surface-2) 70%, transparent);
   color: var(--text-muted);
   cursor: pointer;
   pointer-events: auto;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
   transition: color var(--duration) var(--ease-out), border-color var(--duration) var(--ease-out),
     box-shadow var(--duration) var(--ease-out);
 }
@@ -109,7 +116,11 @@
 
 .settings-drawer__body {
   flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   padding: 1.15rem;
   display: flex;
   flex-direction: column;

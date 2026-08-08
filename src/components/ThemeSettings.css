@@ -166,7 +166,7 @@
 }
 
 .theme-btn {
-  min-height: 2.35rem;
+  min-height: max(2.35rem, var(--touch-min));
   padding: 0.55rem 0.9rem;
   border: 1px solid var(--border);
 }
@@ -199,8 +199,8 @@
 }
 
 .theme-mini-btn {
-  min-width: 2.4rem;
-  min-height: 2.4rem;
+  min-width: var(--touch-min);
+  min-height: var(--touch-min);
   padding: 0.35rem 0.65rem;
   border: 1px solid var(--border);
   background: color-mix(in srgb, var(--surface-2) 65%, transparent);
@@ -248,8 +248,8 @@
 }
 
 .theme-color-field__row input[type='color'] {
-  width: 2.4rem;
-  height: 2.4rem;
+  width: var(--touch-min);
+  height: var(--touch-min);
   padding: 0;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -264,6 +264,8 @@
   background: var(--bg);
   color: var(--text);
   font: inherit;
+  font-size: 1rem; /* avoid iOS zoom on focus */
+  min-height: var(--touch-min);
   padding: 0.65rem 0.75rem;
 }
 

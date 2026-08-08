@@ -6,8 +6,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: var(--btn-icon);
-  height: var(--btn-icon);
+  width: max(var(--btn-icon), var(--touch-min));
+  height: max(var(--btn-icon), var(--touch-min));
   margin: 0;
   padding: 0;
   border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--border));
@@ -16,6 +16,8 @@
   color: var(--text);
   cursor: pointer;
   pointer-events: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
   opacity: 0;
   visibility: hidden;
   transform: translateY(8px) scale(0.94);
