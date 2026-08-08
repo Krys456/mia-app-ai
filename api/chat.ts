@@ -40,6 +40,7 @@ const FALLBACK_SYSTEM_PROMPT = `Sei LAIfe (Writer). Non sei un chatbot: sei un p
 Craft del testo: ritmo naturale (frasi corte e lunghe alternate), niente wording/sostantivi ripetitivi, transizioni fluide, leggibilità alta, spiegazioni a strati (idea → perché → dettaglio), allinea automaticamente lo stile di scrittura dell’utente.
 Voce umana: varia le frasi, evita aperture/chiusure ripetute e “I'm here to help”, non chiudere sempre con una domanda, emoji solo se calzano davvero; empatia se frustrato e celebrazione se c'è un progresso; prosa prima dei bullet quando basta.
 Un Cognitive Engine interno ha pianificato; un Cognitive Coordinator ha già scelto i comportamenti utili (invisibile): esegui quella decisione senza mostrarla. I motori sono advisor — non competono sulla stessa parte della risposta. Prima dell’invio può girare SATISFACTION ESTIMATOR: se la soddisfazione prevista è bassa, una sola rifinitura (mai loop).
+Può arrivare CONVERSATION MEMORY MAP: temi esplorati, domande aperte, progetti, obiettivi, spiegazioni già date, misconcezioni corrette, idee future introdotte — evolvi con la chat; non ripetere idee già esplorate; quando continui usa la mappa, non solo lo storico messaggi.
 Può arrivare DYNAMIC BEHAVIOR MODEL: behavior selezionato per questo turno (conversation / explanation / brainstorming / planning / technical help / emotional support / collaboration) — seguilo invece di una personalità fissa.
 Può arrivare KNOWLEDGE LEVEL ESTIMATOR: livello sul topic (beginner / intermediate / advanced / expert) — calibra termini, esempi, profondità e ritmo; ri-stima continuamente; evita oversimplifying e overwhelm; non dichiarare il livello.
 Può arrivare LIFE INTELLIGENCE ENGINE: collega calendario/promemoria/meteo/posizione/traffico/batteria/salute/casa/energia/finanze/abitudini/obiettivi; al massimo UNA raccomandazione ad alto valore con motivo breve — silenzio se non c’è valore; mai invadente.
@@ -137,6 +138,8 @@ interface ChatApiRequestBody {
   lifeContext?: Record<string, unknown> | null
   /** NL Automation Builder draft awaiting confirm / edit (client echoes back). */
   pendingAutomation?: Record<string, unknown> | null
+  /** Conversation Memory Map — evolved session map (client echoes back). */
+  conversationMemoryMap?: Record<string, unknown> | null
 }
 
 function isChatRole(value: unknown): value is ChatRole {
@@ -272,6 +275,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (body.pendingAutomation && typeof body.pendingAutomation === 'object') {
     pendingAutomationIn = body.pendingAutomation as Record<string, unknown>
   }
+  let conversationMemoryMapIn: Record<string, unknown> | null = null
+  if (body.conversationMemoryMap && typeof body.conversationMemoryMap === 'object') {
+    conversationMemoryMapIn = body.conversationMemoryMap as Record<string, unknown>
+  }
   const displayName =
     typeof body.displayName === 'string' ? body.displayName.trim().slice(0, 40) : ''
 
@@ -294,6 +301,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let voiceSessionOut: Record<string, unknown> | null = null
     let welcomeSessionOut: Record<string, unknown> | null = null
     let pendingAutomationOut: Record<string, unknown> | null | undefined = undefined
+    let conversationMemoryMapOut: Record<string, unknown> | null = null
     if (lastUserMessage?.content) {
       try {
         const { runCognitiveEngine } = await import('../lib/server/cognitive-engine.js')
@@ -314,6 +322,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           lifeContext:
             body.lifeContext && typeof body.lifeContext === 'object' ? body.lifeContext : undefined,
           pendingAutomation: pendingAutomationIn,
+          conversationMemoryMap: conversationMemoryMapIn,
         })
         cognitiveBlock = result?.context || ''
         if (result?.learningSignals) {
@@ -324,6 +333,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
         if (result?.welcomeSession && typeof result.welcomeSession === 'object') {
           welcomeSessionOut = result.welcomeSession as Record<string, unknown>
+        }
+        if (result?.conversationMemoryMap && typeof result.conversationMemoryMap === 'object') {
+          conversationMemoryMapOut = result.conversationMemoryMap as Record<string, unknown>
         }
         if (result?.pendingAutomation && typeof result.pendingAutomation === 'object') {
           pendingAutomationOut = result.pendingAutomation as Record<string, unknown>
@@ -431,6 +443,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         learningSignals,
         ...(voiceSessionOut ? { voiceSession: voiceSessionOut } : {}),
         ...(welcomeSessionOut ? { welcomeSession: welcomeSessionOut } : {}),
+        ...(conversationMemoryMapOut
+          ? { conversationMemoryMap: conversationMemoryMapOut }
+          : {}),
         ...(pendingAutomationOut !== undefined
           ? { pendingAutomation: pendingAutomationOut }
           : {}),
@@ -443,6 +458,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       learningSignals,
       ...(voiceSessionOut ? { voiceSession: voiceSessionOut } : {}),
       ...(welcomeSessionOut ? { welcomeSession: welcomeSessionOut } : {}),
+      ...(conversationMemoryMapOut
+        ? { conversationMemoryMap: conversationMemoryMapOut }
+        : {}),
       ...(pendingAutomationOut !== undefined
         ? { pendingAutomation: pendingAutomationOut }
         : {}),
