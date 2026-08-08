@@ -24,14 +24,6 @@ interface MessageBubbleProps {
 
 const LONG_PRESS_MS = 480
 
-function LaifeMark() {
-  return (
-    <span className="bubble__avatar bubble__avatar--assistant" aria-hidden="true">
-      <span className="bubble__avatar-mark">L</span>
-    </span>
-  )
-}
-
 function MessageBubbleComponent({
   message,
   isStreaming = false,
@@ -107,17 +99,22 @@ function MessageBubbleComponent({
       {isAssistant ? (
         <>
           <div className="bubble__meta">
-            <LaifeMark />
+            <span
+              className={`bubble__avatar bubble__avatar--assistant${isEmptyStream ? ' bubble__avatar--pulse' : ''}`}
+              aria-hidden="true"
+            >
+              <span className="bubble__avatar-mark">L</span>
+            </span>
             <span className="bubble__label">{isError ? 'Errore' : 'LAIfe'}</span>
           </div>
           <div
             className={`bubble__body${isEmptyStream ? ' bubble__body--typing' : ''}${isError ? ' bubble__body--error' : ''}`}
           >
             {isEmptyStream ? (
-              <TypingAnimation />
+              <TypingAnimation label="Sta rispondendo…" />
             ) : isError ? (
               <p className="bubble__error-text">
-                Non sono riuscito a rispondere. {message.content}
+                Qualcosa è andato storto. {message.content}
               </p>
             ) : (
               <StreamingRenderer content={message.content} isStreaming={isStreaming} />

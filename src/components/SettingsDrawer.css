@@ -109,6 +109,10 @@
   box-shadow: var(--glow-pink);
 }
 
+.settings-close:active {
+  transform: scale(0.96);
+}
+
 .settings-close:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;

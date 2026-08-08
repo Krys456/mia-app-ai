@@ -47,6 +47,8 @@ export class AutoScrollController {
   private pendingDelta = 0
   /** Real user input (wheel/touch/key/drag) — not programmatic soft-follow. */
   private userIntent = false
+  /** Extra frames after stream ends to catch markdown layout settle. */
+  private settleFrames = 0
   private lastTouchY: number | null = null
   private listeners = new Set<AutoScrollListener>()
   private bound = false
@@ -170,6 +172,7 @@ export class AutoScrollController {
   private setState(next: AutoScrollState) {
     if (this.state === next) {
       this.emit()
+      if (next === 'FOLLOWING' || this.needsLoop()) this.ensureLoop()
       return
     }
     this.state = next
@@ -184,6 +187,7 @@ export class AutoScrollController {
       this.pendingDelta = 0
     }
     this.emit()
+    if (this.needsLoop()) this.ensureLoop()
   }
 
   attach(scroller: HTMLElement) {
@@ -201,7 +205,7 @@ export class AutoScrollController {
     scroller.addEventListener('scroll', this.onScroll, { passive: true })
     window.addEventListener('keydown', this.onKeyDown)
 
-    this.startLoop()
+    if (this.needsLoop()) this.ensureLoop()
     this.emit()
   }
 
@@ -232,9 +236,11 @@ export class AutoScrollController {
   setStreaming(streaming: boolean) {
     this.streaming = streaming
     if (streaming) {
+      this.settleFrames = 0
       if (this.state !== 'PAUSED_BY_USER') {
         this.setState('FOLLOWING')
       } else {
+        this.ensureLoop()
         this.emit()
       }
       return
@@ -246,6 +252,9 @@ export class AutoScrollController {
     } else {
       this.emit()
     }
+    // Catch plain→markdown layout settle for the jump button.
+    this.settleFrames = 10
+    this.ensureLoop()
   }
 
   /** User sent a message — always resume following the new turn. */
@@ -299,7 +308,7 @@ export class AutoScrollController {
   }
 
   private tick = () => {
-    this.rafId = requestAnimationFrame(this.tick)
+    this.rafId = null
     const el = this.scroller
     if (!el) return
 
@@ -313,19 +322,32 @@ export class AutoScrollController {
       } else if (this.pendingDelta > 0.5) {
         this.followGrowth(0)
       }
-      return
+    } else if (growth > 0) {
+      // New content while paused / idle away from bottom → show jump button.
+      if (this.state === 'PAUSED_BY_USER' || distanceFromBottom(el) > NEAR_BOTTOM_PX) {
+        this.hasUnseenGrowth = true
+        this.emit()
+      }
     }
 
-    if (growth <= 0) return
+    if (this.settleFrames > 0) this.settleFrames -= 1
 
-    // New content while paused / idle away from bottom → show jump button.
-    if (this.state === 'PAUSED_BY_USER' || distanceFromBottom(el) > NEAR_BOTTOM_PX) {
-      this.hasUnseenGrowth = true
-      this.emit()
+    if (this.needsLoop()) {
+      this.rafId = requestAnimationFrame(this.tick)
     }
   }
 
-  private startLoop() {
+  /** Keep the loop only while follow work or streaming growth detection is needed. */
+  private needsLoop() {
+    return (
+      this.state === 'FOLLOWING' ||
+      this.pendingDelta > 0.5 ||
+      this.settleFrames > 0 ||
+      (this.streaming && this.state === 'PAUSED_BY_USER')
+    )
+  }
+
+  private ensureLoop() {
     if (this.rafId != null) return
     this.rafId = requestAnimationFrame(this.tick)
   }

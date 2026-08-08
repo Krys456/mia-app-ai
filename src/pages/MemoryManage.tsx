@@ -254,7 +254,15 @@ export function MemoryManage({ onBack }: MemoryManageProps) {
         ) : null}
 
         {loading ? (
-          <p className="memory-manage__empty">Caricamento…</p>
+          <div
+            className="memory-manage__skeleton"
+            aria-busy="true"
+            aria-label="Caricamento memorie"
+          >
+            <div className="memory-manage__skeleton-card" />
+            <div className="memory-manage__skeleton-card" />
+            <div className="memory-manage__skeleton-card" />
+          </div>
         ) : filtered.length === 0 ? (
           <p className="memory-manage__empty">
             {query.trim()

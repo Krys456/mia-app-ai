@@ -6,6 +6,10 @@
   max-width: 100%;
 }
 
+.md-body--settle {
+  animation: md-settle-in var(--duration-enter) var(--ease-out) both;
+}
+
 .md-body--streaming {
   position: relative;
 }
@@ -215,5 +219,18 @@
   .md-caret {
     animation: none;
     opacity: 0.7;
+  }
+
+  .md-body--settle {
+    animation: none;
+  }
+}
+
+@keyframes md-settle-in {
+  from {
+    opacity: 0.82;
+  }
+  to {
+    opacity: 1;
   }
 }
