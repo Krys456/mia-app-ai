@@ -31,6 +31,8 @@ export interface ChatApiRequest {
   personalityBias?: string
   /** Optional multi-source life signals (calendar, weather, traffic, …). */
   lifeContext?: Record<string, unknown> | null
+  /** NL Automation draft awaiting confirm/edit. */
+  pendingAutomation?: Record<string, unknown> | null
 }
 
 export interface ChatApiSuccess {
@@ -44,6 +46,8 @@ export interface ChatApiSuccess {
   voiceSession?: Record<string, unknown> | null
   /** Internal only — client stores used welcome greetings. */
   welcomeSession?: Record<string, unknown> | null
+  /** Internal only — NL automation draft awaiting confirm/edit. */
+  pendingAutomation?: Record<string, unknown> | null
 }
 
 export interface ChatApiErrorBody {
@@ -93,6 +97,9 @@ export async function requestChatCompletion(
       ...(payload.displayName ? { displayName: payload.displayName } : {}),
       ...(payload.personalityBias ? { personalityBias: payload.personalityBias } : {}),
       ...(payload.lifeContext ? { lifeContext: payload.lifeContext } : {}),
+      ...(payload.pendingAutomation
+        ? { pendingAutomation: payload.pendingAutomation }
+        : {}),
     }),
     signal: init?.signal,
   })
@@ -124,5 +131,15 @@ export async function requestChatCompletion(
     memoriesSaved: typeof data.memoriesSaved === 'number' ? data.memoriesSaved : 0,
     memoryEvent,
     learningSignals: sanitizeLearningSignals(data.learningSignals),
+    voiceSession:
+      data.voiceSession && typeof data.voiceSession === 'object' ? data.voiceSession : null,
+    welcomeSession:
+      data.welcomeSession && typeof data.welcomeSession === 'object' ? data.welcomeSession : null,
+    pendingAutomation:
+      data.pendingAutomation === null
+        ? null
+        : data.pendingAutomation && typeof data.pendingAutomation === 'object'
+          ? data.pendingAutomation
+          : undefined,
   }
 }

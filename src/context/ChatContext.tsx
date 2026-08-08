@@ -15,6 +15,10 @@ import {
   saveLearningSignals,
 } from '../lib/learningSignals'
 import { getWelcomeSession, saveWelcomeSession } from '../lib/welcomeSession'
+import {
+  getPendingAutomation,
+  savePendingAutomation,
+} from '../lib/pendingAutomation'
 import { buildSystemPrompt } from '../lib/personality'
 import { revealReplyText } from '../lib/revealText'
 import { getOrCreateUserId } from '../lib/userId'
@@ -374,7 +378,13 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
       void (async () => {
         try {
-          const { content: reply, memoryEvent, learningSignals, welcomeSession } =
+          const {
+            content: reply,
+            memoryEvent,
+            learningSignals,
+            welcomeSession,
+            pendingAutomation,
+          } =
             await requestChatCompletion(
             {
               messages: history,
@@ -385,6 +395,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
               welcomeSession: getWelcomeSession(),
               displayName: personalization.displayName?.trim() || undefined,
               personalityBias: personalization.personality || 'automatic',
+              pendingAutomation: getPendingAutomation() || undefined,
             },
             { signal: controller.signal },
           )
@@ -425,6 +436,17 @@ export function ChatProvider({ children }: { children: ReactNode }) {
                     ? (welcomeSession as { updatedAt: number }).updatedAt
                     : Date.now(),
               })
+            } catch {
+              /* ignore */
+            }
+          }
+          if (pendingAutomation !== undefined) {
+            try {
+              savePendingAutomation(
+                pendingAutomation && typeof pendingAutomation === 'object'
+                  ? (pendingAutomation as Record<string, unknown>)
+                  : null,
+              )
             } catch {
               /* ignore */
             }
