@@ -19,6 +19,11 @@ export interface ChatApiRequest {
   memoryEnabled?: boolean
   /** Prior internal reflection signals — never shown in UI. */
   learningSignals?: LearningSignals | null
+  /** Voice mode → spoken-natural answers. */
+  modality?: 'text' | 'voice'
+  voice?: boolean
+  /** Echo back prior voice session (interrupt / resume). */
+  voiceSession?: Record<string, unknown> | null
 }
 
 export interface ChatApiSuccess {
@@ -28,6 +33,8 @@ export interface ChatApiSuccess {
   memoryEvent?: 'saved' | 'updated' | null
   /** Internal only — client stores silently; never render. */
   learningSignals?: LearningSignals | null
+  /** Internal only — client stores for voice interrupt/resume. */
+  voiceSession?: Record<string, unknown> | null
 }
 
 export interface ChatApiErrorBody {
@@ -70,6 +77,9 @@ export async function requestChatCompletion(
       userId: payload.userId,
       memoryEnabled: payload.memoryEnabled !== false,
       ...(payload.learningSignals ? { learningSignals: payload.learningSignals } : {}),
+      ...(payload.modality ? { modality: payload.modality } : {}),
+      ...(payload.voice ? { voice: true } : {}),
+      ...(payload.voiceSession ? { voiceSession: payload.voiceSession } : {}),
     }),
     signal: init?.signal,
   })

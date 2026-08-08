@@ -47,6 +47,7 @@ Può arrivare CURIOSITY ENGINE dopo la risposta: una sola estensione naturale sc
 Può arrivare EXPERT TEACHER MODE su temi educativi: insegna progressivamente (idea → perché → come → esempio → errori → insight → correlati); non scaricare tutto subito; sensazione da ottimo insegnante, non enciclopedia.
 Può arrivare CONVERSATION MOMENTUM prima di chiudere: valuta completezza / valore / bruschezza / ripetizione; una sola continuazione concisa se serve, altrimenti chiusura naturale — mai allungare a vuoto.
 Può arrivare MULTI-STEP TASK PLANNER su richieste multi-azione (es. prepara il viaggio): piano ordinato, esecuzione passo-passo, recovery se un passo fallisce; informa sul progresso senza esporre ragionamento interno.
+Può arrivare VOICE CONVERSATION ENGINE in modalità voce: frasi corte, pause naturali, poca ripetizione, gestione interruzioni e ripresa del tema, utterance incomplete — parla, non leggere un testo ad alta voce.
 Può arrivare UNIVERSAL ACTION ENGINE per azioni reali (smart home, calendar, email, task, …): plugin modulari + Trust & Permission (low auto se autorizzato / medium conferma / high sempre conferma); mai fingere successi; mai citare piattaforme hardcodate.
 Può arrivare PLUGIN ARCHITECTURE → DISCOVERY: plugin indipendenti (name/description/permissions/auth/actions/trustLevel), enable/disable, discovery automatica per il ragionamento — senza alterare il motore di conversazione.
 Scrivi solo la risposta finale. Quality Control silenzioso. Non sembrare un motore di ricerca.`
@@ -110,6 +111,12 @@ interface ChatApiRequestBody {
    * Never merged into factual brain-memory.
    */
   learningSignals?: LearningSignalsPayload | null
+  /** Conversation modality — voice enables spoken-natural Writer style. */
+  modality?: 'text' | 'voice'
+  /** Shortcut for modality=voice */
+  voice?: boolean
+  /** Session-scoped voice interrupt / resume state (client echoes back). */
+  voiceSession?: Record<string, unknown> | null
 }
 
 function isChatRole(value: unknown): value is ChatRole {
@@ -227,6 +234,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const memoryEnabled = body.memoryEnabled !== false
   const attachments = sanitizeAttachments(body.attachments)
   const priorLearningSignals = sanitizeLearningSignals(body.learningSignals)
+  const modality =
+    body.modality === 'voice' || body.voice === true
+      ? 'voice'
+      : body.modality === 'text'
+        ? 'text'
+        : undefined
+  let voiceSessionIn: Record<string, unknown> | null = null
+  if (body.voiceSession && typeof body.voiceSession === 'object') {
+    voiceSessionIn = body.voiceSession as Record<string, unknown>
+  }
 
   if (messages.length === 0) {
     return sendJson(res, 400, { error: 'messages must be a non-empty array' })
@@ -244,6 +261,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Fail-soft: any failure yields empty context and chat continues.
     let cognitiveBlock = ''
     let preReflectionSignals: LearningSignalsPayload | null = priorLearningSignals
+    let voiceSessionOut: Record<string, unknown> | null = null
     if (lastUserMessage?.content) {
       try {
         const { runCognitiveEngine } = await import('../lib/server/cognitive-engine.js')
@@ -253,10 +271,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           attachments,
           memoryEnabled,
           priorLearningSignals,
+          modality,
+          voice: body.voice === true,
+          voiceSession: voiceSessionIn,
         })
         cognitiveBlock = result?.context || ''
         if (result?.learningSignals) {
           preReflectionSignals = result.learningSignals as LearningSignalsPayload
+        }
+        if (result?.voiceSession && typeof result.voiceSession === 'object') {
+          voiceSessionOut = result.voiceSession as Record<string, unknown>
         }
       } catch {
         cognitiveBlock = ''
@@ -267,7 +291,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       model,
       instructions: buildInstructions(clientSystemPrompt, cognitiveBlock),
       temperature: 0.85,
-      max_output_tokens: 4096,
+      // Voice: keep answers short enough to speak naturally
+      max_output_tokens: modality === 'voice' ? 700 : 4096,
       input: messages.map((msg) => ({
         type: 'message' as const,
         role: msg.role,
@@ -302,11 +327,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         content,
         memoryEnabled,
       )
-      // learningSignals is additive / internal — not a public UI contract field.
-      return sendJson(res, 200, { content, memoryEvent, learningSignals })
+      // learningSignals / voiceSession are additive / internal — not a public UI contract field.
+      return sendJson(res, 200, {
+        content,
+        memoryEvent,
+        learningSignals,
+        ...(voiceSessionOut ? { voiceSession: voiceSessionOut } : {}),
+      })
     }
 
-    return sendJson(res, 200, { content, memoryEvent: null, learningSignals })
+    return sendJson(res, 200, {
+      content,
+      memoryEvent: null,
+      learningSignals,
+      ...(voiceSessionOut ? { voiceSession: voiceSessionOut } : {}),
+    })
   } catch (error) {
     console.error(error)
 
