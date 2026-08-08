@@ -1,3 +1,8 @@
+import {
+  sanitizeLearningSignals,
+  type LearningSignals,
+} from './learningSignals'
+
 export type ChatApiRole = 'user' | 'assistant' | 'system'
 
 export interface ChatApiMessage {
@@ -5,11 +10,15 @@ export interface ChatApiMessage {
   content: string
 }
 
+export type { LearningSignals }
+
 export interface ChatApiRequest {
   messages: ChatApiMessage[]
   systemPrompt: string
   userId?: string
   memoryEnabled?: boolean
+  /** Prior internal reflection signals — never shown in UI. */
+  learningSignals?: LearningSignals | null
 }
 
 export interface ChatApiSuccess {
@@ -17,6 +26,8 @@ export interface ChatApiSuccess {
   memoriesSaved?: number
   /** Discrete UI hint when auto-memory wrote something. */
   memoryEvent?: 'saved' | 'updated' | null
+  /** Internal only — client stores silently; never render. */
+  learningSignals?: LearningSignals | null
 }
 
 export interface ChatApiErrorBody {
@@ -58,6 +69,7 @@ export async function requestChatCompletion(
       systemPrompt: payload.systemPrompt,
       userId: payload.userId,
       memoryEnabled: payload.memoryEnabled !== false,
+      ...(payload.learningSignals ? { learningSignals: payload.learningSignals } : {}),
     }),
     signal: init?.signal,
   })
@@ -88,5 +100,6 @@ export async function requestChatCompletion(
     content,
     memoriesSaved: typeof data.memoriesSaved === 'number' ? data.memoriesSaved : 0,
     memoryEvent,
+    learningSignals: sanitizeLearningSignals(data.learningSignals),
   }
 }

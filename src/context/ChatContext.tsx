@@ -9,6 +9,11 @@ import {
   type ReactNode,
 } from 'react'
 import { requestChatCompletion, type ChatApiMessage } from '../lib/chatApi'
+import {
+  finalizeConversationLearning,
+  getLearningSignals,
+  saveLearningSignals,
+} from '../lib/learningSignals'
 import { buildSystemPrompt } from '../lib/personality'
 import { revealReplyText } from '../lib/revealText'
 import { getOrCreateUserId } from '../lib/userId'
@@ -315,6 +320,13 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
   const newChat = useCallback(() => {
     generationRef.current += 1
+    // Close the conversation: keep preference/mistake signals, drop turn noise.
+    // Invisible — never surfaces in UI; never writes factual memory.
+    try {
+      finalizeConversationLearning()
+    } catch {
+      /* ignore */
+    }
     dispatch({ type: 'NEW_CHAT' })
   }, [])
   const openSettings = useCallback(() => dispatch({ type: 'OPEN_SETTINGS' }), [])
@@ -340,14 +352,24 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
       void (async () => {
         try {
-          const { content: reply, memoryEvent } = await requestChatCompletion({
+          const { content: reply, memoryEvent, learningSignals } = await requestChatCompletion({
             messages: history,
             systemPrompt: prompt,
             userId: getOrCreateUserId(),
             memoryEnabled: personalization.memoryEnabled !== false,
+            learningSignals: getLearningSignals(),
           })
 
           if (generation !== generationRef.current) return
+
+          // Persist internal learning signals silently (not factual memory, not UI).
+          if (learningSignals) {
+            try {
+              saveLearningSignals(learningSignals)
+            } catch {
+              /* ignore */
+            }
+          }
 
           const assistantId = uid()
           dispatch({ type: 'ASSISTANT_START', id: assistantId })
