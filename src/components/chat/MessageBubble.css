@@ -84,6 +84,28 @@
   padding: 0.15rem 0;
 }
 
+.bubble--error .bubble__label {
+  color: var(--danger, #c44);
+  background: none;
+  -webkit-background-clip: unset;
+  background-clip: unset;
+}
+
+.bubble--assistant .bubble__body--error {
+  max-width: min(100%, 46rem);
+  padding: 0.75rem 0.9rem;
+  border-radius: var(--radius-md);
+  border: 1px solid color-mix(in srgb, var(--danger, #c44) 35%, transparent);
+  background: color-mix(in srgb, var(--danger, #c44) 10%, var(--surface-solid));
+}
+
+.bubble__error-text {
+  margin: 0;
+  line-height: 1.5;
+  font-size: 0.95rem;
+  color: var(--text);
+}
+
 .bubble--assistant .message-actions {
   max-width: min(100%, 46rem);
 }

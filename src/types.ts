@@ -10,6 +10,8 @@ export interface ChatMessage {
   role: MessageRole
   content: string
   createdAt: number
+  /** When set, render as an error notice rather than a normal assistant reply. */
+  kind?: 'error'
 }
 
 /** Conversational personality modes for LAIfe. */

@@ -25,7 +25,11 @@ function MessageListComponent({ messages, isThinking, isStreaming }: MessageList
             key={message.id}
             message={message}
             isStreaming={isThisStreaming}
-            showActions={message.role === 'assistant' && !isThisStreaming}
+            showActions={
+              message.role === 'assistant' &&
+              message.kind !== 'error' &&
+              !isThisStreaming
+            }
           />
         )
       })}
