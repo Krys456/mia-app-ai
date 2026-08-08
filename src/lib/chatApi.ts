@@ -24,6 +24,9 @@ export interface ChatApiRequest {
   voice?: boolean
   /** Echo back prior voice session (interrupt / resume). */
   voiceSession?: Record<string, unknown> | null
+  /** Welcome Engine session — used greeting ids. */
+  welcomeSession?: Record<string, unknown> | null
+  displayName?: string
 }
 
 export interface ChatApiSuccess {
@@ -35,6 +38,8 @@ export interface ChatApiSuccess {
   learningSignals?: LearningSignals | null
   /** Internal only — client stores for voice interrupt/resume. */
   voiceSession?: Record<string, unknown> | null
+  /** Internal only — client stores used welcome greetings. */
+  welcomeSession?: Record<string, unknown> | null
 }
 
 export interface ChatApiErrorBody {
@@ -80,6 +85,8 @@ export async function requestChatCompletion(
       ...(payload.modality ? { modality: payload.modality } : {}),
       ...(payload.voice ? { voice: true } : {}),
       ...(payload.voiceSession ? { voiceSession: payload.voiceSession } : {}),
+      ...(payload.welcomeSession ? { welcomeSession: payload.welcomeSession } : {}),
+      ...(payload.displayName ? { displayName: payload.displayName } : {}),
     }),
     signal: init?.signal,
   })

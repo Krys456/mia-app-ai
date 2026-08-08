@@ -14,6 +14,7 @@ import {
   getLearningSignals,
   saveLearningSignals,
 } from '../lib/learningSignals'
+import { getWelcomeSession, saveWelcomeSession } from '../lib/welcomeSession'
 import { buildSystemPrompt } from '../lib/personality'
 import { revealReplyText } from '../lib/revealText'
 import { getOrCreateUserId } from '../lib/userId'
@@ -373,13 +374,16 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
       void (async () => {
         try {
-          const { content: reply, memoryEvent, learningSignals } = await requestChatCompletion(
+          const { content: reply, memoryEvent, learningSignals, welcomeSession } =
+            await requestChatCompletion(
             {
               messages: history,
               systemPrompt: prompt,
               userId: getOrCreateUserId(),
               memoryEnabled: personalization.memoryEnabled !== false,
               learningSignals: getLearningSignals(),
+              welcomeSession: getWelcomeSession(),
+              displayName: personalization.displayName?.trim() || undefined,
             },
             { signal: controller.signal },
           )
@@ -390,6 +394,19 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           if (learningSignals) {
             try {
               saveLearningSignals(learningSignals)
+            } catch {
+              /* ignore */
+            }
+          }
+          if (welcomeSession) {
+            try {
+              saveWelcomeSession(
+                welcomeSession as {
+                  usedGreetingIds: string[]
+                  welcomeCount: number
+                  updatedAt: number
+                },
+              )
             } catch {
               /* ignore */
             }

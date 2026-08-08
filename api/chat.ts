@@ -48,6 +48,7 @@ Può arrivare EXPERT TEACHER MODE su temi educativi: insegna progressivamente (i
 Può arrivare CONVERSATION MOMENTUM prima di chiudere: valuta completezza / valore / bruschezza / ripetizione; una sola continuazione concisa se serve, altrimenti chiusura naturale — mai allungare a vuoto.
 Può arrivare MULTI-STEP TASK PLANNER su richieste multi-azione (es. prepara il viaggio): piano ordinato, esecuzione passo-passo, recovery se un passo fallisce; informa sul progresso senza esporre ragionamento interno.
 Può arrivare VOICE CONVERSATION ENGINE in modalità voce: frasi corte, pause naturali, poca ripetizione, gestione interruzioni e ripresa del tema, utterance incomplete — parla, non leggere un testo ad alta voce.
+Può arrivare WELCOME ENGINE all’inizio di una nuova chat: nuovo vs returning, un progetto in corso al massimo, saluto caldo unico (mai ripetuto), una sola continuazione rilevante — niente aperture generiche.
 Può arrivare UNIVERSAL ACTION ENGINE per azioni reali (smart home, calendar, email, task, …): plugin modulari + Trust & Permission (low auto se autorizzato / medium conferma / high sempre conferma); mai fingere successi; mai citare piattaforme hardcodate.
 Può arrivare PLUGIN ARCHITECTURE → DISCOVERY: plugin indipendenti (name/description/permissions/auth/actions/trustLevel), enable/disable, discovery automatica per il ragionamento — senza alterare il motore di conversazione.
 Scrivi solo la risposta finale. Quality Control silenzioso. Non sembrare un motore di ricerca.`
@@ -117,6 +118,10 @@ interface ChatApiRequestBody {
   voice?: boolean
   /** Session-scoped voice interrupt / resume state (client echoes back). */
   voiceSession?: Record<string, unknown> | null
+  /** Welcome Engine session — used greeting ids (client echoes back). */
+  welcomeSession?: Record<string, unknown> | null
+  /** Optional display name for natural welcome. */
+  displayName?: string
 }
 
 function isChatRole(value: unknown): value is ChatRole {
@@ -244,6 +249,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (body.voiceSession && typeof body.voiceSession === 'object') {
     voiceSessionIn = body.voiceSession as Record<string, unknown>
   }
+  let welcomeSessionIn: Record<string, unknown> | null = null
+  if (body.welcomeSession && typeof body.welcomeSession === 'object') {
+    welcomeSessionIn = body.welcomeSession as Record<string, unknown>
+  }
+  const displayName =
+    typeof body.displayName === 'string' ? body.displayName.trim().slice(0, 40) : ''
 
   if (messages.length === 0) {
     return sendJson(res, 400, { error: 'messages must be a non-empty array' })
@@ -262,6 +273,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let cognitiveBlock = ''
     let preReflectionSignals: LearningSignalsPayload | null = priorLearningSignals
     let voiceSessionOut: Record<string, unknown> | null = null
+    let welcomeSessionOut: Record<string, unknown> | null = null
     if (lastUserMessage?.content) {
       try {
         const { runCognitiveEngine } = await import('../lib/server/cognitive-engine.js')
@@ -274,6 +286,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           modality,
           voice: body.voice === true,
           voiceSession: voiceSessionIn,
+          welcomeSession: welcomeSessionIn,
+          displayName: displayName || undefined,
+          userId: typeof body.userId === 'string' ? body.userId : undefined,
         })
         cognitiveBlock = result?.context || ''
         if (result?.learningSignals) {
@@ -281,6 +296,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
         if (result?.voiceSession && typeof result.voiceSession === 'object') {
           voiceSessionOut = result.voiceSession as Record<string, unknown>
+        }
+        if (result?.welcomeSession && typeof result.welcomeSession === 'object') {
+          welcomeSessionOut = result.welcomeSession as Record<string, unknown>
         }
       } catch {
         cognitiveBlock = ''
@@ -333,6 +351,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         memoryEvent,
         learningSignals,
         ...(voiceSessionOut ? { voiceSession: voiceSessionOut } : {}),
+        ...(welcomeSessionOut ? { welcomeSession: welcomeSessionOut } : {}),
       })
     }
 
@@ -341,6 +360,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       memoryEvent: null,
       learningSignals,
       ...(voiceSessionOut ? { voiceSession: voiceSessionOut } : {}),
+      ...(welcomeSessionOut ? { welcomeSession: welcomeSessionOut } : {}),
     })
   } catch (error) {
     console.error(error)
