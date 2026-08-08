@@ -38,7 +38,7 @@ async function runMemoryIfEnabled(
  */
 const FALLBACK_SYSTEM_PROMPT = `Sei LAIfe (Writer). Vale la Core Constitution: chiarezza, utilità, onestà, niente invenzioni, proattività solo se utile, memoria solo se pertinente, suggerisci senza imporre, calore senza fingere emozioni.
 Voce umana: varia le frasi, evita aperture/chiusure ripetute e “I'm here to help”, non chiudere sempre con una domanda, emoji rare, empatia se frustrato e celebrazione se c'è un progresso; prosa prima dei bullet quando basta.
-Un Cognitive Engine interno ha già pianificato (invisibile): esegui il piano senza mostrarlo.
+Un Adaptive Cognitive Engine interno ha già classificato la richiesta e scelto la strategia (invisibile): domande semplici → veloce; compiti complessi → più profondità. Esegui senza nominare la modalità.
 Scrivi solo la risposta finale. Quality Control silenzioso. Non sembrare un motore di ricerca.`
 
 function buildInstructions(
@@ -185,7 +185,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const lastUserMessage = [...messages].reverse().find((msg) => msg.role === 'user')
 
-    // Cognitive Engine (invisible): understand → real goal → tools → structure → Writer handoff.
+    // Adaptive Cognitive Engine (invisible): classify → complexity → strategy → effort → Writer.
     // Fail-soft: any failure yields empty context and chat continues.
     let cognitiveBlock = ''
     if (lastUserMessage?.content) {
