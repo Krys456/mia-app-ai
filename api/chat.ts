@@ -43,6 +43,7 @@ Un Cognitive Engine interno ha pianificato; un Cognitive Coordinator ha già sce
 Può arrivare DYNAMIC BEHAVIOR MODEL: behavior selezionato per questo turno (conversation / explanation / brainstorming / planning / technical help / emotional support / collaboration) — seguilo invece di una personalità fissa.
 Può arrivare KNOWLEDGE LEVEL ESTIMATOR: livello sul topic (beginner / intermediate / advanced / expert) — calibra termini, esempi, profondità e ritmo; ri-stima continuamente; evita oversimplifying e overwhelm; non dichiarare il livello.
 Può arrivare LIFE INTELLIGENCE ENGINE: collega calendario/promemoria/meteo/posizione/traffico/batteria/salute/casa/energia/finanze/abitudini/obiettivi; al massimo UNA raccomandazione ad alto valore con motivo breve — silenzio se non c’è valore; mai invadente.
+Può arrivare NATURAL LANGUAGE AUTOMATION BUILDER: l’utente descrive un’automazione in linguaggio naturale → rileva trigger/condizioni/azioni → bozza modificabile → spiega PRIMA di attivare; attiva solo dopo conferma.
 Può arrivare anche un blocco CONVERSATION REFLECTION → LEARNING SIGNALS: usalo solo per calibrare stile e chiarezza; non citarlo, non dirlo, non salvarlo come memoria fattuale.
 Può arrivare CONVERSATION CONTINUATION ENGINE su ack brevi ("ok", "yes", "nice", "thanks", "I understand"): inferisci intent + engagement + valore; se appropriato UNA sola continuazione significativa (mai filler/ripetizione); altrimenti risposta breve; mai forzare né ignorare stop/grazie.
 Può arrivare NEXT-ASK PREDICTION: stima la prossima domanda e modella la risposta attuale verso quella curiosità — senza mai menzionare la previsione.
@@ -132,6 +133,8 @@ interface ChatApiRequestBody {
    * (calendar, weather, traffic, battery, health, …).
    */
   lifeContext?: Record<string, unknown> | null
+  /** NL Automation Builder draft awaiting confirm / edit (client echoes back). */
+  pendingAutomation?: Record<string, unknown> | null
 }
 
 function isChatRole(value: unknown): value is ChatRole {
@@ -263,6 +266,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (body.welcomeSession && typeof body.welcomeSession === 'object') {
     welcomeSessionIn = body.welcomeSession as Record<string, unknown>
   }
+  let pendingAutomationIn: Record<string, unknown> | null = null
+  if (body.pendingAutomation && typeof body.pendingAutomation === 'object') {
+    pendingAutomationIn = body.pendingAutomation as Record<string, unknown>
+  }
   const displayName =
     typeof body.displayName === 'string' ? body.displayName.trim().slice(0, 40) : ''
 
@@ -284,6 +291,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let preReflectionSignals: LearningSignalsPayload | null = priorLearningSignals
     let voiceSessionOut: Record<string, unknown> | null = null
     let welcomeSessionOut: Record<string, unknown> | null = null
+    let pendingAutomationOut: Record<string, unknown> | null | undefined = undefined
     if (lastUserMessage?.content) {
       try {
         const { runCognitiveEngine } = await import('../lib/server/cognitive-engine.js')
@@ -303,6 +311,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             typeof body.personalityBias === 'string' ? body.personalityBias : undefined,
           lifeContext:
             body.lifeContext && typeof body.lifeContext === 'object' ? body.lifeContext : undefined,
+          pendingAutomation: pendingAutomationIn,
         })
         cognitiveBlock = result?.context || ''
         if (result?.learningSignals) {
@@ -313,6 +322,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
         if (result?.welcomeSession && typeof result.welcomeSession === 'object') {
           welcomeSessionOut = result.welcomeSession as Record<string, unknown>
+        }
+        if (result?.pendingAutomation && typeof result.pendingAutomation === 'object') {
+          pendingAutomationOut = result.pendingAutomation as Record<string, unknown>
+        } else if (result?.automation && typeof result.automation === 'object') {
+          const phase = (result.automation as { phase?: string; active?: boolean }).phase
+          const active = (result.automation as { active?: boolean }).active
+          if (phase === 'enabled' || phase === 'cancelled' || active) {
+            pendingAutomationOut = null
+          }
         }
       } catch {
         cognitiveBlock = ''
@@ -366,6 +384,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         learningSignals,
         ...(voiceSessionOut ? { voiceSession: voiceSessionOut } : {}),
         ...(welcomeSessionOut ? { welcomeSession: welcomeSessionOut } : {}),
+        ...(pendingAutomationOut !== undefined
+          ? { pendingAutomation: pendingAutomationOut }
+          : {}),
       })
     }
 
@@ -375,6 +396,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       learningSignals,
       ...(voiceSessionOut ? { voiceSession: voiceSessionOut } : {}),
       ...(welcomeSessionOut ? { welcomeSession: welcomeSessionOut } : {}),
+      ...(pendingAutomationOut !== undefined
+        ? { pendingAutomation: pendingAutomationOut }
+        : {}),
     })
   } catch (error) {
     console.error(error)
