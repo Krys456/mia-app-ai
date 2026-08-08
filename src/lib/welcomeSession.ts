@@ -1,11 +1,14 @@
 /**
- * Client store for Welcome Engine session (used greeting ids).
+ * Client store for Welcome Experience Engine session.
+ * Tracks used greetings/strategies + lastSeen for pause detection.
  * Invisible — never shown in UI, never factual memory.
  */
 
 export type WelcomeSession = {
   usedGreetingIds: string[]
+  usedStrategies: string[]
   welcomeCount: number
+  lastSeenAt: number
   updatedAt: number
 }
 
@@ -14,7 +17,9 @@ const STORAGE_KEY = 'laife.welcomeSession.v1'
 function emptySession(): WelcomeSession {
   return {
     usedGreetingIds: [],
+    usedStrategies: [],
     welcomeCount: 0,
+    lastSeenAt: 0,
     updatedAt: Date.now(),
   }
 }
@@ -27,9 +32,21 @@ export function sanitizeWelcomeSession(raw: unknown): WelcomeSession | null {
     usedGreetingIds: s.usedGreetingIds
       .filter((x): x is string => typeof x === 'string')
       .map((x) => x.slice(0, 40))
-      .slice(-40),
+      .slice(-48),
+    usedStrategies: Array.isArray(s.usedStrategies)
+      ? s.usedStrategies
+          .filter((x): x is string => typeof x === 'string')
+          .map((x) => x.slice(0, 40))
+          .slice(-12)
+      : [],
     welcomeCount:
       typeof s.welcomeCount === 'number' && Number.isFinite(s.welcomeCount) ? s.welcomeCount : 0,
+    lastSeenAt:
+      typeof s.lastSeenAt === 'number' && Number.isFinite(s.lastSeenAt)
+        ? s.lastSeenAt
+        : typeof s.updatedAt === 'number' && Number.isFinite(s.updatedAt)
+          ? s.updatedAt
+          : 0,
     updatedAt:
       typeof s.updatedAt === 'number' && Number.isFinite(s.updatedAt) ? s.updatedAt : Date.now(),
   }
@@ -66,8 +83,14 @@ export function saveWelcomeSession(session: WelcomeSession | null) {
   writeStore(clean)
 }
 
-/** Soft reset on explicit preference clear — keeps used greetings to avoid repeats. */
+/** Soft bump — keeps used greetings to avoid repeats. */
 export function bumpWelcomeCount() {
   const cur = readStore() || emptySession()
-  writeStore({ ...cur, welcomeCount: cur.welcomeCount + 1, updatedAt: Date.now() })
+  const now = Date.now()
+  writeStore({
+    ...cur,
+    welcomeCount: cur.welcomeCount + 1,
+    lastSeenAt: now,
+    updatedAt: now,
+  })
 }

@@ -400,13 +400,30 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           }
           if (welcomeSession) {
             try {
-              saveWelcomeSession(
-                welcomeSession as {
-                  usedGreetingIds: string[]
-                  welcomeCount: number
-                  updatedAt: number
-                },
-              )
+              saveWelcomeSession({
+                usedGreetingIds: Array.isArray(
+                  (welcomeSession as { usedGreetingIds?: unknown }).usedGreetingIds,
+                )
+                  ? ((welcomeSession as { usedGreetingIds: string[] }).usedGreetingIds)
+                  : [],
+                usedStrategies: Array.isArray(
+                  (welcomeSession as { usedStrategies?: unknown }).usedStrategies,
+                )
+                  ? ((welcomeSession as { usedStrategies: string[] }).usedStrategies)
+                  : [],
+                welcomeCount:
+                  typeof (welcomeSession as { welcomeCount?: unknown }).welcomeCount === 'number'
+                    ? (welcomeSession as { welcomeCount: number }).welcomeCount
+                    : 0,
+                lastSeenAt:
+                  typeof (welcomeSession as { lastSeenAt?: unknown }).lastSeenAt === 'number'
+                    ? (welcomeSession as { lastSeenAt: number }).lastSeenAt
+                    : Date.now(),
+                updatedAt:
+                  typeof (welcomeSession as { updatedAt?: unknown }).updatedAt === 'number'
+                    ? (welcomeSession as { updatedAt: number }).updatedAt
+                    : Date.now(),
+              })
             } catch {
               /* ignore */
             }
