@@ -57,11 +57,7 @@ function MessageActionsComponent({
       copiedTimerRef.current = null
       setCopied(false)
     }, 1500)
-<<<<<<< HEAD
   }, [content, onAction])
-=======
-  }, [content])
->>>>>>> origin/cursor/ux-perf-leaks-284c
 
   const onFeedback = useCallback(
     (value: MessageFeedbackValue) => {

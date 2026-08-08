@@ -7,7 +7,6 @@ import {
   type KeyboardEvent,
   type PointerEvent,
 } from 'react'
-import { useChat } from '../../context/ChatContext'
 import type { ChatMessage } from '../../types'
 import { MessageActions } from './MessageActions'
 import { StreamingRenderer } from './StreamingRenderer'
@@ -19,6 +18,8 @@ interface MessageBubbleProps {
   /** True while this assistant bubble is still receiving streamed text. */
   isStreaming?: boolean
   showActions?: boolean
+  canRegenerate?: boolean
+  onRegenerate?: (messageId: string) => void
 }
 
 const LONG_PRESS_MS = 480
@@ -35,8 +36,9 @@ function MessageBubbleComponent({
   message,
   isStreaming = false,
   showActions = false,
+  canRegenerate = false,
+  onRegenerate,
 }: MessageBubbleProps) {
-  const { regenerateAssistant, isThinking, isStreaming: chatStreaming } = useChat()
   const isAssistant = message.role === 'assistant'
   const isError = isAssistant && message.kind === 'error'
   const isEmptyStream = isAssistant && !message.content && isStreaming && !isError
@@ -108,7 +110,9 @@ function MessageBubbleComponent({
             <LaifeMark />
             <span className="bubble__label">{isError ? 'Errore' : 'LAIfe'}</span>
           </div>
-          <div className={`bubble__body${isEmptyStream ? ' bubble__body--typing' : ''}${isError ? ' bubble__body--error' : ''}`}>
+          <div
+            className={`bubble__body${isEmptyStream ? ' bubble__body--typing' : ''}${isError ? ' bubble__body--error' : ''}`}
+          >
             {isEmptyStream ? (
               <TypingAnimation />
             ) : isError ? (
@@ -132,11 +136,11 @@ function MessageBubbleComponent({
         <MessageActions
           messageId={message.id}
           content={message.content}
-          canRegenerate={!isThinking && !chatStreaming}
+          canRegenerate={canRegenerate}
           forceVisible={actionsPinned}
           onRegenerate={() => {
             unpinActions()
-            regenerateAssistant(message.id)
+            onRegenerate?.(message.id)
           }}
           onAction={unpinActions}
         />
