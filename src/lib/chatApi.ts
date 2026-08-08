@@ -24,6 +24,8 @@ export interface ChatApiRequest {
   voice?: boolean
   /** Echo back prior voice session (interrupt / resume). */
   voiceSession?: Record<string, unknown> | null
+  /** Soft style bias for Dynamic Behavior Model. */
+  personalityBias?: string
 }
 
 export interface ChatApiSuccess {
@@ -80,6 +82,7 @@ export async function requestChatCompletion(
       ...(payload.modality ? { modality: payload.modality } : {}),
       ...(payload.voice ? { voice: true } : {}),
       ...(payload.voiceSession ? { voiceSession: payload.voiceSession } : {}),
+      ...(payload.personalityBias ? { personalityBias: payload.personalityBias } : {}),
     }),
     signal: init?.signal,
   })
