@@ -39,7 +39,7 @@ async function runMemoryIfEnabled(
 const FALLBACK_SYSTEM_PROMPT = `Sei LAIfe (Writer). Non sei un chatbot: sei un partner di conversazione intelligente, adattivo e affidabile. Far sentire l’utente compreso conta quanto rispondere. Vale la Core Constitution: chiarezza, utilità, onestà, niente invenzioni, proattività solo se utile, memoria solo se pertinente, suggerisci senza imporre, calore senza fingere emozioni.
 Craft del testo: ritmo naturale (frasi corte e lunghe alternate), niente wording/sostantivi ripetitivi, transizioni fluide, leggibilità alta, spiegazioni a strati (idea → perché → dettaglio), allinea automaticamente lo stile di scrittura dell’utente.
 Voce umana: varia le frasi, evita aperture/chiusure ripetute e “I'm here to help”, non chiudere sempre con una domanda, emoji solo se calzano davvero; empatia se frustrato e celebrazione se c'è un progresso; prosa prima dei bullet quando basta.
-Un Cognitive Engine interno ha pianificato; un Cognitive Coordinator ha già scelto i comportamenti utili (invisibile): esegui quella decisione senza mostrarla. I motori sono advisor — non competono sulla stessa parte della risposta.
+Un Cognitive Engine interno ha pianificato; un Cognitive Coordinator ha già scelto i comportamenti utili (invisibile): esegui quella decisione senza mostrarla. I motori sono advisor — non competono sulla stessa parte della risposta. Prima dell’invio può girare SATISFACTION ESTIMATOR: se la soddisfazione prevista è bassa, una sola rifinitura (mai loop).
 Può arrivare DYNAMIC BEHAVIOR MODEL: behavior selezionato per questo turno (conversation / explanation / brainstorming / planning / technical help / emotional support / collaboration) — seguilo invece di una personalità fissa.
 Può arrivare KNOWLEDGE LEVEL ESTIMATOR: livello sul topic (beginner / intermediate / advanced / expert) — calibra termini, esempi, profondità e ritmo; ri-stima continuamente; evita oversimplifying e overwhelm; non dichiarare il livello.
 Può arrivare LIFE INTELLIGENCE ENGINE: collega calendario/promemoria/meteo/posizione/traffico/batteria/salute/casa/energia/finanze/abitudini/obiettivi; al massimo UNA raccomandazione ad alto valore con motivo breve — silenzio se non c’è valore; mai invadente.
@@ -352,9 +352,54 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       })),
     })
 
-    const content = response.output_text?.trim()
+    let content = response.output_text?.trim()
     if (!content) {
       return sendJson(res, 502, { error: 'Empty response from OpenAI' })
+    }
+
+    // Satisfaction estimate before send — if low, improve once (never iterate).
+    if (lastUserMessage?.content) {
+      try {
+        const {
+          runSatisfactionEstimator,
+          buildRefinementInstructions,
+        } = await import('../lib/server/satisfaction-estimator.js')
+        const priorAssistant = [...messages]
+          .reverse()
+          .find((msg) => msg.role === 'assistant')?.content
+        const { estimate, shouldRefine } = runSatisfactionEstimator({
+          userMessage: lastUserMessage.content,
+          draft: content,
+          priorAssistant: priorAssistant || '',
+          planHints: {
+            keepFast: modality === 'voice',
+            complexity: lastUserMessage.content.length > 120 ? 'high' : 'medium',
+            primaryIntent: /[?]/.test(lastUserMessage.content) ? 'question' : undefined,
+          },
+        })
+        if (shouldRefine && estimate.refineBrief) {
+          const refined = await client.responses.create({
+            model,
+            instructions: buildRefinementInstructions(content, estimate),
+            temperature: 0.7,
+            max_output_tokens: modality === 'voice' ? 700 : 4096,
+            input: [
+              {
+                type: 'message' as const,
+                role: 'user' as const,
+                content:
+                  'Migliora la bozza secondo le istruzioni. Restituisci solo il testo finale.',
+              },
+            ],
+          })
+          const improved = refined.output_text?.trim()
+          if (improved && improved.length > 20) {
+            content = improved
+          }
+        }
+      } catch {
+        /* keep original content — fail-soft */
+      }
     }
 
     // Post-turn reflection on the completed exchange (invisible; no brain-memory writes).
