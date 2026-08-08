@@ -3,6 +3,7 @@ import type { ChatMessage } from '../../types'
 import { MessageBubble } from './MessageBubble'
 import { TypingAnimation } from './TypingAnimation'
 import './MessageList.css'
+import './MessageBubble.css'
 
 interface MessageListProps {
   messages: ChatMessage[]
@@ -30,11 +31,13 @@ function MessageListComponent({ messages, isThinking, isStreaming }: MessageList
       })}
 
       {isThinking ? (
-        <article
-          className="bubble bubble--assistant"
-          aria-label="LAIfe sta pensando"
-        >
-          <span className="bubble__label">LAIfe</span>
+        <article className="bubble bubble--assistant" aria-label="LAIfe sta pensando">
+          <div className="bubble__meta">
+            <span className="bubble__avatar bubble__avatar--assistant" aria-hidden="true">
+              <span className="bubble__avatar-mark">L</span>
+            </span>
+            <span className="bubble__label">LAIfe</span>
+          </div>
           <div className="bubble__body bubble__body--typing">
             <TypingAnimation />
           </div>

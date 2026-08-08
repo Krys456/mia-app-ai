@@ -4,18 +4,55 @@
   animation: chat-rise-in var(--duration-bubble) var(--ease-out) both;
 }
 
-.bubble--user,
 .bubble--assistant {
   align-self: stretch;
   width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.bubble--user {
+  align-self: stretch;
+  width: 100%;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* —— Assistant: flat into the page, no card chrome —— */
+.bubble__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.bubble__avatar {
+  flex-shrink: 0;
+  width: 1.65rem;
+  height: 1.65rem;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bubble__avatar--assistant {
+  background: var(--gradient-brand);
+  box-shadow: var(--glow-brand);
+}
+
+.bubble__avatar-mark {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--on-accent);
+  line-height: 1;
 }
 
 .bubble__label {
-  display: block;
   font-size: 0.72rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  margin-bottom: 0.45rem;
   font-weight: 600;
   color: var(--accent);
   background: var(--gradient-brand);
@@ -23,54 +60,59 @@
   background-clip: text;
 }
 
-.bubble__label--user {
-  color: var(--text-muted);
-  background: none;
-  -webkit-background-clip: unset;
-  background-clip: unset;
-  letter-spacing: 0.12em;
-}
-
 @supports (background-clip: text) or (-webkit-background-clip: text) {
-  .bubble__label:not(.bubble__label--user) {
+  .bubble__label {
     color: transparent;
   }
 }
 
-.bubble__body {
+.bubble--assistant .bubble__body {
   width: 100%;
-  padding: 1rem 0;
+  max-width: min(100%, 46rem);
+  margin: 0;
+  padding: 0;
+  border: 0;
   border-radius: 0;
   background: transparent;
-  border: 0;
   box-shadow: none;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
+  color: var(--text);
 }
 
-.bubble__body--typing {
-  padding: 0;
+.bubble--assistant .bubble__body--typing {
+  padding: 0.15rem 0;
+}
+
+.bubble--assistant .message-actions {
+  max-width: min(100%, 46rem);
+}
+
+/* —— User: compact, right-aligned, clearly different —— */
+.bubble__user-row {
+  max-width: min(100%, 34rem);
+  width: fit-content;
+  margin-left: auto;
 }
 
 .bubble--user .bubble__body {
-  padding: 0.85rem 0;
+  width: fit-content;
+  max-width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-lg);
+  border-bottom-right-radius: var(--radius-xs);
+  background: var(--bubble-user-bg);
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
   color: var(--text);
-  border-top: 1px solid color-mix(in srgb, var(--accent) 18%, transparent);
-  border-bottom: 1px solid color-mix(in srgb, var(--accent) 12%, transparent);
-  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  box-shadow: var(--glow-brand);
 }
 
 .bubble--user .bubble__body p {
   margin: 0;
-  line-height: 1.65;
-  font-size: 1rem;
+  line-height: 1.55;
+  font-size: 0.98rem;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-}
-
-.bubble--assistant .bubble__body:not(.bubble__body--typing) {
-  color: var(--text);
-  padding: 0.15rem 0 0.35rem;
 }
 
 .bubble--actions-open .message-actions {
@@ -99,5 +141,12 @@
 @media (prefers-reduced-motion: reduce) {
   .bubble {
     animation: none;
+  }
+}
+
+@media (min-width: 1100px) {
+  .bubble--assistant .bubble__body,
+  .bubble--assistant .message-actions {
+    max-width: min(100%, 52rem);
   }
 }
