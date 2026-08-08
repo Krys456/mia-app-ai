@@ -39,6 +39,7 @@ async function runMemoryIfEnabled(
 const FALLBACK_SYSTEM_PROMPT = `Sei LAIfe (Writer). Vale la Core Constitution: chiarezza, utilità, onestà, niente invenzioni, proattività solo se utile, memoria solo se pertinente, suggerisci senza imporre, calore senza fingere emozioni.
 Voce umana: varia le frasi, evita aperture/chiusure ripetute e “I'm here to help”, non chiudere sempre con una domanda, emoji rare, empatia se frustrato e celebrazione se c'è un progresso; prosa prima dei bullet quando basta.
 Un Cognitive Engine interno ha già pianificato (invisibile): esegui il piano senza mostrarlo.
+Può arrivare anche un blocco CONVERSATION REFLECTION → LEARNING SIGNALS: usalo solo per calibrare stile e chiarezza; non citarlo, non dirlo, non salvarlo come memoria fattuale.
 Scrivi solo la risposta finale. Quality Control silenzioso. Non sembrare un motore di ricerca.`
 
 function buildInstructions(
@@ -76,6 +77,17 @@ interface ChatApiMessage {
   content: string
 }
 
+/** Internal learning signals from conversation reflection — not factual memory. */
+interface LearningSignalsPayload {
+  workedWell: string[]
+  neededClarification: string[]
+  apparentPreferences: string[]
+  mistakesToAvoid: string[]
+  directive: string
+  turnCount: number
+  createdAt: number
+}
+
 interface ChatApiRequestBody {
   messages?: ChatApiMessage[]
   systemPrompt?: string
@@ -84,10 +96,42 @@ interface ChatApiRequestBody {
   memoryEnabled?: boolean
   /** Optional attachments for orchestrator routing (Vision / documents). */
   attachments?: ChatAttachment[]
+  /**
+   * Prior internal learning signals (conversation reflection).
+   * Never merged into factual brain-memory.
+   */
+  learningSignals?: LearningSignalsPayload | null
 }
 
 function isChatRole(value: unknown): value is ChatRole {
   return value === 'user' || value === 'assistant' || value === 'system'
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === 'string')
+}
+
+function sanitizeLearningSignals(raw: unknown): LearningSignalsPayload | null {
+  if (!raw || typeof raw !== 'object') return null
+  const s = raw as Record<string, unknown>
+  if (
+    !isStringArray(s.workedWell) ||
+    !isStringArray(s.neededClarification) ||
+    !isStringArray(s.apparentPreferences) ||
+    !isStringArray(s.mistakesToAvoid)
+  ) {
+    return null
+  }
+  return {
+    workedWell: s.workedWell.slice(0, 8),
+    neededClarification: s.neededClarification.slice(0, 8),
+    apparentPreferences: s.apparentPreferences.slice(0, 8),
+    mistakesToAvoid: s.mistakesToAvoid.slice(0, 8),
+    directive: typeof s.directive === 'string' ? s.directive.slice(0, 2000) : '',
+    turnCount: typeof s.turnCount === 'number' && Number.isFinite(s.turnCount) ? s.turnCount : 0,
+    createdAt:
+      typeof s.createdAt === 'number' && Number.isFinite(s.createdAt) ? s.createdAt : Date.now(),
+  }
 }
 
 function sanitizeMessages(raw: unknown): ChatApiMessage[] {
@@ -173,6 +217,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     typeof body.systemPrompt === 'string' ? body.systemPrompt.trim() : ''
   const memoryEnabled = body.memoryEnabled !== false
   const attachments = sanitizeAttachments(body.attachments)
+  const priorLearningSignals = sanitizeLearningSignals(body.learningSignals)
 
   if (messages.length === 0) {
     return sendJson(res, 400, { error: 'messages must be a non-empty array' })
@@ -186,8 +231,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const lastUserMessage = [...messages].reverse().find((msg) => msg.role === 'user')
 
     // Cognitive Engine (invisible): understand → real goal → tools → structure → Writer handoff.
+    // Includes conversation reflection learning signals (never factual memory).
     // Fail-soft: any failure yields empty context and chat continues.
     let cognitiveBlock = ''
+    let preReflectionSignals: LearningSignalsPayload | null = priorLearningSignals
     if (lastUserMessage?.content) {
       try {
         const { runCognitiveEngine } = await import('../lib/server/cognitive-engine.js')
@@ -196,8 +243,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           messages,
           attachments,
           memoryEnabled,
+          priorLearningSignals,
         })
         cognitiveBlock = result?.context || ''
+        if (result?.learningSignals) {
+          preReflectionSignals = result.learningSignals as LearningSignalsPayload
+        }
       } catch {
         cognitiveBlock = ''
       }
@@ -220,16 +271,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return sendJson(res, 502, { error: 'Empty response from OpenAI' })
     }
 
+    // Post-turn reflection on the completed exchange (invisible; no brain-memory writes).
+    let learningSignals: LearningSignalsPayload | null = preReflectionSignals
+    try {
+      const { runConversationReflection } = await import(
+        '../lib/server/conversation-reflection.js'
+      )
+      const post = runConversationReflection({
+        messages,
+        latestAssistant: content,
+        priorSignals: preReflectionSignals,
+      })
+      learningSignals = post?.signals || preReflectionSignals
+    } catch {
+      /* keep prior */
+    }
+
     if (lastUserMessage?.content) {
       const memoryEvent = await runMemoryIfEnabled(
         lastUserMessage.content,
         content,
         memoryEnabled,
       )
-      return sendJson(res, 200, { content, memoryEvent })
+      // learningSignals is additive / internal — not a public UI contract field.
+      return sendJson(res, 200, { content, memoryEvent, learningSignals })
     }
 
-    return sendJson(res, 200, { content, memoryEvent: null })
+    return sendJson(res, 200, { content, memoryEvent: null, learningSignals })
   } catch (error) {
     console.error(error)
 
