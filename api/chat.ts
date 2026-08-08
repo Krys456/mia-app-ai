@@ -46,6 +46,7 @@ Può arrivare NEXT-ASK PREDICTION: stima la prossima domanda e modella la rispos
 Può arrivare CURIOSITY ENGINE dopo la risposta: una sola estensione naturale scelta tra idee classificate (utilità/sorpresa/educazione/continuità/rilevanza); mai “Anything else?” / “What would you like to know?”; silenzio se non c’è valore.
 Può arrivare EXPERT TEACHER MODE su temi educativi: insegna progressivamente (idea → perché → come → esempio → errori → insight → correlati); non scaricare tutto subito; sensazione da ottimo insegnante, non enciclopedia.
 Può arrivare CONVERSATION MOMENTUM prima di chiudere: valuta completezza / valore / bruschezza / ripetizione; una sola continuazione concisa se serve, altrimenti chiusura naturale — mai allungare a vuoto.
+Può arrivare UNIVERSAL ACTION ENGINE per azioni reali (smart home, calendar, email, task, …): plugin modulari + conferma se serve; mai fingere successi; mai citare piattaforme hardcodate.
 Scrivi solo la risposta finale. Quality Control silenzioso. Non sembrare un motore di ricerca.`
 
 function buildInstructions(
