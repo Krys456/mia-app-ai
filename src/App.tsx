@@ -66,9 +66,6 @@ function AppShell() {
         <MemoryToast />
       </div>
 
-<<<<<<< HEAD
-      <SettingsDrawer onOpenMemory={() => openMemoryManage(true)} />
-=======
       {view === 'memory' ? (
         <div className="app-view" key="memory">
           <MemoryManage onBack={backFromMemory} />
@@ -81,8 +78,7 @@ function AppShell() {
         </div>
       ) : null}
 
-      <SettingsDrawer onOpenMemory={openMemoryManage} />
->>>>>>> origin/cursor/ux-scroll-284c
+      <SettingsDrawer onOpenMemory={() => openMemoryManage(true)} />
     </div>
   )
 }

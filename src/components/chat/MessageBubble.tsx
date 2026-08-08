@@ -91,17 +91,11 @@ function MessageBubbleComponent({
 
   return (
     <article
-<<<<<<< HEAD
+      ref={rootRef}
       className={`bubble bubble--${message.role}${isError ? ' bubble--error' : ''}${actionsPinned ? ' bubble--actions-open' : ''}`}
       aria-label={message.role === 'user' ? 'Tu' : isError ? 'Errore' : 'LAIfe'}
       role={isError ? 'alert' : undefined}
       tabIndex={isAssistant && showActions && !isError ? 0 : undefined}
-=======
-      ref={rootRef}
-      className={`bubble bubble--${message.role}${actionsPinned ? ' bubble--actions-open' : ''}`}
-      aria-label={message.role === 'user' ? 'Tu' : 'LAIfe'}
-      tabIndex={isAssistant && showActions ? 0 : undefined}
->>>>>>> origin/cursor/ux-touch-actions-284c
       onPointerDown={onPointerDown}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
