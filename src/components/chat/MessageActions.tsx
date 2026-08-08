@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useState } from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import {
   getMessageFeedback,
   setMessageFeedback,
@@ -14,6 +14,8 @@ interface MessageActionsProps {
   onRegenerate: () => void
   /** Force visible (keyboard / long-press). */
   forceVisible?: boolean
+  /** Fired after any toolbar action (helps dismiss touch pin). */
+  onAction?: () => void
 }
 
 async function copyText(text: string): Promise<boolean> {
@@ -44,11 +46,13 @@ function MessageActionsComponent({
   canRegenerate,
   onRegenerate,
   forceVisible = false,
+  onAction,
 }: MessageActionsProps) {
   const [copied, setCopied] = useState(false)
   const [feedback, setFeedback] = useState<MessageFeedbackValue | null>(() =>
     getMessageFeedback(messageId),
   )
+  const copiedTimerRef = useRef<number | null>(null)
 
   useEffect(() => {
     setFeedback(getMessageFeedback(messageId))
@@ -57,18 +61,31 @@ function MessageActionsComponent({
     })
   }, [messageId])
 
+  useEffect(
+    () => () => {
+      if (copiedTimerRef.current != null) window.clearTimeout(copiedTimerRef.current)
+    },
+    [],
+  )
+
   const onCopy = useCallback(async () => {
     const ok = await copyText(content)
+    onAction?.()
     if (!ok) return
     setCopied(true)
-    window.setTimeout(() => setCopied(false), 1500)
-  }, [content])
+    if (copiedTimerRef.current != null) window.clearTimeout(copiedTimerRef.current)
+    copiedTimerRef.current = window.setTimeout(() => {
+      copiedTimerRef.current = null
+      setCopied(false)
+    }, 1500)
+  }, [content, onAction])
 
   const onFeedback = useCallback(
     (value: MessageFeedbackValue) => {
       setMessageFeedback(messageId, value)
+      onAction?.()
     },
-    [messageId],
+    [messageId, onAction],
   )
 
   return (
