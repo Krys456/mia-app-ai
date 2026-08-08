@@ -20,8 +20,8 @@
   pointer-events: auto;
 }
 
-@media (hover: none) {
-  /* Touch: always show a compact row — long-press pin is optional emphasis only. */
+@media (hover: none), (pointer: coarse), (max-width: 767px) {
+  /* Phones/tablets: always show actions — never require hover (desktop pattern). */
   .message-actions {
     opacity: 0.95;
     transform: none;
