@@ -8,8 +8,10 @@
 - Official **LAIfe Theme** by default (black + neon blue / cyan / purple / pink)
 - Full theme personalization: built-in themes + custom theme creator
 - Chat shell with sticky header & fixed composer
+- **Memory** page with categorized, searchable, database-backed notes
+- Long-term user profile memory injected into chat (goals/interests/preferences)
 - Slide-out settings drawer (theme + assistant personalization)
-- Local demo replies shaped by a configurable system personality prompt
+- OpenAI chat via Vercel `/api/chat`
 
 ## Quick start
 
@@ -24,6 +26,48 @@ Build:
 npm run build
 npm run preview
 ```
+
+Production output is written to `dist/` (Vite default). Node **20+** required (see `.nvmrc`).
+
+## Deploy
+
+### Vercel
+
+Config file: [`vercel.json`](./vercel.json) (Vite framework, `dist` output, SPA rewrites).
+
+1. Import the GitHub repo in [Vercel](https://vercel.com/new)
+2. Framework preset: **Vite** (auto-detected)
+3. Build command: `npm run build`
+4. Output directory: `dist`
+5. Set environment variables:
+   - `OPENAI_API_KEY`
+   - `SUPABASE_URL` (or `VITE_SUPABASE_URL` as URL fallback)
+   - `SUPABASE_SERVICE_ROLE_KEY` (server memory APIs)
+   - `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` (optional browser client)
+6. Deploy
+
+CLI alternative:
+
+```bash
+npx vercel
+```
+
+### Netlify
+
+Config file: [`netlify.toml`](./netlify.toml) (build + SPA redirect + asset caching).
+
+1. Import the GitHub repo in [Netlify](https://app.netlify.com/start)
+2. Build command: `npm run build`
+3. Publish directory: `dist`
+4. Deploy
+
+CLI alternative:
+
+```bash
+npx netlify deploy --build --prod
+```
+
+Optional env vars: copy [`.env.example`](./.env.example) and set the same keys in the host’s Environment Variables UI (`VITE_*` are inlined at build time).
 
 ## Themes
 
@@ -41,9 +85,12 @@ Preferences persist in `localStorage` (`laife.settings.v2`).
 src/
   components/     Header, ChatThread, Composer, SettingsDrawer, ThemeSettings
   context/        ChatProvider + ThemeProvider
-  lib/            themes, personality / local reply helper
+  lib/            themes, personality, browser supabase (src/lib/supabase.ts)
   types.ts
   App.tsx
+api/              Vercel serverless routes (chat, memories, vision)
+lib/server/       Shared server helpers — supabase.js is the ONLY backend Supabase client
+supabase/         SQL migrations for BrAIn schema
 ```
 
 ## Controls

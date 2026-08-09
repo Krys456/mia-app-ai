@@ -4,7 +4,7 @@
   --theme-surface: #111111;
   --theme-surface-2: #222222;
   --theme-text: #ffffff;
-  --theme-text-muted: #a8a8b3;
+  --theme-text-muted: #b4b4bf;
   --theme-accent: #2b98ff;
   --theme-accent-2: #1c84e9;
   --theme-accent-3: #e20dc4;
@@ -54,26 +54,46 @@
   --glow-brand: 0 0 28px color-mix(in srgb, var(--theme-accent) 24%, transparent),
     0 0 48px color-mix(in srgb, var(--theme-accent-4) 14%, transparent);
 
-  /* Legacy aliases kept for gradual migration / brand naming */
-  --laife-black: var(--theme-bg);
-  --laife-dark: var(--theme-surface);
-  --laife-soft: var(--theme-surface-2);
-  --laife-cyan: var(--theme-accent);
-  --laife-blue: var(--theme-accent-2);
-  --laife-purple: var(--theme-accent-3);
-  --laife-pink: var(--theme-accent-4);
-  --laife-magenta: var(--theme-accent-4);
+  --danger: #ff6b84;
+  --danger-soft: color-mix(in srgb, #ff6b84 14%, transparent);
+  --danger-border: color-mix(in srgb, #ff6b84 40%, var(--border));
+  --danger-text: #ffb3bd;
 
+  --shadow-card: 0 10px 28px var(--shadow-lift);
+  --shadow-dock: 0 -10px 36px var(--shadow-lift);
+  --shadow-sheet: 0 12px 32px var(--shadow-lift);
+
+  --radius-xs: 0.4rem;
   --radius-sm: 0.75rem;
   --radius-md: 1.1rem;
   --radius-lg: 1.5rem;
   --radius-xl: 1.85rem;
+  --radius-pill: 999px;
 
-  --content-max: 46rem;
-  --header-h: 3.75rem;
+  --btn-icon: 2.75rem;
+  --btn-send: 2.75rem;
+  --composer-h: 5.75rem;
+  --touch-min: 2.75rem; /* 44px — Apple HIG minimum */
+
+  /* Mobile-first: full-bleed by default. Desktop column only from tablet up. */
+  --content-max: 100%;
+  --page-gutter: 1rem; /* ~px-4 */
+  --space-page-y: 1rem;
+  --app-height: 100dvh;
+  --header-h: 3.85rem;
+  --header-pad-y: 0.7rem;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+
   --font-sans: 'Outfit', ui-sans-serif, system-ui, sans-serif;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --duration: 220ms;
+  --duration-press: 160ms;
+  --duration-enter: 260ms;
+  --duration-drawer: 300ms;
+  --duration-bubble: 320ms;
 
   color-scheme: dark;
   font-family: var(--font-sans);
@@ -96,10 +116,15 @@ body,
 #root {
   height: 100%;
   margin: 0;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 body {
   min-width: 320px;
+  overscroll-behavior-y: none;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
   background:
     radial-gradient(900px 520px at 15% -5%, var(--atmosphere-1), transparent 55%),
     radial-gradient(780px 480px at 95% 0%, var(--atmosphere-2), transparent 50%),
@@ -132,16 +157,83 @@ select {
   border: 0;
 }
 
-.brand-gradient-text {
-  background: var(--gradient-brand);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+/* Shared thin scrollbar for dark glass surfaces */
+.scroll-surface {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--surface-2) 90%, transparent) transparent;
 }
 
-.glass {
-  background: color-mix(in srgb, var(--surface-solid) 78%, transparent);
-  backdrop-filter: blur(18px) saturate(1.2);
-  -webkit-backdrop-filter: blur(18px) saturate(1.2);
-  border: 1px solid var(--border);
+.scroll-surface::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.scroll-surface::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--surface-2) 88%, var(--border));
+  border-radius: var(--radius-pill);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.scroll-surface::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@media (min-width: 768px) {
+  :root {
+    --page-gutter: 1.25rem;
+    --header-h: 3.75rem;
+    --header-pad-y: 0.65rem;
+    --btn-icon: 2.55rem;
+    --btn-send: 2.6rem;
+    --content-max: 46rem;
+  }
+}
+
+@media (min-width: 1100px) {
+  :root {
+    --page-gutter: 1.5rem;
+    --content-max: 52rem;
+  }
+}
+
+/*
+ * Mobile hard-lock (<768px).
+ * Reasserts full-bleed layout even if a later rule resets --content-max
+ * on :root (the desktop-column regression that made phones look like
+ * a scaled-down desktop shell).
+ */
+@media (max-width: 767.98px) {
+  :root {
+    --content-max: 100%;
+  }
+
+  .app-shell,
+  .app-view,
+  .chat-container,
+  .chat-container__stage,
+  .chat-container__viewport {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .app-header__inner,
+  .message-list,
+  .input-bar {
+    width: 100%;
+    max-width: 100%;
+    margin-left: 0;
+    margin-right: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

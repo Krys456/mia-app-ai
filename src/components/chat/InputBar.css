@@ -1,0 +1,188 @@
+.input-bar-dock {
+  position: sticky;
+  bottom: 0;
+  z-index: 90;
+  flex-shrink: 0;
+  width: 100%;
+  max-width: 100%;
+  pointer-events: auto;
+  padding:
+    0.65rem
+    var(--page-gutter)
+    calc(0.65rem + var(--safe-bottom));
+  background: linear-gradient(
+    to top,
+    var(--bg) 52%,
+    color-mix(in srgb, var(--bg) 55%, transparent)
+  );
+}
+
+.input-bar {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.65rem;
+  width: 100%;
+  /* Mobile-first: full width. Desktop column via --content-max from 768px up. */
+  max-width: var(--content-max);
+  margin: 0 auto;
+  box-sizing: border-box;
+  padding: 0.5rem 0.5rem 0.5rem 0.95rem;
+  background: color-mix(in srgb, var(--surface-solid) 86%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border));
+  border-radius: var(--radius-xl);
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  box-shadow: var(--shadow-dock), var(--glow-brand);
+  transition: border-color var(--duration) var(--ease-out), box-shadow var(--duration) var(--ease-out);
+}
+
+.input-bar:focus-within {
+  border-color: color-mix(in srgb, var(--accent) 42%, transparent);
+  box-shadow: var(--shadow-dock), 0 0 0 1px color-mix(in srgb, var(--accent) 12%, transparent),
+    var(--glow-brand);
+}
+
+.input-bar__input {
+  flex: 1;
+  min-width: 0;
+  resize: none;
+  min-height: 2.75rem;
+  max-height: 8rem;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 1rem; /* avoid iOS zoom on focus */
+  line-height: 1.45;
+  padding: 0.6rem 0;
+  overflow-y: auto;
+  field-sizing: content;
+}
+
+.input-bar__input::placeholder {
+  color: var(--text-muted);
+}
+
+.input-bar__input:disabled {
+  opacity: 0.65;
+}
+
+.input-bar__send {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: max(var(--btn-send), var(--touch-min));
+  height: max(var(--btn-send), var(--touch-min));
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--gradient-brand);
+  color: var(--on-accent);
+  cursor: pointer;
+  pointer-events: auto;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  box-shadow: var(--glow-brand);
+  transition: transform var(--duration-press) var(--ease-out), opacity var(--duration-press) var(--ease-out),
+    filter var(--duration-press) var(--ease-out);
+}
+
+.input-bar__send:hover:not(:disabled) {
+  transform: scale(1.04);
+  filter: brightness(1.06);
+}
+
+.input-bar__send:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.input-bar__send:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.input-bar__send--busy:disabled {
+  opacity: 0.85;
+  cursor: default;
+  box-shadow: var(--glow-brand);
+}
+
+.input-bar__send-pulse {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: var(--radius-pill);
+  background: var(--on-accent);
+  animation: input-send-pulse 1.1s infinite var(--ease-out);
+}
+
+.input-bar--busy {
+  border-color: color-mix(in srgb, var(--accent) 28%, var(--border));
+}
+
+@keyframes input-send-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.85);
+  }
+  45% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .input-bar__send-pulse {
+    animation: none;
+    opacity: 0.75;
+  }
+}
+
+.input-bar__send:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+cursor/hide-enter-hint-touch-284c
+/* Mobile-first: keyboard shortcut hint is hidden unless a fine pointer is present. */
+/* Mobile-first: keyboard shortcut hint hidden unless a fine pointer is present. */
+main
+.input-bar__hint {
+  display: none;
+}
+
+.input-bar-dock {
+  padding-bottom: calc(0.55rem + var(--safe-bottom));
+}
+
+/* Desktop / trackpad / mouse: keep the Enter hint visible */
+@media (hover: hover) and (pointer: fine) {
+  .input-bar__hint {
+    display: block;
+    width: 100%;
+    max-width: var(--content-max);
+    margin: 0.45rem auto 0;
+    text-align: center;
+    font-size: 0.72rem;
+    letter-spacing: 0.03em;
+    color: var(--text-muted);
+  }
+
+  .input-bar-dock {
+    padding-bottom: calc(0.65rem + var(--safe-bottom));
+  }
+}
+
+@media (min-width: 768px) {
+  .input-bar {
+    gap: 0.55rem;
+    padding: 0.55rem 0.55rem 0.55rem 0.95rem;
+  }
+
+  .input-bar__input {
+    min-height: 2.65rem;
+    padding: 0.55rem 0;
+  }
+}
