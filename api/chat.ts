@@ -503,6 +503,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       phrase?: string
       maxWords?: number
     } | null = null
+    let storytellingPlan: {
+      active?: boolean
+      allowStory?: boolean
+      mode?: string
+      storyScore?: number
+      seed?: string
+    } | null = null
     if (lastUserMessage?.content) {
       try {
         const { runCognitiveEngine } = await import('../lib/server/cognitive-engine.js')
@@ -778,6 +785,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             maxWords?: number
           }
         }
+        if (result?.storytelling && typeof result.storytelling === 'object') {
+          storytellingPlan = result.storytelling as {
+            active?: boolean
+            allowStory?: boolean
+            mode?: string
+            storyScore?: number
+            seed?: string
+          }
+        }
       } catch {
         cognitiveBlock = ''
       }
@@ -923,6 +939,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         )
         const { draftViolatesIntelligentSilence } = await import(
           '../lib/server/intelligent-silence-engine.js'
+        )
+        const { draftViolatesStorytelling } = await import(
+          '../lib/server/storytelling-engine.js'
         )
 
         const priorAssistant = [...messages]
@@ -1072,6 +1091,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (draftViolatesIntelligentSilence(content, intelligentSilencePlan as never)) {
           companionBriefs.push(
             'Intelligent Silence: riscrivi — non ogni risposta ha bisogno di una nuova idea. Se lo spazio respiratorio è sufficiente, basta un battito breve (“Già…” / “Hai ragione.” / “Fa riflettere.” / “Yeah…” / “That lands.”). Niente nuove idee, domande o elenchi. Check: respected breathing space — or filled the silence?',
+          )
+        }
+        if (draftViolatesStorytelling(content, storytellingPlan as never)) {
+          companionBriefs.push(
+            'Storytelling: riscrivi — non spiegare da manuale: illustra. Preferisci mini-storie, analogie, scenari reali, immaginazione (“Imagine…” / “It’s a bit like…” / “Picture someone who…”). Vietato “is defined as…” / “there are N types of…” / “In conclusion…”. Check: illustrated — or textbook?',
           )
         }
         if (draftViolatesConversationSpark(content, conversationSparkPlan as never)) {
