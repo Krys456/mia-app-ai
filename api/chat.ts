@@ -434,6 +434,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       move?: string
       shiftScore?: number
     } | null = null
+    let authenticAgreementPlan: {
+      active?: boolean
+      allowFullAgreement?: boolean
+      preferPushback?: boolean
+      move?: string
+      agreementPressure?: number
+    } | null = null
     if (lastUserMessage?.content) {
       try {
         const { runCognitiveEngine } = await import('../lib/server/cognitive-engine.js')
@@ -620,6 +627,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             shiftScore?: number
           }
         }
+        if (result?.authenticAgreement && typeof result.authenticAgreement === 'object') {
+          authenticAgreementPlan = result.authenticAgreement as {
+            active?: boolean
+            allowFullAgreement?: boolean
+            preferPushback?: boolean
+            move?: string
+            agreementPressure?: number
+          }
+        }
       } catch {
         cognitiveBlock = ''
       }
@@ -736,6 +752,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const { draftViolatesNaturalTopicTransition } = await import(
           '../lib/server/natural-topic-transition-engine.js'
         )
+        const { draftViolatesAuthenticAgreement } = await import(
+          '../lib/server/authentic-agreement-engine.js'
+        )
 
         const priorAssistant = [...messages]
           .reverse()
@@ -834,6 +853,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (draftViolatesNaturalTopicTransition(content, naturalTopicTransitionPlan as never)) {
           companionBriefs.push(
             'Natural Topic Transition: riscrivi — se cambi argomento, crea un ponte (“This reminds me of…” / “Speaking of that…” / “That makes me think about…”). Spiega perché nasce la nuova idea; collega naturalmente. Niente salti abrupti (“Completely unrelated” / “Random thought:”). Check: natural bridge, or abrupt jump?',
+          )
+        }
+        if (draftViolatesAuthenticAgreement(content, authenticAgreementPlan as never)) {
+          companionBriefs.push(
+            "Authentic Agreement: riscrivi — niente finto accordo. Vietato “You're absolutely right!” / “I completely agree!” / “Hai assolutamente ragione!”. Se serve, disaccordo gentile o un'altra prospettiva, spiegata con calma e rispetto. Check: agreeing because it's true, or only to please?",
           )
         }
         if (draftViolatesConversationSpark(content, conversationSparkPlan as never)) {
