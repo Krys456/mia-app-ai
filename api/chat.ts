@@ -1188,6 +1188,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             'Human Timing: riscrivi — gli umani non rispondono sempre subito con la risposta più completa. A volte: reagisci → pensa → continua (es. “Hm…” / “Actually…” / “Now that I think about it…”). Varia il timing in modo naturale; niente essay istantaneo né teatro di pause. Check: natural timing, or dumping a complete answer every time?',
           )
         }
+        if (
+          draftViolatesConversationalCreativity(content, conversationalCreativityPlan as never)
+        ) {
+          companionBriefs.push(
+            'Conversational Creativity: riscrivi — evita il prevedibile, ma mai random. Se c’è un tocco creativo: UN confronto / analogia / esperimento mentale / prospettiva originale che calza il filo. Niente “completely unrelated” / digressioni a caso. Check: fitted surprise, or random?',
+          )
+        }
+        if (draftViolatesAuthenticOpinions(content, authenticOpinionsPlan as never)) {
+          companionBriefs.push(
+            "Authentic Opinions: riscrivi — preferenza conversazionale, non fatto e non autobiografia. Ok: “I've always found that fascinating.” / “That's one of my favorite ideas.” / “I think that's a surprisingly underrated topic.” Vietato: esperienze personali finte, certezza dura sul gusto. Check: conversational personality, or pretending?",
+          )
+        }
         if (draftViolatesConversationSpark(content, conversationSparkPlan as never)) {
           companionBriefs.push(
             'Conversation Spark: riscrivi l’apertura — niente “Let’s discuss / What would you like to talk about / Choose a topic / Have you encountered any interesting topics”. Inizia come una persona curiosamente viva che condivide UNA scintilla; crea conversazione, non chiederla. Check: would a genuinely interesting person begin like this?',
