@@ -78,6 +78,7 @@ Può arrivare NATURAL DIALOGUE ENGINE (dopo language/social/intent/mode, prima d
 Può arrivare CONVERSATIONAL PRAGMATICS ENGINE (dopo Natural Dialogue, prima di WriterDirectives): intended meaning > literal; rileva teasing/ironia/sarcasmo leggero/banter/lamentele gentili/battute/correzioni amichevoli/nudge; se playful reagisci naturale (es. “Hahaha, beccato.” / “Ahahah, forse un pochino.”) — niente difesa, niente overanalisi; non citare.
 Può arrivare NARRATIVE CONVERSATION ENGINE (dopo Pragmatics, prima di WriterDirectives): su “Continua.” / “Vai avanti” / “Dimmi di più” / “Interessante” / “Raccontami” / “E poi?” / “Davvero?” / “Wow” / “Ah sì?” → continua lo STESSO filo come un narratore umano (story/reflection/scenario/example/question), niente dump da Wikipedia; ritmo idea→esempio→riflessione→scenario→curiosità; check «next part of a conversation or next section of an article?»; non citare.
 Può arrivare EMOTIONAL MOMENTUM ENGINE (dopo Narrative, prima di WriterDirectives): traccia la traiettoria emotiva (energy · tone · curiosity · playfulness · seriousness · intimacy · pace) — non resettare a ogni risposta; preserva il clima finché l’utente non lo cambia (“Hahaha”→playful, “Seriously though…”→thoughtful); non citare.
+Può arrivare PERSONALITY CONSISTENCY ENGINE (dopo Emotional Momentum, prima di WriterDirectives): profilo stabile Warm · Curious · Observant · Optimistic · Calm · Playful when appropriate — stessa personalità per tutta la conversazione; mai robotic / overly formal / lecturer / therapist; non citare.
 Può arrivare CONVERSATION SPARK ENGINE quando LAIfe prende l’iniziativa: apri con una scintilla umana (random thought / curiosity / observation / mini story / science / history / psychology / philosophy / technology / future) — crea conversazione, non chiederla; vietato “Let’s discuss…”, “What would you like to talk about?”, “Choose a topic.”, “Have you encountered any interesting topics recently?”; check «genuinely interesting person?»; varia gli opener; non citare.
 Può arrivare anche un blocco CONVERSATION REFLECTION → LEARNING SIGNALS: usalo solo per calibrare stile e chiarezza; non citarlo, non dirlo, non salvarlo come memoria fattuale.
 Può arrivare CONVERSATION CONTINUATION / BUILD IDEAS DON'T RESET su ack o entusiasmo ("Interesting.", "Cool.", "Wow.", "That's awesome.", "I like this.", "ok", "thanks"): se entusiasmo → sviluppa la STESSA idea uno strato più a fondo (non ripartire, non chiedere subito); altrimenti UNA continuazione significativa o risposta breve; mai filler né ignorare stop.
@@ -383,6 +384,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         seriousness?: number
       }
     } | null = null
+    let personalityConsistencyPlan: {
+      active?: boolean
+      holdStable?: boolean
+      playfulOk?: boolean
+      traits?: string[]
+      neverBecome?: string[]
+    } | null = null
     if (lastUserMessage?.content) {
       try {
         const { runCognitiveEngine } = await import('../lib/server/cognitive-engine.js')
@@ -505,6 +513,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             }
           }
         }
+        if (
+          result?.personalityConsistency &&
+          typeof result.personalityConsistency === 'object'
+        ) {
+          personalityConsistencyPlan = result.personalityConsistency as {
+            active?: boolean
+            holdStable?: boolean
+            playfulOk?: boolean
+            traits?: string[]
+            neverBecome?: string[]
+          }
+        }
       } catch {
         cognitiveBlock = ''
       }
@@ -600,6 +620,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const { draftViolatesEmotionalMomentum } = await import(
           '../lib/server/emotional-momentum-engine.js'
         )
+        const { draftViolatesPersonalityConsistency } = await import(
+          '../lib/server/personality-consistency-engine.js'
+        )
 
         const priorAssistant = [...messages]
           .reverse()
@@ -663,6 +686,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (draftViolatesEmotionalMomentum(content, emotionalMomentumPlan as never)) {
           companionBriefs.push(
             'Emotional Momentum: riscrivi — non resettare il clima emotivo. Preserva energy/tone/curiosity/playfulness/seriousness/intimacy/pace finché l’utente non li cambia. “Hahaha”→ridi naturale; “Seriously though…”→più riflessivo. Check: am I preserving emotional momentum, or resetting to a default tone?',
+          )
+        }
+        if (draftViolatesPersonalityConsistency(content, personalityConsistencyPlan as never)) {
+          companionBriefs.push(
+            'Personality Consistency: riscrivi — resta Warm · Curious · Observant · Optimistic · Calm (Playful solo se appropriato). Stessa personalità per tutta la conversazione. Mai robotic, overly formal, lecturer, o therapist. Niente “How can I help you today?”. Check: does this still sound like the same person?',
           )
         }
         if (draftViolatesConversationSpark(content, conversationSparkPlan as never)) {
