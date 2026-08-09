@@ -458,6 +458,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       kind?: string
       density?: number
     } | null = null
+    let humanConversationScorePlan: {
+      active?: boolean
+      passThreshold?: number
+    } | null = null
     if (lastUserMessage?.content) {
       try {
         const { runCognitiveEngine } = await import('../lib/server/cognitive-engine.js')
@@ -676,6 +680,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             density?: number
           }
         }
+        if (result?.humanConversationScore && typeof result.humanConversationScore === 'object') {
+          humanConversationScorePlan = result.humanConversationScore as {
+            active?: boolean
+            passThreshold?: number
+          }
+        }
       } catch {
         cognitiveBlock = ''
       }
@@ -804,6 +814,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const { draftViolatesMicroObservation } = await import(
           '../lib/server/micro-observation-engine.js'
         )
+        const { draftViolatesHumanConversationScore } = await import(
+          '../lib/server/human-conversation-score.js'
+        )
 
         const priorAssistant = [...messages]
           .reverse()
@@ -922,6 +935,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (draftViolatesMicroObservation(content, microObservationPlan as never)) {
           companionBriefs.push(
             "Micro Observation: riscrivi — al massimo UNA micro-osservazione corta e variata (“Funny how…” / “I've noticed something…” / “That's actually more common than people think.” / “The interesting part isn't…”). Niente stack, niente overuse. Check: short and varied, or forced/overused?",
+          )
+        }
+        if (draftViolatesHumanConversationScore(content, humanConversationScorePlan as never)) {
+          companionBriefs.push(
+            'Human Conversation Score: riscrivi — non esporre il punteggio né la rubrica. Restituisci solo il testo finale della conversazione.',
           )
         }
         if (draftViolatesConversationSpark(content, conversationSparkPlan as never)) {
