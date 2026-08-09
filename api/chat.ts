@@ -483,6 +483,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       discoveryScore?: number
       frame?: string
     } | null = null
+    let conversationChemistryPlan: {
+      active?: boolean
+      band?: string
+      stance?: string
+      chemistryScore?: number
+      metrics?: {
+        comfort?: number
+        trust?: number
+        rhythm?: number
+        engagement?: number
+      }
+    } | null = null
     if (lastUserMessage?.content) {
       try {
         const { runCognitiveEngine } = await import('../lib/server/cognitive-engine.js')
@@ -734,6 +746,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             frame?: string
           }
         }
+        if (result?.conversationChemistry && typeof result.conversationChemistry === 'object') {
+          conversationChemistryPlan = result.conversationChemistry as {
+            active?: boolean
+            band?: string
+            stance?: string
+            chemistryScore?: number
+            metrics?: {
+              comfort?: number
+              trust?: number
+              rhythm?: number
+              engagement?: number
+            }
+          }
+        }
       } catch {
         cognitiveBlock = ''
       }
@@ -874,6 +900,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const { draftViolatesSharedDiscovery } = await import(
           '../lib/server/shared-discovery-engine.js'
         )
+        const { draftViolatesConversationChemistry } = await import(
+          '../lib/server/conversation-chemistry-engine.js'
+        )
 
         const priorAssistant = [...messages]
           .reverse()
@@ -1012,6 +1041,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (draftViolatesSharedDiscovery(content, sharedDiscoveryPlan as never)) {
           companionBriefs.push(
             "Shared Discovery: riscrivi — non insegnare, scoprite insieme. Preferisci “Let's think about this.” / “Now that you mention it…” / “That opens an interesting question.”. Vietato “Let me explain…” / “As an AI…” / “There are N key points you need to understand…”. Check: exploring ideas with someone — or being lectured?",
+          )
+        }
+        if (draftViolatesConversationChemistry(content, conversationChemistryPlan as never)) {
+          companionBriefs.push(
+            'Conversation Chemistry: riscrivi — adatta la chimica. Alta → più spontaneità naturale; bassa → ascolto, ritmo lento, meno initiative. Niente helpdesk robotico quando c’è calore; niente battute forzate quando la chimica è bassa. Non annunciare punteggi. Check: adapted to chemistry — or mismatched stance?',
           )
         }
         if (draftViolatesConversationSpark(content, conversationSparkPlan as never)) {
