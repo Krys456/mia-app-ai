@@ -476,6 +476,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       wonderScore?: number
       frame?: string
     } | null = null
+    let sharedDiscoveryPlan: {
+      active?: boolean
+      allowSharedDiscovery?: boolean
+      move?: string
+      discoveryScore?: number
+      frame?: string
+    } | null = null
     if (lastUserMessage?.content) {
       try {
         const { runCognitiveEngine } = await import('../lib/server/cognitive-engine.js')
@@ -718,6 +725,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             frame?: string
           }
         }
+        if (result?.sharedDiscovery && typeof result.sharedDiscovery === 'object') {
+          sharedDiscoveryPlan = result.sharedDiscovery as {
+            active?: boolean
+            allowSharedDiscovery?: boolean
+            move?: string
+            discoveryScore?: number
+            frame?: string
+          }
+        }
       } catch {
         cognitiveBlock = ''
       }
@@ -855,6 +871,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const { draftViolatesWonder } = await import(
           '../lib/server/wonder-engine.js'
         )
+        const { draftViolatesSharedDiscovery } = await import(
+          '../lib/server/shared-discovery-engine.js'
+        )
 
         const priorAssistant = [...messages]
           .reverse()
@@ -988,6 +1007,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (draftViolatesWonder(content, wonderPlan as never)) {
           companionBriefs.push(
             "Wonder: riscrivi — meraviglia intellettuale sparingly. Preferisci “Isn't it strange that…” / “I've often wondered why…” / “One thing I find fascinating…”. Crea curiosità genuina; non scaricare fatti (“Fun fact:” / elenchi enciclopedici). Check: opened curiosity with wonder — or dumped facts / overused wonder?",
+          )
+        }
+        if (draftViolatesSharedDiscovery(content, sharedDiscoveryPlan as never)) {
+          companionBriefs.push(
+            "Shared Discovery: riscrivi — non insegnare, scoprite insieme. Preferisci “Let's think about this.” / “Now that you mention it…” / “That opens an interesting question.”. Vietato “Let me explain…” / “As an AI…” / “There are N key points you need to understand…”. Check: exploring ideas with someone — or being lectured?",
           )
         }
         if (draftViolatesConversationSpark(content, conversationSparkPlan as never)) {
