@@ -518,6 +518,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       priorAtmosphere?: string
       continuityScore?: number
     } | null = null
+    let humanTimingPlan: {
+      active?: boolean
+      varyTiming?: boolean
+      shape?: string
+      opener?: string
+      timingScore?: number
+    } | null = null
     if (lastUserMessage?.content) {
       try {
         const { runCognitiveEngine } = await import('../lib/server/cognitive-engine.js')
@@ -812,6 +819,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             continuityScore?: number
           }
         }
+        if (result?.humanTiming && typeof result.humanTiming === 'object') {
+          humanTimingPlan = result.humanTiming as {
+            active?: boolean
+            varyTiming?: boolean
+            shape?: string
+            opener?: string
+            timingScore?: number
+          }
+        }
       } catch {
         cognitiveBlock = ''
       }
@@ -963,6 +979,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         )
         const { draftViolatesEmotionalContinuity } = await import(
           '../lib/server/emotional-continuity-engine.js'
+        )
+        const { draftViolatesHumanTiming } = await import(
+          '../lib/server/human-timing-engine.js'
         )
 
         const priorAssistant = [...messages]
@@ -1122,6 +1141,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (draftViolatesEmotionalContinuity(content, emotionalContinuityPlan as never)) {
           companionBriefs.push(
             'Emotional Continuity: riscrivi — ricorda l’atmosfera emotiva. Non resettare dopo ogni messaggio. Se è profonda, resta profondo; se è giocosa, resta giocoso — finché l’utente non cambia direzione. Niente “How can I help you today?” / “Anyway, on another note…”. Check: remembering the atmosphere, or resetting after every message?',
+          )
+        }
+        if (draftViolatesHumanTiming(content, humanTimingPlan as never)) {
+          companionBriefs.push(
+            'Human Timing: riscrivi — gli umani non rispondono sempre subito con la risposta più completa. A volte: reagisci → pensa → continua (es. “Hm…” / “Actually…” / “Now that I think about it…”). Varia il timing in modo naturale; niente essay istantaneo né teatro di pause. Check: natural timing, or dumping a complete answer every time?',
           )
         }
         if (draftViolatesConversationSpark(content, conversationSparkPlan as never)) {
