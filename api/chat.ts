@@ -462,6 +462,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       active?: boolean
       passThreshold?: number
     } | null = null
+    let emotionalResonancePlan: {
+      active?: boolean
+      mode?: string
+      intensity?: string
+      intensityScore?: number
+      reactionSeed?: string
+    } | null = null
     if (lastUserMessage?.content) {
       try {
         const { runCognitiveEngine } = await import('../lib/server/cognitive-engine.js')
@@ -686,6 +693,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             passThreshold?: number
           }
         }
+        if (result?.emotionalResonance && typeof result.emotionalResonance === 'object') {
+          emotionalResonancePlan = result.emotionalResonance as {
+            active?: boolean
+            mode?: string
+            intensity?: string
+            intensityScore?: number
+            reactionSeed?: string
+          }
+        }
       } catch {
         cognitiveBlock = ''
       }
@@ -817,6 +833,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const { draftViolatesHumanConversationScore } = await import(
           '../lib/server/human-conversation-score.js'
         )
+        const { draftViolatesEmotionalResonance } = await import(
+          '../lib/server/emotional-resonance-engine.js'
+        )
 
         const priorAssistant = [...messages]
           .reverse()
@@ -940,6 +959,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (draftViolatesHumanConversationScore(content, humanConversationScorePlan as never)) {
           companionBriefs.push(
             'Human Conversation Score: riscrivi — non esporre il punteggio né la rubrica. Restituisci solo il testo finale della conversazione.',
+          )
+        }
+        if (draftViolatesEmotionalResonance(content, emotionalResonancePlan as never)) {
+          companionBriefs.push(
+            'Emotional Resonance: riscrivi — rispecchia l’intensità con una reazione unica. Celebra con entusiasmo genuino; su stanchezza rallenta e usa linguaggio più calmo; su incertezza rispondi gentile senza fretta. Vietato “I’m sorry to hear that” / “That must be hard” / “Capisco come ti senti”. Check: mirrored intensity with a unique reaction — or a generic empathy template?',
           )
         }
         if (draftViolatesConversationSpark(content, conversationSparkPlan as never)) {
