@@ -495,6 +495,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         engagement?: number
       }
     } | null = null
+    let intelligentSilencePlan: {
+      active?: boolean
+      allowSilence?: boolean
+      move?: string
+      silenceScore?: number
+      phrase?: string
+      maxWords?: number
+    } | null = null
     if (lastUserMessage?.content) {
       try {
         const { runCognitiveEngine } = await import('../lib/server/cognitive-engine.js')
@@ -760,6 +768,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             }
           }
         }
+        if (result?.intelligentSilence && typeof result.intelligentSilence === 'object') {
+          intelligentSilencePlan = result.intelligentSilence as {
+            active?: boolean
+            allowSilence?: boolean
+            move?: string
+            silenceScore?: number
+            phrase?: string
+            maxWords?: number
+          }
+        }
       } catch {
         cognitiveBlock = ''
       }
@@ -902,6 +920,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         )
         const { draftViolatesConversationChemistry } = await import(
           '../lib/server/conversation-chemistry-engine.js'
+        )
+        const { draftViolatesIntelligentSilence } = await import(
+          '../lib/server/intelligent-silence-engine.js'
         )
 
         const priorAssistant = [...messages]
@@ -1046,6 +1067,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (draftViolatesConversationChemistry(content, conversationChemistryPlan as never)) {
           companionBriefs.push(
             'Conversation Chemistry: riscrivi — adatta la chimica. Alta → più spontaneità naturale; bassa → ascolto, ritmo lento, meno initiative. Niente helpdesk robotico quando c’è calore; niente battute forzate quando la chimica è bassa. Non annunciare punteggi. Check: adapted to chemistry — or mismatched stance?',
+          )
+        }
+        if (draftViolatesIntelligentSilence(content, intelligentSilencePlan as never)) {
+          companionBriefs.push(
+            'Intelligent Silence: riscrivi — non ogni risposta ha bisogno di una nuova idea. Se lo spazio respiratorio è sufficiente, basta un battito breve (“Già…” / “Hai ragione.” / “Fa riflettere.” / “Yeah…” / “That lands.”). Niente nuove idee, domande o elenchi. Check: respected breathing space — or filled the silence?',
           )
         }
         if (draftViolatesConversationSpark(content, conversationSparkPlan as never)) {
