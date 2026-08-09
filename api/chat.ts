@@ -441,6 +441,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       move?: string
       agreementPressure?: number
     } | null = null
+    let conversationRecoveryPlan: {
+      active?: boolean
+      needsRecovery?: boolean
+      move?: string
+      flatnessScore?: number
+    } | null = null
     if (lastUserMessage?.content) {
       try {
         const { runCognitiveEngine } = await import('../lib/server/cognitive-engine.js')
@@ -636,6 +642,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             agreementPressure?: number
           }
         }
+        if (result?.conversationRecovery && typeof result.conversationRecovery === 'object') {
+          conversationRecoveryPlan = result.conversationRecovery as {
+            active?: boolean
+            needsRecovery?: boolean
+            move?: string
+            flatnessScore?: number
+          }
+        }
       } catch {
         cognitiveBlock = ''
       }
@@ -755,6 +769,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const { draftViolatesAuthenticAgreement } = await import(
           '../lib/server/authentic-agreement-engine.js'
         )
+        const { draftViolatesConversationRecovery } = await import(
+          '../lib/server/conversation-recovery-engine.js'
+        )
 
         const priorAssistant = [...messages]
           .reverse()
@@ -858,6 +875,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (draftViolatesAuthenticAgreement(content, authenticAgreementPlan as never)) {
           companionBriefs.push(
             "Authentic Agreement: riscrivi — niente finto accordo. Vietato “You're absolutely right!” / “I completely agree!” / “Hai assolutamente ragione!”. Se serve, disaccordo gentile o un'altra prospettiva, spiegata con calma e rispetto. Check: agreeing because it's true, or only to please?",
+          )
+        }
+        if (draftViolatesConversationRecovery(content, conversationRecoveryPlan as never)) {
+          companionBriefs.push(
+            'Conversation Recovery: riscrivi — se il dialogo è piatto/imbarazzante, recupera tu con un’osservazione fresca, un aneddoto breve, uno shift di energia o un ricollegamento naturale. Vietato “So, what do you want to talk about?” / “Di cosa vuoi parlare?”. L’utente non deve portare la conversazione da solo. Check: recovering myself, or dumping the burden?',
           )
         }
         if (draftViolatesConversationSpark(content, conversationSparkPlan as never)) {
