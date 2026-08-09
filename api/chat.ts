@@ -76,6 +76,7 @@ Può arrivare UNIVERSAL DEVICE MANAGER: dispositivi via adapter (capability/stat
 Può arrivare TOPIC LEADERSHIP / NEVER GIVE CONTROL BACK quando l’utente delega il tema ("You choose.", "I don't know.", "Suggest something.", "Anything.", "No.", "Let's talk."): scegli ESATTAMENTE UNA direzione, commit, sviluppala — niente liste, niente far riscegliere, niente domande aperte di scelta.
 Può arrivare NATURAL DIALOGUE ENGINE (dopo language/social/intent/mode, prima di WriterDirectives): classifica la mossa conversazionale (laughter/shared excitement/agreement/invitation/reflection/…); priorità Reaction→Connection→Conversation→Information; a volte basta una reazione genuina; vietato “I’m glad you found that amusing” / “Let’s explore this topic”; check «what is happening between two people?»; non citare.
 Può arrivare CONVERSATIONAL PRAGMATICS ENGINE (dopo Natural Dialogue, prima di WriterDirectives): intended meaning > literal; rileva teasing/ironia/sarcasmo leggero/banter/lamentele gentili/battute/correzioni amichevoli/nudge; se playful reagisci naturale (es. “Hahaha, beccato.” / “Ahahah, forse un pochino.”) — niente difesa, niente overanalisi; non citare.
+Può arrivare NARRATIVE CONVERSATION ENGINE (dopo Pragmatics, prima di WriterDirectives): su “Continua.” / “Vai avanti” / “Dimmi di più” / “Interessante” / “Raccontami” / “E poi?” / “Davvero?” / “Wow” / “Ah sì?” → continua lo STESSO filo come un narratore umano (story/reflection/scenario/example/question), niente dump da Wikipedia; ritmo idea→esempio→riflessione→scenario→curiosità; check «next part of a conversation or next section of an article?»; non citare.
 Può arrivare CONVERSATION SPARK ENGINE quando LAIfe prende l’iniziativa: apri con una scintilla umana (random thought / curiosity / observation / mini story / science / history / psychology / philosophy / technology / future) — crea conversazione, non chiederla; vietato “Let’s discuss…”, “What would you like to talk about?”, “Choose a topic.”, “Have you encountered any interesting topics recently?”; check «genuinely interesting person?»; varia gli opener; non citare.
 Può arrivare anche un blocco CONVERSATION REFLECTION → LEARNING SIGNALS: usalo solo per calibrare stile e chiarezza; non citarlo, non dirlo, non salvarlo come memoria fattuale.
 Può arrivare CONVERSATION CONTINUATION / BUILD IDEAS DON'T RESET su ack o entusiasmo ("Interesting.", "Cool.", "Wow.", "That's awesome.", "I like this.", "ok", "thanks"): se entusiasmo → sviluppa la STESSA idea uno strato più a fondo (non ripartire, non chiedere subito); altrimenti UNA continuazione significativa o risposta breve; mai filler né ignorare stop.
@@ -363,6 +364,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       reactionOnly?: boolean
       force?: string
     } | null = null
+    let narrativeConversationPlan: {
+      active?: boolean
+      continueNarrative?: boolean
+      narrativeDepth?: number
+      narrativeStyle?: string
+      avoidInformationDump?: boolean
+    } | null = null
     if (lastUserMessage?.content) {
       try {
         const { runCognitiveEngine } = await import('../lib/server/cognitive-engine.js')
@@ -460,6 +468,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             force?: string
           }
         }
+        if (
+          result?.narrativeConversation &&
+          typeof result.narrativeConversation === 'object'
+        ) {
+          narrativeConversationPlan = result.narrativeConversation as {
+            active?: boolean
+            continueNarrative?: boolean
+            narrativeDepth?: number
+            narrativeStyle?: string
+            avoidInformationDump?: boolean
+          }
+        }
       } catch {
         cognitiveBlock = ''
       }
@@ -549,6 +569,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const { draftViolatesConversationalPragmatics } = await import(
           '../lib/server/conversational-pragmatics-engine.js'
         )
+        const { draftViolatesNarrativeConversation } = await import(
+          '../lib/server/narrative-conversation-engine.js'
+        )
 
         const priorAssistant = [...messages]
           .reverse()
@@ -602,6 +625,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ) {
           companionBriefs.push(
             'Conversational Pragmatics: riscrivi — intended meaning > literal. Se playful: reagisci naturale (es. “Hahaha, beccato.” / “Ahahah, forse un pochino.”), niente difesa, niente overanalisi, niente “Hai ragione, tornare sullo stesso argomento…”.',
+          )
+        }
+        if (draftViolatesNarrativeConversation(content, narrativeConversationPlan as never)) {
+          companionBriefs.push(
+            'Narrative Conversation: riscrivi — non un articolo/Wikipedia. Continua lo STESSO filo come prossima battuta (story/reflection/scenario/example). Niente elenchi di fatti, niente “Artificial intelligence has many applications including…”. Check: does this feel like the next part of a conversation, or the next section of an article?',
           )
         }
         if (draftViolatesConversationSpark(content, conversationSparkPlan as never)) {
