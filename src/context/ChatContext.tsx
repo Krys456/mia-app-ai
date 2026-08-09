@@ -8,6 +8,11 @@ import {
   useRef,
   type ReactNode,
 } from 'react'
+import { buildSystemPrompt, generateLocalReply } from '../lib/personality'
+import {
+  createEmptyMemory,
+  type TopicMemory,
+} from '../lib/diversity'
 import { requestChatCompletion, type ChatApiMessage } from '../lib/chatApi'
 import {
   finalizeConversationLearning,
@@ -152,6 +157,7 @@ interface AppState {
   settings: AppSettings
   settingsOpen: boolean
   isThinking: boolean
+  topicMemory: TopicMemory
   isStreaming: boolean
   memoryNotice: 'saved' | 'updated' | null
 }
@@ -164,6 +170,8 @@ type Action =
   | { type: 'UPDATE_PERSONALIZATION'; payload: Partial<PersonalizationSettings> }
   | { type: 'UPDATE_THEME'; payload: Partial<ThemeSettings> }
   | { type: 'SEND_USER'; content: string }
+  | { type: 'ASSISTANT_DONE'; content: string; topicMemory?: TopicMemory }
+  | { type: 'ASSISTANT_FAIL' }
   | { type: 'ASSISTANT_START'; id: string }
   | { type: 'ASSISTANT_PROGRESS'; id: string; content: string }
   | { type: 'ASSISTANT_FINISH'; id: string; content: string; memoryEvent?: 'saved' | 'updated' | null }
@@ -177,6 +185,7 @@ function createInitialState(): AppState {
     settings: loadSettings(),
     settingsOpen: false,
     isThinking: false,
+    topicMemory: createEmptyMemory(),
     isStreaming: false,
     memoryNotice: null,
   }
@@ -191,6 +200,7 @@ function reducer(state: AppState, action: Action): AppState {
         isThinking: false,
         isStreaming: false,
         settingsOpen: false,
+        topicMemory: createEmptyMemory(),
         memoryNotice: null,
       }
     case 'OPEN_SETTINGS':
@@ -288,6 +298,7 @@ function reducer(state: AppState, action: Action): AppState {
         ...state,
         messages: [...state.messages, assistantMsg],
         isThinking: false,
+        topicMemory: action.topicMemory ?? state.topicMemory,
         isStreaming: false,
         memoryNotice: null,
       }
@@ -542,6 +553,40 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         { role: 'user', content },
       ]
 
+      const recentAssistant = state.messages
+        .filter((m) => m.role === 'assistant')
+        .slice(-10)
+        .map((m) => m.content)
+
+      window.setTimeout(() => {
+        try {
+          const reply = generateLocalReply(
+            content,
+            state.settings.personalization,
+            recentAssistant,
+            state.topicMemory,
+          )
+          dispatch({
+            type: 'ASSISTANT_DONE',
+            content: reply.content,
+            topicMemory: reply.memory,
+          })
+        } catch {
+          dispatch({ type: 'ASSISTANT_FAIL' })
+        }
+      }, 450 + Math.random() * 350)
+    },
+    [
+      state.isThinking,
+      state.settings.personalization,
+      state.messages,
+      state.topicMemory,
+    ],
+  )
+
+  const systemPrompt = useMemo(
+    () => buildSystemPrompt(state.settings.personalization, state.topicMemory),
+    [state.settings.personalization, state.topicMemory],
       inFlightRef.current = true
       dispatch({ type: 'SEND_USER', content })
       runAssistantCompletion(history, personalization)
