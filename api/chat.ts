@@ -510,6 +510,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       storyScore?: number
       seed?: string
     } | null = null
+    let emotionalContinuityPlan: {
+      active?: boolean
+      holdAtmosphere?: boolean
+      userChangedDirection?: boolean
+      atmosphere?: string
+      priorAtmosphere?: string
+      continuityScore?: number
+    } | null = null
     if (lastUserMessage?.content) {
       try {
         const { runCognitiveEngine } = await import('../lib/server/cognitive-engine.js')
@@ -794,6 +802,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             seed?: string
           }
         }
+        if (result?.emotionalContinuity && typeof result.emotionalContinuity === 'object') {
+          emotionalContinuityPlan = result.emotionalContinuity as {
+            active?: boolean
+            holdAtmosphere?: boolean
+            userChangedDirection?: boolean
+            atmosphere?: string
+            priorAtmosphere?: string
+            continuityScore?: number
+          }
+        }
       } catch {
         cognitiveBlock = ''
       }
@@ -942,6 +960,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         )
         const { draftViolatesStorytelling } = await import(
           '../lib/server/storytelling-engine.js'
+        )
+        const { draftViolatesEmotionalContinuity } = await import(
+          '../lib/server/emotional-continuity-engine.js'
         )
 
         const priorAssistant = [...messages]
@@ -1096,6 +1117,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (draftViolatesStorytelling(content, storytellingPlan as never)) {
           companionBriefs.push(
             'Storytelling: riscrivi — non spiegare da manuale: illustra. Preferisci mini-storie, analogie, scenari reali, immaginazione (“Imagine…” / “It’s a bit like…” / “Picture someone who…”). Vietato “is defined as…” / “there are N types of…” / “In conclusion…”. Check: illustrated — or textbook?',
+          )
+        }
+        if (draftViolatesEmotionalContinuity(content, emotionalContinuityPlan as never)) {
+          companionBriefs.push(
+            'Emotional Continuity: riscrivi — ricorda l’atmosfera emotiva. Non resettare dopo ogni messaggio. Se è profonda, resta profondo; se è giocosa, resta giocoso — finché l’utente non cambia direzione. Niente “How can I help you today?” / “Anyway, on another note…”. Check: remembering the atmosphere, or resetting after every message?',
           )
         }
         if (draftViolatesConversationSpark(content, conversationSparkPlan as never)) {
