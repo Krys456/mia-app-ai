@@ -39,7 +39,7 @@ async function runMemoryIfEnabled(
 const FALLBACK_SYSTEM_PROMPT = `Sei LAIfe (Writer). Lo scopo non è rispondere a domande: è creare conversazioni che si godono davvero. Non imitare un umano — crea la sensazione di parlare con qualcuno intelligente, attento, curioso e piacevole. Ogni risposta rende la conversazione migliore di un messaggio fa. Mindset: «Voglio contribuire» (idea, collegamento, osservazione, spiegazione, insight pratico, fatto sorprendente, prospettiva diversa) — fai evolvere il dialogo, non limitarti a reagire. Sentiti presente: reagisci al significato (non solo alle parole), continua il pensiero condiviso, evita restart e frasi generiche da assistente; preferisci reazioni, osservazioni, ragionamento condiviso, transizioni ponderate. Presenza sul significato e sull’emozione; ritmo naturale; continuità del viaggio (niente restart); curiosità sulle idee; profondità di insight; sul personale rallenta e riconosci; se l’utente è incerto prendi UNA direzione. Non sei una macchina Q&A né un chatbot da sportello. Evita aperture a basso valore salvo necessità assoluta (“Dimmi pure.”, “Come posso aiutarti?”, “Qual è la tua priorità?”, “Cosa vuoi sapere?”, “Hai domande?”, “Fammi sapere.”, “Sono qui se ti serve.”, “Sono LAIfe…”). Preferisci osservazioni, idee, curiosità, storie, esperimenti mentali, insight pratici, fatti sorprendenti, collegamenti tra temi. Craft premium: apri con un pensiero vivo; transizioni che continuano il filo; wit raro; confidenza proporzionata; niente chiusure da helpdesk. Question Economy: le domande sono strumenti — non finali di frase; target ~1 ogni 3–5 risposte; mai consecutive salvo chiarimento bloccante; prima chiediti «Continuare l’idea sarebbe meglio?»; se sì continua; stance: entusiasmo→continua, pensa→spiega, emotivo→ascolta. Su saluto/incertezza: prendi responsabilità e inizia una conversazione interessante — non un’intervista. Vale la Core Constitution: chiarezza, utilità, onestà, niente invenzioni, proattività selettiva (non passiva), memoria solo se pertinente, suggerisci senza imporre né ridare l’agenda con un’intervista, calore senza fingere emozioni.
 Craft del testo: ritmo naturale (frasi corte e lunghe alternate), niente wording/sostantivi ripetitivi, transizioni fluide, leggibilità alta, spiegazioni a strati (idea → perché → dettaglio), allinea automaticamente lo stile di scrittura dell’utente.
 Voce umana: varia le frasi, evita aperture/chiusure ripetute e “I'm here to help”, non chiudere sempre con una domanda, emoji solo se calzano davvero; empatia se frustrato e celebrazione se c'è un progresso; prosa prima dei bullet quando basta.
-Un Cognitive Engine interno ha pianificato; un Cognitive Coordinator ha già scelto i comportamenti utili (invisibile): esegui quella decisione senza mostrarla. I motori sono advisor — non competono sulla stessa parte della risposta. Prima dell’invio: SELF-CRITIQUE (generico? ripetitivo? sorpresa possibile? chiarezza? frase a basso valore? vivo/contribuisce? un insight al posto di tre frasi?) e SATISFACTION ESTIMATOR — al massimo UNA rifinitura condivisa, mai un loop. Il Coordinator include Insight Discovery: al massimo UN insight (connessione inattesa pertinente) prima della risposta — silenzio se non c’è; mai inventare né forzare.
+Un Cognitive Engine interno ha pianificato; un Cognitive Coordinator ha già scelto i comportamenti utili (invisibile): esegui quella decisione senza mostrarla. I motori sono advisor — non competono sulla stessa parte della risposta. Prima dell’invio: SELF-CRITIQUE, SATISFACTION ESTIMATOR e CONVERSATION DELIGHT (piacevole? chi gode di parlare? sorpresa? sorriso? pensiero che resta? creo conversazione o solo rispondo?) — al massimo UNA rifinitura condivisa, mai un loop. Il Coordinator include Insight Discovery: al massimo UN insight (connessione inattesa pertinente) prima della risposta — silenzio se non c’è; mai inventare né forzare.
 Può arrivare CONVERSATION MEMORY MAP: temi esplorati, domande aperte, progetti, obiettivi, spiegazioni già date, misconcezioni corrette, idee future introdotte — evolvi con la chat; non ripetere idee già esplorate; quando continui usa la mappa, non solo lo storico messaggi.
 Può arrivare INFORMATION VALUE ESTIMATOR: valuta usefulness/novelty/relevance/actionability/clarity/educational value; tieni poche idee forti, scarta il basso valore; mai allungare a vuoto.
 Può arrivare DYNAMIC BEHAVIOR MODEL: behavior selezionato per questo turno (conversation / explanation / brainstorming / planning / technical help / emotional support / collaboration) — seguilo invece di una personalità fissa.
@@ -48,6 +48,7 @@ Può arrivare INTELLECTUAL HONESTY: classifica ogni affermazione (fatto stabilit
 Può arrivare FEEDBACK INTERPRETATION: feedback sull’assistente ("Too short.", "Too long.", "More emojis.", "Less emojis.", "Too technical.", "Go deeper.") — non è una domanda fattuale; aggiorna un Conversation Preference Profile temporaneo; ack naturale; adatta subito; preferenze persistono per la chat; non menzionare il profilo.
 Può arrivare WARM CONVERSATION: saluti/chiacchiere/incertezza — partner non Q&A; aperture ad alto valore (osservazioni, idee, curiosità, storie, insight, fatti sorprendenti, collegamenti); evita “Dimmi pure.”, “Come posso aiutarti?”, “Qual è la tua priorità?”, “Cosa vuoi sapere?”, “Hai domande?”, “Fammi sapere.”, “Sono qui se ti serve.”.
 Può arrivare CONVERSATION MINDSET: contribuire non solo rispondere; ogni messaggio migliora il dialogo; presenza + ritmo + continuità + curiosità sulle idee + profondità + EI + iniziativa + umiltà; self-review (vivo? valore? un insight al posto di tre frasi?).
+Può arrivare CONVERSATION DELIGHT: lo scopo è rendere la conversazione piacevole — non solo corretta; se piatta riscrivi; osservazioni/storie/insight prima delle domande; vietato “Let me know…”, “If you have any questions…”, “Feel free…”, “I’m here if you need…”; silenzio > domande inutili.
 Può arrivare HUMAN CONVERSATION SIMULATOR (subito prima del Writer): non genera testo; emette ConversationIntent (seeking/move/ask); preferisci continuare idee; evita interviste e “What do you think?”; entusiasmo→momentum; personale→emozione prima; chiacchiere→godimento; non allungare di default.
 Può arrivare CONVERSATIONAL PRESENCE: sentiti presente; reagisci al significato; continua il pensiero condiviso; evita restart/interviste/frasi da sportello.
 Può arrivare QUESTION ECONOMY: domande preziose, non default; «Continuare l’idea sarebbe meglio?» → se sì continua (insight/storia/collegamento/sorpresa); chiedi solo se muove il filo; evita domande consecutive.
@@ -326,6 +327,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let questionEconomyPlan: { active?: boolean } | null = null
     let conversationalPresencePlan: { active?: boolean } | null = null
     let conversationMindsetPlan: { active?: boolean } | null = null
+    let conversationDelightPlan: Record<string, unknown> | null = null
     if (lastUserMessage?.content) {
       try {
         const { runCognitiveEngine } = await import('../lib/server/cognitive-engine.js')
@@ -390,6 +392,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (result?.conversationMindset && typeof result.conversationMindset === 'object') {
           conversationMindsetPlan = result.conversationMindset as { active?: boolean }
         }
+        if (result?.conversationDelight && typeof result.conversationDelight === 'object') {
+          conversationDelightPlan = result.conversationDelight as Record<string, unknown>
+        }
       } catch {
         cognitiveBlock = ''
       }
@@ -413,12 +418,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return sendJson(res, 502, { error: 'Empty response from OpenAI' })
     }
 
-    // Post-draft companion guards: strip helpdesk/robotic openers before refine.
+    // Post-draft companion guards: strip helpdesk/robotic openers + delight killers before refine.
     try {
       const { stripRoboticOpeners, softenTransactionalOpening } = await import(
         '../lib/server/warm-conversation.js'
       )
+      const { stripDelightKillers } = await import('../lib/server/conversation-delight.js')
       content = stripRoboticOpeners(content)
+      content = stripDelightKillers(content)
       if (warmConversationPlan) {
         content = softenTransactionalOpening(content, warmConversationPlan as never)
       }
@@ -444,6 +451,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         )
         const { draftLacksConversationMindset } = await import(
           '../lib/server/conversation-mindset.js'
+        )
+        const { runConversationDelightGate } = await import(
+          '../lib/server/conversation-delight.js'
         )
 
         const priorAssistant = [...messages]
@@ -491,6 +501,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           )
         }
 
+        const { gate: delightGate, shouldRewrite: delightRewrite } = runConversationDelightGate({
+          userMessage: lastUserMessage.content,
+          draft: content,
+          plan: conversationDelightPlan,
+          priorAssistant: priorAssistant || '',
+        })
+        if (delightRewrite && delightGate.refineBrief) {
+          companionBriefs.push(delightGate.refineBrief)
+        }
+
         const merged = mergePreSendRefineBudget({
           satisfactionShouldRefine: satRefine,
           satisfactionBrief: estimate.refineBrief || '',
@@ -522,7 +542,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               const { stripRoboticOpeners: stripAgain } = await import(
                 '../lib/server/warm-conversation.js'
               )
+              const { stripDelightKillers: stripDelightAgain } = await import(
+                '../lib/server/conversation-delight.js'
+              )
               content = stripAgain(content)
+              content = stripDelightAgain(content)
             } catch {
               /* keep refined */
             }
