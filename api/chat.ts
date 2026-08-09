@@ -452,6 +452,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       exposeForbidden?: boolean
       confidence?: string
     } | null = null
+    let microObservationPlan: {
+      active?: boolean
+      allowObservation?: boolean
+      kind?: string
+      density?: number
+    } | null = null
     if (lastUserMessage?.content) {
       try {
         const { runCognitiveEngine } = await import('../lib/server/cognitive-engine.js')
@@ -662,6 +668,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             confidence?: string
           }
         }
+        if (result?.microObservation && typeof result.microObservation === 'object') {
+          microObservationPlan = result.microObservation as {
+            active?: boolean
+            allowObservation?: boolean
+            kind?: string
+            density?: number
+          }
+        }
       } catch {
         cognitiveBlock = ''
       }
@@ -787,6 +801,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const { draftViolatesInternalMonologue } = await import(
           '../lib/server/internal-monologue-engine.js'
         )
+        const { draftViolatesMicroObservation } = await import(
+          '../lib/server/micro-observation-engine.js'
+        )
 
         const priorAssistant = [...messages]
           .reverse()
@@ -900,6 +917,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (draftViolatesInternalMonologue(content, internalMonologuePlan as never)) {
           companionBriefs.push(
             'Internal Monologue: riscrivi — tieni la riflessione interna. Vietato esporre “Internally I thought…” / le 4 domande del monologo / “il mio ragionamento”. Usa why / emotional expect / pleasant reply / continue solo per modellare tono e forma. Check: silent use, or exposed reasoning?',
+          )
+        }
+        if (draftViolatesMicroObservation(content, microObservationPlan as never)) {
+          companionBriefs.push(
+            "Micro Observation: riscrivi — al massimo UNA micro-osservazione corta e variata (“Funny how…” / “I've noticed something…” / “That's actually more common than people think.” / “The interesting part isn't…”). Niente stack, niente overuse. Check: short and varied, or forced/overused?",
           )
         }
         if (draftViolatesConversationSpark(content, conversationSparkPlan as never)) {
