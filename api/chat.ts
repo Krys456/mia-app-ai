@@ -74,6 +74,7 @@ Può arrivare LIFE INTELLIGENCE ENGINE: collega calendario/promemoria/meteo/posi
 Può arrivare NATURAL LANGUAGE AUTOMATION BUILDER: l’utente descrive un’automazione in linguaggio naturale → rileva trigger/condizioni/azioni → bozza modificabile → spiega PRIMA di attivare; attiva solo dopo conferma.
 Può arrivare UNIVERSAL DEVICE MANAGER: dispositivi via adapter (capability/state/actions); ragiona senza API di marca; nuovo device = nuovo adapter; mai fingere successi se non connesso.
 Può arrivare TOPIC LEADERSHIP / NEVER GIVE CONTROL BACK quando l’utente delega il tema ("You choose.", "I don't know.", "Suggest something.", "Anything.", "No.", "Let's talk."): scegli ESATTAMENTE UNA direzione, commit, sviluppala — niente liste, niente far riscegliere, niente domande aperte di scelta.
+Può arrivare NATURAL DIALOGUE ENGINE (dopo language/social/intent/mode, prima di WriterDirectives): classifica la mossa conversazionale (laughter/shared excitement/agreement/invitation/reflection/…); priorità Reaction→Connection→Conversation→Information; a volte basta una reazione genuina; vietato “I’m glad you found that amusing” / “Let’s explore this topic”; check «what is happening between two people?»; non citare.
 Può arrivare CONVERSATION SPARK ENGINE quando LAIfe prende l’iniziativa: apri con una scintilla umana (random thought / curiosity / observation / mini story / science / history / psychology / philosophy / technology / future) — crea conversazione, non chiederla; vietato “Let’s discuss…”, “What would you like to talk about?”, “Choose a topic.”, “Have you encountered any interesting topics recently?”; check «genuinely interesting person?»; varia gli opener; non citare.
 Può arrivare anche un blocco CONVERSATION REFLECTION → LEARNING SIGNALS: usalo solo per calibrare stile e chiarezza; non citarlo, non dirlo, non salvarlo come memoria fattuale.
 Può arrivare CONVERSATION CONTINUATION / BUILD IDEAS DON'T RESET su ack o entusiasmo ("Interesting.", "Cool.", "Wow.", "That's awesome.", "I like this.", "ok", "thanks"): se entusiasmo → sviluppa la STESSA idea uno strato più a fondo (non ripartire, non chiedere subito); altrimenti UNA continuazione significativa o risposta breve; mai filler né ignorare stop.
@@ -350,6 +351,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let conversationOwnershipPlan: Record<string, unknown> | null = null
     let writerDirectives: Record<string, unknown> | null = null
     let conversationSparkPlan: { shouldSpark?: boolean; active?: boolean } | null = null
+    let naturalDialoguePlan: {
+      active?: boolean
+      reactionOnly?: boolean
+      move?: string
+    } | null = null
     if (lastUserMessage?.content) {
       try {
         const { runCognitiveEngine } = await import('../lib/server/cognitive-engine.js')
@@ -427,6 +433,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           conversationSparkPlan = result.conversationSpark as {
             shouldSpark?: boolean
             active?: boolean
+          }
+        }
+        if (result?.naturalDialogue && typeof result.naturalDialogue === 'object') {
+          naturalDialoguePlan = result.naturalDialogue as {
+            active?: boolean
+            reactionOnly?: boolean
+            move?: string
           }
         }
       } catch {
@@ -512,6 +525,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const { draftViolatesConversationSpark } = await import(
           '../lib/server/conversation-spark-engine.js'
         )
+        const { draftViolatesNaturalDialogue } = await import(
+          '../lib/server/natural-dialogue-engine.js'
+        )
 
         const priorAssistant = [...messages]
           .reverse()
@@ -554,6 +570,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           if (!directiveValidation.ok && directiveValidation.refineBrief) {
             companionBriefs.push(directiveValidation.refineBrief)
           }
+        }
+        if (draftViolatesNaturalDialogue(content, naturalDialoguePlan as never)) {
+          companionBriefs.push(
+            'Natural Dialogue: riscrivi — reazione umana prima di ogni spiegazione. Niente “I’m glad you found that amusing / I’m glad you think so / Let’s explore this topic”. Se reactionOnly: una sola reazione genuina, niente domanda. Check: what is happening between two people right now?',
+          )
         }
         if (draftViolatesConversationSpark(content, conversationSparkPlan as never)) {
           companionBriefs.push(
