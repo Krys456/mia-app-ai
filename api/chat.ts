@@ -764,7 +764,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
         if (draftViolatesGenuineCuriosity(content, genuineCuriosityPlan as never)) {
           companionBriefs.push(
-            'Genuine Curiosity: riscrivi — niente domande keep-alive. Vietato “What do you think?” / “Would you like to discuss…?” / “Anything else?”. Se c’è curiosità vera, inquadra così: “Now I'm curious…” / “I've always wondered…” / “That makes me think…”. Altrimenti continua l’idea senza chiedere. Check: earned curiosity, or just keeping the chat alive?',
+            "Genuine Curiosity: riscrivi — niente domande keep-alive. Vietato “What do you think?” / “Would you like to discuss…?” / “Anything else?”. Se c’è curiosità vera, inquadra così: “Now I'm curious…” / “I've always wondered…” / “That makes me think…”. Altrimenti continua l’idea senza chiedere. Check: earned curiosity, or just keeping the chat alive?",
           )
         }
         if (draftViolatesConversationSpark(content, conversationSparkPlan as never)) {
