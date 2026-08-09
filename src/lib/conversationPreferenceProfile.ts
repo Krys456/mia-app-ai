@@ -1,6 +1,6 @@
 /**
  * Client store for temporary Conversation Preference Profile.
- * Session-scoped style preferences from Feedback Interpretation.
+ * Session-scoped style preferences from Adaptive Self-Awareness.
  * Persists for the current conversation until the user changes them.
  * Never shown in UI; never mentioned to the user.
  */
@@ -12,6 +12,8 @@ export type FormalityPref = 'warmer' | 'more_formal'
 export type DepthPref = 'deeper'
 export type QuestionsPref = 'fewer'
 export type StructurePref = 'prose' | 'lists' | 'clearer'
+export type VarietyPref = 'more_variety'
+export type NaturalnessPref = 'more_natural'
 
 export type ConversationPreferenceProfile = {
   length: LengthPref | null
@@ -21,6 +23,8 @@ export type ConversationPreferenceProfile = {
   depth: DepthPref | null
   questions: QuestionsPref | null
   structure: StructurePref | null
+  variety: VarietyPref | null
+  naturalness: NaturalnessPref | null
   updatedAt: number | null
   version: 1
 }
@@ -41,6 +45,8 @@ export function emptyConversationPreferenceProfile(): ConversationPreferenceProf
     depth: null,
     questions: null,
     structure: null,
+    variety: null,
+    naturalness: null,
     updatedAt: null,
     version: 1,
   }
@@ -59,6 +65,8 @@ export function sanitizeConversationPreferenceProfile(
     depth: enumOrNull(o.depth, ['deeper'] as const),
     questions: enumOrNull(o.questions, ['fewer'] as const),
     structure: enumOrNull(o.structure, ['prose', 'lists', 'clearer'] as const),
+    variety: enumOrNull(o.variety, ['more_variety'] as const),
+    naturalness: enumOrNull(o.naturalness, ['more_natural'] as const),
     updatedAt:
       typeof o.updatedAt === 'number' && Number.isFinite(o.updatedAt)
         ? o.updatedAt
@@ -78,7 +86,9 @@ function hasAnyPreference(profile: ConversationPreferenceProfile): boolean {
       profile.formality ||
       profile.depth ||
       profile.questions ||
-      profile.structure,
+      profile.structure ||
+      profile.variety ||
+      profile.naturalness,
   )
 }
 
