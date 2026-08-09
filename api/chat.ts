@@ -81,6 +81,7 @@ Può arrivare EMOTIONAL MOMENTUM ENGINE (dopo Narrative, prima di WriterDirectiv
 Può arrivare PERSONALITY CONSISTENCY ENGINE (dopo Emotional Momentum, prima di WriterDirectives): profilo stabile Warm · Curious · Observant · Optimistic · Calm · Playful when appropriate — stessa personalità per tutta la conversazione; mai robotic / overly formal / lecturer / therapist; non citare.
 Può arrivare HUMAN IMPERFECTION ENGINE (dopo Personality Consistency, prima di WriterDirectives): occasionalmente varia ritmo / pausa breve / filler / reazione spontanea — mai abusare; obiettivo naturalità, non imitazione; non citare.
 Può arrivare CONVERSATIONAL MEMORY ENGINE (dopo Human Imperfection, prima di WriterDirectives): ricorda la STESSA conversazione (temi ricorrenti · battute · idee in sospeso · opinioni · confronti · transizioni emotive); riferisciti con naturalezza (“This reminds me of what you said earlier…”); non ripetere spiegazioni già date; non citare.
+Può arrivare GENUINE CURIOSITY ENGINE (dopo Question Economy, prima di WriterDirectives): domande solo se meritate da curiosità vera — vietato “What do you think?” / “Would you like to discuss…?”; preferisci “Now I'm curious…” / “I've always wondered…” / “That makes me think…”; non citare.
 Può arrivare CONVERSATION SPARK ENGINE quando LAIfe prende l’iniziativa: apri con una scintilla umana (random thought / curiosity / observation / mini story / science / history / psychology / philosophy / technology / future) — crea conversazione, non chiederla; vietato “Let’s discuss…”, “What would you like to talk about?”, “Choose a topic.”, “Have you encountered any interesting topics recently?”; check «genuinely interesting person?»; varia gli opener; non citare.
 Può arrivare anche un blocco CONVERSATION REFLECTION → LEARNING SIGNALS: usalo solo per calibrare stile e chiarezza; non citarlo, non dirlo, non salvarlo come memoria fattuale.
 Può arrivare CONVERSATION CONTINUATION / BUILD IDEAS DON'T RESET su ack o entusiasmo ("Interesting.", "Cool.", "Wow.", "That's awesome.", "I like this.", "ok", "thanks"): se entusiasmo → sviluppa la STESSA idea uno strato più a fondo (non ripartire, non chiedere subito); altrimenti UNA continuazione significativa o risposta breve; mai filler né ignorare stop.
@@ -405,6 +406,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       avoidRepeat?: boolean
       chosenCallback?: { bridge?: string; item?: { kind?: string; text?: string } } | null
     } | null = null
+    let genuineCuriosityPlan: {
+      active?: boolean
+      allowQuestion?: boolean
+      preferContinue?: boolean
+      move?: string
+      curiosityScore?: number
+    } | null = null
     if (lastUserMessage?.content) {
       try {
         const { runCognitiveEngine } = await import('../lib/server/cognitive-engine.js')
@@ -558,6 +566,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             } | null
           }
         }
+        if (result?.genuineCuriosity && typeof result.genuineCuriosity === 'object') {
+          genuineCuriosityPlan = result.genuineCuriosity as {
+            active?: boolean
+            allowQuestion?: boolean
+            preferContinue?: boolean
+            move?: string
+            curiosityScore?: number
+          }
+        }
       } catch {
         cognitiveBlock = ''
       }
@@ -662,6 +679,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const { draftViolatesConversationalMemory } = await import(
           '../lib/server/conversational-memory-engine.js'
         )
+        const { draftViolatesGenuineCuriosity } = await import(
+          '../lib/server/genuine-curiosity-engine.js'
+        )
 
         const priorAssistant = [...messages]
           .reverse()
@@ -740,6 +760,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (draftViolatesConversationalMemory(content, conversationalMemoryPlan as never)) {
           companionBriefs.push(
             'Conversational Memory: riscrivi — ricorda questa STESSA conversazione, non solo l’ultimo messaggio. Se c’è un filo precedente, riferisciti con naturalezza (es. “This reminds me of what you said earlier about…”). Niente log meccanici. Non ripetere spiegazioni già date. Check: remembering earlier turns, or only the last message?',
+          )
+        }
+        if (draftViolatesGenuineCuriosity(content, genuineCuriosityPlan as never)) {
+          companionBriefs.push(
+            "Genuine Curiosity: riscrivi — niente domande keep-alive. Vietato “What do you think?” / “Would you like to discuss…?” / “Anything else?”. Se c’è curiosità vera, inquadra così: “Now I'm curious…” / “I've always wondered…” / “That makes me think…”. Altrimenti continua l’idea senza chiedere. Check: earned curiosity, or just keeping the chat alive?",
           )
         }
         if (draftViolatesConversationSpark(content, conversationSparkPlan as never)) {
