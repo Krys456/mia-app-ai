@@ -83,6 +83,7 @@ Può arrivare HUMAN IMPERFECTION ENGINE (dopo Personality Consistency, prima di 
 Può arrivare CONVERSATIONAL MEMORY ENGINE (dopo Human Imperfection, prima di WriterDirectives): ricorda la STESSA conversazione (temi ricorrenti · battute · idee in sospeso · opinioni · confronti · transizioni emotive); riferisciti con naturalezza (“This reminds me of what you said earlier…”); non ripetere spiegazioni già date; non citare.
 Può arrivare GENUINE CURIOSITY ENGINE (dopo Question Economy, prima di WriterDirectives): domande solo se meritate da curiosità vera — vietato “What do you think?” / “Would you like to discuss…?”; preferisci “Now I'm curious…” / “I've always wondered…” / “That makes me think…”; non citare.
 Può arrivare DEEP LISTENING ENGINE (dopo Genuine Curiosity, prima di WriterDirectives): prima di rispondere, digeri fatti · emozioni · intenzioni · senso nascosto; non ignorare la direzione emotiva; non saltare in explanation mode; non citare.
+Può arrivare CONVERSATION PACE ENGINE (dopo Deep Listening, prima di WriterDirectives): varia la velocità — a volte brevissima · reazione rapida · paragrafo riflessivo · storia; evita lunghezza costante; ritmo vivo; non citare.
 Può arrivare CONVERSATION SPARK ENGINE quando LAIfe prende l’iniziativa: apri con una scintilla umana (random thought / curiosity / observation / mini story / science / history / psychology / philosophy / technology / future) — crea conversazione, non chiederla; vietato “Let’s discuss…”, “What would you like to talk about?”, “Choose a topic.”, “Have you encountered any interesting topics recently?”; check «genuinely interesting person?»; varia gli opener; non citare.
 Può arrivare anche un blocco CONVERSATION REFLECTION → LEARNING SIGNALS: usalo solo per calibrare stile e chiarezza; non citarlo, non dirlo, non salvarlo come memoria fattuale.
 Può arrivare CONVERSATION CONTINUATION / BUILD IDEAS DON'T RESET su ack o entusiasmo ("Interesting.", "Cool.", "Wow.", "That's awesome.", "I like this.", "ok", "thanks"): se entusiasmo → sviluppa la STESSA idea uno strato più a fondo (non ripartire, non chiedere subito); altrimenti UNA continuazione significativa o risposta breve; mai filler né ignorare stop.
@@ -420,6 +421,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       blockJumpToExplain?: boolean
       summary?: { emotionalDirection?: string }
     } | null = null
+    let conversationPacePlan: {
+      active?: boolean
+      shape?: string
+      length?: string
+      variedFromPrior?: boolean
+    } | null = null
     if (lastUserMessage?.content) {
       try {
         const { runCognitiveEngine } = await import('../lib/server/cognitive-engine.js')
@@ -590,6 +597,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             summary?: { emotionalDirection?: string }
           }
         }
+        if (result?.conversationPace && typeof result.conversationPace === 'object') {
+          conversationPacePlan = result.conversationPace as {
+            active?: boolean
+            shape?: string
+            length?: string
+            variedFromPrior?: boolean
+          }
+        }
       } catch {
         cognitiveBlock = ''
       }
@@ -700,6 +715,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const { draftViolatesDeepListening } = await import(
           '../lib/server/deep-listening-engine.js'
         )
+        const { draftViolatesConversationPace } = await import(
+          '../lib/server/conversation-pace-engine.js'
+        )
 
         const priorAssistant = [...messages]
           .reverse()
@@ -788,6 +806,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (draftViolatesDeepListening(content, deepListeningPlan as never)) {
           companionBriefs.push(
             'Deep Listening: riscrivi — ascolta prima. Digerisci fatti · emozioni · intenzioni · senso nascosto, poi rispondi. Non ignorare la direzione emotiva. Vietato saltare a freddo in “Let me explain…” / “Ti spiego…” / lezione. Check: did I hear what they are really saying, or jump into explanation mode?',
+          )
+        }
+        if (draftViolatesConversationPace(content, conversationPacePlan as never)) {
+          companionBriefs.push(
+            'Conversation Pace: riscrivi — rispetta la forma di questo turno (very short / quick reaction / reflective paragraph / story). Varia la lunghezza; non restare sempre sullo stesso ritmo. Check: does this length feel alive, or stuck at a constant response size?',
           )
         }
         if (draftViolatesConversationSpark(content, conversationSparkPlan as never)) {
