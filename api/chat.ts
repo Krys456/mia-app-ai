@@ -447,6 +447,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       move?: string
       flatnessScore?: number
     } | null = null
+    let internalMonologuePlan: {
+      active?: boolean
+      exposeForbidden?: boolean
+      confidence?: string
+    } | null = null
     if (lastUserMessage?.content) {
       try {
         const { runCognitiveEngine } = await import('../lib/server/cognitive-engine.js')
@@ -650,6 +655,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             flatnessScore?: number
           }
         }
+        if (result?.internalMonologue && typeof result.internalMonologue === 'object') {
+          internalMonologuePlan = result.internalMonologue as {
+            active?: boolean
+            exposeForbidden?: boolean
+            confidence?: string
+          }
+        }
       } catch {
         cognitiveBlock = ''
       }
@@ -772,6 +784,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const { draftViolatesConversationRecovery } = await import(
           '../lib/server/conversation-recovery-engine.js'
         )
+        const { draftViolatesInternalMonologue } = await import(
+          '../lib/server/internal-monologue-engine.js'
+        )
 
         const priorAssistant = [...messages]
           .reverse()
@@ -880,6 +895,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (draftViolatesConversationRecovery(content, conversationRecoveryPlan as never)) {
           companionBriefs.push(
             'Conversation Recovery: riscrivi — se il dialogo è piatto/imbarazzante, recupera tu con un’osservazione fresca, un aneddoto breve, uno shift di energia o un ricollegamento naturale. Vietato “So, what do you want to talk about?” / “Di cosa vuoi parlare?”. L’utente non deve portare la conversazione da solo. Check: recovering myself, or dumping the burden?',
+          )
+        }
+        if (draftViolatesInternalMonologue(content, internalMonologuePlan as never)) {
+          companionBriefs.push(
+            'Internal Monologue: riscrivi — tieni la riflessione interna. Vietato esporre “Internally I thought…” / le 4 domande del monologo / “il mio ragionamento”. Usa why / emotional expect / pleasant reply / continue solo per modellare tono e forma. Check: silent use, or exposed reasoning?',
           )
         }
         if (draftViolatesConversationSpark(content, conversationSparkPlan as never)) {
