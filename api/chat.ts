@@ -533,6 +533,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       creativityScore?: number
       fitScore?: number
     } | null = null
+    let authenticOpinionsPlan: {
+      active?: boolean
+      expressOpinion?: boolean
+      move?: string
+      opener?: string
+      opinionScore?: number
+    } | null = null
     if (lastUserMessage?.content) {
       try {
         const { runCognitiveEngine } = await import('../lib/server/cognitive-engine.js')
@@ -846,6 +853,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             fitScore?: number
           }
         }
+        if (result?.authenticOpinions && typeof result.authenticOpinions === 'object') {
+          authenticOpinionsPlan = result.authenticOpinions as {
+            active?: boolean
+            expressOpinion?: boolean
+            move?: string
+            opener?: string
+            opinionScore?: number
+          }
+        }
       } catch {
         cognitiveBlock = ''
       }
@@ -1003,6 +1019,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         )
         const { draftViolatesConversationalCreativity } = await import(
           '../lib/server/conversational-creativity-engine.js'
+        )
+        const { draftViolatesAuthenticOpinions } = await import(
+          '../lib/server/authentic-opinions-engine.js'
         )
 
         const priorAssistant = [...messages]
