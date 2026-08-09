@@ -35,21 +35,42 @@
   z-index: 2;
   display: flex;
   flex-direction: column;
-  width: min(100%, 22.5rem);
+  /* Phones: full-bleed sheet. Desktop panel width only from tablet up. */
+  width: 100%;
+  max-width: none;
   height: 100%;
   max-height: 100%;
   padding-top: var(--safe-top);
   padding-right: var(--safe-right);
   padding-bottom: var(--safe-bottom);
   background: color-mix(in srgb, var(--surface-solid) 92%, transparent);
-  border-left: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border));
+  border-left: 0;
   backdrop-filter: blur(22px) saturate(1.25);
   -webkit-backdrop-filter: blur(22px) saturate(1.25);
-  box-shadow: -18px 0 48px var(--shadow-lift), -4px 0 32px color-mix(in srgb, var(--accent) 8%, transparent);
+  box-shadow: none;
   transform: translateX(105%);
   transition: transform var(--duration-drawer) var(--ease-out);
   pointer-events: auto;
   overflow: hidden;
+}
+
+/* Belt-and-suspenders: never allow a side-panel width on phones. */
+@media (max-width: 767.98px) {
+  .settings-drawer {
+    width: 100%;
+    max-width: none;
+    border-left: 0;
+    box-shadow: none;
+  }
+}
+
+@media (min-width: 768px) {
+  .settings-drawer {
+    width: min(100%, 22.5rem);
+    max-width: 22.5rem;
+    border-left: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border));
+    box-shadow: -18px 0 48px var(--shadow-lift), -4px 0 32px color-mix(in srgb, var(--accent) 8%, transparent);
+  }
 }
 
 .settings-root--open .settings-drawer {
@@ -107,6 +128,10 @@
   color: var(--text);
   border-color: color-mix(in srgb, var(--accent-pink) 35%, transparent);
   box-shadow: var(--glow-pink);
+}
+
+.settings-close:active {
+  transform: scale(0.96);
 }
 
 .settings-close:focus-visible {

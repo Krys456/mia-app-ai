@@ -76,7 +76,7 @@ function StreamingRendererComponent({
   }
 
   return (
-    <div className="md-body">
+    <div className="md-body md-body--settle">
       <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
         {content}
       </ReactMarkdown>

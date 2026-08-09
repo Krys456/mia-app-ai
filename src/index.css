@@ -75,8 +75,8 @@
   --composer-h: 5.75rem;
   --touch-min: 2.75rem; /* 44px — Apple HIG minimum */
 
-  /* Centered chat column: near-full on mobile, capped on tablet/desktop. */
-  --content-max: 46rem;
+  /* Mobile-first: full-bleed by default. Desktop column only from tablet up. */
+  --content-max: 100%;
   --page-gutter: 1rem; /* ~px-4 */
   --space-page-y: 1rem;
   --app-height: 100dvh;
@@ -186,6 +186,7 @@ select {
     --header-pad-y: 0.65rem;
     --btn-icon: 2.55rem;
     --btn-send: 2.6rem;
+    --content-max: 46rem;
   }
 }
 
@@ -193,6 +194,36 @@ select {
   :root {
     --page-gutter: 1.5rem;
     --content-max: 52rem;
+  }
+}
+
+/*
+ * Mobile hard-lock (<768px).
+ * Reasserts full-bleed layout even if a later rule resets --content-max
+ * on :root (the desktop-column regression that made phones look like
+ * a scaled-down desktop shell).
+ */
+@media (max-width: 767.98px) {
+  :root {
+    --content-max: 100%;
+  }
+
+  .app-shell,
+  .app-view,
+  .chat-container,
+  .chat-container__stage,
+  .chat-container__viewport {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .app-header__inner,
+  .message-list,
+  .input-bar {
+    width: 100%;
+    max-width: 100%;
+    margin-left: 0;
+    margin-right: 0;
   }
 }
 

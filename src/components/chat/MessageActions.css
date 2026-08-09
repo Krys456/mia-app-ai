@@ -20,8 +20,8 @@
   pointer-events: auto;
 }
 
-@media (hover: none) {
-  /* Touch: always show a compact row — long-press pin is optional emphasis only. */
+@media (hover: none), (pointer: coarse), (max-width: 767px) {
+  /* Phones/tablets: always show actions — never require hover (desktop pattern). */
   .message-actions {
     opacity: 0.95;
     transform: none;
@@ -69,6 +69,10 @@
   outline-offset: 2px;
 }
 
+.message-actions__btn:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
 .message-actions__btn:disabled {
   opacity: 0.35;
   cursor: not-allowed;
@@ -107,20 +111,28 @@
 
 @media (max-width: 520px) {
   .message-actions__btn {
-    padding: 0.35rem 0.45rem;
+    padding: 0.4rem;
     font-size: 0.72rem;
+    gap: 0;
   }
 
   .message-actions__label {
-    max-width: 7.5rem;
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
     overflow: hidden;
-    text-overflow: ellipsis;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
 
   @media (hover: none), (pointer: coarse) {
     .message-actions__btn {
       min-height: var(--touch-min, 2.75rem);
-      padding: 0.45rem 0.5rem;
+      min-width: var(--touch-min, 2.75rem);
+      padding: 0.45rem;
     }
   }
 }

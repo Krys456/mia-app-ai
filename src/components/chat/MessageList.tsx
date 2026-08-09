@@ -47,15 +47,21 @@ function MessageListComponent({ messages, isThinking, isStreaming }: MessageList
       })}
 
       {isThinking ? (
-        <article className="bubble bubble--assistant" aria-label="LAIfe sta pensando">
+        <article
+          className="bubble bubble--assistant bubble--thinking"
+          aria-label="LAIfe sta pensando"
+        >
           <div className="bubble__meta">
-            <span className="bubble__avatar bubble__avatar--assistant" aria-hidden="true">
+            <span
+              className="bubble__avatar bubble__avatar--assistant bubble__avatar--pulse"
+              aria-hidden="true"
+            >
               <span className="bubble__avatar-mark">L</span>
             </span>
             <span className="bubble__label">LAIfe</span>
           </div>
           <div className="bubble__body bubble__body--typing">
-            <TypingAnimation />
+            <TypingAnimation label="Sta pensando…" />
           </div>
         </article>
       ) : null}

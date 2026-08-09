@@ -18,10 +18,12 @@
   justify-content: space-between;
   gap: 0.85rem;
   width: 100%;
+  /* Mobile-first: full width. --content-max is 100% below 768px. */
   max-width: var(--content-max);
   margin: 0 auto;
   padding: var(--header-pad-y) var(--page-gutter);
   min-height: var(--header-h);
+  box-sizing: border-box;
 }
 
 .app-header__actions {

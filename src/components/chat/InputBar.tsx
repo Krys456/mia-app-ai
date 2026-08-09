@@ -26,6 +26,7 @@ export function InputBar({ onMessageSent }: InputBarProps) {
   const [value, setValue] = useState('')
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const busy = isThinking || isStreaming
+  const canSend = Boolean(value.trim()) && !busy
   const showKeyboardHint = useShowKeyboardHint()
 
   useEffect(() => {
@@ -55,9 +56,22 @@ export function InputBar({ onMessageSent }: InputBarProps) {
     }
   }
 
+  const statusLabel = isThinking
+    ? 'LAIfe sta pensando'
+    : isStreaming
+      ? 'LAIfe sta rispondendo'
+      : undefined
+
   return (
     <div className="input-bar-dock">
-      <form className="input-bar" onSubmit={onSubmit}>
+      <div className="sr-only" aria-live="polite" aria-atomic="true">
+        {statusLabel ?? ''}
+      </div>
+      <form
+        className={`input-bar${busy ? ' input-bar--busy' : ''}`}
+        onSubmit={onSubmit}
+        aria-busy={busy || undefined}
+      >
         <label className="sr-only" htmlFor="laife-input">
           Messaggio per LAIfe
         </label>
@@ -69,8 +83,10 @@ export function InputBar({ onMessageSent }: InputBarProps) {
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={onKeyDown}
-          placeholder="Messaggio a LAIfe…"
-          disabled={busy}
+          placeholder={
+            busy ? 'Puoi scrivere il prossimo messaggio…' : 'Messaggio a LAIfe…'
+          }
+          /* Keep drafting available while LAIfe responds — send stays gated. */
           enterKeyHint="send"
           autoComplete="off"
           autoCorrect="on"
@@ -78,19 +94,23 @@ export function InputBar({ onMessageSent }: InputBarProps) {
         />
         <button
           type="submit"
-          className="input-bar__send"
-          disabled={busy || !value.trim()}
-          aria-label="Invia messaggio"
+          className={`input-bar__send${busy ? ' input-bar__send--busy' : ''}`}
+          disabled={!canSend}
+          aria-label={busy ? statusLabel : 'Invia messaggio'}
         >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path
-              d="M5 12h14M13 6l6 6-6 6"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
+          {busy ? (
+            <span className="input-bar__send-pulse" aria-hidden="true" />
+          ) : (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="M5 12h14M13 6l6 6-6 6"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          )}
         </button>
       </form>
       {showKeyboardHint ? (

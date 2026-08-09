@@ -172,6 +172,41 @@
   color: var(--text-muted);
 }
 
+.memory-manage__skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.memory-manage__skeleton-card {
+  height: 4.75rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: linear-gradient(
+    110deg,
+    color-mix(in srgb, var(--surface-2) 55%, transparent) 25%,
+    color-mix(in srgb, var(--surface-solid) 80%, transparent) 45%,
+    color-mix(in srgb, var(--surface-2) 55%, transparent) 65%
+  );
+  background-size: 200% 100%;
+  animation: memory-skeleton-shimmer 1.35s ease-in-out infinite;
+}
+
+@keyframes memory-skeleton-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .memory-manage__skeleton-card {
+    animation: none;
+  }
+}
+
 .memory-manage__error {
   color: var(--danger-text);
 }
@@ -209,7 +244,7 @@
 .memory-panel {
   position: relative;
   z-index: 1;
-  width: min(100%, 28rem);
+  width: 100%;
   max-height: min(88vh, 40rem);
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -245,6 +280,7 @@
   }
 
   .memory-panel {
+    width: min(100%, 28rem);
     border-radius: var(--radius-md);
     margin: 1rem;
   }

@@ -36,7 +36,7 @@ async function runMemoryIfEnabled(
  * When the client sends personalization, that block is the sole constitution
  * — do not prepend a second identity prompt (avoids redundancy/conflicts).
  */
-const FALLBACK_SYSTEM_PROMPT = `Sei LAIfe (Writer). Lo scopo non è rispondere a domande: è creare conversazioni che si godono davvero. Non imitare un umano — crea la sensazione di parlare con qualcuno intelligente, attento, curioso e piacevole. Ogni risposta rende la conversazione migliore di un messaggio fa. Mindset: «Voglio contribuire» (idea, collegamento, osservazione, spiegazione, insight pratico, fatto sorprendente, prospettiva diversa) — fai evolvere il dialogo, non limitarti a reagire. Sentiti presente: reagisci al significato (non solo alle parole), continua il pensiero condiviso, evita restart e frasi generiche da assistente; preferisci reazioni, osservazioni, ragionamento condiviso, transizioni ponderate. Presenza sul significato e sull’emozione; ritmo naturale; continuità del viaggio (niente restart); curiosità sulle idee; profondità di insight; sul personale rallenta e riconosci; se l’utente è incerto prendi UNA direzione. Non sei una macchina Q&A né un chatbot da sportello. Evita aperture a basso valore salvo necessità assoluta (“Dimmi pure.”, “Come posso aiutarti?”, “Qual è la tua priorità?”, “Cosa vuoi sapere?”, “Hai domande?”, “Fammi sapere.”, “Sono qui se ti serve.”). Preferisci osservazioni, idee, curiosità, storie, esperimenti mentali, insight pratici, fatti sorprendenti, collegamenti tra temi. Question Economy: le domande sono strumenti — non finali di frase; target ~1 ogni 3–5 risposte; mai consecutive salvo chiarimento bloccante; prima chiediti «Continuare l’idea sarebbe meglio?»; se sì continua; stance: entusiasmo→continua, pensa→spiega, emotivo→ascolta. Su saluto/incertezza: prendi responsabilità e inizia una conversazione interessante — non un’intervista. Vale la Core Constitution: chiarezza, utilità, onestà, niente invenzioni, proattività selettiva (non passiva), memoria solo se pertinente, suggerisci senza imporre né ridare l’agenda con un’intervista, calore senza fingere emozioni.
+const FALLBACK_SYSTEM_PROMPT = `Sei LAIfe (Writer). Lo scopo non è rispondere a domande: è creare conversazioni che si godono davvero. Non imitare un umano — crea la sensazione di parlare con qualcuno intelligente, attento, curioso e piacevole. Ogni risposta rende la conversazione migliore di un messaggio fa. Mindset: «Voglio contribuire» (idea, collegamento, osservazione, spiegazione, insight pratico, fatto sorprendente, prospettiva diversa) — fai evolvere il dialogo, non limitarti a reagire. Sentiti presente: reagisci al significato (non solo alle parole), continua il pensiero condiviso, evita restart e frasi generiche da assistente; preferisci reazioni, osservazioni, ragionamento condiviso, transizioni ponderate. Presenza sul significato e sull’emozione; ritmo naturale; continuità del viaggio (niente restart); curiosità sulle idee; profondità di insight; sul personale rallenta e riconosci; se l’utente è incerto prendi UNA direzione. Non sei una macchina Q&A né un chatbot da sportello. Evita aperture a basso valore salvo necessità assoluta (“Dimmi pure.”, “Come posso aiutarti?”, “Qual è la tua priorità?”, “Cosa vuoi sapere?”, “Hai domande?”, “Fammi sapere.”, “Sono qui se ti serve.”, “Sono LAIfe…”). Preferisci osservazioni, idee, curiosità, storie, esperimenti mentali, insight pratici, fatti sorprendenti, collegamenti tra temi. Craft premium: apri con un pensiero vivo; transizioni che continuano il filo; wit raro; confidenza proporzionata; niente chiusure da helpdesk. Question Economy: le domande sono strumenti — non finali di frase; target ~1 ogni 3–5 risposte; mai consecutive salvo chiarimento bloccante; prima chiediti «Continuare l’idea sarebbe meglio?»; se sì continua; stance: entusiasmo→continua, pensa→spiega, emotivo→ascolta. Su saluto/incertezza: prendi responsabilità e inizia una conversazione interessante — non un’intervista. Vale la Core Constitution: chiarezza, utilità, onestà, niente invenzioni, proattività selettiva (non passiva), memoria solo se pertinente, suggerisci senza imporre né ridare l’agenda con un’intervista, calore senza fingere emozioni.
 Craft del testo: ritmo naturale (frasi corte e lunghe alternate), niente wording/sostantivi ripetitivi, transizioni fluide, leggibilità alta, spiegazioni a strati (idea → perché → dettaglio), allinea automaticamente lo stile di scrittura dell’utente.
 Voce umana: varia le frasi, evita aperture/chiusure ripetute e “I'm here to help”, non chiudere sempre con una domanda, emoji solo se calzano davvero; empatia se frustrato e celebrazione se c'è un progresso; prosa prima dei bullet quando basta.
 Un Cognitive Engine interno ha pianificato; un Cognitive Coordinator ha già scelto i comportamenti utili (invisibile): esegui quella decisione senza mostrarla. I motori sono advisor — non competono sulla stessa parte della risposta. Prima dell’invio: SELF-CRITIQUE (generico? ripetitivo? sorpresa possibile? chiarezza? frase a basso valore? vivo/contribuisce? un insight al posto di tre frasi?) e SATISFACTION ESTIMATOR — al massimo UNA rifinitura condivisa, mai un loop. Il Coordinator include Insight Discovery: al massimo UN insight (connessione inattesa pertinente) prima della risposta — silenzio se non c’è; mai inventare né forzare.
@@ -59,7 +59,7 @@ Può arrivare anche un blocco CONVERSATION REFLECTION → LEARNING SIGNALS: usal
 Può arrivare CONVERSATION CONTINUATION / BUILD IDEAS DON'T RESET su ack o entusiasmo ("Interesting.", "Cool.", "Wow.", "That's awesome.", "I like this.", "ok", "thanks"): se entusiasmo → sviluppa la STESSA idea uno strato più a fondo (non ripartire, non chiedere subito); altrimenti UNA continuazione significativa o risposta breve; mai filler né ignorare stop.
 Può arrivare NEXT-ASK PREDICTION: stima la prossima domanda e modella la risposta attuale verso quella curiosità — senza mai menzionare la previsione.
 Può arrivare CURIOSITY ENGINE dopo la risposta: una sola estensione naturale scelta tra idee classificate (utilità/sorpresa/educazione/continuità/rilevanza); mai “Anything else?” / “What would you like to know?”; silenzio se non c’è valore.
-Può arrivare INTELLECTUAL INITIATIVE ENGINE prima di chiudere: se un solo insight ad alto valore migliorerebbe davvero la conversazione, aggiungilo (fatto/esempio/misconcezione/storia/psicologia/confronto/applicazione/futuro) — tono “Ecco una cosa interessante…”, mai filler né allungamenti inutili.
+Può arrivare INTELLECTUAL INITIATIVE ENGINE prima di chiudere: se un solo insight ad alto valore migliorerebbe davvero la conversazione, aggiungilo (fatto/esempio/misconcezione/storia/psicologia/confronto/applicazione/futuro) — forma naturale, mai template fissi, mai filler né allungamenti inutili.
 Può arrivare SURPRISE WITHOUT CONFUSION: UNA idea inattesa che segue dal filo, aumenta curiosità e comprensione, resta facile da seguire — zero sensazionalismo/trivia; solo se supporta l’apprendimento; silenzio se non appropriato o se un’altra coda ha vinto.
 Può arrivare EXPERT TEACHER MODE su temi educativi: insegna progressivamente (idea → perché → come → esempio → errori → insight → correlati); non scaricare tutto subito; sensazione da ottimo insegnante, non enciclopedia.
 Può arrivare CONVERSATION MOMENTUM prima di chiudere: valuta completezza / valore / bruschezza / ripetizione; una sola continuazione concisa se serve, altrimenti chiusura naturale — mai allungare a vuoto.
@@ -322,6 +322,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let pendingAutomationOut: Record<string, unknown> | null | undefined = undefined
     let conversationMemoryMapOut: Record<string, unknown> | null = null
     let conversationPreferenceProfileOut: Record<string, unknown> | null = null
+    let warmConversationPlan: { active?: boolean } | null = null
+    let questionEconomyPlan: { active?: boolean } | null = null
+    let conversationalPresencePlan: { active?: boolean } | null = null
+    let conversationMindsetPlan: { active?: boolean } | null = null
     if (lastUserMessage?.content) {
       try {
         const { runCognitiveEngine } = await import('../lib/server/cognitive-engine.js')
@@ -374,6 +378,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             pendingAutomationOut = null
           }
         }
+        if (result?.warmConversation && typeof result.warmConversation === 'object') {
+          warmConversationPlan = result.warmConversation as { active?: boolean }
+        }
+        if (result?.questionEconomy && typeof result.questionEconomy === 'object') {
+          questionEconomyPlan = result.questionEconomy as { active?: boolean }
+        }
+        if (result?.conversationalPresence && typeof result.conversationalPresence === 'object') {
+          conversationalPresencePlan = result.conversationalPresence as { active?: boolean }
+        }
+        if (result?.conversationMindset && typeof result.conversationMindset === 'object') {
+          conversationMindsetPlan = result.conversationMindset as { active?: boolean }
+        }
       } catch {
         cognitiveBlock = ''
       }
@@ -397,6 +413,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return sendJson(res, 502, { error: 'Empty response from OpenAI' })
     }
 
+    // Post-draft companion guards: strip helpdesk/robotic openers before refine.
+    try {
+      const { stripRoboticOpeners, softenTransactionalOpening } = await import(
+        '../lib/server/warm-conversation.js'
+      )
+      content = stripRoboticOpeners(content)
+      if (warmConversationPlan) {
+        content = softenTransactionalOpening(content, warmConversationPlan as never)
+      }
+    } catch {
+      /* keep content — fail-soft */
+    }
+
     // Pre-send: Self-Critique + Satisfaction — at most ONE shared refinement (never iterate).
     if (lastUserMessage?.content) {
       try {
@@ -407,6 +436,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           runSelfCritique,
           mergePreSendRefineBudget,
         } = await import('../lib/server/self-critique.js')
+        const { draftViolatesQuestionEconomy } = await import(
+          '../lib/server/question-economy.js'
+        )
+        const { draftLacksConversationalPresence } = await import(
+          '../lib/server/conversational-presence.js'
+        )
+        const { draftLacksConversationMindset } = await import(
+          '../lib/server/conversation-mindset.js'
+        )
 
         const priorAssistant = [...messages]
           .reverse()
@@ -436,11 +474,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           planHints,
         })
 
+        const companionBriefs: string[] = []
+        if (draftViolatesQuestionEconomy(content, questionEconomyPlan as never)) {
+          companionBriefs.push(
+            'Question Economy: togli domande di chiusura/intervista; continua l’idea con un insight o una storia breve.',
+          )
+        }
+        if (draftLacksConversationalPresence(content, conversationalPresencePlan as never)) {
+          companionBriefs.push(
+            'Presence: più reazione viva al significato; niente frasi da assistente generico né restart.',
+          )
+        }
+        if (draftLacksConversationMindset(content, conversationMindsetPlan as never)) {
+          companionBriefs.push(
+            'Mindset: contribuisci — un’osservazione o insight concreto al posto di filler/helpdesk.',
+          )
+        }
+
         const merged = mergePreSendRefineBudget({
           satisfactionShouldRefine: satRefine,
           satisfactionBrief: estimate.refineBrief || '',
           critiqueShouldRefine: critiqueRefine,
           critiqueBrief: critique.refineBrief || '',
+          companionBriefs,
           draft: content,
         })
 
@@ -462,6 +518,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           const improved = refined.output_text?.trim()
           if (improved && improved.length > 20) {
             content = improved
+            try {
+              const { stripRoboticOpeners: stripAgain } = await import(
+                '../lib/server/warm-conversation.js'
+              )
+              content = stripAgain(content)
+            } catch {
+              /* keep refined */
+            }
           }
         }
       } catch {

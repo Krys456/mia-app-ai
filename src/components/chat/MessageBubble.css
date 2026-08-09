@@ -41,12 +41,34 @@
   box-shadow: var(--glow-brand);
 }
 
+.bubble__avatar--pulse {
+  animation: bubble-avatar-pulse 1.6s infinite var(--ease-out);
+}
+
 .bubble__avatar-mark {
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.02em;
   color: var(--on-accent);
   line-height: 1;
+}
+
+@keyframes bubble-avatar-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 0%, transparent);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 18%, transparent);
+    transform: scale(1.04);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bubble__avatar--pulse {
+    animation: none;
+  }
 }
 
 .bubble__label {
@@ -124,9 +146,9 @@
   border-radius: var(--radius-lg);
   border-bottom-right-radius: var(--radius-xs);
   background: var(--bubble-user-bg);
-  border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
   color: var(--text);
-  box-shadow: var(--glow-brand);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--accent) 12%, transparent);
 }
 
 .bubble--user .bubble__body p {
