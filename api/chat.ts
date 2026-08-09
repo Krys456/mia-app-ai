@@ -525,6 +525,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       opener?: string
       timingScore?: number
     } | null = null
+    let conversationalCreativityPlan: {
+      active?: boolean
+      introduceCreativity?: boolean
+      move?: string
+      seed?: string
+      creativityScore?: number
+      fitScore?: number
+    } | null = null
     if (lastUserMessage?.content) {
       try {
         const { runCognitiveEngine } = await import('../lib/server/cognitive-engine.js')
@@ -828,6 +836,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             timingScore?: number
           }
         }
+        if (result?.conversationalCreativity && typeof result.conversationalCreativity === 'object') {
+          conversationalCreativityPlan = result.conversationalCreativity as {
+            active?: boolean
+            introduceCreativity?: boolean
+            move?: string
+            seed?: string
+            creativityScore?: number
+            fitScore?: number
+          }
+        }
       } catch {
         cognitiveBlock = ''
       }
@@ -982,6 +1000,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         )
         const { draftViolatesHumanTiming } = await import(
           '../lib/server/human-timing-engine.js'
+        )
+        const { draftViolatesConversationalCreativity } = await import(
+          '../lib/server/conversational-creativity-engine.js'
         )
 
         const priorAssistant = [...messages]
