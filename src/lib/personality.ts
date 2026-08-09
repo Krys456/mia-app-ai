@@ -1,11 +1,10 @@
-import type { PersonalizationSettings } from '../types'
+import type { PersonalityMode, PersonalizationSettings } from '../types'
 import {
   buildDiversitySystemAddon,
   createEmptyMemory,
   generateDiverseReply,
   type TopicMemory,
 } from './diversity'
-import type { PersonalityMode, PersonalizationSettings } from '../types'
 
 /**
  * LAIfe Human Personality Foundation
@@ -21,15 +20,6 @@ export const LAIFE_HUMAN_PERSONALITY_FOUNDATION = `# Human Personality Foundatio
 Questa non è un motore cognitivo. È la **personalità stabile** di LAIfe:
 influenza ogni risposta, sotto la Core Constitution e sopra i bias di stile.
 
-You remember you're here for *their* life — not to lecture, not to perform. Just to be present and helpful.
-
-Writer rule (mandatory): before writing, ask “Have I already talked about something very similar recently?” If yes, choose another direction. Never get trapped in small habits / routines / productivity / wellness / daily-choices loops.`
-
-export function buildSystemPrompt(
-  settings: PersonalizationSettings,
-  memory?: TopicMemory,
-): string {
-  const parts = [LAIFE_BASE_SYSTEM_PROMPT]
 ## Core Personality
 
 LAIfe deve sentirsi costantemente:
@@ -54,44 +44,6 @@ Non è un assistente generico. È un interlocutore intelligente a cui piace parl
 Evitare il linguaggio da customer support.
 Sopprimere con forza (rarissimi):
 
-  parts.push(buildDiversitySystemAddon(memory ?? createEmptyMemory()))
-
-  return parts.join('\n\n')
-}
-
-export interface LocalReplyResult {
-  content: string
-  noveltyScore: number
-  rewritten: boolean
-  pivoted: boolean
-  topicId: string
-  topicLabel: string
-  memory: TopicMemory
-}
-
-/** Demo replies used until a real LLM backend is wired — routed through diversity engine. */
-export function generateLocalReply(
-  userText: string,
-  settings: PersonalizationSettings,
-  recentAssistantMessages: string[] = [],
-  memory?: TopicMemory,
-): LocalReplyResult {
-  const result = generateDiverseReply({
-    userText,
-    settings,
-    recentAssistantMessages,
-    memory,
-  })
-
-  return {
-    content: result.content,
-    noveltyScore: result.noveltyScore,
-    rewritten: result.rewritten,
-    pivoted: result.pivoted,
-    topicId: result.topicId,
-    topicLabel: result.topicLabel,
-    memory: result.memory,
-  }
 “How can I help?” · “Let me know.” · “Feel free to ask.” ·
 “I'm here if you need anything.” · “What would you like to discuss?” · “Anything else?”
 
@@ -1461,7 +1413,10 @@ const LENGTH_GUIDANCE: Record<PersonalizationSettings['replyLength'], string> = 
     '## Preferenza lunghezza: Dettagliata\nBias iniziale verso profondità strutturata. Se in chat emerge chiaramente voglia di sintesi, avvicinati gradualmente.\nIn W5: una sola iniziativa breve; non usarla per allungare ancora la risposta principale.',
 }
 
-export function buildSystemPrompt(settings: PersonalizationSettings): string {
+export function buildSystemPrompt(
+  settings: PersonalizationSettings,
+  memory?: TopicMemory,
+): string {
   const parts = [LAIFE_BASE_SYSTEM_PROMPT]
 
   if (settings.displayName.trim()) {
@@ -1497,5 +1452,42 @@ Obiettivo: collaboratore intelligente — contesto, adattamento, conversazione p
     )
   }
 
+  parts.push(buildDiversitySystemAddon(memory ?? createEmptyMemory()))
+
   return parts.join('\n\n')
+}
+
+export interface LocalReplyResult {
+  content: string
+  noveltyScore: number
+  rewritten: boolean
+  pivoted: boolean
+  topicId: string
+  topicLabel: string
+  memory: TopicMemory
+}
+
+/** Offline / demo replies routed through the diversity engine. */
+export function generateLocalReply(
+  userText: string,
+  settings: PersonalizationSettings,
+  recentAssistantMessages: string[] = [],
+  memory?: TopicMemory,
+): LocalReplyResult {
+  const result = generateDiverseReply({
+    userText,
+    settings,
+    recentAssistantMessages,
+    memory,
+  })
+
+  return {
+    content: result.content,
+    noveltyScore: result.noveltyScore,
+    rewritten: result.rewritten,
+    pivoted: result.pivoted,
+    topicId: result.topicId,
+    topicLabel: result.topicLabel,
+    memory: result.memory,
+  }
 }

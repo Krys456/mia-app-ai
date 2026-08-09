@@ -3,6 +3,8 @@ export {
   createEmptyMemory,
   rememberAssistantMessage,
   rebuildMemoryFromMessages,
+  applyPivotSuppression,
+  recentTopicIds,
   type TopicMemory,
   type TopicMemoryEntry,
   MEMORY_WINDOW,

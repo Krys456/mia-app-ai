@@ -145,10 +145,7 @@
   outline-offset: 2px;
 }
 
-cursor/hide-enter-hint-touch-284c
 /* Mobile-first: keyboard shortcut hint is hidden unless a fine pointer is present. */
-/* Mobile-first: keyboard shortcut hint hidden unless a fine pointer is present. */
-main
 .input-bar__hint {
   display: none;
 }
