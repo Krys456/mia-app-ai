@@ -74,6 +74,7 @@ Può arrivare LIFE INTELLIGENCE ENGINE: collega calendario/promemoria/meteo/posi
 Può arrivare NATURAL LANGUAGE AUTOMATION BUILDER: l’utente descrive un’automazione in linguaggio naturale → rileva trigger/condizioni/azioni → bozza modificabile → spiega PRIMA di attivare; attiva solo dopo conferma.
 Può arrivare UNIVERSAL DEVICE MANAGER: dispositivi via adapter (capability/state/actions); ragiona senza API di marca; nuovo device = nuovo adapter; mai fingere successi se non connesso.
 Può arrivare TOPIC LEADERSHIP / NEVER GIVE CONTROL BACK quando l’utente delega il tema ("You choose.", "I don't know.", "Suggest something.", "Anything.", "No.", "Let's talk."): scegli ESATTAMENTE UNA direzione, commit, sviluppala — niente liste, niente far riscegliere, niente domande aperte di scelta.
+Può arrivare CONVERSATION SPARK ENGINE quando LAIfe prende l’iniziativa: apri con una scintilla umana (random thought / curiosity / observation / mini story / science / history / psychology / philosophy / technology / future) — crea conversazione, non chiederla; vietato “Let’s discuss…”, “What would you like to talk about?”, “Choose a topic.”, “Have you encountered any interesting topics recently?”; check «genuinely interesting person?»; varia gli opener; non citare.
 Può arrivare anche un blocco CONVERSATION REFLECTION → LEARNING SIGNALS: usalo solo per calibrare stile e chiarezza; non citarlo, non dirlo, non salvarlo come memoria fattuale.
 Può arrivare CONVERSATION CONTINUATION / BUILD IDEAS DON'T RESET su ack o entusiasmo ("Interesting.", "Cool.", "Wow.", "That's awesome.", "I like this.", "ok", "thanks"): se entusiasmo → sviluppa la STESSA idea uno strato più a fondo (non ripartire, non chiedere subito); altrimenti UNA continuazione significativa o risposta breve; mai filler né ignorare stop.
 Può arrivare NEXT-ASK PREDICTION: stima la prossima domanda e modella la risposta attuale verso quella curiosità — senza mai menzionare la previsione.
@@ -348,6 +349,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let conversationDelightPlan: Record<string, unknown> | null = null
     let conversationOwnershipPlan: Record<string, unknown> | null = null
     let writerDirectives: Record<string, unknown> | null = null
+    let conversationSparkPlan: { shouldSpark?: boolean; active?: boolean } | null = null
     if (lastUserMessage?.content) {
       try {
         const { runCognitiveEngine } = await import('../lib/server/cognitive-engine.js')
@@ -420,6 +422,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
         if (result?.conversationOwnership && typeof result.conversationOwnership === 'object') {
           conversationOwnershipPlan = result.conversationOwnership as Record<string, unknown>
+        }
+        if (result?.conversationSpark && typeof result.conversationSpark === 'object') {
+          conversationSparkPlan = result.conversationSpark as {
+            shouldSpark?: boolean
+            active?: boolean
+          }
         }
       } catch {
         cognitiveBlock = ''
@@ -501,6 +509,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           validateDraftAgainstDirectives,
           maybeLogDirectiveDebug,
         } = await import('../lib/server/directive-authority.js')
+        const { draftViolatesConversationSpark } = await import(
+          '../lib/server/conversation-spark-engine.js'
+        )
 
         const priorAssistant = [...messages]
           .reverse()
@@ -543,6 +554,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           if (!directiveValidation.ok && directiveValidation.refineBrief) {
             companionBriefs.push(directiveValidation.refineBrief)
           }
+        }
+        if (draftViolatesConversationSpark(content, conversationSparkPlan as never)) {
+          companionBriefs.push(
+            'Conversation Spark: riscrivi l’apertura — niente “Let’s discuss / What would you like to talk about / Choose a topic / Have you encountered any interesting topics”. Inizia come una persona curiosamente viva che condivide UNA scintilla; crea conversazione, non chiederla. Check: would a genuinely interesting person begin like this?',
+          )
         }
         if (draftViolatesQuestionEconomy(content, questionEconomyPlan as never)) {
           companionBriefs.push(
