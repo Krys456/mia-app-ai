@@ -553,6 +553,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       topicAnchor?: string
       treeOrder?: string[]
     } | null = null
+    let responseModePlan: {
+      active?: boolean
+      mode?: string
+      preferBrevity?: boolean
+      cueMatch?: string
+      forceVariety?: boolean
+    } | null = null
     let conversationOpportunityPlan: {
       active?: boolean
       initiativeAllowed?: boolean
@@ -907,6 +914,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             treeOrder?: string[]
           }
         }
+        if (result?.responseMode && typeof result.responseMode === 'object') {
+          responseModePlan = result.responseMode as {
+            active?: boolean
+            mode?: string
+            preferBrevity?: boolean
+            cueMatch?: string
+            forceVariety?: boolean
+          }
+        }
         if (result?.conversationOpportunity && typeof result.conversationOpportunity === 'object') {
           conversationOpportunityPlan = result.conversationOpportunity as {
             active?: boolean
@@ -1092,6 +1108,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         )
         const { draftViolatesReasoningExpansion } = await import(
           '../lib/server/reasoning-expansion-engine.js'
+        )
+        const { draftViolatesResponseMode } = await import(
+          '../lib/server/response-mode-engine.js'
         )
         const { draftViolatesConversationOpportunity } = await import(
           '../lib/server/conversation-opportunity-engine.js'
@@ -1284,6 +1303,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (draftViolatesReasoningExpansion(content, reasoningExpansionPlan as never)) {
           companionBriefs.push(
             'Reasoning Expansion: riscrivi — espandi l’idea sul tema CORRENTE, non cambiare argomento per allungare. Albero: Reaction → Core idea → Why it matters → Example/analogy/scenario → Broader implication. Check interno: “Have I explored this idea, or have I merely mentioned it?” Se solo menzionato → espandi. Obiettivo: “I’ve learned something, but it also made me think.” — non una versione più lunga della stessa risposta. Vietato: “Let’s talk about music…” quando chiedono più dettaglio.',
+          )
+        }
+        if (draftViolatesResponseMode(content, responseModePlan as never)) {
+          companionBriefs.push(
+            `Response Mode: riscrivi nel modo HOW=${responseModePlan?.mode || 'chosen'} — non un dump da Explanation. Cue brevi (“Ottimo!”→Celebration, “Già.”→Reflection, “No.”→Observation, “Interessante.”→Curiosity). Varia i modi; niente Explanation a catena; la conversazione deve respirare.`,
           )
         }
         if (draftViolatesConversationOpportunity(content, conversationOpportunityPlan as never)) {
