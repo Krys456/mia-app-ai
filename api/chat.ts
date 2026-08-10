@@ -374,6 +374,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       enjoyableMoment?: string
       writerBrief?: string
     } | null = null
+    let laifeManifestoPlan: {
+      active?: boolean
+      needNow?: string
+      contribution?: string
+      rhythm?: string
+      emotion?: string
+      inviteExploration?: boolean
+      writerBrief?: string
+    } | null = null
     let writerDirectives: Record<string, unknown> | null = null
     let conversationSparkPlan: { shouldSpark?: boolean; active?: boolean } | null = null
     let naturalDialoguePlan: {
@@ -702,6 +711,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             behaviour?: string
             needNow?: string
             enjoyableMoment?: string
+            writerBrief?: string
+          }
+        }
+        if (result?.laifeManifesto && typeof result.laifeManifesto === 'object') {
+          laifeManifestoPlan = result.laifeManifesto as {
+            active?: boolean
+            needNow?: string
+            contribution?: string
+            rhythm?: string
+            emotion?: string
+            inviteExploration?: boolean
             writerBrief?: string
           }
         }
@@ -1100,6 +1120,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           '../lib/server/human-impact-constitution.js'
         )
         const { runProjectSoulGate } = await import('../lib/server/project-soul.js')
+        const { runLaifeManifestoGate } = await import('../lib/server/laife-manifesto.js')
         const { runConversationOwnershipGate } = await import(
           '../lib/server/conversation-ownership.js'
         )
@@ -1525,6 +1546,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         })
         if (soulGate.needsRefine && soulGate.refineBrief) {
           companionBriefs.push(soulGate.refineBrief)
+        }
+
+        const { gate: manifestoGate, shouldRefine: manifestoRefine } =
+          runLaifeManifestoGate({
+            userMessage: lastUserMessage.content,
+            draft: content,
+            manifestoPlan: laifeManifestoPlan,
+          })
+        if (manifestoRefine && manifestoGate.refineBrief) {
+          companionBriefs.push(manifestoGate.refineBrief)
         }
 
         const { gate: ownershipGate, shouldRefine: ownershipRefine } =
