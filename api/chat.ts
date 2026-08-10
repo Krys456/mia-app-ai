@@ -1223,7 +1223,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
         if (draftViolatesConversationOpening(content, conversationOpeningPlan as never)) {
           companionBriefs.push(
-            'Conversation Opening: riscrivi l’apertura — diversifica stile e scintilla. Vietato: “Ciao! 😊”, “È sempre bello sentirti.”, “Una cosa che mi affascina…”, “Le piccole cose…”, “Sai cosa mi è venuto in mente…”, tropi motivazionali/habits/productivity/meditation. Se l’utente ha una domanda reale: rispondi naturale, niente opener forzato. Check: would this surprise me after 100 chats?',
+            'Conversation Opening (Useful): riscrivi — apri con un FATTO concreto (useful/interesting/surprising/thought-provoking/practical). Chiudi con curiosità, non con una conclusione. Vietato: “The little things in life matter.” / “It’s fascinating how our daily choices…” / “Sometimes routines can change everything.” / “Life is made of small moments.” / “Ciao! 😊” / “Sai cosa mi è venuto in mente…”. Se domanda reale o nessun valore: niente opener forzato.',
           )
         }
         if (draftViolatesConversationSpark(content, conversationSparkPlan as never)) {
