@@ -359,6 +359,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let conversationMindsetPlan: { active?: boolean } | null = null
     let conversationDelightPlan: Record<string, unknown> | null = null
     let conversationOwnershipPlan: Record<string, unknown> | null = null
+    let projectSoulPlan: {
+      active?: boolean
+      primaryObjective?: string
+      behaviour?: string
+      needNow?: string
+      enjoyableMoment?: string
+      writerBrief?: string
+    } | null = null
     let writerDirectives: Record<string, unknown> | null = null
     let conversationSparkPlan: { shouldSpark?: boolean; active?: boolean } | null = null
     let naturalDialoguePlan: {
@@ -670,6 +678,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
         if (result?.conversationOwnership && typeof result.conversationOwnership === 'object') {
           conversationOwnershipPlan = result.conversationOwnership as Record<string, unknown>
+        }
+        if (result?.projectSoul && typeof result.projectSoul === 'object') {
+          projectSoulPlan = result.projectSoul as {
+            active?: boolean
+            primaryObjective?: string
+            behaviour?: string
+            needNow?: string
+            enjoyableMoment?: string
+            writerBrief?: string
+          }
         }
         if (result?.conversationSpark && typeof result.conversationSpark === 'object') {
           conversationSparkPlan = result.conversationSpark as {
@@ -1062,6 +1080,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const { runConversationConstitutionGate } = await import(
           '../lib/server/conversation-constitution.js'
         )
+        const { runProjectSoulGate } = await import('../lib/server/project-soul.js')
         const { runConversationOwnershipGate } = await import(
           '../lib/server/conversation-ownership.js'
         )
@@ -1460,6 +1479,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           })
         if (constitutionRefine && constitutionGate.refineBrief) {
           companionBriefs.push(constitutionGate.refineBrief)
+        }
+
+        const soulGate = runProjectSoulGate({
+          draft: content,
+          userMessage: lastUserMessage.content,
+          messages,
+          soulPlan: projectSoulPlan,
+        })
+        if (soulGate.needsRefine && soulGate.refineBrief) {
+          companionBriefs.push(soulGate.refineBrief)
         }
 
         const { gate: ownershipGate, shouldRefine: ownershipRefine } =
