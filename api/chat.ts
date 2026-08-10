@@ -547,6 +547,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       minDepth?: number
       requiredElements?: string[]
     } | null = null
+    let reasoningExpansionPlan: {
+      active?: boolean
+      requireExpansion?: boolean
+      topicAnchor?: string
+      treeOrder?: string[]
+    } | null = null
     let conversationOpportunityPlan: {
       active?: boolean
       initiativeAllowed?: boolean
@@ -893,6 +899,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             requiredElements?: string[]
           }
         }
+        if (result?.reasoningExpansion && typeof result.reasoningExpansion === 'object') {
+          reasoningExpansionPlan = result.reasoningExpansion as {
+            active?: boolean
+            requireExpansion?: boolean
+            topicAnchor?: string
+            treeOrder?: string[]
+          }
+        }
         if (result?.conversationOpportunity && typeof result.conversationOpportunity === 'object') {
           conversationOpportunityPlan = result.conversationOpportunity as {
             active?: boolean
@@ -1075,6 +1089,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         )
         const { draftViolatesDeepThinkingWriter } = await import(
           '../lib/server/deep-thinking-writer.js'
+        )
+        const { draftViolatesReasoningExpansion } = await import(
+          '../lib/server/reasoning-expansion-engine.js'
         )
         const { draftViolatesConversationOpportunity } = await import(
           '../lib/server/conversation-opportunity-engine.js'
@@ -1262,6 +1279,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (draftViolatesDeepThinkingWriter(content, deepThinkingWriterPlan as never)) {
           companionBriefs.push(
             'Deep Thinking Writer: riscrivi — non la prima risposta accettabile. Costruisci a strati: Reaction → Main idea → Explanation → Example/Analogy → Reflection/Continuation. Depth ≥ 3 quando appropriato. Includi ≥2 tra: explanation · observation · analogy · example · reflection · curiosity. Evita filler tipo “AI is changing the world.” e dump a un paragrafo. Check: layered conversation, or flat first-pass?',
+          )
+        }
+        if (draftViolatesReasoningExpansion(content, reasoningExpansionPlan as never)) {
+          companionBriefs.push(
+            'Reasoning Expansion: riscrivi — espandi l’idea sul tema CORRENTE, non cambiare argomento per allungare. Albero: Reaction → Core idea → Why it matters → Example/analogy/scenario → Broader implication. Check interno: “Have I explored this idea, or have I merely mentioned it?” Se solo menzionato → espandi. Obiettivo: “I’ve learned something, but it also made me think.” — non una versione più lunga della stessa risposta. Vietato: “Let’s talk about music…” quando chiedono più dettaglio.',
           )
         }
         if (draftViolatesConversationOpportunity(content, conversationOpportunityPlan as never)) {
