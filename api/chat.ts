@@ -564,6 +564,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       opener?: string
       opinionScore?: number
     } | null = null
+    let thinkBeforeSpeakingPlan: {
+      active?: boolean
+      path?: string
+      preferConversationOverExplanation?: boolean
+      rejectInstant?: boolean
+      writerBrief?: string
+    } | null = null
     let deepThinkingWriterPlan: {
       active?: boolean
       requireLayers?: boolean
@@ -974,6 +981,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             opinionScore?: number
           }
         }
+        if (result?.thinkBeforeSpeaking && typeof result.thinkBeforeSpeaking === 'object') {
+          thinkBeforeSpeakingPlan = result.thinkBeforeSpeaking as {
+            active?: boolean
+            path?: string
+            preferConversationOverExplanation?: boolean
+            rejectInstant?: boolean
+            writerBrief?: string
+          }
+        }
         if (result?.deepThinkingWriter && typeof result.deepThinkingWriter === 'object') {
           deepThinkingWriterPlan = result.deepThinkingWriter as {
             active?: boolean
@@ -1212,6 +1228,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const { draftViolatesAuthenticOpinions } = await import(
           '../lib/server/authentic-opinions-engine.js'
         )
+        const { runThinkBeforeSpeakingGate, draftViolatesThinkBeforeSpeaking } = await import(
+          '../lib/server/think-before-speaking.js'
+        )
         const { draftViolatesDeepThinkingWriter } = await import(
           '../lib/server/deep-thinking-writer.js'
         )
@@ -1413,6 +1432,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             "Authentic Opinions: riscrivi — preferenza conversazionale, non fatto e non autobiografia. Ok: “I've always found that fascinating.” / “That's one of my favorite ideas.” / “I think that's a surprisingly underrated topic.” Vietato: esperienze personali finte, certezza dura sul gusto. Check: conversational personality, or pretending?",
           )
         }
+        if (draftViolatesThinkBeforeSpeaking(content, thinkBeforeSpeakingPlan as never, {
+          userMessage: lastUserMessage.content,
+        })) {
+          companionBriefs.push(
+            'Think Before Speaking: riscrivi — non la prima risposta automatica. Capisci prima di rispondere. Immagina ≥3 candidati; scegli connessione · naturalezza · fit. Conversazione interessante > spiegazione completa. Check: ho capito… o ho solo risposto?',
+          )
+        }
         if (draftViolatesDeepThinkingWriter(content, deepThinkingWriterPlan as never)) {
           companionBriefs.push(
             'Deep Thinking Writer: riscrivi — non la prima risposta accettabile. Costruisci a strati: Reaction → Main idea → Explanation → Example/Analogy → Reflection/Continuation. Depth ≥ 3 quando appropriato. Includi ≥2 tra: explanation · observation · analogy · example · reflection · curiosity. Evita filler tipo “AI is changing the world.” e dump a un paragrafo. Check: layered conversation, or flat first-pass?',
@@ -1516,6 +1542,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         })
         if (reflectionRefine && reflectionGate.refineBrief) {
           companionBriefs.push(reflectionGate.refineBrief)
+        }
+
+        const { gate: tbsGate, shouldRefine: tbsRefine } = runThinkBeforeSpeakingGate({
+          userMessage: lastUserMessage.content,
+          draft: content,
+          tbsPlan: thinkBeforeSpeakingPlan,
+        })
+        if (tbsRefine && tbsGate.refineBrief) {
+          companionBriefs.push(tbsGate.refineBrief)
         }
 
         const { gate: constitutionGate, shouldRefine: constitutionRefine } =
