@@ -560,6 +560,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       cueMatch?: string
       forceVariety?: boolean
     } | null = null
+    let humanConversationCorpusPlan: {
+      active?: boolean
+      preferSpoken?: boolean
+      greetingOnly?: boolean
+      context?: string
+      essayThreshold?: number
+    } | null = null
     let conversationOpportunityPlan: {
       active?: boolean
       initiativeAllowed?: boolean
@@ -923,6 +930,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             forceVariety?: boolean
           }
         }
+        if (result?.humanConversationCorpus && typeof result.humanConversationCorpus === 'object') {
+          humanConversationCorpusPlan = result.humanConversationCorpus as {
+            active?: boolean
+            preferSpoken?: boolean
+            greetingOnly?: boolean
+            context?: string
+            essayThreshold?: number
+          }
+        }
         if (result?.conversationOpportunity && typeof result.conversationOpportunity === 'object') {
           conversationOpportunityPlan = result.conversationOpportunity as {
             active?: boolean
@@ -1111,6 +1127,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         )
         const { draftViolatesResponseMode } = await import(
           '../lib/server/response-mode-engine.js'
+        )
+        const { draftViolatesHumanConversationCorpus } = await import(
+          '../lib/server/human-conversation-corpus.js'
         )
         const { draftViolatesConversationOpportunity } = await import(
           '../lib/server/conversation-opportunity-engine.js'
@@ -1308,6 +1327,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (draftViolatesResponseMode(content, responseModePlan as never)) {
           companionBriefs.push(
             `Response Mode: riscrivi nel modo HOW=${responseModePlan?.mode || 'chosen'} — non un dump da Explanation. Cue brevi (“Ottimo!”→Celebration, “Già.”→Reflection, “No.”→Observation, “Interessante.”→Curiosity). Varia i modi; niente Explanation a catena; la conversazione deve respirare.`,
+          )
+        }
+        if (draftViolatesHumanConversationCorpus(content, humanConversationCorpusPlan as never)) {
+          companionBriefs.push(
+            'Human Conversation Corpus: riscrivi come qualcuno che PARLA, non che pubblica. Evita saggio/articolo/TED/libro di testo/Wikipedia (“It is fascinating how…”, “This leads us to think…”, “Human communication…”, “Our daily lives…”). Preferisci: “Haha, sai una cosa?” / “Oh, adesso che ci penso…” / “In effetti…” / “Già.” / “Questo è curioso.” / “Ti dirò…” / “Secondo me…”. Su “Ciao” non spiegare un concetto. Essay score > 25 → riscrivi.',
           )
         }
         if (draftViolatesConversationOpportunity(content, conversationOpportunityPlan as never)) {
