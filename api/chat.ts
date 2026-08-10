@@ -57,7 +57,7 @@ Può arrivare WARM CONVERSATION: saluti/chiacchiere/incertezza — partner non Q
 Può arrivare CONVERSATION MINDSET: contribuire non solo rispondere; ogni messaggio migliora il dialogo; presenza + ritmo + continuità + curiosità sulle idee + profondità + EI + iniziativa + umiltà; self-review (vivo? valore? un insight al posto di tre frasi?).
 Può arrivare CONVERSATION DELIGHT: lo scopo è rendere la conversazione piacevole — non solo corretta; se piatta riscrivi; osservazioni/storie/insight prima delle domande; vietato “Let me know…”, “If you have any questions…”, “Feel free…”, “I’m here if you need…”; silenzio > domande inutili.
 Può arrivare SOCIAL CONVERSATION ENGINE (prima di Intent): rileva SOCIAL vs INFORMATIONAL (greeting/farewell/how are you/thanks/good night/compliments/laughter/agreement/…) — se SOCIAL: connessione > informazione; naturale; niente helpdesk (“How can I help?”, “Anything else?”); non forzare domande; stessa lingua; non citare.
-Può arrivare CONVERSATION INTENT (pre-plan, dopo Social): perché ha scritto (emotional/conversational intent, curiosity, engagement, openness, expects information|companionship|exploration|presence) — rispondi all’intenzione non al letterale; osservazioni > domande; continua se vivo; niente interviste.
+Può arrivare CONVERSATION INTENT ENGINE (pre-plan, dopo Social): parole ≠ abbastanza — inferisci l’intento (greeting · small talk · companionship · curiosity · learning · problem solving · celebration · emotional support · reflection · exploration · advice · news · life/project update · entertainment · silence · boredom · random/deep conversation; multipli ok). Context first (storia · momentum · emo · topic · memory). Confidence alta → rispondi diretto; bassa → 1–2 interpretazioni naturali, mai interrogare. Preferisci continuare il filo. Human test: se un amico l’avesse detto, cosa avrebbe voluto dire? Rispondi a quello — non solo alle parole.
 Può arrivare CONVERSATION LEADERSHIP (dopo Intent, pre-plan): mossa di guida (continua/insight/storia/osservazione/collega/analogia/fatto/conciso/chiudi/scegli direzione); preserva momentum; niente permessi né “Let me know… / If you want…”.
 Può arrivare THOUGHTFULNESS ENGINE (dopo Leadership, prima di Deep Thinking): cerca il contributo a maggior valore conversazionale (osservazione/collegamento/spiegazione memorabile/analogia/storia/sfida rispettosa/implicazione/semplificazione) — non la prima risposta corretta; memorabile > generico · elegante > enciclopedico; non inventare; niente filosofia gratuita.
 Può arrivare DEEP THINKING ENGINE (dopo Thoughtfulness, prima del Writer): esplora più direzioni di risposta; valuta usefulness/naturalness/originality/EI/momentum/clarity/memorability; scegli valore conversazionale massimo — non la prima corretta; «Would a thoughtful human say this?»; zero filler/enciclopedia/domande inutili; accuratezza non negoziabile; ragionamento interno nascosto.
@@ -468,6 +468,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       writerBrief?: string
       recentStructures?: string[]
       recentOpenings?: string[]
+    } | null = null
+    let conversationIntentPlan: {
+      active?: boolean
+      inference?: {
+        primaryIntent?: string
+        secondaryIntents?: string[]
+        responseStrategy?: string
+        continueThread?: boolean
+        friendMeaning?: string
+        confidence?: string
+        expects?: string
+        interpretations?: string[]
+      }
+      writerBrief?: string
     } | null = null
     let humanImperfectionPlan: {
       active?: boolean
@@ -909,6 +923,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             recentOpenings?: string[]
           }
         }
+        if (result?.conversationIntentPlan && typeof result.conversationIntentPlan === 'object') {
+          conversationIntentPlan = result.conversationIntentPlan as {
+            active?: boolean
+            inference?: {
+              primaryIntent?: string
+              secondaryIntents?: string[]
+              responseStrategy?: string
+              continueThread?: boolean
+              friendMeaning?: string
+              confidence?: string
+              expects?: string
+              interpretations?: string[]
+            }
+            writerBrief?: string
+          }
+        }
         if (result?.humanImperfection && typeof result.humanImperfection === 'object') {
           humanImperfectionPlan = result.humanImperfection as {
             active?: boolean
@@ -1345,6 +1375,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           runConversationDiversityGate,
           draftViolatesConversationDiversity,
         } = await import('../lib/server/conversation-diversity-engine.js')
+        const {
+          runConversationIntentGate,
+          draftViolatesConversationIntent,
+        } = await import('../lib/server/conversation-intent.js')
         const { draftViolatesHumanImperfection } = await import(
           '../lib/server/human-imperfection-engine.js'
         )
@@ -1557,6 +1591,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ) {
           companionBriefs.push(
             'Conversation Diversity: riscrivi — stessa struttura delle ultime risposte. Cambia la FORMA conversazionale (osservazione / storia / analogia / humour / silent ending…), non solo le parole. Vietato default greeting→compliment→question. Varia ritmo e flavour. Check: would the user predict the next sentence?',
+          )
+        }
+        if (
+          draftViolatesConversationIntent(content, conversationIntentPlan as never, {
+            userMessage: lastUserMessage.content,
+          })
+        ) {
+          companionBriefs.push(
+            'Conversation Intent Engine: riscrivi — rispondi all’INTENZIONE, non solo al letterale. Human test: se un amico l’avesse detto, cosa avrebbe voluto dire? Preferisci continuare il filo esistente. Confidence bassa → 1–2 interpretazioni naturali, mai interrogare. Niente helpdesk / “How can I help?”.',
           )
         }
         if (draftViolatesHumanImperfection(content, humanImperfectionPlan as never)) {
@@ -1888,6 +1931,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           })
         if (diversityRefine && diversityGate.refineBrief) {
           companionBriefs.push(diversityGate.refineBrief)
+        }
+
+        const { gate: intentGate, shouldRefine: intentRefine } = runConversationIntentGate({
+          userMessage: lastUserMessage.content,
+          draft: content,
+          plan: conversationIntentPlan,
+        })
+        if (intentRefine && intentGate.refineBrief) {
+          companionBriefs.push(intentGate.refineBrief)
         }
 
         const { gate: constitutionGate, shouldRefine: constitutionRefine } =
