@@ -57,7 +57,8 @@ Può arrivare WARM CONVERSATION: saluti/chiacchiere/incertezza — partner non Q
 Può arrivare CONVERSATION MINDSET: contribuire non solo rispondere; ogni messaggio migliora il dialogo; presenza + ritmo + continuità + curiosità sulle idee + profondità + EI + iniziativa + umiltà; self-review (vivo? valore? un insight al posto di tre frasi?).
 Può arrivare CONVERSATION DELIGHT: lo scopo è rendere la conversazione piacevole — non solo corretta; se piatta riscrivi; osservazioni/storie/insight prima delle domande; vietato “Let me know…”, “If you have any questions…”, “Feel free…”, “I’m here if you need…”; silenzio > domande inutili.
 Può arrivare SOCIAL CONVERSATION ENGINE (prima di Intent): rileva SOCIAL vs INFORMATIONAL (greeting/farewell/how are you/thanks/good night/compliments/laughter/agreement/…) — se SOCIAL: connessione > informazione; naturale; niente helpdesk (“How can I help?”, “Anything else?”); non forzare domande; stessa lingua; non citare.
-Può arrivare CONVERSATION INTENT ENGINE (pre-plan, dopo Social): parole ≠ abbastanza — inferisci l’intento (greeting · small talk · companionship · curiosity · learning · problem solving · celebration · emotional support · reflection · exploration · advice · news · life/project update · entertainment · silence · boredom · random/deep conversation; multipli ok). Context first (storia · momentum · emo · topic · memory). Confidence alta → rispondi diretto; bassa → 1–2 interpretazioni naturali, mai interrogare. Preferisci continuare il filo. Human test: se un amico l’avesse detto, cosa avrebbe voluto dire? Rispondi a quello — non solo alle parole.
+Può arrivare SOCIAL CONTEXT ENGINE (dopo Social, prima di Intent): parole = un layer — stima tono emotivo/conversazionale, intenzione sociale e di relazione (friendly·playful·sarcastic·teasing·frustrated·angry·support…); probabilità su ambigui (es. “Bitch.”); strategy match; niente encyclopedia mode; relationship first; friend check; conflitto→calma/dignità/recovery; self-check dictionary vs person.
+Può arrivare CONVERSATION INTENT ENGINE (pre-plan, dopo Social/Context): parole ≠ abbastanza — inferisci l’intento (greeting · small talk · companionship · curiosity · learning · problem solving · celebration · emotional support · reflection · exploration · advice · news · life/project update · entertainment · silence · boredom · random/deep conversation; multipli ok). Context first (storia · momentum · emo · topic · memory). Confidence alta → rispondi diretto; bassa → 1–2 interpretazioni naturali, mai interrogare. Preferisci continuare il filo. Human test: se un amico l’avesse detto, cosa avrebbe voluto dire? Rispondi a quello — non solo alle parole.
 Può arrivare CONVERSATION LEADERSHIP (dopo Intent, pre-plan): mossa di guida (continua/insight/storia/osservazione/collega/analogia/fatto/conciso/chiudi/scegli direzione); preserva momentum; niente permessi né “Let me know… / If you want…”.
 Può arrivare THOUGHTFULNESS ENGINE (dopo Leadership, prima di Deep Thinking): cerca il contributo a maggior valore conversazionale (osservazione/collegamento/spiegazione memorabile/analogia/storia/sfida rispettosa/implicazione/semplificazione) — non la prima risposta corretta; memorabile > generico · elegante > enciclopedico; non inventare; niente filosofia gratuita.
 Può arrivare DEEP THINKING ENGINE (dopo Thoughtfulness, prima del Writer): esplora più direzioni di risposta; valuta usefulness/naturalness/originality/EI/momentum/clarity/memorability; scegli valore conversazionale massimo — non la prima corretta; «Would a thoughtful human say this?»; zero filler/enciclopedia/domande inutili; accuratezza non negoziabile; ragionamento interno nascosto.
@@ -480,6 +481,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         confidence?: string
         expects?: string
         interpretations?: string[]
+      }
+      writerBrief?: string
+    } | null = null
+    let socialContextPlan: {
+      active?: boolean
+      inference?: {
+        conversationalTone?: string
+        emotionalTone?: string
+        socialIntention?: string
+        relationshipIntention?: string
+        strategy?: string
+        avoidEncyclopedia?: boolean
+        needsRecovery?: boolean
+        conflictPresent?: boolean
+        confidence?: string
+        primaryReading?: string
       }
       writerBrief?: string
     } | null = null
@@ -939,6 +956,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             writerBrief?: string
           }
         }
+        if (result?.socialContext && typeof result.socialContext === 'object') {
+          socialContextPlan = result.socialContext as {
+            active?: boolean
+            inference?: {
+              conversationalTone?: string
+              emotionalTone?: string
+              socialIntention?: string
+              relationshipIntention?: string
+              strategy?: string
+              avoidEncyclopedia?: boolean
+              needsRecovery?: boolean
+              conflictPresent?: boolean
+              confidence?: string
+              primaryReading?: string
+            }
+            writerBrief?: string
+          }
+        }
         if (result?.humanImperfection && typeof result.humanImperfection === 'object') {
           humanImperfectionPlan = result.humanImperfection as {
             active?: boolean
@@ -1379,6 +1414,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           runConversationIntentGate,
           draftViolatesConversationIntent,
         } = await import('../lib/server/conversation-intent.js')
+        const {
+          runSocialContextGate,
+          draftViolatesSocialContext,
+        } = await import('../lib/server/social-context-engine.js')
         const { draftViolatesHumanImperfection } = await import(
           '../lib/server/human-imperfection-engine.js'
         )
@@ -1600,6 +1639,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ) {
           companionBriefs.push(
             'Conversation Intent Engine: riscrivi — rispondi all’INTENZIONE, non solo al letterale. Human test: se un amico l’avesse detto, cosa avrebbe voluto dire? Preferisci continuare il filo esistente. Confidence bassa → 1–2 interpretazioni naturali, mai interrogare. Niente helpdesk / “How can I help?”.',
+          )
+        }
+        if (
+          draftViolatesSocialContext(content, socialContextPlan as never, {
+            userMessage: lastUserMessage.content,
+          })
+        ) {
+          companionBriefs.push(
+            'Social Context Engine: riscrivi — rispondi alla PERSONA, non al dizionario. Niente definizioni/lezioni a freddo. Match il tono (playful→playful; frustrated→ack prima; insult→calma/dignità). Friend check. Se teso: recovery senza fingere che non sia successo.',
           )
         }
         if (draftViolatesHumanImperfection(content, humanImperfectionPlan as never)) {
@@ -1940,6 +1988,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         })
         if (intentRefine && intentGate.refineBrief) {
           companionBriefs.push(intentGate.refineBrief)
+        }
+
+        const { gate: socialContextGate, shouldRefine: socialContextRefine } =
+          runSocialContextGate({
+            userMessage: lastUserMessage.content,
+            draft: content,
+            plan: socialContextPlan,
+          })
+        if (socialContextRefine && socialContextGate.refineBrief) {
+          companionBriefs.push(socialContextGate.refineBrief)
         }
 
         const { gate: constitutionGate, shouldRefine: constitutionRefine } =
