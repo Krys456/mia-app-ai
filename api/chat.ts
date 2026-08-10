@@ -1171,8 +1171,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const { draftViolatesConversationPlanner } = await import(
           '../lib/server/conversation-planner-engine.js'
         )
-        const { draftViolatesConversationCritic, critiqueAgainstPlanner } = await import(
-          '../lib/server/conversation-critic.js'
+        const { runConversationCriticEngine } = await import(
+          '../lib/server/conversation-critic-engine.js'
         )
         const { draftViolatesConversationOpening } = await import(
           '../lib/server/conversation-opening-engine.js'
@@ -1394,18 +1394,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               .join(' '),
           )
         }
-        if (
-          draftViolatesConversationCritic(content, conversationPlannerPlan as never, {
+        {
+          const { plan: criticPlan } = runConversationCriticEngine({
+            draft: content,
+            userMessage: lastUserMessage.content,
             messages,
+            plannerPlan: conversationPlannerPlan,
+            conversationOpportunity: conversationOpportunityPlan,
+            expectedDepth: conversationPlannerPlan?.plan?.depth,
+            depthExpected:
+              (conversationPlannerPlan?.plan?.depth ?? 0) >= 3 ||
+              conversationPlannerPlan?.plan?.strategy === 'explain',
+            initiativeAllowed: conversationOpportunityPlan?.initiativeAllowed,
           })
-        ) {
-          const critique = critiqueAgainstPlanner(content, conversationPlannerPlan as never, {
-            messages,
-          })
-          companionBriefs.push(
-            critique.refineBrief ||
-              'Conversation Critic: riscrivi seguendo il Conversation Planner — no subject jumps, essays, forced philosophy/motivation, or ignored intent/history. Plan the next 5 minutes.',
-          )
+          if (criticPlan.needsRefine) {
+            companionBriefs.push(
+              criticPlan.refineBrief ||
+                'Conversation Critic Engine: riscrivi — più umano, conversazionale, meno generico/lecture; allinea emozione e identità; tieni momentum; anti-essay. Non allungare per lunghezza — ottimizza per la conversazione più piacevole.',
+            )
+          }
         }
         if (draftViolatesConversationOpening(content, conversationOpeningPlan as never)) {
           companionBriefs.push(
