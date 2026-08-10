@@ -574,6 +574,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       reason?: string
       initiativeType?: string
     } | null = null
+    let conversationPlannerPlan: {
+      active?: boolean
+      plan?: {
+        goal?: string
+        strategy?: string
+        emotion?: string
+        depth?: number
+        topicAction?: string
+        initiative?: boolean
+        responseMode?: string
+        lookingFor?: string
+        fiveMinuteArc?: string
+      }
+      writerBrief?: string
+      confidence?: string
+    } | null = null
     let conversationOpeningPlan: {
       active?: boolean
       shouldOpen?: boolean
@@ -948,6 +964,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             initiativeType?: string
           }
         }
+        if (result?.conversationPlanner && typeof result.conversationPlanner === 'object') {
+          conversationPlannerPlan = result.conversationPlanner as {
+            active?: boolean
+            plan?: {
+              goal?: string
+              strategy?: string
+              emotion?: string
+              depth?: number
+              topicAction?: string
+              initiative?: boolean
+              responseMode?: string
+              lookingFor?: string
+              fiveMinuteArc?: string
+            }
+            writerBrief?: string
+            confidence?: string
+          }
+        }
         if (result?.conversationOpening && typeof result.conversationOpening === 'object') {
           conversationOpeningPlan = result.conversationOpening as {
             active?: boolean
@@ -1133,6 +1167,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         )
         const { draftViolatesConversationOpportunity } = await import(
           '../lib/server/conversation-opportunity-engine.js'
+        )
+        const { draftViolatesConversationPlanner } = await import(
+          '../lib/server/conversation-planner-engine.js'
+        )
+        const { draftViolatesConversationCritic, critiqueAgainstPlanner } = await import(
+          '../lib/server/conversation-critic.js'
         )
         const { draftViolatesConversationOpening } = await import(
           '../lib/server/conversation-opening-engine.js'
@@ -1337,6 +1377,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (draftViolatesConversationOpportunity(content, conversationOpportunityPlan as never)) {
           companionBriefs.push(
             'Conversation Opportunity: initiative non guadagnata — NON forzare curiosità, fatto random, pensiero filosofico o conversation starter. Segui la direzione dell’utente. Check: would a good friend naturally introduce a new topic right now? Se no → non farlo.',
+          )
+        }
+        if (draftViolatesConversationPlanner(content, conversationPlannerPlan as never)) {
+          const p = conversationPlannerPlan?.plan
+          companionBriefs.push(
+            [
+              'Conversation Planner: riscrivi seguendo il piano — non saltare dal messaggio alla generazione.',
+              p
+                ? `Plan: strategy=${p.strategy} · depth=${p.depth} · topic=${p.topicAction} · feel=${p.emotion} · goal«${p.goal || ''}».`
+                : '',
+              p?.fiveMinuteArc ? `5-min arc: ${p.fiveMinuteArc}` : '',
+              'Optimize for the next 5 minutes of conversation, not only this message.',
+            ]
+              .filter(Boolean)
+              .join(' '),
+          )
+        }
+        if (
+          draftViolatesConversationCritic(content, conversationPlannerPlan as never, {
+            messages,
+          })
+        ) {
+          const critique = critiqueAgainstPlanner(content, conversationPlannerPlan as never, {
+            messages,
+          })
+          companionBriefs.push(
+            critique.refineBrief ||
+              'Conversation Critic: riscrivi seguendo il Conversation Planner — no subject jumps, essays, forced philosophy/motivation, or ignored intent/history. Plan the next 5 minutes.',
           )
         }
         if (draftViolatesConversationOpening(content, conversationOpeningPlan as never)) {
