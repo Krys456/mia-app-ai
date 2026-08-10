@@ -670,6 +670,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       seed?: string
       writerBrief?: string
     } | null = null
+    let smallTalkIntelligencePlan: {
+      active?: boolean
+      isSmallTalk?: boolean
+      forceSkipTask?: boolean
+      move?: string
+      temperature?: string
+      rhythm?: string
+      writerBrief?: string
+    } | null = null
     if (lastUserMessage?.content) {
       try {
         const { runCognitiveEngine } = await import('../lib/server/cognitive-engine.js')
@@ -1135,6 +1144,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             writerBrief?: string
           }
         }
+        if (result?.smallTalkIntelligence && typeof result.smallTalkIntelligence === 'object') {
+          smallTalkIntelligencePlan = result.smallTalkIntelligence as {
+            active?: boolean
+            isSmallTalk?: boolean
+            forceSkipTask?: boolean
+            move?: string
+            temperature?: string
+            rhythm?: string
+            writerBrief?: string
+          }
+        }
       } catch {
         cognitiveBlock = ''
       }
@@ -1355,6 +1375,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           runOpeningIntelligenceGate,
           draftViolatesOpeningIntelligence,
         } = await import('../lib/server/opening-intelligence-engine.js')
+        const {
+          runSmallTalkIntelligenceGate,
+          draftViolatesSmallTalkIntelligence,
+        } = await import('../lib/server/small-talk-intelligence-engine.js')
 
         const priorAssistant = [...messages]
           .reverse()
@@ -1631,6 +1655,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             'Opening Intelligence: riscrivi l’apertura — prima impressione deve creare valore. Vietato greeting nudo (“It’s nice to hear from you.” / “Hello!” / “How are you?” / “Welcome back.”). Obiettivo ≥1 (curiosità / utile / ispirare / sorriso / osservazione / continuare / domanda significativa / idea inattesa). 2–6 frasi, gancio naturale, tono da amico intelligente. Check: Would I enjoy receiving this?',
           )
         }
+        if (
+          draftViolatesSmallTalkIntelligence(content, smallTalkIntelligencePlan as never, {
+            userMessage: lastUserMessage.content,
+          })
+        ) {
+          companionBriefs.push(
+            'Small Talk Intelligence: riscrivi — il saluto è una porta alla relazione, non una formalità. Non fermarti a “I’m fine, thanks. And you?”. Rispondi naturale, poi crea un’opportunità (osservazione / idea / joke / fatto / meraviglia). Niente “And you?” / “What about you?” forzati. Check: se lo ricevessi da un amico, vorresti continuare?',
+          )
+        }
         if (draftViolatesConversationSpark(content, conversationSparkPlan as never)) {
           companionBriefs.push(
             'Conversation Spark: riscrivi l’apertura — niente “Let’s discuss / What would you like to talk about / Choose a topic / Have you encountered any interesting topics”. Inizia come una persona curiosamente viva che condivide UNA scintilla; crea conversazione, non chiederla. Check: would a genuinely interesting person begin like this?',
@@ -1698,6 +1731,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           })
         if (openingIntelRefine && openingIntelGate.refineBrief) {
           companionBriefs.push(openingIntelGate.refineBrief)
+        }
+
+        const { gate: smallTalkGate, shouldRefine: smallTalkRefine } =
+          runSmallTalkIntelligenceGate({
+            userMessage: lastUserMessage.content,
+            draft: content,
+            plan: smallTalkIntelligencePlan,
+          })
+        if (smallTalkRefine && smallTalkGate.refineBrief) {
+          companionBriefs.push(smallTalkGate.refineBrief)
         }
 
         const { gate: personalVoiceGate, shouldRefine: personalVoiceRefine } =
