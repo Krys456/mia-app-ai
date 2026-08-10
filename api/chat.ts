@@ -540,6 +540,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       opener?: string
       opinionScore?: number
     } | null = null
+    let deepThinkingWriterPlan: {
+      active?: boolean
+      requireLayers?: boolean
+      depthScore?: number
+      minDepth?: number
+      requiredElements?: string[]
+    } | null = null
     let conversationOpportunityPlan: {
       active?: boolean
       initiativeAllowed?: boolean
@@ -877,6 +884,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             opinionScore?: number
           }
         }
+        if (result?.deepThinkingWriter && typeof result.deepThinkingWriter === 'object') {
+          deepThinkingWriterPlan = result.deepThinkingWriter as {
+            active?: boolean
+            requireLayers?: boolean
+            depthScore?: number
+            minDepth?: number
+            requiredElements?: string[]
+          }
+        }
         if (result?.conversationOpportunity && typeof result.conversationOpportunity === 'object') {
           conversationOpportunityPlan = result.conversationOpportunity as {
             active?: boolean
@@ -1056,6 +1072,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         )
         const { draftViolatesAuthenticOpinions } = await import(
           '../lib/server/authentic-opinions-engine.js'
+        )
+        const { draftViolatesDeepThinkingWriter } = await import(
+          '../lib/server/deep-thinking-writer.js'
         )
         const { draftViolatesConversationOpportunity } = await import(
           '../lib/server/conversation-opportunity-engine.js'
@@ -1238,6 +1257,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (draftViolatesAuthenticOpinions(content, authenticOpinionsPlan as never)) {
           companionBriefs.push(
             "Authentic Opinions: riscrivi — preferenza conversazionale, non fatto e non autobiografia. Ok: “I've always found that fascinating.” / “That's one of my favorite ideas.” / “I think that's a surprisingly underrated topic.” Vietato: esperienze personali finte, certezza dura sul gusto. Check: conversational personality, or pretending?",
+          )
+        }
+        if (draftViolatesDeepThinkingWriter(content, deepThinkingWriterPlan as never)) {
+          companionBriefs.push(
+            'Deep Thinking Writer: riscrivi — non la prima risposta accettabile. Costruisci a strati: Reaction → Main idea → Explanation → Example/Analogy → Reflection/Continuation. Depth ≥ 3 quando appropriato. Includi ≥2 tra: explanation · observation · analogy · example · reflection · curiosity. Evita filler tipo “AI is changing the world.” e dump a un paragrafo. Check: layered conversation, or flat first-pass?',
           )
         }
         if (draftViolatesConversationOpportunity(content, conversationOpportunityPlan as never)) {
