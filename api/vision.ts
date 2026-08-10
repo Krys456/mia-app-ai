@@ -1,13 +1,9 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { applyCors, sendCorsPreflight, sendJson } from '../lib/server/http.js'
 
 export const config = {
   runtime: 'nodejs',
   maxDuration: 15,
-}
-
-function sendJson(res: VercelResponse, status: number, payload: unknown) {
-  res.setHeader('Content-Type', 'application/json; charset=utf-8')
-  return res.status(status).json(payload)
 }
 
 /**
@@ -15,11 +11,10 @@ function sendJson(res: VercelResponse, status: number, payload: unknown) {
  * Phase 1: acknowledge receipt only — no AI analysis.
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  applyCors(res)
+
   if (req.method === 'OPTIONS') {
-    res.setHeader('Access-Control-Allow-Origin', '*')
-    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
-    return res.status(204).end()
+    return sendCorsPreflight(res)
   }
 
   if (req.method !== 'POST') {

@@ -419,6 +419,10 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
       void (async () => {
         try {
+          console.log('[ChatContext] starting completion', {
+            historyLen: history.length,
+            generation,
+          })
           const {
             content: reply,
             memoryEvent,
@@ -445,6 +449,12 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             },
             { signal: controller.signal },
           )
+
+          console.log('[ChatContext] completion ok', {
+            generation,
+            replyLen: reply?.length ?? 0,
+            memoryEvent: memoryEvent ?? null,
+          })
 
           if (generation !== generationRef.current) return
 
@@ -539,6 +549,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         } catch (error) {
           if (generation !== generationRef.current) return
           if (isAbortError(error) || controller.signal.aborted) return
+          console.error('[ChatContext] completion failed', error)
           const message = error instanceof Error ? error.message : String(error)
           dispatch({ type: 'ASSISTANT_FAIL', error: message })
         } finally {

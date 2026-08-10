@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { applyCors, sendCorsPreflight, sendJson } from '../lib/server/http.js'
 
 // Memory + Cognitive Engine stay fail-soft: dynamic-import lib/server after the request starts.
 // OpenAI loads after the handler starts.
@@ -260,17 +261,31 @@ function parseBody(req: VercelRequest): ChatApiRequestBody {
   throw new Error('Unsupported request body')
 }
 
-function sendJson(res: VercelResponse, status: number, payload: Record<string, unknown>) {
-  res.setHeader('Content-Type', 'application/json; charset=utf-8')
-  return res.status(status).json(payload)
+/** Fail-soft memory with a hard budget so we still return the OpenAI reply. */
+async function runMemoryWithBudget(
+  userMessage: string,
+  assistantMessage: string,
+  memoryEnabled: boolean,
+  budgetMs = 4000,
+): Promise<'saved' | 'updated' | null> {
+  try {
+    return await Promise.race([
+      runMemoryIfEnabled(userMessage, assistantMessage, memoryEnabled),
+      new Promise<'saved' | 'updated' | null>((resolve) => {
+        setTimeout(() => resolve(null), budgetMs)
+      }),
+    ])
+  } catch {
+    return null
+  }
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // CORS on every request — including POST — so browsers never opaque-fail.
+  applyCors(res)
+
   if (req.method === 'OPTIONS') {
-    res.setHeader('Access-Control-Allow-Origin', '*')
-    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-LAIfe-User-Id')
-    return res.status(204).end()
+    return sendCorsPreflight(res)
   }
 
   if (req.method !== 'POST') {
@@ -1073,6 +1088,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       temperature: 0.85,
       // Voice: keep answers short enough to speak naturally
       max_output_tokens: modality === 'voice' ? 700 : 4096,
+      stream: false,
       input: messages.map((msg) => ({
         type: 'message' as const,
         role: msg.role,
@@ -1081,6 +1097,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     })
 
     let content = response.output_text?.trim()
+    // Temporary pipeline logging — outgoing OpenAI response shape.
+    try {
+      console.log(
+        '[api/chat] openai response',
+        JSON.stringify({
+          id: response.id,
+          status: response.status,
+          outputTextLen: content?.length ?? 0,
+          outputItems: Array.isArray(response.output) ? response.output.length : 0,
+        }),
+      )
+    } catch {
+      /* ignore */
+    }
     if (!content) {
       return sendJson(res, 502, { error: 'Empty response from OpenAI' })
     }
@@ -1629,6 +1659,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             instructions: merged.instructions,
             temperature: 0.7,
             max_output_tokens: modality === 'voice' ? 700 : 4096,
+            stream: false,
             input: [
               {
                 type: 'message' as const,
@@ -1677,13 +1708,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (lastUserMessage?.content) {
-      const memoryEvent = await runMemoryIfEnabled(
+      const memoryEvent = await runMemoryWithBudget(
         lastUserMessage.content,
         content,
         memoryEnabled,
       )
       // learningSignals / voiceSession are additive / internal — not a public UI contract field.
-      return sendJson(res, 200, {
+      const payload = {
         content,
         memoryEvent,
         learningSignals,
@@ -1698,10 +1729,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ...(pendingAutomationOut !== undefined
           ? { pendingAutomation: pendingAutomationOut }
           : {}),
-      })
+      }
+      console.log(
+        '[api/chat] final response',
+        JSON.stringify({
+          contentLen: content.length,
+          memoryEvent,
+          keys: Object.keys(payload),
+        }),
+      )
+      return sendJson(res, 200, payload)
     }
 
-    return sendJson(res, 200, {
+    const payload = {
       content,
       memoryEvent: null,
       learningSignals,
@@ -1716,7 +1756,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ...(pendingAutomationOut !== undefined
         ? { pendingAutomation: pendingAutomationOut }
         : {}),
-    })
+    }
+    console.log(
+      '[api/chat] final response',
+      JSON.stringify({
+        contentLen: content.length,
+        memoryEvent: null,
+        keys: Object.keys(payload),
+      }),
+    )
+    return sendJson(res, 200, payload)
   } catch (error) {
     console.error(error)
 

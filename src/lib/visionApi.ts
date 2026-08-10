@@ -24,6 +24,7 @@ export async function sendVisionImage(file: Blob, fileName = 'capture.jpg'): Pro
 
   const response = await fetch(visionUrl(), {
     method: 'POST',
+    credentials: 'include',
     body: form,
   })
 
