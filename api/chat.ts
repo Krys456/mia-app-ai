@@ -540,6 +540,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       opener?: string
       opinionScore?: number
     } | null = null
+    let conversationOpeningPlan: {
+      active?: boolean
+      shouldOpen?: boolean
+      forceSkipUserQuestion?: boolean
+      style?: string
+      category?: string
+      opener?: string
+    } | null = null
     if (lastUserMessage?.content) {
       try {
         const { runCognitiveEngine } = await import('../lib/server/cognitive-engine.js')
@@ -862,6 +870,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             opinionScore?: number
           }
         }
+        if (result?.conversationOpening && typeof result.conversationOpening === 'object') {
+          conversationOpeningPlan = result.conversationOpening as {
+            active?: boolean
+            shouldOpen?: boolean
+            forceSkipUserQuestion?: boolean
+            style?: string
+            category?: string
+            opener?: string
+          }
+        }
       } catch {
         cognitiveBlock = ''
       }
@@ -1022,6 +1040,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         )
         const { draftViolatesAuthenticOpinions } = await import(
           '../lib/server/authentic-opinions-engine.js'
+        )
+        const { draftViolatesConversationOpening } = await import(
+          '../lib/server/conversation-opening-engine.js'
         )
 
         const priorAssistant = [...messages]
@@ -1198,6 +1219,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (draftViolatesAuthenticOpinions(content, authenticOpinionsPlan as never)) {
           companionBriefs.push(
             "Authentic Opinions: riscrivi — preferenza conversazionale, non fatto e non autobiografia. Ok: “I've always found that fascinating.” / “That's one of my favorite ideas.” / “I think that's a surprisingly underrated topic.” Vietato: esperienze personali finte, certezza dura sul gusto. Check: conversational personality, or pretending?",
+          )
+        }
+        if (draftViolatesConversationOpening(content, conversationOpeningPlan as never)) {
+          companionBriefs.push(
+            'Conversation Opening: riscrivi l’apertura — diversifica stile e scintilla. Vietato: “Ciao! 😊”, “È sempre bello sentirti.”, “Una cosa che mi affascina…”, “Le piccole cose…”, “Sai cosa mi è venuto in mente…”, tropi motivazionali/habits/productivity/meditation. Se l’utente ha una domanda reale: rispondi naturale, niente opener forzato. Check: would this surprise me after 100 chats?',
           )
         }
         if (draftViolatesConversationSpark(content, conversationSparkPlan as never)) {
