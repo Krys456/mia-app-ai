@@ -540,6 +540,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       opener?: string
       opinionScore?: number
     } | null = null
+    let conversationOpportunityPlan: {
+      active?: boolean
+      initiativeAllowed?: boolean
+      confidence?: number
+      reason?: string
+      initiativeType?: string
+    } | null = null
     if (lastUserMessage?.content) {
       try {
         const { runCognitiveEngine } = await import('../lib/server/cognitive-engine.js')
@@ -862,6 +869,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             opinionScore?: number
           }
         }
+        if (result?.conversationOpportunity && typeof result.conversationOpportunity === 'object') {
+          conversationOpportunityPlan = result.conversationOpportunity as {
+            active?: boolean
+            initiativeAllowed?: boolean
+            confidence?: number
+            reason?: string
+            initiativeType?: string
+          }
+        }
       } catch {
         cognitiveBlock = ''
       }
@@ -1022,6 +1038,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         )
         const { draftViolatesAuthenticOpinions } = await import(
           '../lib/server/authentic-opinions-engine.js'
+        )
+        const { draftViolatesConversationOpportunity } = await import(
+          '../lib/server/conversation-opportunity-engine.js'
         )
 
         const priorAssistant = [...messages]
@@ -1198,6 +1217,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (draftViolatesAuthenticOpinions(content, authenticOpinionsPlan as never)) {
           companionBriefs.push(
             "Authentic Opinions: riscrivi — preferenza conversazionale, non fatto e non autobiografia. Ok: “I've always found that fascinating.” / “That's one of my favorite ideas.” / “I think that's a surprisingly underrated topic.” Vietato: esperienze personali finte, certezza dura sul gusto. Check: conversational personality, or pretending?",
+          )
+        }
+        if (draftViolatesConversationOpportunity(content, conversationOpportunityPlan as never)) {
+          companionBriefs.push(
+            'Conversation Opportunity: initiative non guadagnata — NON forzare curiosità, fatto random, pensiero filosofico o conversation starter. Segui la direzione dell’utente. Check: would a good friend naturally introduce a new topic right now? Se no → non farlo.',
           )
         }
         if (draftViolatesConversationSpark(content, conversationSparkPlan as never)) {
