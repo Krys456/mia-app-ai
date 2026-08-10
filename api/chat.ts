@@ -156,6 +156,11 @@ interface ChatApiRequestBody {
   userId?: string
   /** When false, skip retrieval writes and auto-save. Default true. */
   memoryEnabled?: boolean
+  /**
+   * Per-request engine override from Developer Toggle.
+   * `v2` → try V2 first; `v1` → force legacy. When omitted, LAIFE_ENGINE env (default v1).
+   */
+  engine?: 'v1' | 'v2' | string
   /** Optional attachments for orchestrator routing (Vision / documents). */
   attachments?: ChatAttachment[]
   /**
@@ -359,6 +364,113 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const model = process.env.OPENAI_MODEL?.trim() || 'gpt-4o-mini'
 
     const lastUserMessage = [...messages].reverse().find((msg) => msg.role === 'user')
+
+    // --- Engine selection: body.engine (Developer Toggle) wins; else LAIFE_ENGINE env; default v1.
+    // When resolved engine is v1, no V2 modules are imported → zero public behavior change.
+    let v2ClientDebug: Record<string, unknown> | null = null
+    {
+      const bodyEngine =
+        typeof body.engine === 'string' ? body.engine.trim().toLowerCase() : ''
+      const envEngine = (process.env.LAIFE_ENGINE || 'v1').trim().toLowerCase()
+      const requestedEngine =
+        bodyEngine === 'v2' || bodyEngine === 'v1'
+          ? bodyEngine
+          : envEngine === 'v2'
+            ? 'v2'
+            : 'v1'
+      if (requestedEngine === 'v2') {
+        const { runV2ChatConversation, logV2 } = await import(
+          '../lib/server/v2/runtime/run-v2-chat.js'
+        )
+        try {
+          const v2Result = await runV2ChatConversation({
+            client,
+            messages,
+            model,
+            displayName: displayName || undefined,
+            requestId: `chat-${Date.now()}`,
+          })
+          if (v2Result?.content?.trim()) {
+            const v2Debug = {
+              servedBy: 'v2' as const,
+              perception: v2Result.perception as Record<string, unknown>,
+              decision: v2Result.decision as Record<string, unknown>,
+              plan: v2Result.plan as Record<string, unknown>,
+              writer: {
+                draft: v2Result.draftText,
+                final: v2Result.content,
+                rewritten: v2Result.rewritten,
+                model: v2Result.model,
+                providerId: v2Result.providerId,
+              },
+              reviewer: v2Result.review as Record<string, unknown>,
+              timing: v2Result.timing,
+              score: v2Result.score,
+              reviewDecision: v2Result.reviewDecision,
+            }
+            const payload = {
+              content: v2Result.content,
+              memoryEvent: null as 'saved' | 'updated' | null,
+              learningSignals: priorLearningSignals,
+              v2Debug,
+              ...(voiceSessionIn ? { voiceSession: voiceSessionIn } : {}),
+              ...(welcomeSessionIn ? { welcomeSession: welcomeSessionIn } : {}),
+              ...(conversationMemoryMapIn
+                ? { conversationMemoryMap: conversationMemoryMapIn }
+                : {}),
+              ...(conversationPreferenceProfileIn
+                ? { conversationPreferenceProfile: conversationPreferenceProfileIn }
+                : {}),
+              ...(pendingAutomationIn ? { pendingAutomation: pendingAutomationIn } : {}),
+            }
+            logV2('info', 'api/chat serving V2 response', {
+              contentLen: v2Result.content.length,
+              reviewDecision: v2Result.reviewDecision,
+              rewritten: v2Result.rewritten,
+              score: v2Result.score,
+            })
+            console.log(
+              '[api/chat] final response',
+              JSON.stringify({
+                contentLen: v2Result.content.length,
+                memoryEvent: null,
+                engine: 'v2',
+                keys: Object.keys(payload),
+              }),
+            )
+            return sendJson(res, 200, payload)
+          }
+          v2ClientDebug = {
+            servedBy: 'v1-fallback',
+            error: 'V2 returned empty content',
+          }
+          logV2('warn', 'V2 empty — falling back to V1 pipeline')
+        } catch (v2Error) {
+          const message =
+            v2Error instanceof Error
+              ? v2Error.message
+              : v2Error &&
+                  typeof v2Error === 'object' &&
+                  typeof (v2Error as { message?: unknown }).message === 'string'
+                ? String((v2Error as { message: string }).message)
+                : String(v2Error)
+          const code =
+            v2Error &&
+            typeof v2Error === 'object' &&
+            typeof (v2Error as { code?: unknown }).code === 'string'
+              ? String((v2Error as { code: string }).code)
+              : undefined
+          logV2('error', 'V2 failed — falling back to V1 pipeline', {
+            code: code || null,
+            message,
+          })
+          v2ClientDebug = {
+            servedBy: 'v1-fallback',
+            error: code ? `${code}: ${message}` : message,
+          }
+        }
+      }
+    }
 
     // Cognitive Engine + Coordinator (invisible): advisors propose → coordinate → Writer.
     // Includes conversation reflection learning signals (never factual memory).
@@ -2238,6 +2350,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         content,
         memoryEvent,
         learningSignals,
+        ...(v2ClientDebug ? { v2Debug: v2ClientDebug } : {}),
         ...(voiceSessionOut ? { voiceSession: voiceSessionOut } : {}),
         ...(welcomeSessionOut ? { welcomeSession: welcomeSessionOut } : {}),
         ...(conversationMemoryMapOut
@@ -2255,6 +2368,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         JSON.stringify({
           contentLen: content.length,
           memoryEvent,
+          engine: v2ClientDebug ? 'v1-fallback' : 'v1',
           keys: Object.keys(payload),
         }),
       )
@@ -2265,6 +2379,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       content,
       memoryEvent: null,
       learningSignals,
+      ...(v2ClientDebug ? { v2Debug: v2ClientDebug } : {}),
       ...(voiceSessionOut ? { voiceSession: voiceSessionOut } : {}),
       ...(welcomeSessionOut ? { welcomeSession: welcomeSessionOut } : {}),
       ...(conversationMemoryMapOut
@@ -2282,6 +2397,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       JSON.stringify({
         contentLen: content.length,
         memoryEvent: null,
+        engine: v2ClientDebug ? 'v1-fallback' : 'v1',
         keys: Object.keys(payload),
       }),
     )

@@ -19,6 +19,7 @@ export function SettingsDrawer({ onOpenMemory }: SettingsDrawerProps) {
     closeSettings,
     settings,
     updatePersonalization,
+    updateDeveloper,
   } = useChat()
   const { clearPreview } = useTheme()
   const titleId = useId()
@@ -70,6 +71,8 @@ export function SettingsDrawer({ onOpenMemory }: SettingsDrawerProps) {
   }, [settingsOpen, closeSettings, clearPreview])
 
   const p = settings.personalization
+  const developer = settings.developer
+  const v2Experimental = developer?.v2Experimental === true
 
   const set = <K extends keyof PersonalizationSettings>(
     key: K,
@@ -172,6 +175,47 @@ export function SettingsDrawer({ onOpenMemory }: SettingsDrawerProps) {
             >
               Gestisci Memoria
             </button>
+          </section>
+
+          <div className="settings-divider" role="separator" />
+
+          <section className="settings-developer" aria-labelledby="developer-settings-title">
+            <h3 id="developer-settings-title" className="settings-section-title">
+              Developer
+            </h3>
+
+            <div className="memory-toggle-row">
+              <span className="field__label" id="v2-toggle-label">
+                LAIfe V2 Experimental
+              </span>
+              <div
+                className="memory-toggle"
+                role="group"
+                aria-labelledby="v2-toggle-label"
+              >
+                <button
+                  type="button"
+                  className={`memory-toggle__opt${!v2Experimental ? ' memory-toggle__opt--active' : ''}`}
+                  aria-pressed={!v2Experimental}
+                  onClick={() => updateDeveloper({ v2Experimental: false })}
+                >
+                  OFF
+                </button>
+                <button
+                  type="button"
+                  className={`memory-toggle__opt${v2Experimental ? ' memory-toggle__opt--active' : ''}`}
+                  aria-pressed={v2Experimental}
+                  onClick={() => updateDeveloper({ v2Experimental: true })}
+                >
+                  ON
+                </button>
+              </div>
+            </div>
+
+            <p className="settings-note settings-note--tight">
+              ON usa la pipeline V2 sperimentale (con pannello di debug). OFF resta sulla
+              pipeline V1. Se la V2 fallisce, l&apos;app torna automaticamente a V1.
+            </p>
           </section>
 
           <div className="settings-divider" role="separator" />
