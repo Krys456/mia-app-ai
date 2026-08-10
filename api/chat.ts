@@ -359,6 +359,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let conversationMindsetPlan: { active?: boolean } | null = null
     let conversationDelightPlan: Record<string, unknown> | null = null
     let conversationOwnershipPlan: Record<string, unknown> | null = null
+    let humanImpactConstitutionPlan: {
+      active?: boolean
+      primaryValue?: string
+      emotionalMode?: string
+      allowSmileOpportunity?: boolean
+      writerBrief?: string
+    } | null = null
     let writerDirectives: Record<string, unknown> | null = null
     let conversationSparkPlan: { shouldSpark?: boolean; active?: boolean } | null = null
     let naturalDialoguePlan: {
@@ -670,6 +677,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
         if (result?.conversationOwnership && typeof result.conversationOwnership === 'object') {
           conversationOwnershipPlan = result.conversationOwnership as Record<string, unknown>
+        }
+        if (result?.humanImpactConstitution && typeof result.humanImpactConstitution === 'object') {
+          humanImpactConstitutionPlan = result.humanImpactConstitution as {
+            active?: boolean
+            primaryValue?: string
+            emotionalMode?: string
+            allowSmileOpportunity?: boolean
+            writerBrief?: string
+          }
         }
         if (result?.conversationSpark && typeof result.conversationSpark === 'object') {
           conversationSparkPlan = result.conversationSpark as {
@@ -1061,6 +1077,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         )
         const { runConversationConstitutionGate } = await import(
           '../lib/server/conversation-constitution.js'
+        )
+        const { runHumanImpactConstitutionGate } = await import(
+          '../lib/server/human-impact-constitution.js'
         )
         const { runConversationOwnershipGate } = await import(
           '../lib/server/conversation-ownership.js'
@@ -1460,6 +1479,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           })
         if (constitutionRefine && constitutionGate.refineBrief) {
           companionBriefs.push(constitutionGate.refineBrief)
+        }
+
+        const { gate: humanImpactGate, shouldRefine: humanImpactRefine } =
+          runHumanImpactConstitutionGate({
+            userMessage: lastUserMessage.content,
+            draft: content,
+            impactPlan: humanImpactConstitutionPlan,
+          })
+        if (humanImpactRefine && humanImpactGate.refineBrief) {
+          companionBriefs.push(humanImpactGate.refineBrief)
         }
 
         const { gate: ownershipGate, shouldRefine: ownershipRefine } =
