@@ -452,6 +452,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       leaveSpace?: boolean
       writerBrief?: string
     } | null = null
+    let cognitiveAuthorityPlan: {
+      active?: boolean
+      greetingContext?: boolean
+      mandatoryPanel?: boolean
+      writerBrief?: string
+    } | null = null
     let humanImperfectionPlan: {
       active?: boolean
       allowTouch?: boolean
@@ -868,6 +874,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             texture?: string
             curiosityBeforeExplanation?: boolean
             leaveSpace?: boolean
+            writerBrief?: string
+          }
+        }
+        if (result?.cognitiveAuthority && typeof result.cognitiveAuthority === 'object') {
+          cognitiveAuthorityPlan = result.cognitiveAuthority as {
+            active?: boolean
+            greetingContext?: boolean
+            mandatoryPanel?: boolean
             writerBrief?: string
           }
         }
@@ -1299,6 +1313,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           runNaturalConversationGate,
           draftViolatesNaturalConversation,
         } = await import('../lib/server/natural-conversation-engine.js')
+        const {
+          runCognitiveAuthorityGate,
+          draftViolatesCognitiveAuthority,
+        } = await import('../lib/server/cognitive-authority-engine.js')
         const { draftViolatesHumanImperfection } = await import(
           '../lib/server/human-imperfection-engine.js'
         )
@@ -1487,6 +1505,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ) {
           companionBriefs.push(
             'Natural Conversation: riscrivi — non impressionare, condividi. Nota qualcosa → perché ha colpito → rivelazione soft solo se naturale. Evita “Let me explain…” / “Here’s why…” / “Would you like to know…”. Preferisci “I didn’t expect this either.” / “The surprising part comes next.”. Coffee test: suonerebbe naturale a un caffè? Lascia spazio; niente performance.',
+          )
+        }
+        if (
+          draftViolatesCognitiveAuthority(content, cognitiveAuthorityPlan as never, {
+            userMessage: lastUserMessage.content,
+            openingIntelligence: openingIntelligencePlan,
+            smallTalkIntelligence: smallTalkIntelligencePlan,
+            conversationDirector: conversationDirectorPlan,
+            naturalConversation: naturalConversationPlan,
+          })
+        ) {
+          companionBriefs.push(
+            'Cognitive Authority: REJECT — riscrittura automatica. Vietati saluti vuoti (“It’s always a pleasure…” / “How are you?” / “And you?” / “I’m fine, thanks.”) senza valore conversazionale. Su greeting: Opening Intelligence · Small Talk · Conversation Director · Natural Conversation devono APPROVARE tutti. Identity: potrebbe scriverlo qualsiasi chatbot? Human test: un amico risponderebbe con entusiasmo?',
           )
         }
         if (draftViolatesHumanImperfection(content, humanImperfectionPlan as never)) {
@@ -1792,6 +1823,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           })
         if (naturalConversationRefine && naturalConversationGate.refineBrief) {
           companionBriefs.push(naturalConversationGate.refineBrief)
+        }
+
+        // Authority Review (post-Writer hard gate): APPROVE or REJECT → auto-rewrite
+        const { gate: authorityGate, shouldRefine: authorityRefine } =
+          runCognitiveAuthorityGate({
+            userMessage: lastUserMessage.content,
+            draft: content,
+            plan: cognitiveAuthorityPlan,
+            openingIntelligence: openingIntelligencePlan,
+            smallTalkIntelligence: smallTalkIntelligencePlan,
+            conversationDirector: conversationDirectorPlan,
+            naturalConversation: naturalConversationPlan,
+          })
+        if (authorityRefine && authorityGate.refineBrief) {
+          // Authority briefs go first — mandatory rewrite signal
+          companionBriefs.unshift(authorityGate.refineBrief)
         }
 
         const { gate: constitutionGate, shouldRefine: constitutionRefine } =
