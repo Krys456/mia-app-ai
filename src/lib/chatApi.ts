@@ -80,6 +80,18 @@ function resolveChatEndpoint(): string {
   return `${base.replace(/\/$/, '')}/api/chat`
 }
 
+function describeFetchFailure(error: unknown, endpoint: string): string {
+  const raw = error instanceof Error ? error.message : String(error)
+  // Browsers surface CORS / network / SSO redirects as the opaque "Failed to fetch".
+  if (/failed to fetch|networkerror|load failed/i.test(raw)) {
+    return (
+      `Network error calling ${endpoint} (${raw}). ` +
+      `Check same-origin /api/chat, CORS, Vercel Deployment Protection, and that the function finished within maxDuration.`
+    )
+  }
+  return raw || 'Chat request failed'
+}
+
 /**
  * Client helper for LAIfe chat.
  * Calls the Vercel serverless proxy at `/api/chat` — never the OpenAI API directly.
@@ -88,48 +100,118 @@ export async function requestChatCompletion(
   payload: ChatApiRequest,
   init?: { signal?: AbortSignal },
 ): Promise<ChatApiSuccess> {
-  const response = await fetch(resolveChatEndpoint(), {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(payload.userId ? { 'X-LAIfe-User-Id': payload.userId } : {}),
-    },
-    body: JSON.stringify({
-      messages: payload.messages,
-      systemPrompt: payload.systemPrompt,
-      userId: payload.userId,
+  const endpoint = resolveChatEndpoint()
+  // Temporary pipeline logging — outgoing client request.
+  console.log(
+    '[chatApi] request',
+    JSON.stringify({
+      endpoint,
+      messageCount: payload.messages?.length ?? 0,
+      hasSystemPrompt: Boolean(payload.systemPrompt?.trim()),
       memoryEnabled: payload.memoryEnabled !== false,
-      ...(payload.learningSignals ? { learningSignals: payload.learningSignals } : {}),
-      ...(payload.modality ? { modality: payload.modality } : {}),
-      ...(payload.voice ? { voice: true } : {}),
-      ...(payload.voiceSession ? { voiceSession: payload.voiceSession } : {}),
-      ...(payload.welcomeSession ? { welcomeSession: payload.welcomeSession } : {}),
-      ...(payload.displayName ? { displayName: payload.displayName } : {}),
-      ...(payload.personalityBias ? { personalityBias: payload.personalityBias } : {}),
-      ...(payload.lifeContext ? { lifeContext: payload.lifeContext } : {}),
-      ...(payload.pendingAutomation
-        ? { pendingAutomation: payload.pendingAutomation }
-        : {}),
-      ...(payload.conversationMemoryMap
-        ? { conversationMemoryMap: payload.conversationMemoryMap }
-        : {}),
-      ...(payload.conversationPreferenceProfile
-        ? { conversationPreferenceProfile: payload.conversationPreferenceProfile }
-        : {}),
     }),
-    signal: init?.signal,
-  })
+  )
+
+  let response: Response
+  try {
+    response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        ...(payload.userId ? { 'X-LAIfe-User-Id': payload.userId } : {}),
+      },
+      // Needed for Vercel Deployment Protection cookies on preview/prod.
+      credentials: 'include',
+      body: JSON.stringify({
+        messages: payload.messages,
+        systemPrompt: payload.systemPrompt,
+        userId: payload.userId,
+        memoryEnabled: payload.memoryEnabled !== false,
+        ...(payload.learningSignals ? { learningSignals: payload.learningSignals } : {}),
+        ...(payload.modality ? { modality: payload.modality } : {}),
+        ...(payload.voice ? { voice: true } : {}),
+        ...(payload.voiceSession ? { voiceSession: payload.voiceSession } : {}),
+        ...(payload.welcomeSession ? { welcomeSession: payload.welcomeSession } : {}),
+        ...(payload.displayName ? { displayName: payload.displayName } : {}),
+        ...(payload.personalityBias ? { personalityBias: payload.personalityBias } : {}),
+        ...(payload.lifeContext ? { lifeContext: payload.lifeContext } : {}),
+        ...(payload.pendingAutomation
+          ? { pendingAutomation: payload.pendingAutomation }
+          : {}),
+        ...(payload.conversationMemoryMap
+          ? { conversationMemoryMap: payload.conversationMemoryMap }
+          : {}),
+        ...(payload.conversationPreferenceProfile
+          ? { conversationPreferenceProfile: payload.conversationPreferenceProfile }
+          : {}),
+      }),
+      signal: init?.signal,
+    })
+  } catch (error) {
+    console.error('[chatApi] fetch threw', error)
+    throw new ChatApiError(describeFetchFailure(error, endpoint), 0)
+  }
+
+  const contentType = response.headers.get('content-type') || ''
+  console.log(
+    '[chatApi] fetch result',
+    JSON.stringify({
+      status: response.status,
+      ok: response.ok,
+      contentType,
+      redirected: response.redirected,
+      url: response.url,
+    }),
+  )
 
   let data: Partial<ChatApiSuccess> & ChatApiErrorBody = {}
+  let rawText = ''
   try {
-    data = (await response.json()) as Partial<ChatApiSuccess> & ChatApiErrorBody
-  } catch {
-    /* non-JSON body */
+    rawText = await response.text()
+    if (rawText.trim()) {
+      data = JSON.parse(rawText) as Partial<ChatApiSuccess> & ChatApiErrorBody
+    }
+    console.log(
+      '[chatApi] parse ok',
+      JSON.stringify({
+        keys: Object.keys(data || {}),
+        contentLen: typeof data.content === 'string' ? data.content.length : 0,
+        hasError: Boolean(data.error),
+      }),
+    )
+  } catch (parseError) {
+    console.error('[chatApi] parse failed', {
+      contentType,
+      preview: rawText.slice(0, 240),
+      parseError,
+    })
+    if (!response.ok) {
+      throw new ChatApiError(
+        `Chat API request failed (${response.status}) — non-JSON body`,
+        response.status,
+      )
+    }
+    throw new ChatApiError(
+      'Chat API returned invalid JSON (expected { content: string })',
+      response.status,
+    )
   }
 
   if (!response.ok) {
+    const nested =
+      data &&
+      typeof data === 'object' &&
+      data.error &&
+      typeof data.error === 'object' &&
+      data.error !== null &&
+      'message' in (data.error as object)
+        ? String((data.error as { message?: unknown }).message || '')
+        : ''
     throw new ChatApiError(
-      data.error?.trim() || `Chat API request failed (${response.status})`,
+      (typeof data.error === 'string' && data.error.trim()) ||
+        nested ||
+        `Chat API request failed (${response.status})`,
       response.status,
     )
   }

@@ -4,7 +4,7 @@ import {
   getMemoryById,
   updateMemory,
 } from '../../lib/server/brain-memory.js'
-import { errorMessage, parseJsonBody, sendJson } from '../../lib/server/http.js'
+import { applyCors, errorMessage, parseJsonBody, sendCorsPreflight, sendJson } from '../../lib/server/http.js'
 
 export const config = {
   runtime: 'nodejs',
@@ -20,11 +20,10 @@ function getId(req: VercelRequest): string {
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
+    applyCors(res)
+
     if (req.method === 'OPTIONS') {
-      res.setHeader('Access-Control-Allow-Origin', '*')
-      res.setHeader('Access-Control-Allow-Methods', 'GET, PUT, DELETE, OPTIONS')
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-LAIfe-User-Id')
-      return res.status(204).end()
+      return sendCorsPreflight(res)
     }
 
     const id = getId(req)

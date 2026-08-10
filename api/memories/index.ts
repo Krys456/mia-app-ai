@@ -4,7 +4,7 @@ import {
   listMemories,
   saveMemory,
 } from '../../lib/server/brain-memory.js'
-import { errorMessage, parseJsonBody, sendJson } from '../../lib/server/http.js'
+import { errorMessage, parseJsonBody, sendCorsPreflight, sendJson, applyCors } from '../../lib/server/http.js'
 
 export const config = {
   runtime: 'nodejs',
@@ -78,11 +78,10 @@ function validateMemoryCreate(body: Record<string, unknown>): ValidationResult {
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
+    applyCors(res)
+
     if (req.method === 'OPTIONS') {
-      res.setHeader('Access-Control-Allow-Origin', '*')
-      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS')
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-LAIfe-User-Id')
-      return sendJson(res, 200, { success: true })
+      return sendCorsPreflight(res)
     }
 
     if (req.method === 'GET') {

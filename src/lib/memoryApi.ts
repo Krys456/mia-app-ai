@@ -93,7 +93,7 @@ export async function listMemories(options?: {
         category,
         q: options?.q?.trim() || undefined,
       }),
-      { headers: authHeaders() },
+      { headers: authHeaders(), credentials: 'include' },
     ),
   )
   return (data.memories ?? []).map((item) =>
@@ -106,7 +106,8 @@ export async function createBrainMemory(input: BrainMemoryCreateInput): Promise<
   const data = await parseJson<{ success?: boolean; error?: string }>(
     await fetch(memoriesUrl(), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders(true),
+      credentials: 'include',
       body: JSON.stringify({
         category: input.category,
         title: input.title,
@@ -150,6 +151,7 @@ export async function updateMemory(id: string, draft: MemoryDraft): Promise<Memo
     await fetch(memoriesUrl(`/${encodeURIComponent(id)}`), {
       method: 'PUT',
       headers: authHeaders(true),
+      credentials: 'include',
       body: JSON.stringify(draft),
     }),
   )
@@ -161,6 +163,7 @@ export async function deleteMemory(id: string): Promise<void> {
     await fetch(memoriesUrl(`/${encodeURIComponent(id)}`), {
       method: 'DELETE',
       headers: authHeaders(),
+      credentials: 'include',
     }),
   )
 }
@@ -171,6 +174,7 @@ export async function deleteAllMemories(): Promise<number> {
     await fetch(memoriesUrl('', { clear: '1' }), {
       method: 'DELETE',
       headers: authHeaders(),
+      credentials: 'include',
     }),
   )
   return typeof data.deleted === 'number' ? data.deleted : 0
