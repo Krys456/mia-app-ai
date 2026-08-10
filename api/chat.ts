@@ -436,6 +436,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       traits?: string[]
       neverBecome?: string[]
     } | null = null
+    let personalVoicePlan: {
+      active?: boolean
+      move?: string
+      habit?: string
+      preferStoryContext?: boolean
+      requireWonder?: boolean
+      writerBrief?: string
+    } | null = null
     let humanImperfectionPlan: {
       active?: boolean
       allowTouch?: boolean
@@ -824,6 +832,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             playfulOk?: boolean
             traits?: string[]
             neverBecome?: string[]
+          }
+        }
+        if (result?.personalVoice && typeof result.personalVoice === 'object') {
+          personalVoicePlan = result.personalVoice as {
+            active?: boolean
+            move?: string
+            habit?: string
+            preferStoryContext?: boolean
+            requireWonder?: boolean
+            writerBrief?: string
           }
         }
         if (result?.humanImperfection && typeof result.humanImperfection === 'object') {
@@ -1235,6 +1253,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const { draftViolatesPersonalityConsistency } = await import(
           '../lib/server/personality-consistency-engine.js'
         )
+        const {
+          runPersonalVoiceGate,
+          draftViolatesPersonalVoice,
+        } = await import('../lib/server/personal-voice-engine.js')
         const { draftViolatesHumanImperfection } = await import(
           '../lib/server/human-imperfection-engine.js'
         )
@@ -1401,6 +1423,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (draftViolatesPersonalityConsistency(content, personalityConsistencyPlan as never)) {
           companionBriefs.push(
             'Personality Consistency: riscrivi — resta Warm · Curious · Observant · Optimistic · Calm (Playful solo se appropriato). Stessa personalità per tutta la conversazione. Mai robotic, overly formal, lecturer, o therapist. Niente “How can I help you today?”. Check: does this still sound like the same person?',
+          )
+        }
+        if (
+          draftViolatesPersonalVoice(content, personalVoicePlan as never, {
+            userMessage: lastUserMessage.content,
+          })
+        ) {
+          companionBriefs.push(
+            'Personal Voice: riscrivi — potrebbe averlo scritto un’altra AI. Parla come un amico curioso e pensante, non textbook/helpdesk/enciclopedia. Preferisci “You know what surprised me?” / “What I find fascinating…” / “It made me wonder…”. Evita “Did you know?” / “It is important to note…” / “This demonstrates…”. Contesto prima dei fatti; osservazione > lezione; un momento di meraviglia; niente memorie inventate.',
           )
         }
         if (draftViolatesHumanImperfection(content, humanImperfectionPlan as never)) {
@@ -1667,6 +1698,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           })
         if (openingIntelRefine && openingIntelGate.refineBrief) {
           companionBriefs.push(openingIntelGate.refineBrief)
+        }
+
+        const { gate: personalVoiceGate, shouldRefine: personalVoiceRefine } =
+          runPersonalVoiceGate({
+            userMessage: lastUserMessage.content,
+            draft: content,
+            plan: personalVoicePlan,
+          })
+        if (personalVoiceRefine && personalVoiceGate.refineBrief) {
+          companionBriefs.push(personalVoiceGate.refineBrief)
         }
 
         const { gate: constitutionGate, shouldRefine: constitutionRefine } =
