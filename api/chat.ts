@@ -586,6 +586,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       rejectInstant?: boolean
       writerBrief?: string
     } | null = null
+    let conversationDirectorPlan: {
+      active?: boolean
+      move?: string
+      rhythm?: string
+      noTopicMode?: boolean
+      compressInformation?: boolean
+      avoidTeaching?: boolean
+      writerBrief?: string
+    } | null = null
     let deepThinkingWriterPlan: {
       active?: boolean
       requireLayers?: boolean
@@ -1005,6 +1014,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             writerBrief?: string
           }
         }
+        if (result?.conversationDirector && typeof result.conversationDirector === 'object') {
+          conversationDirectorPlan = result.conversationDirector as {
+            active?: boolean
+            move?: string
+            rhythm?: string
+            noTopicMode?: boolean
+            compressInformation?: boolean
+            avoidTeaching?: boolean
+            writerBrief?: string
+          }
+        }
         if (result?.deepThinkingWriter && typeof result.deepThinkingWriter === 'object') {
           deepThinkingWriterPlan = result.deepThinkingWriter as {
             active?: boolean
@@ -1261,6 +1281,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const { runThinkBeforeSpeakingGate, draftViolatesThinkBeforeSpeaking } = await import(
           '../lib/server/think-before-speaking.js'
         )
+        const {
+          runConversationDirectorGate,
+          draftViolatesConversationDirector,
+        } = await import('../lib/server/conversation-director.js')
         const { draftViolatesDeepThinkingWriter } = await import(
           '../lib/server/deep-thinking-writer.js'
         )
@@ -1469,6 +1493,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             'Think Before Speaking: riscrivi — non la prima risposta automatica. Capisci prima di rispondere. Immagina ≥3 candidati; scegli connessione · naturalezza · fit. Conversazione interessante > spiegazione completa. Check: ho capito… o ho solo risposto?',
           )
         }
+        if (
+          draftViolatesConversationDirector(content, conversationDirectorPlan as never, {
+            userMessage: lastUserMessage.content,
+          })
+        ) {
+          companionBriefs.push(
+            'Conversation Director: riscrivi — non generare informazione; dirigere conversazione. Crea curiosità, invita partecipazione, comprimi le spiegazioni, preferisci storia/osservazione/meraviglia. Engagement emotivo > densità. Check: vorrei rispondere a questo messaggio?',
+          )
+        }
         if (draftViolatesDeepThinkingWriter(content, deepThinkingWriterPlan as never)) {
           companionBriefs.push(
             'Deep Thinking Writer: riscrivi — non la prima risposta accettabile. Costruisci a strati: Reaction → Main idea → Explanation → Example/Analogy → Reflection/Continuation. Depth ≥ 3 quando appropriato. Includi ≥2 tra: explanation · observation · analogy · example · reflection · curiosity. Evita filler tipo “AI is changing the world.” e dump a un paragrafo. Check: layered conversation, or flat first-pass?',
@@ -1581,6 +1614,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         })
         if (tbsRefine && tbsGate.refineBrief) {
           companionBriefs.push(tbsGate.refineBrief)
+        }
+
+        const { gate: directorGate, shouldRefine: directorRefine } =
+          runConversationDirectorGate({
+            userMessage: lastUserMessage.content,
+            draft: content,
+            directorPlan: conversationDirectorPlan,
+          })
+        if (directorRefine && directorGate.refineBrief) {
+          companionBriefs.push(directorGate.refineBrief)
         }
 
         const { gate: constitutionGate, shouldRefine: constitutionRefine } =
