@@ -374,6 +374,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       enjoyableMoment?: string
       writerBrief?: string
     } | null = null
+    let laifeManifestoPlan: {
+      active?: boolean
+      needNow?: string
+      contribution?: string
+      rhythm?: string
+      emotion?: string
+      inviteExploration?: boolean
+      writerBrief?: string
+    } | null = null
     let writerDirectives: Record<string, unknown> | null = null
     let conversationSparkPlan: { shouldSpark?: boolean; active?: boolean } | null = null
     let naturalDialoguePlan: {
@@ -555,14 +564,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       opener?: string
       opinionScore?: number
     } | null = null
-        let thinkBeforeSpeakingPlan: {
+    let thinkBeforeSpeakingPlan: {
       active?: boolean
       path?: string
       preferConversationOverExplanation?: boolean
       rejectInstant?: boolean
       writerBrief?: string
     } | null = null
-let deepThinkingWriterPlan: {
+    let deepThinkingWriterPlan: {
       active?: boolean
       requireLayers?: boolean
       depthScore?: number
@@ -709,6 +718,17 @@ let deepThinkingWriterPlan: {
             behaviour?: string
             needNow?: string
             enjoyableMoment?: string
+            writerBrief?: string
+          }
+        }
+        if (result?.laifeManifesto && typeof result.laifeManifesto === 'object') {
+          laifeManifestoPlan = result.laifeManifesto as {
+            active?: boolean
+            needNow?: string
+            contribution?: string
+            rhythm?: string
+            emotion?: string
+            inviteExploration?: boolean
             writerBrief?: string
           }
         }
@@ -1116,6 +1136,7 @@ let deepThinkingWriterPlan: {
           '../lib/server/human-impact-constitution.js'
         )
         const { runProjectSoulGate } = await import('../lib/server/project-soul.js')
+        const { runLaifeManifestoGate } = await import('../lib/server/laife-manifesto.js')
         const { runConversationOwnershipGate } = await import(
           '../lib/server/conversation-ownership.js'
         )
@@ -1523,7 +1544,7 @@ let deepThinkingWriterPlan: {
           companionBriefs.push(reflectionGate.refineBrief)
         }
 
-                const { gate: tbsGate, shouldRefine: tbsRefine } = runThinkBeforeSpeakingGate({
+        const { gate: tbsGate, shouldRefine: tbsRefine } = runThinkBeforeSpeakingGate({
           userMessage: lastUserMessage.content,
           draft: content,
           tbsPlan: thinkBeforeSpeakingPlan,
@@ -1532,7 +1553,7 @@ let deepThinkingWriterPlan: {
           companionBriefs.push(tbsGate.refineBrief)
         }
 
-const { gate: constitutionGate, shouldRefine: constitutionRefine } =
+        const { gate: constitutionGate, shouldRefine: constitutionRefine } =
           runConversationConstitutionGate({
             userMessage: lastUserMessage.content,
             draft: content,
@@ -1560,6 +1581,16 @@ const { gate: constitutionGate, shouldRefine: constitutionRefine } =
         })
         if (soulGate.needsRefine && soulGate.refineBrief) {
           companionBriefs.push(soulGate.refineBrief)
+        }
+
+        const { gate: manifestoGate, shouldRefine: manifestoRefine } =
+          runLaifeManifestoGate({
+            userMessage: lastUserMessage.content,
+            draft: content,
+            manifestoPlan: laifeManifestoPlan,
+          })
+        if (manifestoRefine && manifestoGate.refineBrief) {
+          companionBriefs.push(manifestoGate.refineBrief)
         }
 
         const { gate: ownershipGate, shouldRefine: ownershipRefine } =
