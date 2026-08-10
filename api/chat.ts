@@ -444,6 +444,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       requireWonder?: boolean
       writerBrief?: string
     } | null = null
+    let naturalConversationPlan: {
+      active?: boolean
+      move?: string
+      texture?: string
+      curiosityBeforeExplanation?: boolean
+      leaveSpace?: boolean
+      writerBrief?: string
+    } | null = null
     let humanImperfectionPlan: {
       active?: boolean
       allowTouch?: boolean
@@ -850,6 +858,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             habit?: string
             preferStoryContext?: boolean
             requireWonder?: boolean
+            writerBrief?: string
+          }
+        }
+        if (result?.naturalConversation && typeof result.naturalConversation === 'object') {
+          naturalConversationPlan = result.naturalConversation as {
+            active?: boolean
+            move?: string
+            texture?: string
+            curiosityBeforeExplanation?: boolean
+            leaveSpace?: boolean
             writerBrief?: string
           }
         }
@@ -1277,6 +1295,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           runPersonalVoiceGate,
           draftViolatesPersonalVoice,
         } = await import('../lib/server/personal-voice-engine.js')
+        const {
+          runNaturalConversationGate,
+          draftViolatesNaturalConversation,
+        } = await import('../lib/server/natural-conversation-engine.js')
         const { draftViolatesHumanImperfection } = await import(
           '../lib/server/human-imperfection-engine.js'
         )
@@ -1456,6 +1478,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ) {
           companionBriefs.push(
             'Personal Voice: riscrivi — potrebbe averlo scritto un’altra AI. Parla come un amico curioso e pensante, non textbook/helpdesk/enciclopedia. Preferisci “You know what surprised me?” / “What I find fascinating…” / “It made me wonder…”. Evita “Did you know?” / “It is important to note…” / “This demonstrates…”. Contesto prima dei fatti; osservazione > lezione; un momento di meraviglia; niente memorie inventate.',
+          )
+        }
+        if (
+          draftViolatesNaturalConversation(content, naturalConversationPlan as never, {
+            userMessage: lastUserMessage.content,
+          })
+        ) {
+          companionBriefs.push(
+            'Natural Conversation: riscrivi — non impressionare, condividi. Nota qualcosa → perché ha colpito → rivelazione soft solo se naturale. Evita “Let me explain…” / “Here’s why…” / “Would you like to know…”. Preferisci “I didn’t expect this either.” / “The surprising part comes next.”. Coffee test: suonerebbe naturale a un caffè? Lascia spazio; niente performance.',
           )
         }
         if (draftViolatesHumanImperfection(content, humanImperfectionPlan as never)) {
@@ -1751,6 +1782,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           })
         if (personalVoiceRefine && personalVoiceGate.refineBrief) {
           companionBriefs.push(personalVoiceGate.refineBrief)
+        }
+
+        const { gate: naturalConversationGate, shouldRefine: naturalConversationRefine } =
+          runNaturalConversationGate({
+            userMessage: lastUserMessage.content,
+            draft: content,
+            plan: naturalConversationPlan,
+          })
+        if (naturalConversationRefine && naturalConversationGate.refineBrief) {
+          companionBriefs.push(naturalConversationGate.refineBrief)
         }
 
         const { gate: constitutionGate, shouldRefine: constitutionRefine } =
