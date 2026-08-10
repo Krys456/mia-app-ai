@@ -458,6 +458,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       mandatoryPanel?: boolean
       writerBrief?: string
     } | null = null
+    let conversationDiversityPlan: {
+      active?: boolean
+      primaryForm?: string
+      secondaryForm?: string | null
+      flavour?: string
+      rhythm?: string
+      surprise?: string
+      writerBrief?: string
+      recentStructures?: string[]
+      recentOpenings?: string[]
+    } | null = null
     let humanImperfectionPlan: {
       active?: boolean
       allowTouch?: boolean
@@ -883,6 +894,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             greetingContext?: boolean
             mandatoryPanel?: boolean
             writerBrief?: string
+          }
+        }
+        if (result?.conversationDiversity && typeof result.conversationDiversity === 'object') {
+          conversationDiversityPlan = result.conversationDiversity as {
+            active?: boolean
+            primaryForm?: string
+            secondaryForm?: string | null
+            flavour?: string
+            rhythm?: string
+            surprise?: string
+            writerBrief?: string
+            recentStructures?: string[]
+            recentOpenings?: string[]
           }
         }
         if (result?.humanImperfection && typeof result.humanImperfection === 'object') {
@@ -1317,6 +1341,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           runCognitiveAuthorityGate,
           draftViolatesCognitiveAuthority,
         } = await import('../lib/server/cognitive-authority-engine.js')
+        const {
+          runConversationDiversityGate,
+          draftViolatesConversationDiversity,
+        } = await import('../lib/server/conversation-diversity-engine.js')
         const { draftViolatesHumanImperfection } = await import(
           '../lib/server/human-imperfection-engine.js'
         )
@@ -1518,6 +1546,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ) {
           companionBriefs.push(
             'Cognitive Authority: REJECT — riscrittura automatica. Vietati saluti vuoti (“It’s always a pleasure…” / “How are you?” / “And you?” / “I’m fine, thanks.”) senza valore conversazionale. Su greeting: Opening Intelligence · Small Talk · Conversation Director · Natural Conversation devono APPROVARE tutti. Identity: potrebbe scriverlo qualsiasi chatbot? Human test: un amico risponderebbe con entusiasmo?',
+          )
+        }
+        if (
+          draftViolatesConversationDiversity(content, conversationDiversityPlan as never, {
+            userMessage: lastUserMessage.content,
+            recentStructures: conversationDiversityPlan?.recentStructures,
+            recentOpenings: conversationDiversityPlan?.recentOpenings,
+          })
+        ) {
+          companionBriefs.push(
+            'Conversation Diversity: riscrivi — stessa struttura delle ultime risposte. Cambia la FORMA conversazionale (osservazione / storia / analogia / humour / silent ending…), non solo le parole. Vietato default greeting→compliment→question. Varia ritmo e flavour. Check: would the user predict the next sentence?',
           )
         }
         if (draftViolatesHumanImperfection(content, humanImperfectionPlan as never)) {
@@ -1839,6 +1878,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (authorityRefine && authorityGate.refineBrief) {
           // Authority briefs go first — mandatory rewrite signal
           companionBriefs.unshift(authorityGate.refineBrief)
+        }
+
+        const { gate: diversityGate, shouldRefine: diversityRefine } =
+          runConversationDiversityGate({
+            userMessage: lastUserMessage.content,
+            draft: content,
+            plan: conversationDiversityPlan,
+          })
+        if (diversityRefine && diversityGate.refineBrief) {
+          companionBriefs.push(diversityGate.refineBrief)
         }
 
         const { gate: constitutionGate, shouldRefine: constitutionRefine } =
