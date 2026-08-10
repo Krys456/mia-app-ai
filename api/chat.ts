@@ -653,6 +653,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       category?: string
       opener?: string
     } | null = null
+    let openingIntelligencePlan: {
+      active?: boolean
+      shouldOpen?: boolean
+      forceSkipUserQuestion?: boolean
+      objective?: string
+      category?: string
+      seed?: string
+      writerBrief?: string
+    } | null = null
     if (lastUserMessage?.content) {
       try {
         const { runCognitiveEngine } = await import('../lib/server/cognitive-engine.js')
@@ -1097,6 +1106,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             opener?: string
           }
         }
+        if (result?.openingIntelligence && typeof result.openingIntelligence === 'object') {
+          openingIntelligencePlan = result.openingIntelligence as {
+            active?: boolean
+            shouldOpen?: boolean
+            forceSkipUserQuestion?: boolean
+            objective?: string
+            category?: string
+            seed?: string
+            writerBrief?: string
+          }
+        }
       } catch {
         cognitiveBlock = ''
       }
@@ -1309,6 +1329,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const { draftViolatesConversationOpening } = await import(
           '../lib/server/conversation-opening-engine.js'
         )
+        const {
+          runOpeningIntelligenceGate,
+          draftViolatesOpeningIntelligence,
+        } = await import('../lib/server/opening-intelligence-engine.js')
 
         const priorAssistant = [...messages]
           .reverse()
@@ -1567,6 +1591,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             'Conversation Opening (Useful): riscrivi — apri con un FATTO concreto (useful/interesting/surprising/thought-provoking/practical). Chiudi con curiosità, non con una conclusione. Vietato: “The little things in life matter.” / “It’s fascinating how our daily choices…” / “Sometimes routines can change everything.” / “Life is made of small moments.” / “Ciao! 😊” / “Sai cosa mi è venuto in mente…”. Se domanda reale o nessun valore: niente opener forzato.',
           )
         }
+        if (
+          draftViolatesOpeningIntelligence(content, openingIntelligencePlan as never, {
+            userMessage: lastUserMessage.content,
+          })
+        ) {
+          companionBriefs.push(
+            'Opening Intelligence: riscrivi l’apertura — prima impressione deve creare valore. Vietato greeting nudo (“It’s nice to hear from you.” / “Hello!” / “How are you?” / “Welcome back.”). Obiettivo ≥1 (curiosità / utile / ispirare / sorriso / osservazione / continuare / domanda significativa / idea inattesa). 2–6 frasi, gancio naturale, tono da amico intelligente. Check: Would I enjoy receiving this?',
+          )
+        }
         if (draftViolatesConversationSpark(content, conversationSparkPlan as never)) {
           companionBriefs.push(
             'Conversation Spark: riscrivi l’apertura — niente “Let’s discuss / What would you like to talk about / Choose a topic / Have you encountered any interesting topics”. Inizia come una persona curiosamente viva che condivide UNA scintilla; crea conversazione, non chiederla. Check: would a genuinely interesting person begin like this?',
@@ -1624,6 +1657,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           })
         if (directorRefine && directorGate.refineBrief) {
           companionBriefs.push(directorGate.refineBrief)
+        }
+
+        const { gate: openingIntelGate, shouldRefine: openingIntelRefine } =
+          runOpeningIntelligenceGate({
+            userMessage: lastUserMessage.content,
+            draft: content,
+            plan: openingIntelligencePlan,
+          })
+        if (openingIntelRefine && openingIntelGate.refineBrief) {
+          companionBriefs.push(openingIntelGate.refineBrief)
         }
 
         const { gate: constitutionGate, shouldRefine: constitutionRefine } =
