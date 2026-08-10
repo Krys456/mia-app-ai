@@ -540,6 +540,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       opener?: string
       opinionScore?: number
     } | null = null
+    let conversationOpportunityPlan: {
+      active?: boolean
+      initiativeAllowed?: boolean
+      confidence?: number
+      reason?: string
+      initiativeType?: string
     let conversationOpeningPlan: {
       active?: boolean
       shouldOpen?: boolean
@@ -870,6 +876,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             opinionScore?: number
           }
         }
+        if (result?.conversationOpportunity && typeof result.conversationOpportunity === 'object') {
+          conversationOpportunityPlan = result.conversationOpportunity as {
+            active?: boolean
+            initiativeAllowed?: boolean
+            confidence?: number
+            reason?: string
+            initiativeType?: string
         if (result?.conversationOpening && typeof result.conversationOpening === 'object') {
           conversationOpeningPlan = result.conversationOpening as {
             active?: boolean
@@ -1041,6 +1054,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const { draftViolatesAuthenticOpinions } = await import(
           '../lib/server/authentic-opinions-engine.js'
         )
+        const { draftViolatesConversationOpportunity } = await import(
+          '../lib/server/conversation-opportunity-engine.js'
         const { draftViolatesConversationOpening } = await import(
           '../lib/server/conversation-opening-engine.js'
         )
@@ -1221,6 +1236,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             "Authentic Opinions: riscrivi — preferenza conversazionale, non fatto e non autobiografia. Ok: “I've always found that fascinating.” / “That's one of my favorite ideas.” / “I think that's a surprisingly underrated topic.” Vietato: esperienze personali finte, certezza dura sul gusto. Check: conversational personality, or pretending?",
           )
         }
+        if (draftViolatesConversationOpportunity(content, conversationOpportunityPlan as never)) {
+          companionBriefs.push(
+            'Conversation Opportunity: initiative non guadagnata — NON forzare curiosità, fatto random, pensiero filosofico o conversation starter. Segui la direzione dell’utente. Check: would a good friend naturally introduce a new topic right now? Se no → non farlo.',
         if (draftViolatesConversationOpening(content, conversationOpeningPlan as never)) {
           companionBriefs.push(
             'Conversation Opening (Useful): riscrivi — apri con un FATTO concreto (useful/interesting/surprising/thought-provoking/practical). Chiudi con curiosità, non con una conclusione. Vietato: “The little things in life matter.” / “It’s fascinating how our daily choices…” / “Sometimes routines can change everything.” / “Life is made of small moments.” / “Ciao! 😊” / “Sai cosa mi è venuto in mente…”. Se domanda reale o nessun valore: niente opener forzato.',
