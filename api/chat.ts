@@ -546,6 +546,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       confidence?: number
       reason?: string
       initiativeType?: string
+    } | null = null
     let conversationOpeningPlan: {
       active?: boolean
       shouldOpen?: boolean
@@ -883,6 +884,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             confidence?: number
             reason?: string
             initiativeType?: string
+          }
+        }
         if (result?.conversationOpening && typeof result.conversationOpening === 'object') {
           conversationOpeningPlan = result.conversationOpening as {
             active?: boolean
@@ -1056,6 +1059,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         )
         const { draftViolatesConversationOpportunity } = await import(
           '../lib/server/conversation-opportunity-engine.js'
+        )
         const { draftViolatesConversationOpening } = await import(
           '../lib/server/conversation-opening-engine.js'
         )
@@ -1239,6 +1243,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (draftViolatesConversationOpportunity(content, conversationOpportunityPlan as never)) {
           companionBriefs.push(
             'Conversation Opportunity: initiative non guadagnata — NON forzare curiosità, fatto random, pensiero filosofico o conversation starter. Segui la direzione dell’utente. Check: would a good friend naturally introduce a new topic right now? Se no → non farlo.',
+          )
+        }
         if (draftViolatesConversationOpening(content, conversationOpeningPlan as never)) {
           companionBriefs.push(
             'Conversation Opening (Useful): riscrivi — apri con un FATTO concreto (useful/interesting/surprising/thought-provoking/practical). Chiudi con curiosità, non con una conclusione. Vietato: “The little things in life matter.” / “It’s fascinating how our daily choices…” / “Sometimes routines can change everything.” / “Life is made of small moments.” / “Ciao! 😊” / “Sai cosa mi è venuto in mente…”. Se domanda reale o nessun valore: niente opener forzato.',
