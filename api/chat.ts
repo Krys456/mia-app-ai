@@ -47,6 +47,7 @@ Human Personality Foundation (sempre attiva, non è un motore): timbro stabile c
 Language Awareness (sempre attiva, layer lingua): rileva lingua dominante dell’ultimo messaggio; mantieni conversation language; switch immediato su cambio intenzionale o meta (“Why don't you speak in my language?”, “Can you answer in English?”, “Parla italiano.”); non spiegare lingue salvo chiesto; niente scuse lunghe — adatta e basta; non citare.
 Può arrivare CONVERSATION OWNERSHIP PROTOCOL (dopo HCS, prima del Worth Reading / Writer + gate pre-invio): partner attivo — turni corti/vago → contribuisci; niente ack/Q generiche; non inventare fatti; non citare.
 Può arrivare WORTH READING PROTOCOL (craft finale, immediatamente prima del Writer + gate pre-invio): never waste a turn · never abandon · contribution > interrogation · respect momentum · avoid clichés · natural rhythm · delight · Human Conversation Test · Worth Reading Test · Final Quality Gate — senza cambiare i fatti; non citare.
+Può arrivare CONVERSATION QUALITY GATE (obbligatorio, massima priorità pre-invio): score Specificity·Novelty·Momentum·Warmth·Practical·Memorability·Rhythm·EI·Authenticity·Initiative; hard reject “It’s always nice to hear from you.” / “Thanks for sharing.” / “That’s a great question.” / “How are you?” loops / forced end Q / recent topics / encyclopedia / any-user filler; ≥1 gift richiesto; REJECT + 1 rewrite; obiettivo “I want to keep talking.”
 Può arrivare CONVERSATION MEMORY MAP: temi esplorati, domande aperte, progetti, obiettivi, spiegazioni già date, misconcezioni corrette, idee future introdotte — evolvi con la chat; non ripetere idee già esplorate; quando continui usa la mappa, non solo lo storico messaggi.
 Può arrivare INFORMATION VALUE ESTIMATOR: valuta usefulness/novelty/relevance/actionability/clarity/educational value; tieni poche idee forti, scarta il basso valore; mai allungare a vuoto.
 Può arrivare DYNAMIC BEHAVIOR MODEL: behavior selezionato per questo turno (conversation / explanation / brainstorming / planning / technical help / emotional support / collaboration) — seguilo invece di una personalità fissa.
@@ -375,6 +376,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let conversationMindsetPlan: { active?: boolean } | null = null
     let conversationDelightPlan: Record<string, unknown> | null = null
     let conversationOwnershipPlan: Record<string, unknown> | null = null
+    let conversationQualityPlan: {
+      active?: boolean
+      mandatory?: boolean
+      recentConcepts?: string[]
+      writerBrief?: string
+    } | null = null
     let humanImpactConstitutionPlan: {
       active?: boolean
       primaryValue?: string
@@ -824,6 +831,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
         if (result?.conversationOwnership && typeof result.conversationOwnership === 'object') {
           conversationOwnershipPlan = result.conversationOwnership as Record<string, unknown>
+        }
+        if (result?.conversationQuality && typeof result.conversationQuality === 'object') {
+          conversationQualityPlan = result.conversationQuality as {
+            active?: boolean
+            mandatory?: boolean
+            recentConcepts?: string[]
+            writerBrief?: string
+          }
         }
         if (result?.humanImpactConstitution && typeof result.humanImpactConstitution === 'object') {
           humanImpactConstitutionPlan = result.humanImpactConstitution as {
@@ -1408,6 +1423,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const { runWorthReadingGate } = await import(
           '../lib/server/worth-reading-protocol.js'
         )
+        const {
+          runConversationQualityGate,
+          draftViolatesConversationQuality,
+        } = await import('../lib/server/conversation-quality-gate.js')
         const {
           validateDraftAgainstDirectives,
           maybeLogDirectiveDebug,
@@ -2118,6 +2137,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           })
         if (worthReadingRefine && worthReadingGate.refineBrief) {
           companionBriefs.push(worthReadingGate.refineBrief)
+        }
+
+        // Conversation Quality Gate (MANDATORY highest-priority): REJECT → one rewrite
+        if (
+          draftViolatesConversationQuality(content, conversationQualityPlan as never, {
+            userMessage: lastUserMessage.content,
+            messages,
+            recentConcepts: conversationQualityPlan?.recentConcepts,
+          })
+        ) {
+          companionBriefs.unshift(
+            'Conversation Quality Gate: REJECT — riscrivi UNA volta. Lascia ≥1 gift (idea · prospettiva · esempio · incoraggiamento · sorriso · curiosità). Vietato: “It’s always nice to hear from you.” / “Thanks for sharing.” / “That’s a great question.” / “How are you?” loops / domande forzate finali / dump enciclopedico / filler da qualsiasi utente. Obiettivo: “I want to keep talking.”',
+          )
+        }
+        const { gate: qualityGate, shouldRefine: qualityRefine, rejected: qualityRejected } =
+          runConversationQualityGate({
+            userMessage: lastUserMessage.content,
+            draft: content,
+            plan: conversationQualityPlan,
+            messages,
+            recentConcepts: conversationQualityPlan?.recentConcepts,
+          })
+        if ((qualityRefine || qualityRejected) && qualityGate.refineBrief) {
+          // Highest-priority mandatory rewrite signal (alongside Authority)
+          companionBriefs.unshift(qualityGate.refineBrief)
         }
 
         const merged = mergePreSendRefineBudget({
