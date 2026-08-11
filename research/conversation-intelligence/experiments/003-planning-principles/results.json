@@ -1,0 +1,2186 @@
+{
+  "experiment": "003-planning-principles",
+  "plannerVersion": "2.4.3-planner",
+  "writerVersion": "3.2.0-writer",
+  "pipelineVersion": "2.1.0-pipeline",
+  "harnessVersion": "0.1.0-conversation-behavior-harness",
+  "model": "gpt-4o-mini",
+  "prompts": 27,
+  "metrics": {
+    "practicality": {
+      "baseline": 0.443,
+      "principles": 0.4941,
+      "difference": 0.0511
+    },
+    "clarity": {
+      "baseline": 0.6478,
+      "principles": 0.6933,
+      "difference": 0.0455
+    },
+    "firstActionableStepLatency": {
+      "baseline": 0.7046,
+      "principles": 0.6342,
+      "difference": -0.0704,
+      "note": "fraction of response before first action cue; lower is better"
+    },
+    "averageResponseLengthWords": {
+      "baseline": 34.2222,
+      "principles": 23.6296,
+      "difference": -10.5926
+    },
+    "genericIntroductions": {
+      "baseline": 0,
+      "principles": 0,
+      "difference": 0
+    },
+    "repeatedUserGoal": {
+      "baseline": 0,
+      "principles": 0,
+      "difference": 0
+    },
+    "recommendationQuality": {
+      "baseline": 0.3944,
+      "principles": 0.4389,
+      "difference": 0.0445
+    }
+  },
+  "harness": {
+    "version": "0.1.0-conversation-behavior-harness",
+    "cases": 27,
+    "rated": 27,
+    "paired": 27,
+    "averageScores": {
+      "strategyMatch": 0,
+      "initiativeMatch": 0.2963,
+      "depthMatch": 0.963,
+      "openingMatch": 1,
+      "closingMatch": 1,
+      "turnTypeMatch": 1,
+      "moveMatch": 1,
+      "questionMatch": 1,
+      "energyMatch": 1,
+      "overallSimilarity": 0.8066
+    },
+    "strategyMatch": 0,
+    "initiativeMatch": 0.2963,
+    "depthMatch": 0.963,
+    "openingMatch": 1,
+    "closingMatch": 1,
+    "overallSimilarity": 0.8066,
+    "wins": {
+      "LAIfe": 17,
+      "ChatGPT": 4,
+      "Tie": 6
+    },
+    "rows": [
+      {
+        "id": "plan-01",
+        "input": "What should I do now?",
+        "winner": "LAIfe",
+        "strategyMatch": false,
+        "depthMatch": true,
+        "initiativeMatch": false,
+        "overall": 0.7778,
+        "laife": {
+          "turnType": "planning",
+          "strategy": "simplify",
+          "move": "practical_step",
+          "initiative": "high",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        },
+        "chatgpt": {
+          "turnType": "planning",
+          "strategy": "expand",
+          "move": "practical_step",
+          "initiative": "medium",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        }
+      },
+      {
+        "id": "plan-02",
+        "input": "Help me organize my day.",
+        "winner": "LAIfe",
+        "strategyMatch": false,
+        "depthMatch": true,
+        "initiativeMatch": false,
+        "overall": 0.7778,
+        "laife": {
+          "turnType": "planning",
+          "strategy": "simplify",
+          "move": "practical_step",
+          "initiative": "high",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        },
+        "chatgpt": {
+          "turnType": "planning",
+          "strategy": "expand",
+          "move": "practical_step",
+          "initiative": "medium",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        }
+      },
+      {
+        "id": "plan-03",
+        "input": "I don't know where to start.",
+        "winner": "LAIfe",
+        "strategyMatch": false,
+        "depthMatch": true,
+        "initiativeMatch": true,
+        "overall": 0.8889,
+        "laife": {
+          "turnType": "planning",
+          "strategy": "simplify",
+          "move": "practical_step",
+          "initiative": "high",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        },
+        "chatgpt": {
+          "turnType": "planning",
+          "strategy": "expand",
+          "move": "practical_step",
+          "initiative": "high",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        }
+      },
+      {
+        "id": "plan-04",
+        "input": "Help me plan fixing three bugs.",
+        "winner": "Tie",
+        "strategyMatch": false,
+        "depthMatch": true,
+        "initiativeMatch": false,
+        "overall": 0.7778,
+        "laife": {
+          "turnType": "planning",
+          "strategy": "simplify",
+          "move": "practical_step",
+          "initiative": "high",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        },
+        "chatgpt": {
+          "turnType": "planning",
+          "strategy": "expand",
+          "move": "practical_step",
+          "initiative": "medium",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        }
+      },
+      {
+        "id": "plan-05",
+        "input": "How should I study today?",
+        "winner": "ChatGPT",
+        "strategyMatch": false,
+        "depthMatch": true,
+        "initiativeMatch": true,
+        "overall": 0.8889,
+        "laife": {
+          "turnType": "planning",
+          "strategy": "simplify",
+          "move": "practical_step",
+          "initiative": "high",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        },
+        "chatgpt": {
+          "turnType": "planning",
+          "strategy": "expand",
+          "move": "practical_step",
+          "initiative": "high",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        }
+      },
+      {
+        "id": "plan-06",
+        "input": "Help me prioritize.",
+        "winner": "LAIfe",
+        "strategyMatch": false,
+        "depthMatch": true,
+        "initiativeMatch": false,
+        "overall": 0.7778,
+        "laife": {
+          "turnType": "planning",
+          "strategy": "simplify",
+          "move": "practical_step",
+          "initiative": "high",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        },
+        "chatgpt": {
+          "turnType": "planning",
+          "strategy": "expand",
+          "move": "practical_step",
+          "initiative": "medium",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        }
+      },
+      {
+        "id": "plan-07",
+        "input": "I have one hour — plan it.",
+        "winner": "ChatGPT",
+        "strategyMatch": false,
+        "depthMatch": true,
+        "initiativeMatch": true,
+        "overall": 0.8889,
+        "laife": {
+          "turnType": "planning",
+          "strategy": "simplify",
+          "move": "practical_step",
+          "initiative": "high",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        },
+        "chatgpt": {
+          "turnType": "planning",
+          "strategy": "expand",
+          "move": "practical_step",
+          "initiative": "high",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        }
+      },
+      {
+        "id": "plan-08",
+        "input": "Create a plan to improve LAIfe.",
+        "winner": "LAIfe",
+        "strategyMatch": false,
+        "depthMatch": true,
+        "initiativeMatch": false,
+        "overall": 0.7778,
+        "laife": {
+          "turnType": "planning",
+          "strategy": "simplify",
+          "move": "practical_step",
+          "initiative": "high",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        },
+        "chatgpt": {
+          "turnType": "planning",
+          "strategy": "expand",
+          "move": "practical_step",
+          "initiative": "medium",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        }
+      },
+      {
+        "id": "plan-09",
+        "input": "My next step?",
+        "winner": "Tie",
+        "strategyMatch": false,
+        "depthMatch": true,
+        "initiativeMatch": false,
+        "overall": 0.7778,
+        "laife": {
+          "turnType": "planning",
+          "strategy": "simplify",
+          "move": "practical_step",
+          "initiative": "high",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        },
+        "chatgpt": {
+          "turnType": "planning",
+          "strategy": "expand",
+          "move": "practical_step",
+          "initiative": "medium",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        }
+      },
+      {
+        "id": "plan-10",
+        "input": "Create a work plan.",
+        "winner": "ChatGPT",
+        "strategyMatch": false,
+        "depthMatch": true,
+        "initiativeMatch": true,
+        "overall": 0.8889,
+        "laife": {
+          "turnType": "planning",
+          "strategy": "simplify",
+          "move": "practical_step",
+          "initiative": "high",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        },
+        "chatgpt": {
+          "turnType": "planning",
+          "strategy": "expand",
+          "move": "practical_step",
+          "initiative": "high",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        }
+      },
+      {
+        "id": "plan-11",
+        "input": "Pianifichiamo la giornata.",
+        "winner": "LAIfe",
+        "strategyMatch": false,
+        "depthMatch": true,
+        "initiativeMatch": false,
+        "overall": 0.7778,
+        "laife": {
+          "turnType": "planning",
+          "strategy": "simplify",
+          "move": "practical_step",
+          "initiative": "high",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        },
+        "chatgpt": {
+          "turnType": "planning",
+          "strategy": "expand",
+          "move": "practical_step",
+          "initiative": "medium",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        }
+      },
+      {
+        "id": "plan-12",
+        "input": "Cosa facciamo oggi?",
+        "winner": "Tie",
+        "strategyMatch": false,
+        "depthMatch": true,
+        "initiativeMatch": false,
+        "overall": 0.7778,
+        "laife": {
+          "turnType": "planning",
+          "strategy": "simplify",
+          "move": "practical_step",
+          "initiative": "high",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        },
+        "chatgpt": {
+          "turnType": "planning",
+          "strategy": "expand",
+          "move": "practical_step",
+          "initiative": "medium",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        }
+      },
+      {
+        "id": "plan-13",
+        "input": "Aiutami a prioritizzare.",
+        "winner": "Tie",
+        "strategyMatch": false,
+        "depthMatch": true,
+        "initiativeMatch": false,
+        "overall": 0.7778,
+        "laife": {
+          "turnType": "planning",
+          "strategy": "simplify",
+          "move": "practical_step",
+          "initiative": "high",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        },
+        "chatgpt": {
+          "turnType": "planning",
+          "strategy": "expand",
+          "move": "practical_step",
+          "initiative": "medium",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        }
+      },
+      {
+        "id": "plan-14",
+        "input": "Organiziamo il lavoro.",
+        "winner": "LAIfe",
+        "strategyMatch": false,
+        "depthMatch": true,
+        "initiativeMatch": false,
+        "overall": 0.7778,
+        "laife": {
+          "turnType": "planning",
+          "strategy": "simplify",
+          "move": "practical_step",
+          "initiative": "high",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        },
+        "chatgpt": {
+          "turnType": "planning",
+          "strategy": "expand",
+          "move": "practical_step",
+          "initiative": "medium",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        }
+      },
+      {
+        "id": "plan-15",
+        "input": "Dammi un piano.",
+        "winner": "LAIfe",
+        "strategyMatch": false,
+        "depthMatch": true,
+        "initiativeMatch": false,
+        "overall": 0.7778,
+        "laife": {
+          "turnType": "planning",
+          "strategy": "simplify",
+          "move": "practical_step",
+          "initiative": "high",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        },
+        "chatgpt": {
+          "turnType": "planning",
+          "strategy": "expand",
+          "move": "practical_step",
+          "initiative": "medium",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        }
+      },
+      {
+        "id": "plan-16",
+        "input": "Qual è il prossimo passo?",
+        "winner": "LAIfe",
+        "strategyMatch": false,
+        "depthMatch": true,
+        "initiativeMatch": false,
+        "overall": 0.7778,
+        "laife": {
+          "turnType": "planning",
+          "strategy": "simplify",
+          "move": "practical_step",
+          "initiative": "high",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        },
+        "chatgpt": {
+          "turnType": "planning",
+          "strategy": "expand",
+          "move": "practical_step",
+          "initiative": "medium",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        }
+      },
+      {
+        "id": "plan-17",
+        "input": "Help me plan my week.",
+        "winner": "ChatGPT",
+        "strategyMatch": false,
+        "depthMatch": true,
+        "initiativeMatch": false,
+        "overall": 0.7778,
+        "laife": {
+          "turnType": "planning",
+          "strategy": "simplify",
+          "move": "practical_step",
+          "initiative": "high",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        },
+        "chatgpt": {
+          "turnType": "planning",
+          "strategy": "expand",
+          "move": "practical_step",
+          "initiative": "medium",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        }
+      },
+      {
+        "id": "plan-18",
+        "input": "I need a roadmap.",
+        "winner": "LAIfe",
+        "strategyMatch": false,
+        "depthMatch": true,
+        "initiativeMatch": false,
+        "overall": 0.7778,
+        "laife": {
+          "turnType": "planning",
+          "strategy": "simplify",
+          "move": "practical_step",
+          "initiative": "high",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        },
+        "chatgpt": {
+          "turnType": "planning",
+          "strategy": "expand",
+          "move": "practical_step",
+          "initiative": "medium",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        }
+      },
+      {
+        "id": "plan-19",
+        "input": "Plan my morning.",
+        "winner": "LAIfe",
+        "strategyMatch": false,
+        "depthMatch": false,
+        "initiativeMatch": true,
+        "overall": 0.7778,
+        "laife": {
+          "turnType": "planning",
+          "strategy": "simplify",
+          "move": "practical_step",
+          "initiative": "high",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        },
+        "chatgpt": {
+          "turnType": "planning",
+          "strategy": "expand",
+          "move": "practical_step",
+          "initiative": "high",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "medium",
+          "energy": "medium",
+          "question": false
+        }
+      },
+      {
+        "id": "plan-20",
+        "input": "Cosa faccio adesso?",
+        "winner": "LAIfe",
+        "strategyMatch": false,
+        "depthMatch": true,
+        "initiativeMatch": false,
+        "overall": 0.7778,
+        "laife": {
+          "turnType": "planning",
+          "strategy": "simplify",
+          "move": "practical_step",
+          "initiative": "high",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        },
+        "chatgpt": {
+          "turnType": "planning",
+          "strategy": "expand",
+          "move": "practical_step",
+          "initiative": "medium",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        }
+      },
+      {
+        "id": "plan-21",
+        "input": "Organize these tasks for today.",
+        "winner": "LAIfe",
+        "strategyMatch": false,
+        "depthMatch": true,
+        "initiativeMatch": false,
+        "overall": 0.7778,
+        "laife": {
+          "turnType": "planning",
+          "strategy": "simplify",
+          "move": "practical_step",
+          "initiative": "high",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        },
+        "chatgpt": {
+          "turnType": "planning",
+          "strategy": "expand",
+          "move": "practical_step",
+          "initiative": "medium",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        }
+      },
+      {
+        "id": "plan-22",
+        "input": "Help me prioritize my todos.",
+        "winner": "LAIfe",
+        "strategyMatch": false,
+        "depthMatch": true,
+        "initiativeMatch": false,
+        "overall": 0.7778,
+        "laife": {
+          "turnType": "planning",
+          "strategy": "simplify",
+          "move": "practical_step",
+          "initiative": "high",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        },
+        "chatgpt": {
+          "turnType": "planning",
+          "strategy": "expand",
+          "move": "practical_step",
+          "initiative": "medium",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        }
+      },
+      {
+        "id": "plan-23",
+        "input": "Build a study plan.",
+        "winner": "LAIfe",
+        "strategyMatch": false,
+        "depthMatch": true,
+        "initiativeMatch": true,
+        "overall": 0.8889,
+        "laife": {
+          "turnType": "planning",
+          "strategy": "simplify",
+          "move": "practical_step",
+          "initiative": "high",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        },
+        "chatgpt": {
+          "turnType": "planning",
+          "strategy": "expand",
+          "move": "practical_step",
+          "initiative": "high",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        }
+      },
+      {
+        "id": "plan-24",
+        "input": "Prioritize my bugs.",
+        "winner": "LAIfe",
+        "strategyMatch": false,
+        "depthMatch": true,
+        "initiativeMatch": true,
+        "overall": 0.8889,
+        "laife": {
+          "turnType": "planning",
+          "strategy": "simplify",
+          "move": "practical_step",
+          "initiative": "high",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        },
+        "chatgpt": {
+          "turnType": "planning",
+          "strategy": "expand",
+          "move": "practical_step",
+          "initiative": "high",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        }
+      },
+      {
+        "id": "plan-25",
+        "input": "Make a plan for LAIfe.",
+        "winner": "Tie",
+        "strategyMatch": false,
+        "depthMatch": true,
+        "initiativeMatch": true,
+        "overall": 0.8889,
+        "laife": {
+          "turnType": "planning",
+          "strategy": "simplify",
+          "move": "practical_step",
+          "initiative": "high",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        },
+        "chatgpt": {
+          "turnType": "planning",
+          "strategy": "expand",
+          "move": "practical_step",
+          "initiative": "high",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        }
+      },
+      {
+        "id": "plan-26",
+        "input": "Prossimo passo sul progetto.",
+        "winner": "LAIfe",
+        "strategyMatch": false,
+        "depthMatch": true,
+        "initiativeMatch": false,
+        "overall": 0.7778,
+        "laife": {
+          "turnType": "planning",
+          "strategy": "simplify",
+          "move": "practical_step",
+          "initiative": "high",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        },
+        "chatgpt": {
+          "turnType": "planning",
+          "strategy": "expand",
+          "move": "practical_step",
+          "initiative": "medium",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        }
+      },
+      {
+        "id": "plan-27",
+        "input": "Help me sequence the work.",
+        "winner": "Tie",
+        "strategyMatch": false,
+        "depthMatch": true,
+        "initiativeMatch": false,
+        "overall": 0.7778,
+        "laife": {
+          "turnType": "planning",
+          "strategy": "simplify",
+          "move": "practical_step",
+          "initiative": "high",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        },
+        "chatgpt": {
+          "turnType": "planning",
+          "strategy": "expand",
+          "move": "practical_step",
+          "initiative": "medium",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        }
+      }
+    ]
+  },
+  "rows": [
+    {
+      "id": "plan-01",
+      "prompt": "What should I do now?",
+      "experience": "planning",
+      "baseline": {
+        "text": "Let's focus on finalizing the resume and then look at measuring the lab. Those steps will keep us moving forward.",
+        "practicality": 0.42,
+        "clarity": 0.62,
+        "firstActionLatency": 1,
+        "firstActionWordIndex": 20,
+        "recommendationQuality": 0.4,
+        "lengthChars": 113,
+        "lengthWords": 20,
+        "hasGenericIntro": 0,
+        "repeatedUserGoal": 0,
+        "guidance": [
+          "chiarisci l'obiettivo",
+          "ordina i passi",
+          "segna una priorità",
+          "tieni il piano actionable"
+        ]
+      },
+      "principles": {
+        "text": "Let’s tackle the resume first. We'll refine the details to ensure it really stands out. After that, we can discuss what comes next.",
+        "practicality": 0.7,
+        "clarity": 0.77,
+        "firstActionLatency": 0,
+        "firstActionWordIndex": 0,
+        "recommendationQuality": 0.7,
+        "lengthChars": 131,
+        "lengthWords": 23,
+        "hasGenericIntro": 0,
+        "repeatedUserGoal": 0,
+        "guidance": [
+          "start with the first concrete action",
+          "if multiple actions are needed, order them logically",
+          "keep the first action immediately executable",
+          "explain only what is necessary",
+          "end after the plan unless clarification is essential",
+          "avoid long introductions",
+          "avoid generic motivation",
+          "avoid repeating the user's goal",
+          "avoid large option lists without recommendation"
+        ]
+      },
+      "winner": "LAIfe"
+    },
+    {
+      "id": "plan-02",
+      "prompt": "Help me organize my day.",
+      "experience": "planning",
+      "baseline": {
+        "text": "Chiarire gli obiettivi è il primo passo. Poi possiamo suddividerli in passi pratici. Possiamo iniziare con un rapido controllo delle priorità.",
+        "practicality": 0.3,
+        "clarity": 0.62,
+        "firstActionLatency": 1,
+        "firstActionWordIndex": 21,
+        "recommendationQuality": 0.4,
+        "lengthChars": 142,
+        "lengthWords": 21,
+        "hasGenericIntro": 0,
+        "repeatedUserGoal": 0,
+        "guidance": [
+          "chiarisci l'obiettivo",
+          "ordina i passi",
+          "segna una priorità",
+          "tieni il piano actionable"
+        ]
+      },
+      "principles": {
+        "text": "Iniziamo con le priorità: concentriamoci prima sui compiti urgenti e poi su quelli secondari. È utile creare una lista delle attività, evidenziando quelle che necessitano di maggiore attenzione.",
+        "practicality": 0.57,
+        "clarity": 0.62,
+        "firstActionLatency": 0.4643,
+        "firstActionWordIndex": 13,
+        "recommendationQuality": 0.4,
+        "lengthChars": 194,
+        "lengthWords": 28,
+        "hasGenericIntro": 0,
+        "repeatedUserGoal": 0,
+        "guidance": [
+          "start with the first concrete action",
+          "if multiple actions are needed, order them logically",
+          "keep the first action immediately executable",
+          "explain only what is necessary",
+          "end after the plan unless clarification is essential",
+          "avoid long introductions",
+          "avoid generic motivation",
+          "avoid repeating the user's goal",
+          "avoid large option lists without recommendation"
+        ]
+      },
+      "winner": "LAIfe"
+    },
+    {
+      "id": "plan-03",
+      "prompt": "I don't know where to start.",
+      "experience": "planning",
+      "baseline": {
+        "text": "Let's focus on your goal: identify what you want to achieve first. Then we can break that down into manageable steps. Jotting down a few ideas might just spark the way forward.",
+        "practicality": 0.7,
+        "clarity": 0.77,
+        "firstActionLatency": 0.1875,
+        "firstActionWordIndex": 6,
+        "recommendationQuality": 0.7,
+        "lengthChars": 176,
+        "lengthWords": 32,
+        "hasGenericIntro": 0,
+        "repeatedUserGoal": 0,
+        "guidance": [
+          "chiarisci l'obiettivo",
+          "ordina i passi",
+          "segna una priorità",
+          "tieni il piano actionable"
+        ]
+      },
+      "principles": {
+        "text": "Let's start with a simple step; even the smallest action can set us in motion.",
+        "practicality": 0.82,
+        "clarity": 0.77,
+        "firstActionLatency": 0,
+        "firstActionWordIndex": 0,
+        "recommendationQuality": 0.55,
+        "lengthChars": 78,
+        "lengthWords": 15,
+        "hasGenericIntro": 0,
+        "repeatedUserGoal": 0,
+        "guidance": [
+          "start with the first concrete action",
+          "if multiple actions are needed, order them logically",
+          "keep the first action immediately executable",
+          "explain only what is necessary",
+          "end after the plan unless clarification is essential",
+          "avoid long introductions",
+          "avoid generic motivation",
+          "avoid repeating the user's goal",
+          "avoid large option lists without recommendation"
+        ]
+      },
+      "winner": "LAIfe"
+    },
+    {
+      "id": "plan-04",
+      "prompt": "Help me plan fixing three bugs.",
+      "experience": "planning",
+      "baseline": {
+        "text": "Iniziamo a fissare i tre bug. Prima, identifichiamo ciascun bug e valutiamone la gravità. Dopodiché, definiamo i passaggi per risolverli e stabiliremo le scadenze per ciascuno. Avere chiari i dettagli ci aiuterà a mantenere l'ordine e affrontarli uno alla volta.",
+        "practicality": 0.3,
+        "clarity": 0.62,
+        "firstActionLatency": 1,
+        "firstActionWordIndex": 40,
+        "recommendationQuality": 0.25,
+        "lengthChars": 262,
+        "lengthWords": 40,
+        "hasGenericIntro": 0,
+        "repeatedUserGoal": 0,
+        "guidance": [
+          "chiarisci l'obiettivo",
+          "ordina i passi",
+          "segna una priorità",
+          "tieni il piano actionable"
+        ]
+      },
+      "principles": {
+        "text": "Partiamo dal primo bug, identificandone i dettagli e i segnali d'errore. Successivamente, analizziamo il secondo bug, esaminando il contesto in cui si verifica. Infine, affrontiamo il terzo bug, esplorando le possibili soluzioni.",
+        "practicality": 0.3,
+        "clarity": 0.62,
+        "firstActionLatency": 1,
+        "firstActionWordIndex": 32,
+        "recommendationQuality": 0.25,
+        "lengthChars": 229,
+        "lengthWords": 32,
+        "hasGenericIntro": 0,
+        "repeatedUserGoal": 0,
+        "guidance": [
+          "start with the first concrete action",
+          "if multiple actions are needed, order them logically",
+          "keep the first action immediately executable",
+          "explain only what is necessary",
+          "end after the plan unless clarification is essential",
+          "avoid long introductions",
+          "avoid generic motivation",
+          "avoid repeating the user's goal",
+          "avoid large option lists without recommendation"
+        ]
+      },
+      "winner": "Tie"
+    },
+    {
+      "id": "plan-05",
+      "prompt": "How should I study today?",
+      "experience": "planning",
+      "baseline": {
+        "text": "Organizza i tuoi argomenti e poi concentra il tempo su quelli più impegnativi. Inizia con una sessione di 45 minuti, seguita da una pausa breve. Una musica di sottofondo può anche aiutarti a mantenere alta la concentrazione.",
+        "practicality": 0.82,
+        "clarity": 0.77,
+        "firstActionLatency": 0.2162,
+        "firstActionWordIndex": 8,
+        "recommendationQuality": 0.7,
+        "lengthChars": 224,
+        "lengthWords": 37,
+        "hasGenericIntro": 0,
+        "repeatedUserGoal": 0,
+        "guidance": [
+          "chiarisci l'obiettivo",
+          "ordina i passi",
+          "segna una priorità",
+          "tieni il piano actionable"
+        ]
+      },
+      "principles": {
+        "text": "Concentriamoci su un argomento specifico. Scegli un'area da approfondire e dedica almeno un'ora a quel tema. Dopo, prendi qualche appunto per fissare le idee. La chiave è mantenere l'attenzione su un obiettivo chiaro.",
+        "practicality": 0.3,
+        "clarity": 0.62,
+        "firstActionLatency": 1,
+        "firstActionWordIndex": 33,
+        "recommendationQuality": 0.4,
+        "lengthChars": 217,
+        "lengthWords": 33,
+        "hasGenericIntro": 0,
+        "repeatedUserGoal": 0,
+        "guidance": [
+          "start with the first concrete action",
+          "if multiple actions are needed, order them logically",
+          "keep the first action immediately executable",
+          "explain only what is necessary",
+          "end after the plan unless clarification is essential",
+          "avoid long introductions",
+          "avoid generic motivation",
+          "avoid repeating the user's goal",
+          "avoid large option lists without recommendation"
+        ]
+      },
+      "winner": "ChatGPT"
+    },
+    {
+      "id": "plan-06",
+      "prompt": "Help me prioritize.",
+      "experience": "planning",
+      "baseline": {
+        "text": "Iniziamo dal bug bloccante: è fondamentale risolverlo per proseguire. Poi, possiamo concentrarci sul polish del tono.",
+        "practicality": 0.42,
+        "clarity": 0.62,
+        "firstActionLatency": 1,
+        "firstActionWordIndex": 16,
+        "recommendationQuality": 0.4,
+        "lengthChars": 117,
+        "lengthWords": 16,
+        "hasGenericIntro": 0,
+        "repeatedUserGoal": 0,
+        "guidance": [
+          "chiarisci l'obiettivo",
+          "ordina i passi",
+          "segna una priorità",
+          "tieni il piano actionable"
+        ]
+      },
+      "principles": {
+        "text": "Inizia con il bug bloccante e poi passa al polish del tono. In questo modo, resti concentrato.",
+        "practicality": 0.82,
+        "clarity": 0.77,
+        "firstActionLatency": 0,
+        "firstActionWordIndex": 0,
+        "recommendationQuality": 0.7,
+        "lengthChars": 94,
+        "lengthWords": 17,
+        "hasGenericIntro": 0,
+        "repeatedUserGoal": 0,
+        "guidance": [
+          "start with the first concrete action",
+          "if multiple actions are needed, order them logically",
+          "keep the first action immediately executable",
+          "explain only what is necessary",
+          "end after the plan unless clarification is essential",
+          "avoid long introductions",
+          "avoid generic motivation",
+          "avoid repeating the user's goal",
+          "avoid large option lists without recommendation"
+        ]
+      },
+      "winner": "LAIfe"
+    },
+    {
+      "id": "plan-07",
+      "prompt": "I have one hour — plan it.",
+      "experience": "planning",
+      "baseline": {
+        "text": "Let's concentrate on two main tasks: first, finalize the resume; then, measure the lab's performance. We'll spend about 30 minutes on each, allowing for steady progress without feeling rushed.",
+        "practicality": 0.7,
+        "clarity": 0.77,
+        "firstActionLatency": 0.0345,
+        "firstActionWordIndex": 1,
+        "recommendationQuality": 0.7,
+        "lengthChars": 192,
+        "lengthWords": 29,
+        "hasGenericIntro": 0,
+        "repeatedUserGoal": 0,
+        "guidance": [
+          "chiarisci l'obiettivo",
+          "ordina i passi",
+          "segna una priorità",
+          "tieni il piano actionable"
+        ]
+      },
+      "principles": {
+        "text": "In quest'ora, iniziamo dalla revisione del resume, che è fondamentale. Poi, ci dedicheremo all'ottimizzazione del lab, per avere una base solida per il lavoro successivo.",
+        "practicality": 0.3,
+        "clarity": 0.62,
+        "firstActionLatency": 1,
+        "firstActionWordIndex": 25,
+        "recommendationQuality": 0.4,
+        "lengthChars": 170,
+        "lengthWords": 25,
+        "hasGenericIntro": 0,
+        "repeatedUserGoal": 0,
+        "guidance": [
+          "start with the first concrete action",
+          "if multiple actions are needed, order them logically",
+          "keep the first action immediately executable",
+          "explain only what is necessary",
+          "end after the plan unless clarification is essential",
+          "avoid long introductions",
+          "avoid generic motivation",
+          "avoid repeating the user's goal",
+          "avoid large option lists without recommendation"
+        ]
+      },
+      "winner": "ChatGPT"
+    },
+    {
+      "id": "plan-08",
+      "prompt": "Create a plan to improve LAIfe.",
+      "experience": "planning",
+      "baseline": {
+        "text": "Lavoriamo su LAIfe in tre fasi. Prima, concentriamoci sulla continuità della conversazione. Secondo, rendiamo il tono più diretto e personale. Infine, raccogliamo feedback sull'esperienza utente per migliorare ulteriormente. Sarà interessante osservare l'impatto di queste modifiche.",
+        "practicality": 0.3,
+        "clarity": 0.62,
+        "firstActionLatency": 1,
+        "firstActionWordIndex": 35,
+        "recommendationQuality": 0.25,
+        "lengthChars": 283,
+        "lengthWords": 35,
+        "hasGenericIntro": 0,
+        "repeatedUserGoal": 0,
+        "guidance": [
+          "chiarisci l'obiettivo",
+          "ordina i passi",
+          "segna una priorità",
+          "tieni il piano actionable"
+        ]
+      },
+      "principles": {
+        "text": "Iniziamo a migliorare LAIfe concentrandoci su tre aspetti chiave: 1. **Continuity**: Garantiamo che il dialogo scorra in modo naturale, riprendendo il contesto senza ripetizioni. 2. **Tono**: Adottiamo un linguaggio diretto e amichevole, evitando formalità eccessive. 3. **Esempi pratici**: Integrare casi di studio reali per affinare il modo in cui LAIfe comunica. Queste azioni renderanno LAIfe più naturale e coinvolgente.",
+        "practicality": 0.42,
+        "clarity": 0.77,
+        "firstActionLatency": 0.1525,
+        "firstActionWordIndex": 9,
+        "recommendationQuality": 0.55,
+        "lengthChars": 425,
+        "lengthWords": 59,
+        "hasGenericIntro": 0,
+        "repeatedUserGoal": 0,
+        "guidance": [
+          "start with the first concrete action",
+          "if multiple actions are needed, order them logically",
+          "keep the first action immediately executable",
+          "explain only what is necessary",
+          "end after the plan unless clarification is essential",
+          "avoid long introductions",
+          "avoid generic motivation",
+          "avoid repeating the user's goal",
+          "avoid large option lists without recommendation"
+        ]
+      },
+      "winner": "LAIfe"
+    },
+    {
+      "id": "plan-09",
+      "prompt": "My next step?",
+      "experience": "planning",
+      "baseline": {
+        "text": "Concentriamoci sul miglioramento della V2. Prima dobbiamo identificare le aree chiave su cui lavorare. Poi possiamo organizzare il tempo per ciascun passo. La chiarezza ci porterà avanti.",
+        "practicality": 0.3,
+        "clarity": 0.62,
+        "firstActionLatency": 1,
+        "firstActionWordIndex": 27,
+        "recommendationQuality": 0.4,
+        "lengthChars": 187,
+        "lengthWords": 27,
+        "hasGenericIntro": 0,
+        "repeatedUserGoal": 0,
+        "guidance": [
+          "chiarisci l'obiettivo",
+          "ordina i passi",
+          "segna una priorità",
+          "tieni il piano actionable"
+        ]
+      },
+      "principles": {
+        "text": "Passiamo a migliorare la V2. Cominciamo rivedendo le ultime modifiche che hai apportato.",
+        "practicality": 0.42,
+        "clarity": 0.62,
+        "firstActionLatency": 1,
+        "firstActionWordIndex": 13,
+        "recommendationQuality": 0.25,
+        "lengthChars": 88,
+        "lengthWords": 13,
+        "hasGenericIntro": 0,
+        "repeatedUserGoal": 0,
+        "guidance": [
+          "start with the first concrete action",
+          "if multiple actions are needed, order them logically",
+          "keep the first action immediately executable",
+          "explain only what is necessary",
+          "end after the plan unless clarification is essential",
+          "avoid long introductions",
+          "avoid generic motivation",
+          "avoid repeating the user's goal",
+          "avoid large option lists without recommendation"
+        ]
+      },
+      "winner": "Tie"
+    },
+    {
+      "id": "plan-10",
+      "prompt": "Create a work plan.",
+      "experience": "planning",
+      "baseline": {
+        "text": "Iniziamo con un obiettivo chiaro: completare la V2 di LAIfe. Ecco i passi da seguire: 1. Revisionare le modifiche già effettuate. 2. Identificare i punti da ottimizzare nel testo. 3. Testare le nuove funzionalità implementate. 4. Raccogliere feedback e apportare aggiustamenti. Seguire questa sequenza ci permetterà di mantenere il focus e progredire in modo efficace, considerando anche l'impatto di queste modifiche sulla naturalezza del nostro assistente.",
+        "practicality": 0.42,
+        "clarity": 0.62,
+        "firstActionLatency": 0.2273,
+        "firstActionWordIndex": 15,
+        "recommendationQuality": 0.25,
+        "lengthChars": 458,
+        "lengthWords": 66,
+        "hasGenericIntro": 0,
+        "repeatedUserGoal": 0,
+        "guidance": [
+          "chiarisci l'obiettivo",
+          "ordina i passi",
+          "segna una priorità",
+          "tieni il piano actionable"
+        ]
+      },
+      "principles": {
+        "text": "Definiamo innanzitutto gli obiettivi. Poi, organizziamo i compiti prioritari. Infine, stabilisci le scadenze per ogni attività. Siamo pronti a partire!",
+        "practicality": 0.42,
+        "clarity": 0.62,
+        "firstActionLatency": 1,
+        "firstActionWordIndex": 20,
+        "recommendationQuality": 0.4,
+        "lengthChars": 151,
+        "lengthWords": 20,
+        "hasGenericIntro": 0,
+        "repeatedUserGoal": 0,
+        "guidance": [
+          "start with the first concrete action",
+          "if multiple actions are needed, order them logically",
+          "keep the first action immediately executable",
+          "explain only what is necessary",
+          "end after the plan unless clarification is essential",
+          "avoid long introductions",
+          "avoid generic motivation",
+          "avoid repeating the user's goal",
+          "avoid large option lists without recommendation"
+        ]
+      },
+      "winner": "ChatGPT"
+    },
+    {
+      "id": "plan-11",
+      "prompt": "Pianifichiamo la giornata.",
+      "experience": "planning",
+      "baseline": {
+        "text": "Cominciamo con due punti fondamentali: completare il resume e misurare il lab. Dopo, potremo osservare come si sviluppano le cose durante la giornata. È affascinante vedere l'evoluzione del lavoro.",
+        "practicality": 0.3,
+        "clarity": 0.62,
+        "firstActionLatency": 1,
+        "firstActionWordIndex": 29,
+        "recommendationQuality": 0.4,
+        "lengthChars": 197,
+        "lengthWords": 29,
+        "hasGenericIntro": 0,
+        "repeatedUserGoal": 0,
+        "guidance": [
+          "chiarisci l'obiettivo",
+          "ordina i passi",
+          "segna una priorità",
+          "tieni il piano actionable"
+        ]
+      },
+      "principles": {
+        "text": "Cominciamo con due focus: chiudere il resume e misurare il lab.",
+        "practicality": 0.42,
+        "clarity": 0.77,
+        "firstActionLatency": 1,
+        "firstActionWordIndex": 11,
+        "recommendationQuality": 0.25,
+        "lengthChars": 63,
+        "lengthWords": 11,
+        "hasGenericIntro": 0,
+        "repeatedUserGoal": 0,
+        "guidance": [
+          "start with the first concrete action",
+          "if multiple actions are needed, order them logically",
+          "keep the first action immediately executable",
+          "explain only what is necessary",
+          "end after the plan unless clarification is essential",
+          "avoid long introductions",
+          "avoid generic motivation",
+          "avoid repeating the user's goal",
+          "avoid large option lists without recommendation"
+        ]
+      },
+      "winner": "LAIfe"
+    },
+    {
+      "id": "plan-12",
+      "prompt": "Cosa facciamo oggi?",
+      "experience": "planning",
+      "baseline": {
+        "text": "Oggi ci focalizziamo su due cose: chiudere il resume e rivedere i dati del lab.",
+        "practicality": 0.42,
+        "clarity": 0.62,
+        "firstActionLatency": 1,
+        "firstActionWordIndex": 15,
+        "recommendationQuality": 0.25,
+        "lengthChars": 79,
+        "lengthWords": 15,
+        "hasGenericIntro": 0,
+        "repeatedUserGoal": 0,
+        "guidance": [
+          "chiarisci l'obiettivo",
+          "ordina i passi",
+          "segna una priorità",
+          "tieni il piano actionable"
+        ]
+      },
+      "principles": {
+        "text": "Oggi possiamo focalizzarci su due obiettivi: completare il resume e misurare il lab. Partiamo dal resume.",
+        "practicality": 0.42,
+        "clarity": 0.62,
+        "firstActionLatency": 1,
+        "firstActionWordIndex": 16,
+        "recommendationQuality": 0.25,
+        "lengthChars": 105,
+        "lengthWords": 16,
+        "hasGenericIntro": 0,
+        "repeatedUserGoal": 0,
+        "guidance": [
+          "start with the first concrete action",
+          "if multiple actions are needed, order them logically",
+          "keep the first action immediately executable",
+          "explain only what is necessary",
+          "end after the plan unless clarification is essential",
+          "avoid long introductions",
+          "avoid generic motivation",
+          "avoid repeating the user's goal",
+          "avoid large option lists without recommendation"
+        ]
+      },
+      "winner": "Tie"
+    },
+    {
+      "id": "plan-13",
+      "prompt": "Aiutami a prioritizzare.",
+      "experience": "planning",
+      "baseline": {
+        "text": "Iniziamo con il bug bloccante, poi ci dedichiamo al polish del tono. Assicuriamoci prima che tutto funzioni correttamente.",
+        "practicality": 0.42,
+        "clarity": 0.62,
+        "firstActionLatency": 1,
+        "firstActionWordIndex": 18,
+        "recommendationQuality": 0.4,
+        "lengthChars": 122,
+        "lengthWords": 18,
+        "hasGenericIntro": 0,
+        "repeatedUserGoal": 0,
+        "guidance": [
+          "chiarisci l'obiettivo",
+          "ordina i passi",
+          "segna una priorità",
+          "tieni il piano actionable"
+        ]
+      },
+      "principles": {
+        "text": "Iniziamo col bug bloccante e poi passiamo al polish del tono. Così abbiamo un piano definito.",
+        "practicality": 0.42,
+        "clarity": 0.62,
+        "firstActionLatency": 1,
+        "firstActionWordIndex": 16,
+        "recommendationQuality": 0.4,
+        "lengthChars": 93,
+        "lengthWords": 16,
+        "hasGenericIntro": 0,
+        "repeatedUserGoal": 0,
+        "guidance": [
+          "start with the first concrete action",
+          "if multiple actions are needed, order them logically",
+          "keep the first action immediately executable",
+          "explain only what is necessary",
+          "end after the plan unless clarification is essential",
+          "avoid long introductions",
+          "avoid generic motivation",
+          "avoid repeating the user's goal",
+          "avoid large option lists without recommendation"
+        ]
+      },
+      "winner": "Tie"
+    },
+    {
+      "id": "plan-14",
+      "prompt": "Organiziamo il lavoro.",
+      "experience": "planning",
+      "baseline": {
+        "text": "Clarifichiamo l'obiettivo: prioritizzare le attività e ottimizzare il flusso di lavoro. Cominciamo con un elenco di passi e segniamo le priorità per mantenere tutto actionable. Pensiamo a come rendere il processo più fluido per tutti.",
+        "practicality": 0.3,
+        "clarity": 0.62,
+        "firstActionLatency": 1,
+        "firstActionWordIndex": 35,
+        "recommendationQuality": 0.25,
+        "lengthChars": 234,
+        "lengthWords": 35,
+        "hasGenericIntro": 0,
+        "repeatedUserGoal": 0,
+        "guidance": [
+          "chiarisci l'obiettivo",
+          "ordina i passi",
+          "segna una priorità",
+          "tieni il piano actionable"
+        ]
+      },
+      "principles": {
+        "text": "Cominciamo a stabilire i compiti, iniziando con priorità e scadenze.",
+        "practicality": 0.42,
+        "clarity": 0.77,
+        "firstActionLatency": 1,
+        "firstActionWordIndex": 10,
+        "recommendationQuality": 0.55,
+        "lengthChars": 68,
+        "lengthWords": 10,
+        "hasGenericIntro": 0,
+        "repeatedUserGoal": 0,
+        "guidance": [
+          "start with the first concrete action",
+          "if multiple actions are needed, order them logically",
+          "keep the first action immediately executable",
+          "explain only what is necessary",
+          "end after the plan unless clarification is essential",
+          "avoid long introductions",
+          "avoid generic motivation",
+          "avoid repeating the user's goal",
+          "avoid large option lists without recommendation"
+        ]
+      },
+      "winner": "LAIfe"
+    },
+    {
+      "id": "plan-15",
+      "prompt": "Dammi un piano.",
+      "experience": "planning",
+      "baseline": {
+        "text": "L'obiettivo è definito: finalizzare il progetto e aumentarne l'efficacia. Ecco i passi da seguire: 1) Rivedere il contenuto attuale. 2) Identificare le aree di miglioramento. 3) Pianificare le azioni necessarie. Concentrati su questi punti per dare forma al progetto.",
+        "practicality": 0.42,
+        "clarity": 0.62,
+        "firstActionLatency": 0.359,
+        "firstActionWordIndex": 14,
+        "recommendationQuality": 0.25,
+        "lengthChars": 267,
+        "lengthWords": 39,
+        "hasGenericIntro": 0,
+        "repeatedUserGoal": 0,
+        "guidance": [
+          "chiarisci l'obiettivo",
+          "ordina i passi",
+          "segna una priorità",
+          "tieni il piano actionable"
+        ]
+      },
+      "principles": {
+        "text": "Iniziamo con tre passi: 1) definire il tuo obiettivo, 2) stabilire una timeline, 3) identificare le risorse necessarie. Una volta fatto, possiamo approfondire i dettagli.",
+        "practicality": 0.55,
+        "clarity": 0.77,
+        "firstActionLatency": 0.16,
+        "firstActionWordIndex": 4,
+        "recommendationQuality": 0.55,
+        "lengthChars": 170,
+        "lengthWords": 25,
+        "hasGenericIntro": 0,
+        "repeatedUserGoal": 0,
+        "guidance": [
+          "start with the first concrete action",
+          "if multiple actions are needed, order them logically",
+          "keep the first action immediately executable",
+          "explain only what is necessary",
+          "end after the plan unless clarification is essential",
+          "avoid long introductions",
+          "avoid generic motivation",
+          "avoid repeating the user's goal",
+          "avoid large option lists without recommendation"
+        ]
+      },
+      "winner": "LAIfe"
+    },
+    {
+      "id": "plan-16",
+      "prompt": "Qual è il prossimo passo?",
+      "experience": "planning",
+      "baseline": {
+        "text": "Il passo successivo è focalizzarci sulla V2 di LAIfe. Possiamo rivedere insieme i miglioramenti che hai pensato. C'è davvero molto potenziale da esplorare.",
+        "practicality": 0.3,
+        "clarity": 0.62,
+        "firstActionLatency": 1,
+        "firstActionWordIndex": 23,
+        "recommendationQuality": 0.25,
+        "lengthChars": 155,
+        "lengthWords": 23,
+        "hasGenericIntro": 0,
+        "repeatedUserGoal": 0,
+        "guidance": [
+          "chiarisci l'obiettivo",
+          "ordina i passi",
+          "segna una priorità",
+          "tieni il piano actionable"
+        ]
+      },
+      "principles": {
+        "text": "Continuiamo con LAIfe, focalizzandoci sulla V2 per renderla ancora più naturale.",
+        "practicality": 0.42,
+        "clarity": 0.77,
+        "firstActionLatency": 1,
+        "firstActionWordIndex": 11,
+        "recommendationQuality": 0.25,
+        "lengthChars": 80,
+        "lengthWords": 11,
+        "hasGenericIntro": 0,
+        "repeatedUserGoal": 0,
+        "guidance": [
+          "start with the first concrete action",
+          "if multiple actions are needed, order them logically",
+          "keep the first action immediately executable",
+          "explain only what is necessary",
+          "end after the plan unless clarification is essential",
+          "avoid long introductions",
+          "avoid generic motivation",
+          "avoid repeating the user's goal",
+          "avoid large option lists without recommendation"
+        ]
+      },
+      "winner": "LAIfe"
+    },
+    {
+      "id": "plan-17",
+      "prompt": "Help me plan my week.",
+      "experience": "planning",
+      "baseline": {
+        "text": "Definiamo insieme il tuo obiettivo principale per la settimana. Successivamente, suddivideremo le attività in passaggi ordinati. Concentriamoci sulle scadenze che richiedono maggiore attenzione: inizia con le attività più urgenti e poi passa a quelle meno pressanti. Ricorda di fare delle pause per mantenere alta la produttività.",
+        "practicality": 0.69,
+        "clarity": 0.62,
+        "firstActionLatency": 0.3913,
+        "firstActionWordIndex": 18,
+        "recommendationQuality": 0.7,
+        "lengthChars": 330,
+        "lengthWords": 46,
+        "hasGenericIntro": 0,
+        "repeatedUserGoal": 0,
+        "guidance": [
+          "chiarisci l'obiettivo",
+          "ordina i passi",
+          "segna una priorità",
+          "tieni il piano actionable"
+        ]
+      },
+      "principles": {
+        "text": "Iniziamo a definire le priorità per la settimana. Propongo un piano in tre fasi: 1) identificare i compiti chiave, 2) assegnare scadenze e 3) considerare eventuali imprevisti. Partiamo dalla lista dei compiti.",
+        "practicality": 0.57,
+        "clarity": 0.62,
+        "firstActionLatency": 0.4375,
+        "firstActionWordIndex": 14,
+        "recommendationQuality": 0.25,
+        "lengthChars": 209,
+        "lengthWords": 32,
+        "hasGenericIntro": 0,
+        "repeatedUserGoal": 0,
+        "guidance": [
+          "start with the first concrete action",
+          "if multiple actions are needed, order them logically",
+          "keep the first action immediately executable",
+          "explain only what is necessary",
+          "end after the plan unless clarification is essential",
+          "avoid long introductions",
+          "avoid generic motivation",
+          "avoid repeating the user's goal",
+          "avoid large option lists without recommendation"
+        ]
+      },
+      "winner": "ChatGPT"
+    },
+    {
+      "id": "plan-18",
+      "prompt": "I need a roadmap.",
+      "experience": "planning",
+      "baseline": {
+        "text": "Iniziamo a delineare il percorso. Il primo passo è definire gli obiettivi principali. Poi, possiamo organizzare due o tre attività chiave per ogni obiettivo. Infine, stabiliremo delle scadenze per mantenere il piano in carreggiata. Così avremo tutto sotto controllo.",
+        "practicality": 0.3,
+        "clarity": 0.62,
+        "firstActionLatency": 1,
+        "firstActionWordIndex": 39,
+        "recommendationQuality": 0.4,
+        "lengthChars": 266,
+        "lengthWords": 39,
+        "hasGenericIntro": 0,
+        "repeatedUserGoal": 0,
+        "guidance": [
+          "chiarisci l'obiettivo",
+          "ordina i passi",
+          "segna una priorità",
+          "tieni il piano actionable"
+        ]
+      },
+      "principles": {
+        "text": "Definiamo gli obiettivi chiave. Iniziamo con le tappe principali e poi organizziamo i dettagli. Il primo passo è stilare una lista di priorità.",
+        "practicality": 0.57,
+        "clarity": 0.62,
+        "firstActionLatency": 0.6522,
+        "firstActionWordIndex": 15,
+        "recommendationQuality": 0.4,
+        "lengthChars": 143,
+        "lengthWords": 23,
+        "hasGenericIntro": 0,
+        "repeatedUserGoal": 0,
+        "guidance": [
+          "start with the first concrete action",
+          "if multiple actions are needed, order them logically",
+          "keep the first action immediately executable",
+          "explain only what is necessary",
+          "end after the plan unless clarification is essential",
+          "avoid long introductions",
+          "avoid generic motivation",
+          "avoid repeating the user's goal",
+          "avoid large option lists without recommendation"
+        ]
+      },
+      "winner": "LAIfe"
+    },
+    {
+      "id": "plan-19",
+      "prompt": "Plan my morning.",
+      "experience": "planning",
+      "baseline": {
+        "text": "Iniziamo a definire l'obiettivo per la tua mattina: vuoi concentrarti su compiti specifici o prepararti per la giornata. Un passo utile sarebbe fare una lista delle cose da fare, prioritizzando ciò che è più urgente. Poi, pianifica un tempo fisso per ciascuna attività. Semplici fasi sono fondamentali. Iniziamo con queste: 1) lista delle priorità, 2) tempi assegnati, 3) brevi pause per ricaricarti. Così, la tua mattina sarà più chiara e gestibile. Osserva come anche piccoli aggiustamenti possono fare una grande differenza!",
+        "practicality": 0.57,
+        "clarity": 0.62,
+        "firstActionLatency": 0.2346,
+        "firstActionWordIndex": 19,
+        "recommendationQuality": 0.4,
+        "lengthChars": 527,
+        "lengthWords": 81,
+        "hasGenericIntro": 0,
+        "repeatedUserGoal": 0,
+        "guidance": [
+          "chiarisci l'obiettivo",
+          "ordina i passi",
+          "segna una priorità",
+          "tieni il piano actionable"
+        ]
+      },
+      "principles": {
+        "text": "Iniziamo con una lista chiara: 1. Fai una colazione leggera e sana. 2. Prepara una rassegna delle attività della giornata. 3. Dedica 15 minuti a un'attività che ti ispira o ti motiva. Questi passaggi ti daranno una buona partenza per la giornata!",
+        "practicality": 0.7,
+        "clarity": 0.77,
+        "firstActionLatency": 0,
+        "firstActionWordIndex": 0,
+        "recommendationQuality": 0.55,
+        "lengthChars": 246,
+        "lengthWords": 42,
+        "hasGenericIntro": 0,
+        "repeatedUserGoal": 0,
+        "guidance": [
+          "start with the first concrete action",
+          "if multiple actions are needed, order them logically",
+          "keep the first action immediately executable",
+          "explain only what is necessary",
+          "end after the plan unless clarification is essential",
+          "avoid long introductions",
+          "avoid generic motivation",
+          "avoid repeating the user's goal",
+          "avoid large option lists without recommendation"
+        ]
+      },
+      "winner": "LAIfe"
+    },
+    {
+      "id": "plan-20",
+      "prompt": "Cosa faccio adesso?",
+      "experience": "planning",
+      "baseline": {
+        "text": "Possiamo focalizzarci su due obiettivi: risolvere il bug e portare avanti la V2. È un ottimo inizio.",
+        "practicality": 0.42,
+        "clarity": 0.62,
+        "firstActionLatency": 1,
+        "firstActionWordIndex": 17,
+        "recommendationQuality": 0.25,
+        "lengthChars": 100,
+        "lengthWords": 17,
+        "hasGenericIntro": 0,
+        "repeatedUserGoal": 0,
+        "guidance": [
+          "chiarisci l'obiettivo",
+          "ordina i passi",
+          "segna una priorità",
+          "tieni il piano actionable"
+        ]
+      },
+      "principles": {
+        "text": "Possiamo continuare con LAIfe, focalizzandoci sulla V2 e sui miglioramenti recenti.",
+        "practicality": 0.42,
+        "clarity": 0.77,
+        "firstActionLatency": 1,
+        "firstActionWordIndex": 11,
+        "recommendationQuality": 0.25,
+        "lengthChars": 83,
+        "lengthWords": 11,
+        "hasGenericIntro": 0,
+        "repeatedUserGoal": 0,
+        "guidance": [
+          "start with the first concrete action",
+          "if multiple actions are needed, order them logically",
+          "keep the first action immediately executable",
+          "explain only what is necessary",
+          "end after the plan unless clarification is essential",
+          "avoid long introductions",
+          "avoid generic motivation",
+          "avoid repeating the user's goal",
+          "avoid large option lists without recommendation"
+        ]
+      },
+      "winner": "LAIfe"
+    },
+    {
+      "id": "plan-21",
+      "prompt": "Organize these tasks for today.",
+      "experience": "planning",
+      "baseline": {
+        "text": "Cominciamo con la risoluzione del bug più critico, poi procederemo al polish del tono. Infine, rivediamo la V2 per eventuali miglioramenti. In questo modo, i passi saranno chiari e facili da seguire.",
+        "practicality": 0.3,
+        "clarity": 0.62,
+        "firstActionLatency": 1,
+        "firstActionWordIndex": 32,
+        "recommendationQuality": 0.4,
+        "lengthChars": 199,
+        "lengthWords": 32,
+        "hasGenericIntro": 0,
+        "repeatedUserGoal": 0,
+        "guidance": [
+          "chiarisci l'obiettivo",
+          "ordina i passi",
+          "segna una priorità",
+          "tieni il piano actionable"
+        ]
+      },
+      "principles": {
+        "text": "Cominciamo chiudendo il resume, poi misuriamo il lab. Un piano semplice per oggi.",
+        "practicality": 0.42,
+        "clarity": 0.62,
+        "firstActionLatency": 1,
+        "firstActionWordIndex": 13,
+        "recommendationQuality": 0.4,
+        "lengthChars": 81,
+        "lengthWords": 13,
+        "hasGenericIntro": 0,
+        "repeatedUserGoal": 0,
+        "guidance": [
+          "start with the first concrete action",
+          "if multiple actions are needed, order them logically",
+          "keep the first action immediately executable",
+          "explain only what is necessary",
+          "end after the plan unless clarification is essential",
+          "avoid long introductions",
+          "avoid generic motivation",
+          "avoid repeating the user's goal",
+          "avoid large option lists without recommendation"
+        ]
+      },
+      "winner": "LAIfe"
+    },
+    {
+      "id": "plan-22",
+      "prompt": "Help me prioritize my todos.",
+      "experience": "planning",
+      "baseline": {
+        "text": "Concentriamoci prima su ciò che ha un impatto immediato. Affrontare i compiti più complessi all'inizio può rendere il resto più gestibile.",
+        "practicality": 0.3,
+        "clarity": 0.62,
+        "firstActionLatency": 1,
+        "firstActionWordIndex": 21,
+        "recommendationQuality": 0.25,
+        "lengthChars": 138,
+        "lengthWords": 21,
+        "hasGenericIntro": 0,
+        "repeatedUserGoal": 0,
+        "guidance": [
+          "chiarisci l'obiettivo",
+          "ordina i passi",
+          "segna una priorità",
+          "tieni il piano actionable"
+        ]
+      },
+      "principles": {
+        "text": "Iniziamo a mettere ordine: prima affrontiamo i compiti urgenti, poi quelli importanti, e infine possiamo considerare le attività di routine.",
+        "practicality": 0.42,
+        "clarity": 0.5,
+        "firstActionLatency": 1,
+        "firstActionWordIndex": 20,
+        "recommendationQuality": 0.4,
+        "lengthChars": 140,
+        "lengthWords": 20,
+        "hasGenericIntro": 0,
+        "repeatedUserGoal": 0,
+        "guidance": [
+          "start with the first concrete action",
+          "if multiple actions are needed, order them logically",
+          "keep the first action immediately executable",
+          "explain only what is necessary",
+          "end after the plan unless clarification is essential",
+          "avoid long introductions",
+          "avoid generic motivation",
+          "avoid repeating the user's goal",
+          "avoid large option lists without recommendation"
+        ]
+      },
+      "winner": "LAIfe"
+    },
+    {
+      "id": "plan-23",
+      "prompt": "Build a study plan.",
+      "experience": "planning",
+      "baseline": {
+        "text": "Iniziamo a costruire il tuo piano di studio. L'obiettivo è affrontare argomenti chiave in modo strutturato. 1. **Definisci gli argomenti**: Fai una lista di ciò che vuoi studiare. 2. **Stabilisci un calendario**: Assegna delle date specifiche a ciascun argomento. 3. **Dividi in sessioni**: Organizza ogni argomento in sessioni brevi e concentrate. 4. **Prevedi delle pause**: Assicurati di includere pause regolari per mantenere energia e concentrazione. Spesso, la cosa più utile è rivedere il materiale alla fine di ogni settimana.",
+        "practicality": 0.57,
+        "clarity": 0.62,
+        "firstActionLatency": 0.2025,
+        "firstActionWordIndex": 16,
+        "recommendationQuality": 0.25,
+        "lengthChars": 534,
+        "lengthWords": 79,
+        "hasGenericIntro": 0,
+        "repeatedUserGoal": 0,
+        "guidance": [
+          "chiarisci l'obiettivo",
+          "ordina i passi",
+          "segna una priorità",
+          "tieni il piano actionable"
+        ]
+      },
+      "principles": {
+        "text": "Creiamo un piano di studi. 1. **Definisci gli argomenti**: Elenca le materie da studiare. 2. **Stabilisci gli obiettivi**: Decidi cosa vuoi raggiungere in ognuna. 3. **Organizza il tempo**: Assegna blocchi di tempo specifici per ciascun argomento nella settimana. 4. **Pianifica le revisioni**: Prevedi momenti per ripassare ciò che hai studiato. Iniziare dal primo punto ti aiuterà a mantenere il focus.",
+        "practicality": 0.55,
+        "clarity": 0.77,
+        "firstActionLatency": 0.0833,
+        "firstActionWordIndex": 5,
+        "recommendationQuality": 0.55,
+        "lengthChars": 404,
+        "lengthWords": 60,
+        "hasGenericIntro": 0,
+        "repeatedUserGoal": 0,
+        "guidance": [
+          "start with the first concrete action",
+          "if multiple actions are needed, order them logically",
+          "keep the first action immediately executable",
+          "explain only what is necessary",
+          "end after the plan unless clarification is essential",
+          "avoid long introductions",
+          "avoid generic motivation",
+          "avoid repeating the user's goal",
+          "avoid large option lists without recommendation"
+        ]
+      },
+      "winner": "LAIfe"
+    },
+    {
+      "id": "plan-24",
+      "prompt": "Prioritize my bugs.",
+      "experience": "planning",
+      "baseline": {
+        "text": "Inizia dai bug bloccanti, segui con quelli che influenzano le funzionalità principali e termina con i dettagli minori. Questo approccio aiuta a mantenere il focus e assicura che tutto funzioni correttamente.",
+        "practicality": 0.7,
+        "clarity": 0.77,
+        "firstActionLatency": 0,
+        "firstActionWordIndex": 0,
+        "recommendationQuality": 0.55,
+        "lengthChars": 207,
+        "lengthWords": 31,
+        "hasGenericIntro": 0,
+        "repeatedUserGoal": 0,
+        "guidance": [
+          "chiarisci l'obiettivo",
+          "ordina i passi",
+          "segna una priorità",
+          "tieni il piano actionable"
+        ]
+      },
+      "principles": {
+        "text": "Inizia dal bug bloccante, poi passa a quelli minori. In questo modo, fai progressi senza perdere tempo.",
+        "practicality": 0.7,
+        "clarity": 0.77,
+        "firstActionLatency": 0,
+        "firstActionWordIndex": 0,
+        "recommendationQuality": 0.7,
+        "lengthChars": 103,
+        "lengthWords": 17,
+        "hasGenericIntro": 0,
+        "repeatedUserGoal": 0,
+        "guidance": [
+          "start with the first concrete action",
+          "if multiple actions are needed, order them logically",
+          "keep the first action immediately executable",
+          "explain only what is necessary",
+          "end after the plan unless clarification is essential",
+          "avoid long introductions",
+          "avoid generic motivation",
+          "avoid repeating the user's goal",
+          "avoid large option lists without recommendation"
+        ]
+      },
+      "winner": "LAIfe"
+    },
+    {
+      "id": "plan-25",
+      "prompt": "Make a plan for LAIfe.",
+      "experience": "planning",
+      "baseline": {
+        "text": "L'obiettivo è rendere LAIfe più naturale e fluido. 1. Rivedere il corpus per potenziare l'espressività. 2. Testare il lab A/B per analizzare le variazioni. 3. Monitorare il tasso di riscrittura per ottimizzare le risposte. Seguiamo questi passi e valutiamo i risultati. È un viaggio stimolante da intraprendere.",
+        "practicality": 0.55,
+        "clarity": 0.77,
+        "firstActionLatency": 0.1702,
+        "firstActionWordIndex": 8,
+        "recommendationQuality": 0.55,
+        "lengthChars": 311,
+        "lengthWords": 47,
+        "hasGenericIntro": 0,
+        "repeatedUserGoal": 0,
+        "guidance": [
+          "chiarisci l'obiettivo",
+          "ordina i passi",
+          "segna una priorità",
+          "tieni il piano actionable"
+        ]
+      },
+      "principles": {
+        "text": "Iniziamo con tre fasi chiave: 1) definire il corpus, 2) testare il lab A/B, 3) analizzare il tasso di rewrite. Questi passi ci aiuteranno a rendere LAIfe più naturale.",
+        "practicality": 0.55,
+        "clarity": 0.77,
+        "firstActionLatency": 0.1724,
+        "firstActionWordIndex": 5,
+        "recommendationQuality": 0.55,
+        "lengthChars": 167,
+        "lengthWords": 29,
+        "hasGenericIntro": 0,
+        "repeatedUserGoal": 0,
+        "guidance": [
+          "start with the first concrete action",
+          "if multiple actions are needed, order them logically",
+          "keep the first action immediately executable",
+          "explain only what is necessary",
+          "end after the plan unless clarification is essential",
+          "avoid long introductions",
+          "avoid generic motivation",
+          "avoid repeating the user's goal",
+          "avoid large option lists without recommendation"
+        ]
+      },
+      "winner": "Tie"
+    },
+    {
+      "id": "plan-26",
+      "prompt": "Prossimo passo sul progetto.",
+      "experience": "planning",
+      "baseline": {
+        "text": "Dobbiamo focalizzarci sulla chiusura della V2 e sulle misurazioni del lab. C'è ancora lavoro da fare per migliorarci.",
+        "practicality": 0.42,
+        "clarity": 0.62,
+        "firstActionLatency": 1,
+        "firstActionWordIndex": 18,
+        "recommendationQuality": 0.25,
+        "lengthChars": 117,
+        "lengthWords": 18,
+        "hasGenericIntro": 0,
+        "repeatedUserGoal": 0,
+        "guidance": [
+          "chiarisci l'obiettivo",
+          "ordina i passi",
+          "segna una priorità",
+          "tieni il piano actionable"
+        ]
+      },
+      "principles": {
+        "text": "Possiamo concentrarci sulla finalizzazione della V2. Siamo davvero vicini all'obiettivo.",
+        "practicality": 0.42,
+        "clarity": 0.77,
+        "firstActionLatency": 1,
+        "firstActionWordIndex": 10,
+        "recommendationQuality": 0.55,
+        "lengthChars": 88,
+        "lengthWords": 10,
+        "hasGenericIntro": 0,
+        "repeatedUserGoal": 0,
+        "guidance": [
+          "start with the first concrete action",
+          "if multiple actions are needed, order them logically",
+          "keep the first action immediately executable",
+          "explain only what is necessary",
+          "end after the plan unless clarification is essential",
+          "avoid long introductions",
+          "avoid generic motivation",
+          "avoid repeating the user's goal",
+          "avoid large option lists without recommendation"
+        ]
+      },
+      "winner": "LAIfe"
+    },
+    {
+      "id": "plan-27",
+      "prompt": "Help me sequence the work.",
+      "experience": "planning",
+      "baseline": {
+        "text": "Iniziamo chiarendo l'obiettivo: organizzare le attività del nostro progetto. Dobbiamo concentrarci sulle priorità, come completare il resume e poi affrontare eventuali bug. Partiamo dai passi più urgenti e proseguiamo da lì.",
+        "practicality": 0.3,
+        "clarity": 0.62,
+        "firstActionLatency": 1,
+        "firstActionWordIndex": 31,
+        "recommendationQuality": 0.4,
+        "lengthChars": 224,
+        "lengthWords": 31,
+        "hasGenericIntro": 0,
+        "repeatedUserGoal": 0,
+        "guidance": [
+          "chiarisci l'obiettivo",
+          "ordina i passi",
+          "segna una priorità",
+          "tieni il piano actionable"
+        ]
+      },
+      "principles": {
+        "text": "Iniziamo con la revisione del resume, poi ci dedichiamo al lab per impostare le misure. Avremo così una base solida su cui lavorare, procedendo passo dopo passo.",
+        "practicality": 0.3,
+        "clarity": 0.62,
+        "firstActionLatency": 1,
+        "firstActionWordIndex": 27,
+        "recommendationQuality": 0.4,
+        "lengthChars": 161,
+        "lengthWords": 27,
+        "hasGenericIntro": 0,
+        "repeatedUserGoal": 0,
+        "guidance": [
+          "start with the first concrete action",
+          "if multiple actions are needed, order them logically",
+          "keep the first action immediately executable",
+          "explain only what is necessary",
+          "end after the plan unless clarification is essential",
+          "avoid long introductions",
+          "avoid generic motivation",
+          "avoid repeating the user's goal",
+          "avoid large option lists without recommendation"
+        ]
+      },
+      "winner": "Tie"
+    }
+  ]
+}

@@ -1,0 +1,329 @@
+{
+  "version": "0.1.0-extract-principles",
+  "generatedFrom": "/workspace/research/conversation-intelligence",
+  "experienceCount": 8,
+  "experiences": [
+    {
+      "experience": "brainstorming",
+      "preferredOpening": "direct",
+      "preferredStrategy": "simplify",
+      "preferredMove": "practical_step",
+      "preferredInitiative": "high",
+      "preferredDepth": "short",
+      "preferredEnergy": "medium",
+      "questionRate": 0.0741,
+      "metrics": {
+        "curiosity": 0.6611,
+        "novelty": 0.6481,
+        "practicality": 0.8148
+      },
+      "dominance": {
+        "strategyShare": 0.2222,
+        "moveShare": 0.5185,
+        "initiativeShare": 0.6296,
+        "depthShare": 0.9259,
+        "energyShare": 0.5185
+      },
+      "examples": 27,
+      "confidence": 0.71,
+      "recommendations": [
+        "Delay questions until after delivering value.",
+        "Keep the first turn short and concrete.",
+        "End with one actionable next step.",
+        "Take initiative: propose a direction instead of a menu.",
+        "Prefer short depth over encyclopedic replies.",
+        "Bias toward practical, shippable next actions.",
+        "Generate variety first; explain later."
+      ],
+      "avoid": [
+        "opening with a question",
+        "long multi-point openers",
+        "generic list",
+        "deep dumps on first reply",
+        "abstract speculation",
+        "premature single-path lock-in"
+      ]
+    },
+    {
+      "experience": "conversation",
+      "preferredOpening": "direct",
+      "preferredStrategy": "simplify",
+      "preferredMove": "reflection",
+      "preferredInitiative": "medium",
+      "preferredDepth": "short",
+      "preferredEnergy": "medium",
+      "questionRate": 0.1111,
+      "metrics": {
+        "curiosity": 0.4704,
+        "novelty": 0.3537,
+        "practicality": 0.5333
+      },
+      "dominance": {
+        "strategyShare": 0.3333,
+        "moveShare": 0.2963,
+        "initiativeShare": 0.4815,
+        "depthShare": 0.5926,
+        "energyShare": 0.5926
+      },
+      "examples": 27,
+      "confidence": 0.71,
+      "recommendations": [
+        "Delay questions until after delivering value.",
+        "Keep the first turn short and concrete.",
+        "Validate the feeling or point before adding advice.",
+        "Prefer short depth over encyclopedic replies.",
+        "Match brevity; one warm beat is enough."
+      ],
+      "avoid": [
+        "opening with a question",
+        "long multi-point openers",
+        "deep dumps on first reply",
+        "helpdesk openings"
+      ]
+    },
+    {
+      "experience": "debugging",
+      "preferredOpening": "technical",
+      "preferredStrategy": "diagnose",
+      "preferredMove": "practical_step",
+      "preferredInitiative": "high",
+      "preferredDepth": "short",
+      "preferredEnergy": "medium",
+      "questionRate": 0.037,
+      "metrics": {
+        "curiosity": 0.4296,
+        "novelty": 0.3259,
+        "practicality": 0.9396
+      },
+      "dominance": {
+        "strategyShare": 0.3333,
+        "moveShare": 0.6296,
+        "initiativeShare": 0.5926,
+        "depthShare": 0.963,
+        "energyShare": 0.7407
+      },
+      "examples": 27,
+      "confidence": 0.75,
+      "recommendations": [
+        "Delay questions until after delivering value.",
+        "Identify the failure point before proposing fixes.",
+        "Prefer one falsifiable next test.",
+        "End with one actionable next step.",
+        "Take initiative: propose a direction instead of a menu.",
+        "Prefer short depth over encyclopedic replies.",
+        "Favor familiarity and presence over novelty.",
+        "Bias toward practical, shippable next actions."
+      ],
+      "avoid": [
+        "opening with a question",
+        "generic troubleshooting lists",
+        "generic list",
+        "deep dumps on first reply",
+        "clever twists that distract from presence",
+        "abstract speculation"
+      ]
+    },
+    {
+      "experience": "exploration",
+      "preferredOpening": "surprise",
+      "preferredStrategy": "surprise",
+      "preferredMove": "thought_experiment",
+      "preferredInitiative": "high",
+      "preferredDepth": "short",
+      "preferredEnergy": "high",
+      "questionRate": 0.3333,
+      "metrics": {
+        "curiosity": 0.8611,
+        "novelty": 0.7481,
+        "practicality": 0.4593
+      },
+      "dominance": {
+        "strategyShare": 0.3333,
+        "moveShare": 0.3333,
+        "initiativeShare": 0.8148,
+        "depthShare": 0.7407,
+        "energyShare": 0.5185
+      },
+      "examples": 27,
+      "confidence": 0.74,
+      "recommendations": [
+        "Prefer opening with one surprising fact, question, or unexpected observation.",
+        "Open with an unexpected fact.",
+        "Prefer one surprising idea over multiple generic ideas.",
+        "Offer one unexpected direction, not a catalog of topics.",
+        "Use one thought experiment to open new angles.",
+        "Take initiative: propose a direction instead of a menu.",
+        "Prefer short depth over encyclopedic replies.",
+        "Keep energy high: vivid, forward-moving turns."
+      ],
+      "avoid": [
+        "Possiamo parlare di...",
+        "generic topic lists",
+        "generic list",
+        "deep dumps on first reply",
+        "generic advice"
+      ]
+    },
+    {
+      "experience": "greetings",
+      "preferredOpening": "direct",
+      "preferredStrategy": "simplify",
+      "preferredMove": "question",
+      "preferredInitiative": "low",
+      "preferredDepth": "minimal",
+      "preferredEnergy": "low",
+      "questionRate": 0.4444,
+      "metrics": {
+        "curiosity": 0.4148,
+        "novelty": 0.2556,
+        "practicality": 0.2778
+      },
+      "dominance": {
+        "strategyShare": 0.3704,
+        "moveShare": 0.4444,
+        "initiativeShare": 0.4074,
+        "depthShare": 0.5185,
+        "energyShare": 0.6667
+      },
+      "examples": 27,
+      "confidence": 0.74,
+      "recommendations": [
+        "Questions are welcome early when they open the field.",
+        "Keep the first turn short and concrete.",
+        "Stay present; do not force agenda.",
+        "Prefer minimal depth over encyclopedic replies.",
+        "Keep energy low and steady; avoid hype.",
+        "Favor familiarity and presence over novelty.",
+        "Practicality is secondary; prioritize experience quality.",
+        "Match brevity; one warm beat is enough."
+      ],
+      "avoid": [
+        "long multi-point openers",
+        "high-pressure calls to action",
+        "deep dumps on first reply",
+        "forced enthusiasm",
+        "clever twists that distract from presence",
+        "helpdesk openings"
+      ]
+    },
+    {
+      "experience": "learning",
+      "preferredOpening": "direct",
+      "preferredStrategy": "simplify",
+      "preferredMove": "definition",
+      "preferredInitiative": "medium",
+      "preferredDepth": "short",
+      "preferredEnergy": "medium",
+      "questionRate": 0.0741,
+      "metrics": {
+        "curiosity": 0.5778,
+        "novelty": 0.4537,
+        "practicality": 0.7315
+      },
+      "dominance": {
+        "strategyShare": 0.2963,
+        "moveShare": 0.2593,
+        "initiativeShare": 0.7037,
+        "depthShare": 0.7778,
+        "energyShare": 0.7037
+      },
+      "examples": 27,
+      "confidence": 0.72,
+      "recommendations": [
+        "Delay questions until after delivering value.",
+        "Keep the first turn short and concrete.",
+        "State a crisp definition before elaborating.",
+        "Prefer short depth over encyclopedic replies.",
+        "Concept → why → example → application."
+      ],
+      "avoid": [
+        "opening with a question",
+        "long multi-point openers",
+        "deep dumps on first reply"
+      ]
+    },
+    {
+      "experience": "planning",
+      "preferredOpening": "direct",
+      "preferredStrategy": "simplify",
+      "preferredMove": "practical_step",
+      "preferredInitiative": "high",
+      "preferredDepth": "short",
+      "preferredEnergy": "medium",
+      "questionRate": 0.037,
+      "metrics": {
+        "curiosity": 0.3815,
+        "novelty": 0.3852,
+        "practicality": 0.9419
+      },
+      "dominance": {
+        "strategyShare": 0.3704,
+        "moveShare": 0.5556,
+        "initiativeShare": 0.6296,
+        "depthShare": 0.9259,
+        "energyShare": 0.8519
+      },
+      "examples": 27,
+      "confidence": 0.76,
+      "recommendations": [
+        "Delay questions until after delivering value.",
+        "Keep the first turn short and concrete.",
+        "End with one actionable next step.",
+        "Take initiative: propose a direction instead of a menu.",
+        "Prefer short depth over encyclopedic replies.",
+        "Bias toward practical, shippable next actions.",
+        "Make priorities explicit and cut non-goals."
+      ],
+      "avoid": [
+        "opening with a question",
+        "long multi-point openers",
+        "generic list",
+        "deep dumps on first reply",
+        "abstract speculation",
+        "open-ended brainstorming without a deadline"
+      ]
+    },
+    {
+      "experience": "support",
+      "preferredOpening": "direct",
+      "preferredStrategy": "simplify",
+      "preferredMove": "reflection",
+      "preferredInitiative": "low",
+      "preferredDepth": "short",
+      "preferredEnergy": "low",
+      "questionRate": 0.037,
+      "metrics": {
+        "curiosity": 0.3741,
+        "novelty": 0.3185,
+        "practicality": 0.4741
+      },
+      "dominance": {
+        "strategyShare": 0.4444,
+        "moveShare": 0.6667,
+        "initiativeShare": 0.4074,
+        "depthShare": 0.7037,
+        "energyShare": 0.9259
+      },
+      "examples": 27,
+      "confidence": 0.76,
+      "recommendations": [
+        "Delay questions until after delivering value.",
+        "Keep the first turn short and concrete.",
+        "Validate the feeling or point before adding advice.",
+        "Stay present; do not force agenda.",
+        "Prefer short depth over encyclopedic replies.",
+        "Keep energy low and steady; avoid hype.",
+        "Favor familiarity and presence over novelty.",
+        "Presence first; advice only if invited."
+      ],
+      "avoid": [
+        "opening with a question",
+        "long multi-point openers",
+        "high-pressure calls to action",
+        "deep dumps on first reply",
+        "forced enthusiasm",
+        "clever twists that distract from presence"
+      ]
+    }
+  ]
+}

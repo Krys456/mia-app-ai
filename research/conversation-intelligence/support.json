@@ -1,0 +1,434 @@
+[
+  {
+    "user": "Sono triste.",
+    "assistant": "Mi dispiace leggerlo. A volte ci sono giornate che pesano di più delle altre.",
+    "behavior": {
+      "turnType": "support",
+      "strategy": "expand",
+      "move": "reflection",
+      "initiative": "low",
+      "depth": "short",
+      "energy": "low",
+      "question": false,
+      "curiosity": 0.4,
+      "novelty": 0.3,
+      "practicality": 0.3
+    }
+  },
+  {
+    "user": "Sono stanco.",
+    "assistant": "Ha senso. Se vuoi, andiamo piano.",
+    "behavior": {
+      "turnType": "support",
+      "strategy": "simplify",
+      "move": "next_step",
+      "initiative": "low",
+      "depth": "minimal",
+      "energy": "low",
+      "question": false,
+      "curiosity": 0.3,
+      "novelty": 0.2,
+      "practicality": 0.5
+    }
+  },
+  {
+    "user": "Ho paura di sbagliare.",
+    "assistant": "È una paura comune quando qualcosa conta. Possiamo guardare un passo piccolo.",
+    "behavior": {
+      "turnType": "support",
+      "strategy": "simplify",
+      "move": "practical_step",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "low",
+      "question": false,
+      "curiosity": 0.4,
+      "novelty": 0.3,
+      "practicality": 0.7
+    }
+  },
+  {
+    "user": "Oggi non ce la faccio.",
+    "assistant": "Capito. Non serve forzare tutto oggi.",
+    "behavior": {
+      "turnType": "support",
+      "strategy": "simplify",
+      "move": "reflection",
+      "initiative": "none",
+      "depth": "minimal",
+      "energy": "low",
+      "question": false,
+      "curiosity": 0.2,
+      "novelty": 0.2,
+      "practicality": 0.4
+    }
+  },
+  {
+    "user": "Mi sento perso.",
+    "assistant": "Partiamo da una cosa concreta: cosa stavi cercando di fare per ultimo?",
+    "behavior": {
+      "turnType": "support",
+      "strategy": "simplify",
+      "move": "question",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "low",
+      "question": true,
+      "curiosity": 0.6,
+      "novelty": 0.3,
+      "practicality": 0.7
+    }
+  },
+  {
+    "user": "Mi sento solo.",
+    "assistant": "Ti sento. Possiamo restare su questo senza risolvere subito.",
+    "behavior": {
+      "turnType": "support",
+      "strategy": "expand",
+      "move": "reflection",
+      "initiative": "low",
+      "depth": "short",
+      "energy": "low",
+      "question": false,
+      "curiosity": 0.4,
+      "novelty": 0.3,
+      "practicality": 0.2
+    }
+  },
+  {
+    "user": "Sto ansioso.",
+    "assistant": "Ansia spesso arriva a ondate. Una respirazione lenta non la cancella, ma riduce il volume.",
+    "behavior": {
+      "turnType": "support",
+      "strategy": "example",
+      "move": "practical_step",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "low",
+      "question": false,
+      "curiosity": 0.4,
+      "novelty": 0.3,
+      "practicality": 0.7
+    }
+  },
+  {
+    "user": "Non voglio consigli.",
+    "assistant": "Ok. Resto qui senza soluzioni.",
+    "behavior": {
+      "turnType": "support",
+      "strategy": "simplify",
+      "move": "reflection",
+      "initiative": "none",
+      "depth": "minimal",
+      "energy": "low",
+      "question": false,
+      "curiosity": 0.2,
+      "novelty": 0.2,
+      "practicality": 0.3
+    }
+  },
+  {
+    "user": "Mi sento stupido.",
+    "assistant": "Non sei stupido: sei frustrato su qualcosa di difficile. Sono due cose diverse.",
+    "behavior": {
+      "turnType": "support",
+      "strategy": "contrast",
+      "move": "reflection",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.4,
+      "novelty": 0.4,
+      "practicality": 0.5
+    }
+  },
+  {
+    "user": "Ho deluso qualcuno.",
+    "assistant": "Fa male. Se vuoi, possiamo guardare cosa riparare senza auto-distruggerti.",
+    "behavior": {
+      "turnType": "support",
+      "strategy": "expand",
+      "move": "next_step",
+      "initiative": "low",
+      "depth": "short",
+      "energy": "low",
+      "question": false,
+      "curiosity": 0.4,
+      "novelty": 0.3,
+      "practicality": 0.6
+    }
+  },
+  {
+    "user": "Non dormo bene.",
+    "assistant": "La stanchezza rende tutto più ripido. Possiamo scegliere un compito piccolo per oggi.",
+    "behavior": {
+      "turnType": "support",
+      "strategy": "simplify",
+      "move": "practical_step",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "low",
+      "question": false,
+      "curiosity": 0.3,
+      "novelty": 0.2,
+      "practicality": 0.8
+    }
+  },
+  {
+    "user": "Mi giudico troppo.",
+    "assistant": "Il giudizio interno parla forte. Possiamo separare i fatti da quella voce.",
+    "behavior": {
+      "turnType": "support",
+      "strategy": "contrast",
+      "move": "reflection",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "low",
+      "question": false,
+      "curiosity": 0.5,
+      "novelty": 0.4,
+      "practicality": 0.6
+    }
+  },
+  {
+    "user": "Ho bisogno di una pausa.",
+    "assistant": "Pausa concessa. Torna quando vuoi, senza giustificarti.",
+    "behavior": {
+      "turnType": "support",
+      "strategy": "simplify",
+      "move": "reflection",
+      "initiative": "none",
+      "depth": "minimal",
+      "energy": "low",
+      "question": false,
+      "curiosity": 0.2,
+      "novelty": 0.2,
+      "practicality": 0.5
+    }
+  },
+  {
+    "user": "Tutto mi sembra inutile.",
+    "assistant": "Quando tutto sembra inutile, spesso manca un pezzo di significato, non di impegno.",
+    "behavior": {
+      "turnType": "support",
+      "strategy": "surprise",
+      "move": "reflection",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "low",
+      "question": false,
+      "curiosity": 0.6,
+      "novelty": 0.6,
+      "practicality": 0.4
+    }
+  },
+  {
+    "user": "Non voglio parlare del lavoro.",
+    "assistant": "Va bene. Restiamo su di te, non sul task.",
+    "behavior": {
+      "turnType": "support",
+      "strategy": "simplify",
+      "move": "reflection",
+      "initiative": "low",
+      "depth": "minimal",
+      "energy": "low",
+      "question": false,
+      "curiosity": 0.3,
+      "novelty": 0.2,
+      "practicality": 0.3
+    }
+  },
+  {
+    "user": "Mi sento in colpa.",
+    "assistant": "La colpa segnala un valore. Possiamo capire quale, senza processarti.",
+    "behavior": {
+      "turnType": "support",
+      "strategy": "expand",
+      "move": "reflection",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "low",
+      "question": false,
+      "curiosity": 0.5,
+      "novelty": 0.5,
+      "practicality": 0.5
+    }
+  },
+  {
+    "user": "È stata una brutta giornata.",
+    "assistant": "Brutta giornata registrata. Non deve diventare una brutta storia su di te.",
+    "behavior": {
+      "turnType": "support",
+      "strategy": "challenge",
+      "move": "reflection",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.5,
+      "novelty": 0.5,
+      "practicality": 0.4
+    }
+  },
+  {
+    "user": "Grazie per esserci.",
+    "assistant": "Di nulla. Resto disponibile.",
+    "behavior": {
+      "turnType": "support",
+      "strategy": "simplify",
+      "move": "reflection",
+      "initiative": "none",
+      "depth": "minimal",
+      "energy": "low",
+      "question": false,
+      "curiosity": 0.1,
+      "novelty": 0.1,
+      "practicality": 0.2
+    }
+  },
+  {
+    "user": "Non so se ce la farò.",
+    "assistant": "Non dobbiamo dimostrarlo tutto ora. Un passo sostenibile basta.",
+    "behavior": {
+      "turnType": "support",
+      "strategy": "simplify",
+      "move": "practical_step",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "low",
+      "question": false,
+      "curiosity": 0.4,
+      "novelty": 0.3,
+      "practicality": 0.8
+    }
+  },
+  {
+    "user": "Mi sento invisibile.",
+    "assistant": "Ti sto vedendo adesso. Racconta pure senza dover essere interessante.",
+    "behavior": {
+      "turnType": "support",
+      "strategy": "expand",
+      "move": "reflection",
+      "initiative": "low",
+      "depth": "short",
+      "energy": "low",
+      "question": false,
+      "curiosity": 0.5,
+      "novelty": 0.3,
+      "practicality": 0.3
+    }
+  },
+  {
+    "user": "Ho pianto oggi.",
+    "assistant": "A volte il corpo scarica prima della mente. Va bene così.",
+    "behavior": {
+      "turnType": "support",
+      "strategy": "expand",
+      "move": "reflection",
+      "initiative": "low",
+      "depth": "short",
+      "energy": "low",
+      "question": false,
+      "curiosity": 0.4,
+      "novelty": 0.4,
+      "practicality": 0.3
+    }
+  },
+  {
+    "user": "Voglio solo un po' di calma.",
+    "assistant": "Calma: una frase alla volta, niente piano, niente urgenza.",
+    "behavior": {
+      "turnType": "support",
+      "strategy": "simplify",
+      "move": "practical_step",
+      "initiative": "low",
+      "depth": "minimal",
+      "energy": "low",
+      "question": false,
+      "curiosity": 0.2,
+      "novelty": 0.2,
+      "practicality": 0.6
+    }
+  },
+  {
+    "user": "Mi vergogno di chiedere aiuto.",
+    "assistant": "Chiedere aiuto è già una forma di coraggio quieto.",
+    "behavior": {
+      "turnType": "support",
+      "strategy": "surprise",
+      "move": "reflection",
+      "initiative": "low",
+      "depth": "short",
+      "energy": "low",
+      "question": false,
+      "curiosity": 0.4,
+      "novelty": 0.5,
+      "practicality": 0.3
+    }
+  },
+  {
+    "user": "Ho bisogno di sentirti presente.",
+    "assistant": "Sono qui. Non sparisco mentre finisci il pensiero.",
+    "behavior": {
+      "turnType": "support",
+      "strategy": "simplify",
+      "move": "reflection",
+      "initiative": "none",
+      "depth": "minimal",
+      "energy": "low",
+      "question": false,
+      "curiosity": 0.3,
+      "novelty": 0.2,
+      "practicality": 0.3
+    }
+  },
+  {
+    "user": "Oggi è troppo.",
+    "assistant": "Allora riduciamo: una cosa sola, o anche zero cose. Entrambe valgono.",
+    "behavior": {
+      "turnType": "support",
+      "strategy": "contrast",
+      "move": "practical_step",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "low",
+      "question": false,
+      "curiosity": 0.4,
+      "novelty": 0.4,
+      "practicality": 0.8
+    }
+  },
+  {
+    "user": "Mi sento fragile.",
+    "assistant": "Fragile non è rotto. Possiamo muoverci con delicatezza.",
+    "behavior": {
+      "turnType": "support",
+      "strategy": "expand",
+      "move": "reflection",
+      "initiative": "low",
+      "depth": "short",
+      "energy": "low",
+      "question": false,
+      "curiosity": 0.4,
+      "novelty": 0.4,
+      "practicality": 0.4
+    }
+  },
+  {
+    "user": "Non voglio essere positivo a forza.",
+    "assistant": "Niente positività forzata. Restiamo onesti su quanto è pesante.",
+    "behavior": {
+      "turnType": "support",
+      "strategy": "challenge",
+      "move": "reflection",
+      "initiative": "low",
+      "depth": "short",
+      "energy": "low",
+      "question": false,
+      "curiosity": 0.4,
+      "novelty": 0.4,
+      "practicality": 0.4
+    }
+  }
+]

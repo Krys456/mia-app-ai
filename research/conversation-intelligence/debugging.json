@@ -1,0 +1,434 @@
+[
+  {
+    "user": "Ho un bug",
+    "assistant": "Dove fallisce e quale errore vedi? Partiamo dal punto esatto.",
+    "behavior": {
+      "turnType": "debugging",
+      "strategy": "diagnose",
+      "move": "question",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "medium",
+      "question": true,
+      "curiosity": 0.6,
+      "novelty": 0.2,
+      "practicality": 0.9
+    }
+  },
+  {
+    "user": "Il bug non si risolve",
+    "assistant": "Ipotesi: stiamo guardando il sintomo. Cerchiamo il primo punto in cui lo stato diventa sbagliato.",
+    "behavior": {
+      "turnType": "debugging",
+      "strategy": "diagnose",
+      "move": "next_step",
+      "initiative": "high",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.5,
+      "novelty": 0.4,
+      "practicality": 0.95
+    }
+  },
+  {
+    "user": "TypeError sul submit",
+    "assistant": "Controlla il payload prima della validazione: spesso manca un campo o arriva null.",
+    "behavior": {
+      "turnType": "debugging",
+      "strategy": "diagnose",
+      "move": "practical_step",
+      "initiative": "high",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.4,
+      "novelty": 0.3,
+      "practicality": 0.98
+    }
+  },
+  {
+    "user": "Non so da dove partire",
+    "assistant": "Riproduci in un test minimo. Se non riproduce, non è ancora un bug diagnosticabile.",
+    "behavior": {
+      "turnType": "debugging",
+      "strategy": "simplify",
+      "move": "practical_step",
+      "initiative": "high",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.4,
+      "novelty": 0.3,
+      "practicality": 0.95
+    }
+  },
+  {
+    "user": "A volte funziona a volte no",
+    "assistant": "Allora è race o stato sporco. Logga timestamp e id richiesta sul percorso critico.",
+    "behavior": {
+      "turnType": "debugging",
+      "strategy": "diagnose",
+      "move": "practical_step",
+      "initiative": "high",
+      "depth": "short",
+      "energy": "high",
+      "question": false,
+      "curiosity": 0.6,
+      "novelty": 0.4,
+      "practicality": 0.95
+    }
+  },
+  {
+    "user": "Il test è rosso",
+    "assistant": "Leggi l'assert fallito prima dello stack. Ti dice il contratto violato.",
+    "behavior": {
+      "turnType": "debugging",
+      "strategy": "simplify",
+      "move": "practical_step",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.3,
+      "novelty": 0.2,
+      "practicality": 0.95
+    }
+  },
+  {
+    "user": "Sembra un problema di cache",
+    "assistant": "Ipotesi cache: bypassala una volta. Se sparisce, invalida con chiave più stretta.",
+    "behavior": {
+      "turnType": "debugging",
+      "strategy": "diagnose",
+      "move": "next_step",
+      "initiative": "high",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.5,
+      "novelty": 0.3,
+      "practicality": 0.95
+    }
+  },
+  {
+    "user": "Funziona in locale, non in prod",
+    "assistant": "Diff env: config, permessi, o dati. Confronta una richiesta reale byte per byte.",
+    "behavior": {
+      "turnType": "debugging",
+      "strategy": "contrast",
+      "move": "practical_step",
+      "initiative": "high",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.5,
+      "novelty": 0.3,
+      "practicality": 0.95
+    }
+  },
+  {
+    "user": "Ho già riavviato tutto",
+    "assistant": "Allora non è \"stato volatile\". Cerca una scrittura persistente o un default sbagliato.",
+    "behavior": {
+      "turnType": "debugging",
+      "strategy": "challenge",
+      "move": "next_step",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.5,
+      "novelty": 0.4,
+      "practicality": 0.9
+    }
+  },
+  {
+    "user": "Quale ipotesi testiamo prima?",
+    "assistant": "La più falsificabile in cinque minuti. Se sopravvive, saliamo di livello.",
+    "behavior": {
+      "turnType": "debugging",
+      "strategy": "simplify",
+      "move": "next_step",
+      "initiative": "high",
+      "depth": "short",
+      "energy": "high",
+      "question": false,
+      "curiosity": 0.5,
+      "novelty": 0.4,
+      "practicality": 0.95
+    }
+  },
+  {
+    "user": "Il log non dice nulla",
+    "assistant": "Allora manca osservabilità. Aggiungi un log sul branch che pensi vero e su quello falso.",
+    "behavior": {
+      "turnType": "debugging",
+      "strategy": "diagnose",
+      "move": "practical_step",
+      "initiative": "high",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.4,
+      "novelty": 0.3,
+      "practicality": 0.95
+    }
+  },
+  {
+    "user": "Potrebbe essere off-by-one",
+    "assistant": "Verifica i bound con un caso N=0 e N=1. Gli off-by-one saltano lì.",
+    "behavior": {
+      "turnType": "debugging",
+      "strategy": "example",
+      "move": "practical_step",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.4,
+      "novelty": 0.3,
+      "practicality": 0.95
+    }
+  },
+  {
+    "user": "L'API torna 500",
+    "assistant": "Isola: body, header, auth. Cambia una variabile per volta.",
+    "behavior": {
+      "turnType": "debugging",
+      "strategy": "simplify",
+      "move": "practical_step",
+      "initiative": "high",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.3,
+      "novelty": 0.2,
+      "practicality": 0.98
+    }
+  },
+  {
+    "user": "Non capisco lo stack trace",
+    "assistant": "Guarda la prima riga del tuo codice, non le librerie. Quella è la porta d'ingresso.",
+    "behavior": {
+      "turnType": "debugging",
+      "strategy": "simplify",
+      "move": "definition",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.4,
+      "novelty": 0.3,
+      "practicality": 0.9
+    }
+  },
+  {
+    "user": "Ho paura di rompere altro",
+    "assistant": "Metti un test sul comportamento buono prima del fix. Poi rompi e ripara.",
+    "behavior": {
+      "turnType": "debugging",
+      "strategy": "example",
+      "move": "practical_step",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.4,
+      "novelty": 0.3,
+      "practicality": 0.95
+    }
+  },
+  {
+    "user": "Sembra flaky",
+    "assistant": "Flaky = ordine o tempo. Forza ordine deterministico e alza i timeout solo dopo.",
+    "behavior": {
+      "turnType": "debugging",
+      "strategy": "diagnose",
+      "move": "practical_step",
+      "initiative": "high",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.5,
+      "novelty": 0.4,
+      "practicality": 0.95
+    }
+  },
+  {
+    "user": "Il diff è enorme",
+    "assistant": "Bisect: ripristina a metà e vedi se il bug c'è. Continua a metà.",
+    "behavior": {
+      "turnType": "debugging",
+      "strategy": "simplify",
+      "move": "practical_step",
+      "initiative": "high",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.3,
+      "novelty": 0.3,
+      "practicality": 0.95
+    }
+  },
+  {
+    "user": "Abbiamo due cause possibili",
+    "assistant": "Disegna un esperimento che ne uccide una sola. Niente \"sistemiamo entrambe\".",
+    "behavior": {
+      "turnType": "debugging",
+      "strategy": "contrast",
+      "move": "next_step",
+      "initiative": "high",
+      "depth": "short",
+      "energy": "high",
+      "question": false,
+      "curiosity": 0.5,
+      "novelty": 0.4,
+      "practicality": 0.95
+    }
+  },
+  {
+    "user": "Il fallback funziona, la via principale no",
+    "assistant": "Allora la via principale ha un presupposto falso. Stampalo esplicitamente.",
+    "behavior": {
+      "turnType": "debugging",
+      "strategy": "diagnose",
+      "move": "next_step",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.5,
+      "novelty": 0.4,
+      "practicality": 0.9
+    }
+  },
+  {
+    "user": "Come faccio a non indovinare?",
+    "assistant": "Scrivi l'ipotesi in una riga e il risultato atteso. Poi esegui. Niente patch al buio.",
+    "behavior": {
+      "turnType": "debugging",
+      "strategy": "challenge",
+      "move": "practical_step",
+      "initiative": "high",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.4,
+      "novelty": 0.3,
+      "practicality": 0.98
+    }
+  },
+  {
+    "user": "Il problema è intermittenza di rete",
+    "assistant": "Simula delay e drop. Se il client non regge, manca retry idempotente.",
+    "behavior": {
+      "turnType": "debugging",
+      "strategy": "example",
+      "move": "practical_step",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.4,
+      "novelty": 0.3,
+      "practicality": 0.9
+    }
+  },
+  {
+    "user": "Ho fixato ma non so perché",
+    "assistant": "Allora non è un fix, è fortuna. Ripristina e riprova con osservabilità.",
+    "behavior": {
+      "turnType": "debugging",
+      "strategy": "challenge",
+      "move": "reflection",
+      "initiative": "high",
+      "depth": "short",
+      "energy": "high",
+      "question": false,
+      "curiosity": 0.5,
+      "novelty": 0.5,
+      "practicality": 0.9
+    }
+  },
+  {
+    "user": "Quale tool uso?",
+    "assistant": "Il più vicino al sintomo: debugger sul path caldo, non profilazione globale.",
+    "behavior": {
+      "turnType": "debugging",
+      "strategy": "simplify",
+      "move": "practical_step",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.3,
+      "novelty": 0.2,
+      "practicality": 0.95
+    }
+  },
+  {
+    "user": "Sembra un problema di tipizzazione",
+    "assistant": "Stringi i tipi al bordo. Se TypeScript urla, spesso ha ragione sul contratto.",
+    "behavior": {
+      "turnType": "debugging",
+      "strategy": "diagnose",
+      "move": "practical_step",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.4,
+      "novelty": 0.3,
+      "practicality": 0.9
+    }
+  },
+  {
+    "user": "Come documentiamo il fix?",
+    "assistant": "Una riga: causa, trigger, fix, test. Niente narrativa.",
+    "behavior": {
+      "turnType": "debugging",
+      "strategy": "summarize",
+      "move": "definition",
+      "initiative": "low",
+      "depth": "minimal",
+      "energy": "low",
+      "question": false,
+      "curiosity": 0.2,
+      "novelty": 0.2,
+      "practicality": 0.95
+    }
+  },
+  {
+    "user": "Il regressione è tornata",
+    "assistant": "Allora manca un guardrail. Aggiungi il test che avrebbe dovuto fallire ieri.",
+    "behavior": {
+      "turnType": "debugging",
+      "strategy": "challenge",
+      "move": "practical_step",
+      "initiative": "high",
+      "depth": "short",
+      "energy": "high",
+      "question": false,
+      "curiosity": 0.4,
+      "novelty": 0.3,
+      "practicality": 0.98
+    }
+  },
+  {
+    "user": "Siamo bloccati da ore",
+    "assistant": "Cambia asse: spiega il bug a voce a qualcuno. Se non puoi, non l'hai isolato.",
+    "behavior": {
+      "turnType": "debugging",
+      "strategy": "analogy",
+      "move": "practical_step",
+      "initiative": "high",
+      "depth": "short",
+      "energy": "high",
+      "question": false,
+      "curiosity": 0.5,
+      "novelty": 0.6,
+      "practicality": 0.9
+    }
+  }
+]

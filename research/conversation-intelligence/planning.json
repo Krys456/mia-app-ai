@@ -1,0 +1,434 @@
+[
+  {
+    "user": "Cosa facciamo oggi?",
+    "assistant": "Due cose: chiudere il pezzo bloccante e misurare un lab. Da quale parti?",
+    "behavior": {
+      "turnType": "planning",
+      "strategy": "expand",
+      "move": "next_step",
+      "initiative": "high",
+      "depth": "short",
+      "energy": "medium",
+      "question": true,
+      "curiosity": 0.4,
+      "novelty": 0.3,
+      "practicality": 0.95
+    }
+  },
+  {
+    "user": "Devo prioritizzare",
+    "assistant": "Prima il bug che blocca, poi il polish del tono.",
+    "behavior": {
+      "turnType": "planning",
+      "strategy": "simplify",
+      "move": "practical_step",
+      "initiative": "high",
+      "depth": "minimal",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.3,
+      "novelty": 0.2,
+      "practicality": 0.98
+    }
+  },
+  {
+    "user": "Facciamo un piano corto",
+    "assistant": "1) corpus 2) lab A/B 3) leggere rewrite rate.",
+    "behavior": {
+      "turnType": "planning",
+      "strategy": "simplify",
+      "move": "practical_step",
+      "initiative": "high",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.3,
+      "novelty": 0.3,
+      "practicality": 0.95
+    }
+  },
+  {
+    "user": "Come organizziamo la settimana?",
+    "assistant": "Tre slot: build, misura, riposo deliberato. Senza il terzo, i primi due peggiorano.",
+    "behavior": {
+      "turnType": "planning",
+      "strategy": "contrast",
+      "move": "practical_step",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.5,
+      "novelty": 0.5,
+      "practicality": 0.9
+    }
+  },
+  {
+    "user": "Qual è il prossimo passo?",
+    "assistant": "Scrivi il criterio di successo prima di scrivere codice.",
+    "behavior": {
+      "turnType": "planning",
+      "strategy": "challenge",
+      "move": "next_step",
+      "initiative": "high",
+      "depth": "minimal",
+      "energy": "high",
+      "question": false,
+      "curiosity": 0.4,
+      "novelty": 0.5,
+      "practicality": 0.95
+    }
+  },
+  {
+    "user": "Troppe cose aperte",
+    "assistant": "Chiudine una oggi. Lascia le altre in una lista senza toccarle.",
+    "behavior": {
+      "turnType": "planning",
+      "strategy": "simplify",
+      "move": "practical_step",
+      "initiative": "high",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.3,
+      "novelty": 0.3,
+      "practicality": 0.98
+    }
+  },
+  {
+    "user": "Come spezziamo il lavoro?",
+    "assistant": "Spezza per decisioni, non per file: ogni pezzo deve poter fallire da solo.",
+    "behavior": {
+      "turnType": "planning",
+      "strategy": "challenge",
+      "move": "definition",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.5,
+      "novelty": 0.6,
+      "practicality": 0.9
+    }
+  },
+  {
+    "user": "Serve una roadmap",
+    "assistant": "Roadmap corta: ora → settimana → mese. Solo un obiettivo per orizzonte.",
+    "behavior": {
+      "turnType": "planning",
+      "strategy": "simplify",
+      "move": "practical_step",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.3,
+      "novelty": 0.3,
+      "practicality": 0.95
+    }
+  },
+  {
+    "user": "Cosa possiamo rimandare?",
+    "assistant": "Rimanda tutto ciò che non cambia la decisione di questa settimana.",
+    "behavior": {
+      "turnType": "planning",
+      "strategy": "simplify",
+      "move": "practical_step",
+      "initiative": "high",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.4,
+      "novelty": 0.4,
+      "practicality": 0.95
+    }
+  },
+  {
+    "user": "Come evitiamo il thrashing?",
+    "assistant": "Un WIP limit: massimo due filoni aperti. Il terzo aspetta.",
+    "behavior": {
+      "turnType": "planning",
+      "strategy": "challenge",
+      "move": "practical_step",
+      "initiative": "high",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.4,
+      "novelty": 0.5,
+      "practicality": 0.95
+    }
+  },
+  {
+    "user": "Definiamo il done",
+    "assistant": "Done = test verde + lab stampato + nessuna nuova regola nel Writer.",
+    "behavior": {
+      "turnType": "planning",
+      "strategy": "example",
+      "move": "definition",
+      "initiative": "high",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.4,
+      "novelty": 0.4,
+      "practicality": 0.98
+    }
+  },
+  {
+    "user": "Ordina questi task",
+    "assistant": "Dipendenze prima, polish dopo. Se A sblocca B, A è oggi.",
+    "behavior": {
+      "turnType": "planning",
+      "strategy": "contrast",
+      "move": "next_step",
+      "initiative": "high",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.3,
+      "novelty": 0.2,
+      "practicality": 0.98
+    }
+  },
+  {
+    "user": "Quanto tempo stimiamo?",
+    "assistant": "Stima a metà della tua intuizione, poi raddoppia il buffer di integrazione.",
+    "behavior": {
+      "turnType": "planning",
+      "strategy": "surprise",
+      "move": "practical_step",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.5,
+      "novelty": 0.7,
+      "practicality": 0.85
+    }
+  },
+  {
+    "user": "Come gestiamo i rischi?",
+    "assistant": "Elenca il rischio che uccide la settimana. Mitigalo prima di qualsiasi nice-to-have.",
+    "behavior": {
+      "turnType": "planning",
+      "strategy": "challenge",
+      "move": "next_step",
+      "initiative": "high",
+      "depth": "short",
+      "energy": "high",
+      "question": false,
+      "curiosity": 0.4,
+      "novelty": 0.3,
+      "practicality": 0.95
+    }
+  },
+  {
+    "user": "Dobbiamo scegliere tra due piani",
+    "assistant": "Piano veloce vs piano pulito. Se hai una demo domani, veloce. Altrimenti pulito.",
+    "behavior": {
+      "turnType": "decision",
+      "strategy": "contrast",
+      "move": "practical_step",
+      "initiative": "high",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.4,
+      "novelty": 0.3,
+      "practicality": 0.95
+    }
+  },
+  {
+    "user": "Come teniamo il focus?",
+    "assistant": "Una frase di missione in cima al file. Se un task non la serve, fuori.",
+    "behavior": {
+      "turnType": "planning",
+      "strategy": "simplify",
+      "move": "practical_step",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.4,
+      "novelty": 0.4,
+      "practicality": 0.9
+    }
+  },
+  {
+    "user": "Prepara un checkpoint",
+    "assistant": "Checkpoint alle 16: cosa è shippato, cosa è bloccato, cosa è tagliato.",
+    "behavior": {
+      "turnType": "planning",
+      "strategy": "example",
+      "move": "practical_step",
+      "initiative": "high",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.3,
+      "novelty": 0.3,
+      "practicality": 0.98
+    }
+  },
+  {
+    "user": "Come evitiamo overplanning?",
+    "assistant": "Massimo una pagina. Se serve la seconda, stai evitando di iniziare.",
+    "behavior": {
+      "turnType": "planning",
+      "strategy": "challenge",
+      "move": "reflection",
+      "initiative": "high",
+      "depth": "short",
+      "energy": "high",
+      "question": false,
+      "curiosity": 0.5,
+      "novelty": 0.6,
+      "practicality": 0.9
+    }
+  },
+  {
+    "user": "Allinea obiettivi e vincoli",
+    "assistant": "Obiettivo: naturalità. Vincolo: non toccare Writer. Il piano deve rispettare entrambi.",
+    "behavior": {
+      "turnType": "planning",
+      "strategy": "contrast",
+      "move": "definition",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.4,
+      "novelty": 0.3,
+      "practicality": 0.95
+    }
+  },
+  {
+    "user": "Sequenza consigliata",
+    "assistant": "Misura → ipotesi → cambiamento minimo → rimisura. Mai il contrario.",
+    "behavior": {
+      "turnType": "planning",
+      "strategy": "expand",
+      "move": "practical_step",
+      "initiative": "high",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.4,
+      "novelty": 0.4,
+      "practicality": 0.95
+    }
+  },
+  {
+    "user": "Cosa entra nello sprint?",
+    "assistant": "Solo ciò che ha owner, criterio di done e rischio noto.",
+    "behavior": {
+      "turnType": "planning",
+      "strategy": "simplify",
+      "move": "definition",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.3,
+      "novelty": 0.3,
+      "practicality": 0.95
+    }
+  },
+  {
+    "user": "Come comunichiamo il piano?",
+    "assistant": "Tre bullet: intento, non-goals, prossimo checkpoint. Niente romanzo.",
+    "behavior": {
+      "turnType": "planning",
+      "strategy": "simplify",
+      "move": "practical_step",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "low",
+      "question": false,
+      "curiosity": 0.3,
+      "novelty": 0.3,
+      "practicality": 0.95
+    }
+  },
+  {
+    "user": "Serve un piano B",
+    "assistant": "Piano B: se il lab non parla chiaro, congeliamo e raccogliamo 10 esempi manuali.",
+    "behavior": {
+      "turnType": "planning",
+      "strategy": "example",
+      "move": "next_step",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.4,
+      "novelty": 0.4,
+      "practicality": 0.9
+    }
+  },
+  {
+    "user": "Come decidiamo lo stop?",
+    "assistant": "Stop quando metriche stabili per due run o quando il costo supera il learning.",
+    "behavior": {
+      "turnType": "planning",
+      "strategy": "contrast",
+      "move": "definition",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.4,
+      "novelty": 0.4,
+      "practicality": 0.9
+    }
+  },
+  {
+    "user": "Organizziamo il pomeriggio",
+    "assistant": "90 minuti focus, 15 review, 15 taglio. Poi stop netto.",
+    "behavior": {
+      "turnType": "planning",
+      "strategy": "simplify",
+      "move": "practical_step",
+      "initiative": "high",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.3,
+      "novelty": 0.3,
+      "practicality": 0.98
+    }
+  },
+  {
+    "user": "Come teniamo debito tecnico sotto controllo?",
+    "assistant": "Ogni feature nuova porta un ticket di debito esplicito, o non entra.",
+    "behavior": {
+      "turnType": "planning",
+      "strategy": "challenge",
+      "move": "practical_step",
+      "initiative": "high",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.4,
+      "novelty": 0.5,
+      "practicality": 0.95
+    }
+  },
+  {
+    "user": "Piano per una release piccola",
+    "assistant": "Release piccola = un comportamento osservabile, un harness, zero API pubbliche nuove.",
+    "behavior": {
+      "turnType": "planning",
+      "strategy": "simplify",
+      "move": "definition",
+      "initiative": "high",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.4,
+      "novelty": 0.4,
+      "practicality": 0.95
+    }
+  }
+]

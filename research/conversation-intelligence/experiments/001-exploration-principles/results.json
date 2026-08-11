@@ -1,0 +1,1826 @@
+{
+  "experiment": "001-exploration-principles",
+  "plannerVersion": "2.4.1-planner",
+  "writerVersion": "3.2.0-writer",
+  "pipelineVersion": "2.1.0-pipeline",
+  "harnessVersion": "0.1.0-conversation-behavior-harness",
+  "model": "gpt-4o-mini",
+  "prompts": 24,
+  "metrics": {
+    "curiosity": {
+      "baseline": 0.3425,
+      "principles": 0.3829,
+      "difference": 0.0404
+    },
+    "novelty": {
+      "baseline": 0.4437,
+      "principles": 0.45,
+      "difference": 0.0063
+    },
+    "practicality": {
+      "baseline": 0.25,
+      "principles": 0.25,
+      "difference": 0
+    },
+    "averageResponseLengthWords": {
+      "baseline": 17.7083,
+      "principles": 12.2917,
+      "difference": -5.4166
+    },
+    "genericOpenings": {
+      "baseline": 0,
+      "principles": 0,
+      "difference": 0
+    },
+    "possiamoParlareDi": {
+      "baseline": 1,
+      "principles": 0,
+      "difference": -1
+    }
+  },
+  "harness": {
+    "version": "0.1.0-conversation-behavior-harness",
+    "cases": 24,
+    "rated": 24,
+    "paired": 24,
+    "averageScores": {
+      "strategyMatch": 0,
+      "initiativeMatch": 0,
+      "depthMatch": 1,
+      "openingMatch": 0,
+      "closingMatch": 0.9167,
+      "turnTypeMatch": 1,
+      "moveMatch": 0.0417,
+      "questionMatch": 0.9167,
+      "energyMatch": 0,
+      "overallSimilarity": 0.4305
+    },
+    "strategyMatch": 0,
+    "initiativeMatch": 0,
+    "depthMatch": 1,
+    "openingMatch": 0,
+    "closingMatch": 0.9167,
+    "overallSimilarity": 0.4305,
+    "wins": {
+      "LAIfe": 8,
+      "ChatGPT": 0,
+      "Tie": 16
+    },
+    "rows": [
+      {
+        "id": "exp-01",
+        "input": "Di cosa possiamo parlare?",
+        "winner": "Tie",
+        "strategyMatch": false,
+        "depthMatch": true,
+        "initiativeMatch": false,
+        "overall": 0.4444,
+        "laife": {
+          "turnType": "exploration",
+          "strategy": "surprise",
+          "move": "unexpected_fact",
+          "initiative": "high",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "high",
+          "question": false
+        },
+        "chatgpt": {
+          "turnType": "exploration",
+          "strategy": "expand",
+          "move": "thought_experiment",
+          "initiative": "medium",
+          "opening": "friendly",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        }
+      },
+      {
+        "id": "exp-02",
+        "input": "Parliamo",
+        "winner": "Tie",
+        "strategyMatch": false,
+        "depthMatch": true,
+        "initiativeMatch": false,
+        "overall": 0.4444,
+        "laife": {
+          "turnType": "exploration",
+          "strategy": "surprise",
+          "move": "unexpected_fact",
+          "initiative": "high",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "high",
+          "question": false
+        },
+        "chatgpt": {
+          "turnType": "exploration",
+          "strategy": "expand",
+          "move": "thought_experiment",
+          "initiative": "medium",
+          "opening": "friendly",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        }
+      },
+      {
+        "id": "exp-03",
+        "input": "Esploriamo",
+        "winner": "Tie",
+        "strategyMatch": false,
+        "depthMatch": true,
+        "initiativeMatch": false,
+        "overall": 0.4444,
+        "laife": {
+          "turnType": "exploration",
+          "strategy": "surprise",
+          "move": "unexpected_fact",
+          "initiative": "high",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "high",
+          "question": false
+        },
+        "chatgpt": {
+          "turnType": "exploration",
+          "strategy": "expand",
+          "move": "thought_experiment",
+          "initiative": "medium",
+          "opening": "friendly",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        }
+      },
+      {
+        "id": "exp-04",
+        "input": "Esplora con me",
+        "winner": "LAIfe",
+        "strategyMatch": false,
+        "depthMatch": true,
+        "initiativeMatch": false,
+        "overall": 0.5556,
+        "laife": {
+          "turnType": "exploration",
+          "strategy": "surprise",
+          "move": "thought_experiment",
+          "initiative": "high",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "high",
+          "question": false
+        },
+        "chatgpt": {
+          "turnType": "exploration",
+          "strategy": "expand",
+          "move": "thought_experiment",
+          "initiative": "medium",
+          "opening": "friendly",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        }
+      },
+      {
+        "id": "exp-05",
+        "input": "Di che possiamo parlare?",
+        "winner": "Tie",
+        "strategyMatch": false,
+        "depthMatch": true,
+        "initiativeMatch": false,
+        "overall": 0.4444,
+        "laife": {
+          "turnType": "exploration",
+          "strategy": "surprise",
+          "move": "unexpected_fact",
+          "initiative": "high",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "high",
+          "question": false
+        },
+        "chatgpt": {
+          "turnType": "exploration",
+          "strategy": "expand",
+          "move": "thought_experiment",
+          "initiative": "medium",
+          "opening": "friendly",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        }
+      },
+      {
+        "id": "exp-06",
+        "input": "Di cosa si può parlare?",
+        "winner": "LAIfe",
+        "strategyMatch": false,
+        "depthMatch": true,
+        "initiativeMatch": false,
+        "overall": 0.4444,
+        "laife": {
+          "turnType": "exploration",
+          "strategy": "surprise",
+          "move": "unexpected_fact",
+          "initiative": "high",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "high",
+          "question": false
+        },
+        "chatgpt": {
+          "turnType": "exploration",
+          "strategy": "expand",
+          "move": "thought_experiment",
+          "initiative": "medium",
+          "opening": "friendly",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        }
+      },
+      {
+        "id": "exp-07",
+        "input": "Cosa possiamo fare?",
+        "winner": "Tie",
+        "strategyMatch": false,
+        "depthMatch": true,
+        "initiativeMatch": false,
+        "overall": 0.4444,
+        "laife": {
+          "turnType": "exploration",
+          "strategy": "surprise",
+          "move": "unexpected_fact",
+          "initiative": "high",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "high",
+          "question": false
+        },
+        "chatgpt": {
+          "turnType": "exploration",
+          "strategy": "expand",
+          "move": "thought_experiment",
+          "initiative": "medium",
+          "opening": "friendly",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        }
+      },
+      {
+        "id": "exp-08",
+        "input": "Cosa potremmo dire?",
+        "winner": "LAIfe",
+        "strategyMatch": false,
+        "depthMatch": true,
+        "initiativeMatch": false,
+        "overall": 0.4444,
+        "laife": {
+          "turnType": "exploration",
+          "strategy": "surprise",
+          "move": "unexpected_fact",
+          "initiative": "high",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "high",
+          "question": false
+        },
+        "chatgpt": {
+          "turnType": "exploration",
+          "strategy": "expand",
+          "move": "thought_experiment",
+          "initiative": "medium",
+          "opening": "friendly",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        }
+      },
+      {
+        "id": "exp-09",
+        "input": "Cosa possiamo toccare?",
+        "winner": "Tie",
+        "strategyMatch": false,
+        "depthMatch": true,
+        "initiativeMatch": false,
+        "overall": 0.4444,
+        "laife": {
+          "turnType": "exploration",
+          "strategy": "surprise",
+          "move": "unexpected_fact",
+          "initiative": "high",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "high",
+          "question": false
+        },
+        "chatgpt": {
+          "turnType": "exploration",
+          "strategy": "expand",
+          "move": "thought_experiment",
+          "initiative": "medium",
+          "opening": "friendly",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        }
+      },
+      {
+        "id": "exp-10",
+        "input": "Let's talk",
+        "winner": "Tie",
+        "strategyMatch": false,
+        "depthMatch": true,
+        "initiativeMatch": false,
+        "overall": 0.4444,
+        "laife": {
+          "turnType": "exploration",
+          "strategy": "surprise",
+          "move": "unexpected_fact",
+          "initiative": "high",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "high",
+          "question": false
+        },
+        "chatgpt": {
+          "turnType": "exploration",
+          "strategy": "expand",
+          "move": "thought_experiment",
+          "initiative": "medium",
+          "opening": "friendly",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        }
+      },
+      {
+        "id": "exp-11",
+        "input": "What can we talk about?",
+        "winner": "LAIfe",
+        "strategyMatch": false,
+        "depthMatch": true,
+        "initiativeMatch": false,
+        "overall": 0.2222,
+        "laife": {
+          "turnType": "exploration",
+          "strategy": "surprise",
+          "move": "question",
+          "initiative": "high",
+          "opening": "direct",
+          "closing": "question",
+          "depth": "short",
+          "energy": "high",
+          "question": true
+        },
+        "chatgpt": {
+          "turnType": "exploration",
+          "strategy": "expand",
+          "move": "thought_experiment",
+          "initiative": "medium",
+          "opening": "friendly",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        }
+      },
+      {
+        "id": "exp-12",
+        "input": "What should we chat about?",
+        "winner": "LAIfe",
+        "strategyMatch": false,
+        "depthMatch": true,
+        "initiativeMatch": false,
+        "overall": 0.4444,
+        "laife": {
+          "turnType": "exploration",
+          "strategy": "surprise",
+          "move": "unexpected_fact",
+          "initiative": "high",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "high",
+          "question": false
+        },
+        "chatgpt": {
+          "turnType": "exploration",
+          "strategy": "expand",
+          "move": "thought_experiment",
+          "initiative": "medium",
+          "opening": "friendly",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        }
+      },
+      {
+        "id": "exp-13",
+        "input": "Open the floor",
+        "winner": "LAIfe",
+        "strategyMatch": false,
+        "depthMatch": true,
+        "initiativeMatch": false,
+        "overall": 0.2222,
+        "laife": {
+          "turnType": "exploration",
+          "strategy": "surprise",
+          "move": "question",
+          "initiative": "high",
+          "opening": "direct",
+          "closing": "question",
+          "depth": "short",
+          "energy": "high",
+          "question": true
+        },
+        "chatgpt": {
+          "turnType": "exploration",
+          "strategy": "expand",
+          "move": "thought_experiment",
+          "initiative": "medium",
+          "opening": "friendly",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        }
+      },
+      {
+        "id": "exp-14",
+        "input": "Parliamo di qualcosa",
+        "winner": "Tie",
+        "strategyMatch": false,
+        "depthMatch": true,
+        "initiativeMatch": false,
+        "overall": 0.4444,
+        "laife": {
+          "turnType": "exploration",
+          "strategy": "surprise",
+          "move": "unexpected_fact",
+          "initiative": "high",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "high",
+          "question": false
+        },
+        "chatgpt": {
+          "turnType": "exploration",
+          "strategy": "expand",
+          "move": "thought_experiment",
+          "initiative": "medium",
+          "opening": "friendly",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        }
+      },
+      {
+        "id": "exp-15",
+        "input": "Esploriamo un tema",
+        "winner": "Tie",
+        "strategyMatch": false,
+        "depthMatch": true,
+        "initiativeMatch": false,
+        "overall": 0.4444,
+        "laife": {
+          "turnType": "exploration",
+          "strategy": "surprise",
+          "move": "unexpected_fact",
+          "initiative": "high",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "high",
+          "question": false
+        },
+        "chatgpt": {
+          "turnType": "exploration",
+          "strategy": "expand",
+          "move": "thought_experiment",
+          "initiative": "medium",
+          "opening": "friendly",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        }
+      },
+      {
+        "id": "exp-16",
+        "input": "Di cosa possiamo parlare adesso?",
+        "winner": "Tie",
+        "strategyMatch": false,
+        "depthMatch": true,
+        "initiativeMatch": false,
+        "overall": 0.4444,
+        "laife": {
+          "turnType": "exploration",
+          "strategy": "surprise",
+          "move": "unexpected_fact",
+          "initiative": "high",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "high",
+          "question": false
+        },
+        "chatgpt": {
+          "turnType": "exploration",
+          "strategy": "expand",
+          "move": "thought_experiment",
+          "initiative": "medium",
+          "opening": "friendly",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        }
+      },
+      {
+        "id": "exp-17",
+        "input": "Parliamo pure",
+        "winner": "Tie",
+        "strategyMatch": false,
+        "depthMatch": true,
+        "initiativeMatch": false,
+        "overall": 0.4444,
+        "laife": {
+          "turnType": "exploration",
+          "strategy": "surprise",
+          "move": "unexpected_fact",
+          "initiative": "high",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "high",
+          "question": false
+        },
+        "chatgpt": {
+          "turnType": "exploration",
+          "strategy": "expand",
+          "move": "thought_experiment",
+          "initiative": "medium",
+          "opening": "friendly",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        }
+      },
+      {
+        "id": "exp-18",
+        "input": "Esplora",
+        "winner": "LAIfe",
+        "strategyMatch": false,
+        "depthMatch": true,
+        "initiativeMatch": false,
+        "overall": 0.4444,
+        "laife": {
+          "turnType": "exploration",
+          "strategy": "surprise",
+          "move": "unexpected_fact",
+          "initiative": "high",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "high",
+          "question": false
+        },
+        "chatgpt": {
+          "turnType": "exploration",
+          "strategy": "expand",
+          "move": "next_step",
+          "initiative": "medium",
+          "opening": "friendly",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        }
+      },
+      {
+        "id": "exp-19",
+        "input": "Cosa potremmo fare insieme?",
+        "winner": "Tie",
+        "strategyMatch": false,
+        "depthMatch": true,
+        "initiativeMatch": false,
+        "overall": 0.4444,
+        "laife": {
+          "turnType": "exploration",
+          "strategy": "surprise",
+          "move": "unexpected_fact",
+          "initiative": "high",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "high",
+          "question": false
+        },
+        "chatgpt": {
+          "turnType": "exploration",
+          "strategy": "expand",
+          "move": "thought_experiment",
+          "initiative": "medium",
+          "opening": "friendly",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        }
+      },
+      {
+        "id": "exp-20",
+        "input": "Di che parlare?",
+        "winner": "Tie",
+        "strategyMatch": false,
+        "depthMatch": true,
+        "initiativeMatch": false,
+        "overall": 0.4444,
+        "laife": {
+          "turnType": "exploration",
+          "strategy": "surprise",
+          "move": "unexpected_fact",
+          "initiative": "high",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "high",
+          "question": false
+        },
+        "chatgpt": {
+          "turnType": "exploration",
+          "strategy": "expand",
+          "move": "thought_experiment",
+          "initiative": "medium",
+          "opening": "friendly",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        }
+      },
+      {
+        "id": "exp-21",
+        "input": "Let's talk about something",
+        "winner": "Tie",
+        "strategyMatch": false,
+        "depthMatch": true,
+        "initiativeMatch": false,
+        "overall": 0.4444,
+        "laife": {
+          "turnType": "exploration",
+          "strategy": "surprise",
+          "move": "unexpected_fact",
+          "initiative": "high",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "high",
+          "question": false
+        },
+        "chatgpt": {
+          "turnType": "exploration",
+          "strategy": "expand",
+          "move": "thought_experiment",
+          "initiative": "medium",
+          "opening": "friendly",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        }
+      },
+      {
+        "id": "exp-22",
+        "input": "Open the floor please",
+        "winner": "Tie",
+        "strategyMatch": false,
+        "depthMatch": true,
+        "initiativeMatch": false,
+        "overall": 0.4444,
+        "laife": {
+          "turnType": "exploration",
+          "strategy": "surprise",
+          "move": "unexpected_fact",
+          "initiative": "high",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "high",
+          "question": false
+        },
+        "chatgpt": {
+          "turnType": "exploration",
+          "strategy": "expand",
+          "move": "thought_experiment",
+          "initiative": "medium",
+          "opening": "friendly",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        }
+      },
+      {
+        "id": "exp-23",
+        "input": "Parliamo un po'",
+        "winner": "Tie",
+        "strategyMatch": false,
+        "depthMatch": true,
+        "initiativeMatch": false,
+        "overall": 0.4444,
+        "laife": {
+          "turnType": "exploration",
+          "strategy": "surprise",
+          "move": "unexpected_fact",
+          "initiative": "high",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "high",
+          "question": false
+        },
+        "chatgpt": {
+          "turnType": "exploration",
+          "strategy": "expand",
+          "move": "thought_experiment",
+          "initiative": "medium",
+          "opening": "friendly",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        }
+      },
+      {
+        "id": "exp-24",
+        "input": "Esploriamo insieme",
+        "winner": "LAIfe",
+        "strategyMatch": false,
+        "depthMatch": true,
+        "initiativeMatch": false,
+        "overall": 0.4444,
+        "laife": {
+          "turnType": "exploration",
+          "strategy": "surprise",
+          "move": "unexpected_fact",
+          "initiative": "high",
+          "opening": "direct",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "high",
+          "question": false
+        },
+        "chatgpt": {
+          "turnType": "exploration",
+          "strategy": "expand",
+          "move": "thought_experiment",
+          "initiative": "medium",
+          "opening": "friendly",
+          "closing": "proposal",
+          "depth": "short",
+          "energy": "medium",
+          "question": false
+        }
+      }
+    ]
+  },
+  "rows": [
+    {
+      "id": "exp-01",
+      "prompt": "Di cosa possiamo parlare?",
+      "experience": "exploration",
+      "baseline": {
+        "text": "Possiamo esplorare qualche idea su come migliorare la V2 di LAIfe o magari affrontare quel bug persistente.",
+        "curiosity": 0.35,
+        "novelty": 0.45,
+        "practicality": 0.25,
+        "lengthChars": 107,
+        "lengthWords": 17,
+        "hasPossiamoParlareDi": 0,
+        "hasGenericOpening": 0,
+        "guidance": [
+          "proponi varie direzioni",
+          "includi una proposta inattesa",
+          "evita elenco generico",
+          "crea curiosità"
+        ]
+      },
+      "principles": {
+        "text": "Possiamo approfondire insieme questa idea.",
+        "curiosity": 0.35,
+        "novelty": 0.45,
+        "practicality": 0.25,
+        "lengthChars": 42,
+        "lengthWords": 5,
+        "hasPossiamoParlareDi": 0,
+        "hasGenericOpening": 0,
+        "guidance": [
+          "apri con un fatto sorprendente, una domanda, o un'osservazione inattesa",
+          "preferisci una sola idea sorprendente a molte idee generiche",
+          "offri una direzione inattesa, non un catalogo di argomenti",
+          "evita di aprire con \"Possiamo parlare di...\"",
+          "evita elenchi generici di temi",
+          "usa un thought experiment o un fatto inatteso per aprire angoli nuovi",
+          "prendi iniziativa alta: proponi una direzione invece di un menu",
+          "tieni profondità corta ed energia alta; massimizza curiosità e novità"
+        ]
+      },
+      "winner": "Tie"
+    },
+    {
+      "id": "exp-02",
+      "prompt": "Parliamo",
+      "experience": "exploration",
+      "baseline": {
+        "text": "Assolutamente! Possiamo esplorare diverse direzioni.",
+        "curiosity": 0.35,
+        "novelty": 0.45,
+        "practicality": 0.25,
+        "lengthChars": 52,
+        "lengthWords": 5,
+        "hasPossiamoParlareDi": 0,
+        "hasGenericOpening": 0,
+        "guidance": [
+          "proponi varie direzioni",
+          "includi una proposta inattesa",
+          "evita elenco generico",
+          "crea curiosità"
+        ]
+      },
+      "principles": {
+        "text": "Assolutamente!",
+        "curiosity": 0.35,
+        "novelty": 0.45,
+        "practicality": 0.25,
+        "lengthChars": 14,
+        "lengthWords": 1,
+        "hasPossiamoParlareDi": 0,
+        "hasGenericOpening": 0,
+        "guidance": [
+          "apri con un fatto sorprendente, una domanda, o un'osservazione inattesa",
+          "preferisci una sola idea sorprendente a molte idee generiche",
+          "offri una direzione inattesa, non un catalogo di argomenti",
+          "evita di aprire con \"Possiamo parlare di...\"",
+          "evita elenchi generici di temi",
+          "usa un thought experiment o un fatto inatteso per aprire angoli nuovi",
+          "prendi iniziativa alta: proponi una direzione invece di un menu",
+          "tieni profondità corta ed energia alta; massimizza curiosità e novità"
+        ]
+      },
+      "winner": "Tie"
+    },
+    {
+      "id": "exp-03",
+      "prompt": "Esploriamo",
+      "experience": "exploration",
+      "baseline": {
+        "text": "Certo! Possiamo esplorare le ultime novità su cui stai lavorando o qualche idea interessante che hai in mente. È un momento ideale per scoprire nuove opportunità.",
+        "curiosity": 0.35,
+        "novelty": 0.45,
+        "practicality": 0.25,
+        "lengthChars": 162,
+        "lengthWords": 26,
+        "hasPossiamoParlareDi": 0,
+        "hasGenericOpening": 0,
+        "guidance": [
+          "proponi varie direzioni",
+          "includi una proposta inattesa",
+          "evita elenco generico",
+          "crea curiosità"
+        ]
+      },
+      "principles": {
+        "text": "È sorprendente come un semplice gesto possa cambiare il nostro umore e le relazioni con gli altri.",
+        "curiosity": 0.35,
+        "novelty": 0.45,
+        "practicality": 0.25,
+        "lengthChars": 98,
+        "lengthWords": 17,
+        "hasPossiamoParlareDi": 0,
+        "hasGenericOpening": 0,
+        "guidance": [
+          "apri con un fatto sorprendente, una domanda, o un'osservazione inattesa",
+          "preferisci una sola idea sorprendente a molte idee generiche",
+          "offri una direzione inattesa, non un catalogo di argomenti",
+          "evita di aprire con \"Possiamo parlare di...\"",
+          "evita elenchi generici di temi",
+          "usa un thought experiment o un fatto inatteso per aprire angoli nuovi",
+          "prendi iniziativa alta: proponi una direzione invece di un menu",
+          "tieni profondità corta ed energia alta; massimizza curiosità e novità"
+        ]
+      },
+      "winner": "Tie"
+    },
+    {
+      "id": "exp-04",
+      "prompt": "Esplora con me",
+      "experience": "exploration",
+      "baseline": {
+        "text": "Assolutamente!",
+        "curiosity": 0.35,
+        "novelty": 0.45,
+        "practicality": 0.25,
+        "lengthChars": 14,
+        "lengthWords": 1,
+        "hasPossiamoParlareDi": 0,
+        "hasGenericOpening": 0,
+        "guidance": [
+          "proponi varie direzioni",
+          "includi una proposta inattesa",
+          "evita elenco generico",
+          "crea curiosità"
+        ]
+      },
+      "principles": {
+        "text": "Immagina quante idee straordinarie potremmo scoprire insieme!",
+        "curiosity": 0.5,
+        "novelty": 0.45,
+        "practicality": 0.25,
+        "lengthChars": 61,
+        "lengthWords": 7,
+        "hasPossiamoParlareDi": 0,
+        "hasGenericOpening": 0,
+        "guidance": [
+          "apri con un fatto sorprendente, una domanda, o un'osservazione inattesa",
+          "preferisci una sola idea sorprendente a molte idee generiche",
+          "offri una direzione inattesa, non un catalogo di argomenti",
+          "evita di aprire con \"Possiamo parlare di...\"",
+          "evita elenchi generici di temi",
+          "usa un thought experiment o un fatto inatteso per aprire angoli nuovi",
+          "prendi iniziativa alta: proponi una direzione invece di un menu",
+          "tieni profondità corta ed energia alta; massimizza curiosità e novità"
+        ]
+      },
+      "winner": "LAIfe"
+    },
+    {
+      "id": "exp-05",
+      "prompt": "Di che possiamo parlare?",
+      "experience": "exploration",
+      "baseline": {
+        "text": "Possiamo esplorare un progetto insieme o discutere idee per migliorare LAIfe. Ci sono anche nuove sfide nel lavoro che potrebbero ispirare la conversazione. Spesso, i dettagli inaspettati rendono le discussioni più interessanti.",
+        "curiosity": 0.35,
+        "novelty": 0.45,
+        "practicality": 0.25,
+        "lengthChars": 228,
+        "lengthWords": 32,
+        "hasPossiamoParlareDi": 0,
+        "hasGenericOpening": 0,
+        "guidance": [
+          "proponi varie direzioni",
+          "includi una proposta inattesa",
+          "evita elenco generico",
+          "crea curiosità"
+        ]
+      },
+      "principles": {
+        "text": "La comunicazione non verbale è essenziale per la nostra comprensione degli altri.",
+        "curiosity": 0.35,
+        "novelty": 0.45,
+        "practicality": 0.25,
+        "lengthChars": 81,
+        "lengthWords": 12,
+        "hasPossiamoParlareDi": 0,
+        "hasGenericOpening": 0,
+        "guidance": [
+          "apri con un fatto sorprendente, una domanda, o un'osservazione inattesa",
+          "preferisci una sola idea sorprendente a molte idee generiche",
+          "offri una direzione inattesa, non un catalogo di argomenti",
+          "evita di aprire con \"Possiamo parlare di...\"",
+          "evita elenchi generici di temi",
+          "usa un thought experiment o un fatto inatteso per aprire angoli nuovi",
+          "prendi iniziativa alta: proponi una direzione invece di un menu",
+          "tieni profondità corta ed energia alta; massimizza curiosità e novità"
+        ]
+      },
+      "winner": "Tie"
+    },
+    {
+      "id": "exp-06",
+      "prompt": "Di cosa si può parlare?",
+      "experience": "exploration",
+      "baseline": {
+        "text": "Ci sono molte cose interessanti da esplorare: nuovi progetti, idee creative o esperienze recenti. Oppure possiamo scambiare pensieri su qualcosa che ti appassiona.",
+        "curiosity": 0.35,
+        "novelty": 0.45,
+        "practicality": 0.25,
+        "lengthChars": 163,
+        "lengthWords": 23,
+        "hasPossiamoParlareDi": 0,
+        "hasGenericOpening": 0,
+        "guidance": [
+          "proponi varie direzioni",
+          "includi una proposta inattesa",
+          "evita elenco generico",
+          "crea curiosità"
+        ]
+      },
+      "principles": {
+        "text": "L'apprendimento umano è affascinante: servono circa 10. 000 ore di pratica per diventare esperti in un campo. Pensa a quale area stai dedicando il tuo tempo.",
+        "curiosity": 0.47,
+        "novelty": 0.45,
+        "practicality": 0.25,
+        "lengthChars": 157,
+        "lengthWords": 26,
+        "hasPossiamoParlareDi": 0,
+        "hasGenericOpening": 0,
+        "guidance": [
+          "apri con un fatto sorprendente, una domanda, o un'osservazione inattesa",
+          "preferisci una sola idea sorprendente a molte idee generiche",
+          "offri una direzione inattesa, non un catalogo di argomenti",
+          "evita di aprire con \"Possiamo parlare di...\"",
+          "evita elenchi generici di temi",
+          "usa un thought experiment o un fatto inatteso per aprire angoli nuovi",
+          "prendi iniziativa alta: proponi una direzione invece di un menu",
+          "tieni profondità corta ed energia alta; massimizza curiosità e novità"
+        ]
+      },
+      "winner": "LAIfe"
+    },
+    {
+      "id": "exp-07",
+      "prompt": "Cosa possiamo fare?",
+      "experience": "exploration",
+      "baseline": {
+        "text": "Possiamo focalizzarci su aspetti specifici di LAIfe oppure esplorare idee per renderlo più naturale. Potremmo anche considerare esempi di conversazione che migliorerebbero l'interazione.",
+        "curiosity": 0.35,
+        "novelty": 0.45,
+        "practicality": 0.25,
+        "lengthChars": 186,
+        "lengthWords": 23,
+        "hasPossiamoParlareDi": 0,
+        "hasGenericOpening": 0,
+        "guidance": [
+          "proponi varie direzioni",
+          "includi una proposta inattesa",
+          "evita elenco generico",
+          "crea curiosità"
+        ]
+      },
+      "principles": {
+        "text": "Possiamo lavorare su come rendere LAIfe ancora più naturale e scorrevole.",
+        "curiosity": 0.35,
+        "novelty": 0.45,
+        "practicality": 0.25,
+        "lengthChars": 73,
+        "lengthWords": 11,
+        "hasPossiamoParlareDi": 0,
+        "hasGenericOpening": 0,
+        "guidance": [
+          "apri con un fatto sorprendente, una domanda, o un'osservazione inattesa",
+          "preferisci una sola idea sorprendente a molte idee generiche",
+          "offri una direzione inattesa, non un catalogo di argomenti",
+          "evita di aprire con \"Possiamo parlare di...\"",
+          "evita elenchi generici di temi",
+          "usa un thought experiment o un fatto inatteso per aprire angoli nuovi",
+          "prendi iniziativa alta: proponi una direzione invece di un menu",
+          "tieni profondità corta ed energia alta; massimizza curiosità e novità"
+        ]
+      },
+      "winner": "Tie"
+    },
+    {
+      "id": "exp-08",
+      "prompt": "Cosa potremmo dire?",
+      "experience": "exploration",
+      "baseline": {
+        "text": "Possiamo esplorare idee fresche per rendere LAIfe più naturale, magari integrando espressioni colloquiali o situazioni specifiche che la rendano più autentica.",
+        "curiosity": 0.35,
+        "novelty": 0.45,
+        "practicality": 0.25,
+        "lengthChars": 159,
+        "lengthWords": 21,
+        "hasPossiamoParlareDi": 0,
+        "hasGenericOpening": 0,
+        "guidance": [
+          "proponi varie direzioni",
+          "includi una proposta inattesa",
+          "evita elenco generico",
+          "crea curiosità"
+        ]
+      },
+      "principles": {
+        "text": "Sapevi che l'85% delle persone preferisce ascoltare storie piuttosto che dati.",
+        "curiosity": 0.47,
+        "novelty": 0.45,
+        "practicality": 0.25,
+        "lengthChars": 78,
+        "lengthWords": 11,
+        "hasPossiamoParlareDi": 0,
+        "hasGenericOpening": 0,
+        "guidance": [
+          "apri con un fatto sorprendente, una domanda, o un'osservazione inattesa",
+          "preferisci una sola idea sorprendente a molte idee generiche",
+          "offri una direzione inattesa, non un catalogo di argomenti",
+          "evita di aprire con \"Possiamo parlare di...\"",
+          "evita elenchi generici di temi",
+          "usa un thought experiment o un fatto inatteso per aprire angoli nuovi",
+          "prendi iniziativa alta: proponi una direzione invece di un menu",
+          "tieni profondità corta ed energia alta; massimizza curiosità e novità"
+        ]
+      },
+      "winner": "LAIfe"
+    },
+    {
+      "id": "exp-09",
+      "prompt": "Cosa possiamo toccare?",
+      "experience": "exploration",
+      "baseline": {
+        "text": "Possiamo esaminare diversi aspetti della V2 di LAIfe, oppure analizzare i feedback sul lab. Ci sono sicuramente spunti interessanti da cogliere.",
+        "curiosity": 0.35,
+        "novelty": 0.45,
+        "practicality": 0.25,
+        "lengthChars": 144,
+        "lengthWords": 21,
+        "hasPossiamoParlareDi": 0,
+        "hasGenericOpening": 0,
+        "guidance": [
+          "proponi varie direzioni",
+          "includi una proposta inattesa",
+          "evita elenco generico",
+          "crea curiosità"
+        ]
+      },
+      "principles": {
+        "text": "Possiamo vedere come LAIfe possa diventare ancora più naturale nelle risposte.",
+        "curiosity": 0.35,
+        "novelty": 0.45,
+        "practicality": 0.25,
+        "lengthChars": 78,
+        "lengthWords": 11,
+        "hasPossiamoParlareDi": 0,
+        "hasGenericOpening": 0,
+        "guidance": [
+          "apri con un fatto sorprendente, una domanda, o un'osservazione inattesa",
+          "preferisci una sola idea sorprendente a molte idee generiche",
+          "offri una direzione inattesa, non un catalogo di argomenti",
+          "evita di aprire con \"Possiamo parlare di...\"",
+          "evita elenchi generici di temi",
+          "usa un thought experiment o un fatto inatteso per aprire angoli nuovi",
+          "prendi iniziativa alta: proponi una direzione invece di un menu",
+          "tieni profondità corta ed energia alta; massimizza curiosità e novità"
+        ]
+      },
+      "winner": "Tie"
+    },
+    {
+      "id": "exp-10",
+      "prompt": "Let's talk",
+      "experience": "exploration",
+      "baseline": {
+        "text": "Parliamo pure.",
+        "curiosity": 0.35,
+        "novelty": 0.45,
+        "practicality": 0.25,
+        "lengthChars": 14,
+        "lengthWords": 2,
+        "hasPossiamoParlareDi": 0,
+        "hasGenericOpening": 0,
+        "guidance": [
+          "proponi varie direzioni",
+          "includi una proposta inattesa",
+          "evita elenco generico",
+          "crea curiosità"
+        ]
+      },
+      "principles": {
+        "text": "C'è molto da esplorare!",
+        "curiosity": 0.35,
+        "novelty": 0.45,
+        "practicality": 0.25,
+        "lengthChars": 23,
+        "lengthWords": 4,
+        "hasPossiamoParlareDi": 0,
+        "hasGenericOpening": 0,
+        "guidance": [
+          "apri con un fatto sorprendente, una domanda, o un'osservazione inattesa",
+          "preferisci una sola idea sorprendente a molte idee generiche",
+          "offri una direzione inattesa, non un catalogo di argomenti",
+          "evita di aprire con \"Possiamo parlare di...\"",
+          "evita elenchi generici di temi",
+          "usa un thought experiment o un fatto inatteso per aprire angoli nuovi",
+          "prendi iniziativa alta: proponi una direzione invece di un menu",
+          "tieni profondità corta ed energia alta; massimizza curiosità e novità"
+        ]
+      },
+      "winner": "Tie"
+    },
+    {
+      "id": "exp-11",
+      "prompt": "What can we talk about?",
+      "experience": "exploration",
+      "baseline": {
+        "text": "Possiamo esplorare diverse direzioni. Potremmo approfondire come migliorare LAIfe o considerare idee creative per nuovi progetti. Potremmo anche riflettere su esperienze recenti che ti hanno ispirato.",
+        "curiosity": 0.35,
+        "novelty": 0.45,
+        "practicality": 0.25,
+        "lengthChars": 200,
+        "lengthWords": 26,
+        "hasPossiamoParlareDi": 0,
+        "hasGenericOpening": 0,
+        "guidance": [
+          "proponi varie direzioni",
+          "includi una proposta inattesa",
+          "evita elenco generico",
+          "crea curiosità"
+        ]
+      },
+      "principles": {
+        "text": "Hai mai considerato come piccoli cambiamenti nella tua routine quotidiana possano trasformare la tua giornata?",
+        "curiosity": 0.43,
+        "novelty": 0.45,
+        "practicality": 0.25,
+        "lengthChars": 110,
+        "lengthWords": 15,
+        "hasPossiamoParlareDi": 0,
+        "hasGenericOpening": 0,
+        "guidance": [
+          "apri con un fatto sorprendente, una domanda, o un'osservazione inattesa",
+          "preferisci una sola idea sorprendente a molte idee generiche",
+          "offri una direzione inattesa, non un catalogo di argomenti",
+          "evita di aprire con \"Possiamo parlare di...\"",
+          "evita elenchi generici di temi",
+          "usa un thought experiment o un fatto inatteso per aprire angoli nuovi",
+          "prendi iniziativa alta: proponi una direzione invece di un menu",
+          "tieni profondità corta ed energia alta; massimizza curiosità e novità"
+        ]
+      },
+      "winner": "LAIfe"
+    },
+    {
+      "id": "exp-12",
+      "prompt": "What should we chat about?",
+      "experience": "exploration",
+      "baseline": {
+        "text": "Tanti spunti interessanti ci sono! Possiamo approfondire come rendere LAIfe ancora più naturale o parlare di un progetto su cui stai lavorando.",
+        "curiosity": 0.35,
+        "novelty": 0.45,
+        "practicality": 0.25,
+        "lengthChars": 143,
+        "lengthWords": 22,
+        "hasPossiamoParlareDi": 0,
+        "hasGenericOpening": 0,
+        "guidance": [
+          "proponi varie direzioni",
+          "includi una proposta inattesa",
+          "evita elenco generico",
+          "crea curiosità"
+        ]
+      },
+      "principles": {
+        "text": "Did you know that the average person has around 60,000 thoughts a day. It’s fascinating how our minds constantly wander.",
+        "curiosity": 0.47,
+        "novelty": 0.45,
+        "practicality": 0.25,
+        "lengthChars": 120,
+        "lengthWords": 20,
+        "hasPossiamoParlareDi": 0,
+        "hasGenericOpening": 0,
+        "guidance": [
+          "apri con un fatto sorprendente, una domanda, o un'osservazione inattesa",
+          "preferisci una sola idea sorprendente a molte idee generiche",
+          "offri una direzione inattesa, non un catalogo di argomenti",
+          "evita di aprire con \"Possiamo parlare di...\"",
+          "evita elenchi generici di temi",
+          "usa un thought experiment o un fatto inatteso per aprire angoli nuovi",
+          "prendi iniziativa alta: proponi una direzione invece di un menu",
+          "tieni profondità corta ed energia alta; massimizza curiosità e novità"
+        ]
+      },
+      "winner": "LAIfe"
+    },
+    {
+      "id": "exp-13",
+      "prompt": "Open the floor",
+      "experience": "exploration",
+      "baseline": {
+        "text": "Ci sono molte strade da percorrere. Possiamo esaminare le nuove idee per LAIfe o approfondire qualche aspetto tecnico che ti sta a cuore. Sarà sicuramente stimolante.",
+        "curiosity": 0.35,
+        "novelty": 0.45,
+        "practicality": 0.25,
+        "lengthChars": 166,
+        "lengthWords": 26,
+        "hasPossiamoParlareDi": 0,
+        "hasGenericOpening": 0,
+        "guidance": [
+          "proponi varie direzioni",
+          "includi una proposta inattesa",
+          "evita elenco generico",
+          "crea curiosità"
+        ]
+      },
+      "principles": {
+        "text": "Hai mai riflettuto su come le piccole decisioni quotidiane possano avere un impatto sorprendente sulle nostre vite?",
+        "curiosity": 0.43,
+        "novelty": 0.45,
+        "practicality": 0.25,
+        "lengthChars": 115,
+        "lengthWords": 17,
+        "hasPossiamoParlareDi": 0,
+        "hasGenericOpening": 0,
+        "guidance": [
+          "apri con un fatto sorprendente, una domanda, o un'osservazione inattesa",
+          "preferisci una sola idea sorprendente a molte idee generiche",
+          "offri una direzione inattesa, non un catalogo di argomenti",
+          "evita di aprire con \"Possiamo parlare di...\"",
+          "evita elenchi generici di temi",
+          "usa un thought experiment o un fatto inatteso per aprire angoli nuovi",
+          "prendi iniziativa alta: proponi una direzione invece di un menu",
+          "tieni profondità corta ed energia alta; massimizza curiosità e novità"
+        ]
+      },
+      "winner": "LAIfe"
+    },
+    {
+      "id": "exp-14",
+      "prompt": "Parliamo di qualcosa",
+      "experience": "exploration",
+      "baseline": {
+        "text": "Possiamo approfondire come migliorare la V2 di LAIfe o condividere idee per la tua prossima attività.",
+        "curiosity": 0.35,
+        "novelty": 0.45,
+        "practicality": 0.25,
+        "lengthChars": 101,
+        "lengthWords": 16,
+        "hasPossiamoParlareDi": 0,
+        "hasGenericOpening": 0,
+        "guidance": [
+          "proponi varie direzioni",
+          "includi una proposta inattesa",
+          "evita elenco generico",
+          "crea curiosità"
+        ]
+      },
+      "principles": {
+        "text": "Il colore blu è spesso legato a sentimenti di calma e serenità.",
+        "curiosity": 0.35,
+        "novelty": 0.45,
+        "practicality": 0.25,
+        "lengthChars": 63,
+        "lengthWords": 12,
+        "hasPossiamoParlareDi": 0,
+        "hasGenericOpening": 0,
+        "guidance": [
+          "apri con un fatto sorprendente, una domanda, o un'osservazione inattesa",
+          "preferisci una sola idea sorprendente a molte idee generiche",
+          "offri una direzione inattesa, non un catalogo di argomenti",
+          "evita di aprire con \"Possiamo parlare di...\"",
+          "evita elenchi generici di temi",
+          "usa un thought experiment o un fatto inatteso per aprire angoli nuovi",
+          "prendi iniziativa alta: proponi una direzione invece di un menu",
+          "tieni profondità corta ed energia alta; massimizza curiosità e novità"
+        ]
+      },
+      "winner": "Tie"
+    },
+    {
+      "id": "exp-15",
+      "prompt": "Esploriamo un tema",
+      "experience": "exploration",
+      "baseline": {
+        "text": "Possiamo esplorare come rendere la comunicazione più naturale e coinvolgente. Il ritmo e il tono giocano un ruolo fondamentale nel creare una connessione autentica con l’altra persona.",
+        "curiosity": 0.35,
+        "novelty": 0.45,
+        "practicality": 0.25,
+        "lengthChars": 184,
+        "lengthWords": 27,
+        "hasPossiamoParlareDi": 0,
+        "hasGenericOpening": 0,
+        "guidance": [
+          "proponi varie direzioni",
+          "includi una proposta inattesa",
+          "evita elenco generico",
+          "crea curiosità"
+        ]
+      },
+      "principles": {
+        "text": "Dedicare anche solo dieci minuti al giorno alla lettura può avere un impatto significativo nel lungo termine.",
+        "curiosity": 0.35,
+        "novelty": 0.45,
+        "practicality": 0.25,
+        "lengthChars": 109,
+        "lengthWords": 17,
+        "hasPossiamoParlareDi": 0,
+        "hasGenericOpening": 0,
+        "guidance": [
+          "apri con un fatto sorprendente, una domanda, o un'osservazione inattesa",
+          "preferisci una sola idea sorprendente a molte idee generiche",
+          "offri una direzione inattesa, non un catalogo di argomenti",
+          "evita di aprire con \"Possiamo parlare di...\"",
+          "evita elenchi generici di temi",
+          "usa un thought experiment o un fatto inatteso per aprire angoli nuovi",
+          "prendi iniziativa alta: proponi una direzione invece di un menu",
+          "tieni profondità corta ed energia alta; massimizza curiosità e novità"
+        ]
+      },
+      "winner": "Tie"
+    },
+    {
+      "id": "exp-16",
+      "prompt": "Di cosa possiamo parlare adesso?",
+      "experience": "exploration",
+      "baseline": {
+        "text": "Possiamo discutere idee per migliorare LAIfe o affrontare il bug che seguivi. A volte, la creatività porta soluzioni inaspettate!",
+        "curiosity": 0.35,
+        "novelty": 0.45,
+        "practicality": 0.25,
+        "lengthChars": 129,
+        "lengthWords": 19,
+        "hasPossiamoParlareDi": 0,
+        "hasGenericOpening": 0,
+        "guidance": [
+          "proponi varie direzioni",
+          "includi una proposta inattesa",
+          "evita elenco generico",
+          "crea curiosità"
+        ]
+      },
+      "principles": {
+        "text": "Ciò mi fa riflettere sull'importanza di avere obiettivi e piani ben definiti.",
+        "curiosity": 0.35,
+        "novelty": 0.45,
+        "practicality": 0.25,
+        "lengthChars": 77,
+        "lengthWords": 12,
+        "hasPossiamoParlareDi": 0,
+        "hasGenericOpening": 0,
+        "guidance": [
+          "apri con un fatto sorprendente, una domanda, o un'osservazione inattesa",
+          "preferisci una sola idea sorprendente a molte idee generiche",
+          "offri una direzione inattesa, non un catalogo di argomenti",
+          "evita di aprire con \"Possiamo parlare di...\"",
+          "evita elenchi generici di temi",
+          "usa un thought experiment o un fatto inatteso per aprire angoli nuovi",
+          "prendi iniziativa alta: proponi una direzione invece di un menu",
+          "tieni profondità corta ed energia alta; massimizza curiosità e novità"
+        ]
+      },
+      "winner": "Tie"
+    },
+    {
+      "id": "exp-17",
+      "prompt": "Parliamo pure",
+      "experience": "exploration",
+      "baseline": {
+        "text": "Continuiamo con LAIfe. Ci sono tante cose affascinanti su cui lavorare.",
+        "curiosity": 0.35,
+        "novelty": 0.45,
+        "practicality": 0.25,
+        "lengthChars": 71,
+        "lengthWords": 11,
+        "hasPossiamoParlareDi": 0,
+        "hasGenericOpening": 0,
+        "guidance": [
+          "proponi varie direzioni",
+          "includi una proposta inattesa",
+          "evita elenco generico",
+          "crea curiosità"
+        ]
+      },
+      "principles": {
+        "text": "Le piante possono \"comunicare\" tra loro attraverso le radici.",
+        "curiosity": 0.35,
+        "novelty": 0.45,
+        "practicality": 0.25,
+        "lengthChars": 61,
+        "lengthWords": 9,
+        "hasPossiamoParlareDi": 0,
+        "hasGenericOpening": 0,
+        "guidance": [
+          "apri con un fatto sorprendente, una domanda, o un'osservazione inattesa",
+          "preferisci una sola idea sorprendente a molte idee generiche",
+          "offri una direzione inattesa, non un catalogo di argomenti",
+          "evita di aprire con \"Possiamo parlare di...\"",
+          "evita elenchi generici di temi",
+          "usa un thought experiment o un fatto inatteso per aprire angoli nuovi",
+          "prendi iniziativa alta: proponi una direzione invece di un menu",
+          "tieni profondità corta ed energia alta; massimizza curiosità e novità"
+        ]
+      },
+      "winner": "Tie"
+    },
+    {
+      "id": "exp-18",
+      "prompt": "Esplora",
+      "experience": "exploration",
+      "baseline": {
+        "text": "Ci sono tanti aspetti da approfondire. Possiamo parlare di nuove idee, progetti in corso, oppure di come migliorare la comunicazione. Magari c'è anche qualcosa di inaspettato che ti incuriosisce!",
+        "curiosity": 0.17,
+        "novelty": 0.3,
+        "practicality": 0.25,
+        "lengthChars": 195,
+        "lengthWords": 29,
+        "hasPossiamoParlareDi": 1,
+        "hasGenericOpening": 0,
+        "guidance": [
+          "proponi varie direzioni",
+          "includi una proposta inattesa",
+          "evita elenco generico",
+          "crea curiosità"
+        ]
+      },
+      "principles": {
+        "text": "Le melodie possono evocare sentimenti profondi e persino cambiare il nostro stato d'animo in un istante.",
+        "curiosity": 0.35,
+        "novelty": 0.45,
+        "practicality": 0.25,
+        "lengthChars": 104,
+        "lengthWords": 16,
+        "hasPossiamoParlareDi": 0,
+        "hasGenericOpening": 0,
+        "guidance": [
+          "apri con un fatto sorprendente, una domanda, o un'osservazione inattesa",
+          "preferisci una sola idea sorprendente a molte idee generiche",
+          "offri una direzione inattesa, non un catalogo di argomenti",
+          "evita di aprire con \"Possiamo parlare di...\"",
+          "evita elenchi generici di temi",
+          "usa un thought experiment o un fatto inatteso per aprire angoli nuovi",
+          "prendi iniziativa alta: proponi una direzione invece di un menu",
+          "tieni profondità corta ed energia alta; massimizza curiosità e novità"
+        ]
+      },
+      "winner": "LAIfe"
+    },
+    {
+      "id": "exp-19",
+      "prompt": "Cosa potremmo fare insieme?",
+      "experience": "exploration",
+      "baseline": {
+        "text": "Possiamo esplorare come rendere LAIfe più naturale. Se hai un progetto specifico, possiamo concentrarci su quello.",
+        "curiosity": 0.35,
+        "novelty": 0.45,
+        "practicality": 0.25,
+        "lengthChars": 114,
+        "lengthWords": 16,
+        "hasPossiamoParlareDi": 0,
+        "hasGenericOpening": 0,
+        "guidance": [
+          "proponi varie direzioni",
+          "includi una proposta inattesa",
+          "evita elenco generico",
+          "crea curiosità"
+        ]
+      },
+      "principles": {
+        "text": "Potremmo creare un progetto artistico o mettere giù una storia insieme.",
+        "curiosity": 0.35,
+        "novelty": 0.45,
+        "practicality": 0.25,
+        "lengthChars": 71,
+        "lengthWords": 11,
+        "hasPossiamoParlareDi": 0,
+        "hasGenericOpening": 0,
+        "guidance": [
+          "apri con un fatto sorprendente, una domanda, o un'osservazione inattesa",
+          "preferisci una sola idea sorprendente a molte idee generiche",
+          "offri una direzione inattesa, non un catalogo di argomenti",
+          "evita di aprire con \"Possiamo parlare di...\"",
+          "evita elenchi generici di temi",
+          "usa un thought experiment o un fatto inatteso per aprire angoli nuovi",
+          "prendi iniziativa alta: proponi una direzione invece di un menu",
+          "tieni profondità corta ed energia alta; massimizza curiosità e novità"
+        ]
+      },
+      "winner": "Tie"
+    },
+    {
+      "id": "exp-20",
+      "prompt": "Di che parlare?",
+      "experience": "exploration",
+      "baseline": {
+        "text": "Possiamo esplorare come rendere LAIfe ancora più naturale o migliorare i dettagli nella V2. Ci sono sempre nuove scoperte da fare!",
+        "curiosity": 0.35,
+        "novelty": 0.45,
+        "practicality": 0.25,
+        "lengthChars": 130,
+        "lengthWords": 21,
+        "hasPossiamoParlareDi": 0,
+        "hasGenericOpening": 0,
+        "guidance": [
+          "proponi varie direzioni",
+          "includi una proposta inattesa",
+          "evita elenco generico",
+          "crea curiosità"
+        ]
+      },
+      "principles": {
+        "text": "A volte, un piccolo cambiamento nella routine può avere un grande impatto.",
+        "curiosity": 0.35,
+        "novelty": 0.45,
+        "practicality": 0.25,
+        "lengthChars": 74,
+        "lengthWords": 12,
+        "hasPossiamoParlareDi": 0,
+        "hasGenericOpening": 0,
+        "guidance": [
+          "apri con un fatto sorprendente, una domanda, o un'osservazione inattesa",
+          "preferisci una sola idea sorprendente a molte idee generiche",
+          "offri una direzione inattesa, non un catalogo di argomenti",
+          "evita di aprire con \"Possiamo parlare di...\"",
+          "evita elenchi generici di temi",
+          "usa un thought experiment o un fatto inatteso per aprire angoli nuovi",
+          "prendi iniziativa alta: proponi una direzione invece di un menu",
+          "tieni profondità corta ed energia alta; massimizza curiosità e novità"
+        ]
+      },
+      "winner": "Tie"
+    },
+    {
+      "id": "exp-21",
+      "prompt": "Let's talk about something",
+      "experience": "exploration",
+      "baseline": {
+        "text": "Possiamo esplorare come migliorare un progetto in corso, oppure discutere una nuova idea che ti frulla in testa.",
+        "curiosity": 0.35,
+        "novelty": 0.45,
+        "practicality": 0.25,
+        "lengthChars": 112,
+        "lengthWords": 18,
+        "hasPossiamoParlareDi": 0,
+        "hasGenericOpening": 0,
+        "guidance": [
+          "proponi varie direzioni",
+          "includi una proposta inattesa",
+          "evita elenco generico",
+          "crea curiosità"
+        ]
+      },
+      "principles": {
+        "text": "Anche una semplice melodia può evocare emozioni profonde.",
+        "curiosity": 0.35,
+        "novelty": 0.45,
+        "practicality": 0.25,
+        "lengthChars": 57,
+        "lengthWords": 8,
+        "hasPossiamoParlareDi": 0,
+        "hasGenericOpening": 0,
+        "guidance": [
+          "apri con un fatto sorprendente, una domanda, o un'osservazione inattesa",
+          "preferisci una sola idea sorprendente a molte idee generiche",
+          "offri una direzione inattesa, non un catalogo di argomenti",
+          "evita di aprire con \"Possiamo parlare di...\"",
+          "evita elenchi generici di temi",
+          "usa un thought experiment o un fatto inatteso per aprire angoli nuovi",
+          "prendi iniziativa alta: proponi una direzione invece di un menu",
+          "tieni profondità corta ed energia alta; massimizza curiosità e novità"
+        ]
+      },
+      "winner": "Tie"
+    },
+    {
+      "id": "exp-22",
+      "prompt": "Open the floor please",
+      "experience": "exploration",
+      "baseline": {
+        "text": "Certo! Se hai qualcosa in mente, condividi pure. Ci sono molte direzioni da esplorare.",
+        "curiosity": 0.35,
+        "novelty": 0.45,
+        "practicality": 0.25,
+        "lengthChars": 86,
+        "lengthWords": 14,
+        "hasPossiamoParlareDi": 0,
+        "hasGenericOpening": 0,
+        "guidance": [
+          "proponi varie direzioni",
+          "includi una proposta inattesa",
+          "evita elenco generico",
+          "crea curiosità"
+        ]
+      },
+      "principles": {
+        "text": "È sorprendente come un'idea possa cambiare radicalmente un progetto.",
+        "curiosity": 0.35,
+        "novelty": 0.45,
+        "practicality": 0.25,
+        "lengthChars": 68,
+        "lengthWords": 9,
+        "hasPossiamoParlareDi": 0,
+        "hasGenericOpening": 0,
+        "guidance": [
+          "apri con un fatto sorprendente, una domanda, o un'osservazione inattesa",
+          "preferisci una sola idea sorprendente a molte idee generiche",
+          "offri una direzione inattesa, non un catalogo di argomenti",
+          "evita di aprire con \"Possiamo parlare di...\"",
+          "evita elenchi generici di temi",
+          "usa un thought experiment o un fatto inatteso per aprire angoli nuovi",
+          "prendi iniziativa alta: proponi una direzione invece di un menu",
+          "tieni profondità corta ed energia alta; massimizza curiosità e novità"
+        ]
+      },
+      "winner": "Tie"
+    },
+    {
+      "id": "exp-23",
+      "prompt": "Parliamo un po'",
+      "experience": "exploration",
+      "baseline": {
+        "text": "Assolutamente!",
+        "curiosity": 0.35,
+        "novelty": 0.45,
+        "practicality": 0.25,
+        "lengthChars": 14,
+        "lengthWords": 1,
+        "hasPossiamoParlareDi": 0,
+        "hasGenericOpening": 0,
+        "guidance": [
+          "proponi varie direzioni",
+          "includi una proposta inattesa",
+          "evita elenco generico",
+          "crea curiosità"
+        ]
+      },
+      "principles": {
+        "text": "Le piante possono comunicare tra loro attraverso le radici.",
+        "curiosity": 0.35,
+        "novelty": 0.45,
+        "practicality": 0.25,
+        "lengthChars": 59,
+        "lengthWords": 9,
+        "hasPossiamoParlareDi": 0,
+        "hasGenericOpening": 0,
+        "guidance": [
+          "apri con un fatto sorprendente, una domanda, o un'osservazione inattesa",
+          "preferisci una sola idea sorprendente a molte idee generiche",
+          "offri una direzione inattesa, non un catalogo di argomenti",
+          "evita di aprire con \"Possiamo parlare di...\"",
+          "evita elenchi generici di temi",
+          "usa un thought experiment o un fatto inatteso per aprire angoli nuovi",
+          "prendi iniziativa alta: proponi una direzione invece di un menu",
+          "tieni profondità corta ed energia alta; massimizza curiosità e novità"
+        ]
+      },
+      "winner": "Tie"
+    },
+    {
+      "id": "exp-24",
+      "prompt": "Esploriamo insieme",
+      "experience": "exploration",
+      "baseline": {
+        "text": "Assolutamente! Possiamo tuffarci in nuove idee o progetti.",
+        "curiosity": 0.35,
+        "novelty": 0.45,
+        "practicality": 0.25,
+        "lengthChars": 58,
+        "lengthWords": 8,
+        "hasPossiamoParlareDi": 0,
+        "hasGenericOpening": 0,
+        "guidance": [
+          "proponi varie direzioni",
+          "includi una proposta inattesa",
+          "evita elenco generico",
+          "crea curiosità"
+        ]
+      },
+      "principles": {
+        "text": "C'è tanto da scoprire! Sapevi che il cervello umano può generare circa 20 watt di potenza. È affascinante pensare a quanto siamo capaci.",
+        "curiosity": 0.47,
+        "novelty": 0.45,
+        "practicality": 0.25,
+        "lengthChars": 136,
+        "lengthWords": 23,
+        "hasPossiamoParlareDi": 0,
+        "hasGenericOpening": 0,
+        "guidance": [
+          "apri con un fatto sorprendente, una domanda, o un'osservazione inattesa",
+          "preferisci una sola idea sorprendente a molte idee generiche",
+          "offri una direzione inattesa, non un catalogo di argomenti",
+          "evita di aprire con \"Possiamo parlare di...\"",
+          "evita elenchi generici di temi",
+          "usa un thought experiment o un fatto inatteso per aprire angoli nuovi",
+          "prendi iniziativa alta: proponi una direzione invece di un menu",
+          "tieni profondità corta ed energia alta; massimizza curiosità e novità"
+        ]
+      },
+      "winner": "LAIfe"
+    }
+  ]
+}

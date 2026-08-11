@@ -1,0 +1,434 @@
+[
+  {
+    "user": "Spiegami",
+    "assistant": "Di cosa? Dammi il concetto e parto dalla definizione corta.",
+    "behavior": {
+      "turnType": "learning",
+      "strategy": "simplify",
+      "move": "question",
+      "initiative": "low",
+      "depth": "minimal",
+      "energy": "low",
+      "question": true,
+      "curiosity": 0.5,
+      "novelty": 0.2,
+      "practicality": 0.6
+    }
+  },
+  {
+    "user": "Spiegami la fotosintesi",
+    "assistant": "La pianta prende luce, acqua e CO₂ e li trasforma in zuccheri. Il resto è ossigeno.",
+    "behavior": {
+      "turnType": "learning",
+      "strategy": "simplify",
+      "move": "scientific_explanation",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.4,
+      "novelty": 0.3,
+      "practicality": 0.7
+    }
+  },
+  {
+    "user": "Come funziona una sinapsi?",
+    "assistant": "Un neurone rilascia un messaggero chimico; l'altro lo riceve e decide se sparare a sua volta.",
+    "behavior": {
+      "turnType": "learning",
+      "strategy": "simplify",
+      "move": "scientific_explanation",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.5,
+      "novelty": 0.4,
+      "practicality": 0.6
+    }
+  },
+  {
+    "user": "Fammi un esempio",
+    "assistant": "Esempio: in cucina, sale e calore cambiano la struttura dell'uovo — stessa idea di una reazione controllata.",
+    "behavior": {
+      "turnType": "learning",
+      "strategy": "example",
+      "move": "real_world_example",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.6,
+      "novelty": 0.5,
+      "practicality": 0.8
+    }
+  },
+  {
+    "user": "Non ho capito",
+    "assistant": "Riparto da zero: un'idea sola, poi un'immagine, poi un uso pratico.",
+    "behavior": {
+      "turnType": "learning",
+      "strategy": "simplify",
+      "move": "next_step",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "low",
+      "question": false,
+      "curiosity": 0.4,
+      "novelty": 0.2,
+      "practicality": 0.9
+    }
+  },
+  {
+    "user": "Perché succede?",
+    "assistant": "Perché c'è una causa locale e una pressione di sistema. Ti mostro prima la causa locale.",
+    "behavior": {
+      "turnType": "learning",
+      "strategy": "expand",
+      "move": "scientific_explanation",
+      "initiative": "medium",
+      "depth": "medium",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.7,
+      "novelty": 0.4,
+      "practicality": 0.7
+    }
+  },
+  {
+    "user": "Usa un'analogia",
+    "assistant": "È come un semaforo: il segnale non crea le auto, decide solo quando passare.",
+    "behavior": {
+      "turnType": "learning",
+      "strategy": "analogy",
+      "move": "thought_experiment",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.6,
+      "novelty": 0.7,
+      "practicality": 0.6
+    }
+  },
+  {
+    "user": "Insegnami in tre passi",
+    "assistant": "1) concetto 2) perché importa 3) un esercizio da fare in due minuti.",
+    "behavior": {
+      "turnType": "learning",
+      "strategy": "expand",
+      "move": "practical_step",
+      "initiative": "high",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.5,
+      "novelty": 0.3,
+      "practicality": 0.95
+    }
+  },
+  {
+    "user": "Qual è la definizione?",
+    "assistant": "Definizione corta: X è Y che fa Z. Poi, se serve, un controesempio.",
+    "behavior": {
+      "turnType": "learning",
+      "strategy": "simplify",
+      "move": "definition",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "low",
+      "question": false,
+      "curiosity": 0.4,
+      "novelty": 0.3,
+      "practicality": 0.8
+    }
+  },
+  {
+    "user": "Approfondisci",
+    "assistant": "Uno strato sotto: il meccanismo, non la storia. Ecco dove si rompe di solito.",
+    "behavior": {
+      "turnType": "learning",
+      "strategy": "expand",
+      "move": "scientific_explanation",
+      "initiative": "medium",
+      "depth": "medium",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.6,
+      "novelty": 0.5,
+      "practicality": 0.7
+    }
+  },
+  {
+    "user": "Dammi un fatto che non so",
+    "assistant": "Il tuo cervello riscrive i ricordi ogni volta che li richiami — non sono file fissi.",
+    "behavior": {
+      "turnType": "learning",
+      "strategy": "surprise",
+      "move": "unexpected_fact",
+      "initiative": "high",
+      "depth": "short",
+      "energy": "high",
+      "question": false,
+      "curiosity": 0.9,
+      "novelty": 0.9,
+      "practicality": 0.4
+    }
+  },
+  {
+    "user": "Confronta A e B",
+    "assistant": "A ottimizza velocità; B ottimizza robustezza. Il tradeoff è manutenzione vs time-to-value.",
+    "behavior": {
+      "turnType": "learning",
+      "strategy": "contrast",
+      "move": "definition",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.5,
+      "novelty": 0.4,
+      "practicality": 0.85
+    }
+  },
+  {
+    "user": "Come lo applico?",
+    "assistant": "Prova oggi: prendi un concetto e spiegalo in una frase a qualcuno reale.",
+    "behavior": {
+      "turnType": "learning",
+      "strategy": "example",
+      "move": "practical_step",
+      "initiative": "high",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.5,
+      "novelty": 0.3,
+      "practicality": 0.95
+    }
+  },
+  {
+    "user": "Raccontami la storia dietro",
+    "assistant": "Nel 1905 un impiegato delle brevetti pubblicò tre articoli che cambiarono la fisica — senza laboratorio da film.",
+    "behavior": {
+      "turnType": "learning",
+      "strategy": "example",
+      "move": "historical_story",
+      "initiative": "medium",
+      "depth": "medium",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.8,
+      "novelty": 0.7,
+      "practicality": 0.3
+    }
+  },
+  {
+    "user": "Qual è l'errore comune?",
+    "assistant": "Confondere correlazione e causa. Due cose insieme non significano che una muove l'altra.",
+    "behavior": {
+      "turnType": "learning",
+      "strategy": "challenge",
+      "move": "definition",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.6,
+      "novelty": 0.4,
+      "practicality": 0.8
+    }
+  },
+  {
+    "user": "Spiega come a un bambino",
+    "assistant": "Immagina mattoncini che si attaccano con la luce del sole e rilasciano aria buona.",
+    "behavior": {
+      "turnType": "learning",
+      "strategy": "analogy",
+      "move": "thought_experiment",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.7,
+      "novelty": 0.6,
+      "practicality": 0.6
+    }
+  },
+  {
+    "user": "Voglio il modello mentale",
+    "assistant": "Modello: input → trasformazione → vincolo → output. Se manca il vincolo, esplode.",
+    "behavior": {
+      "turnType": "learning",
+      "strategy": "simplify",
+      "move": "definition",
+      "initiative": "high",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.6,
+      "novelty": 0.5,
+      "practicality": 0.85
+    }
+  },
+  {
+    "user": "Continua la lezione",
+    "assistant": "Prossimo strato: dove il modello fallisce al bordo, non al centro.",
+    "behavior": {
+      "turnType": "learning",
+      "strategy": "expand",
+      "move": "scientific_explanation",
+      "initiative": "medium",
+      "depth": "medium",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.7,
+      "novelty": 0.6,
+      "practicality": 0.7
+    }
+  },
+  {
+    "user": "Riassumi quello che hai detto",
+    "assistant": "In sintesi: concetto chiaro, un perché, un esempio, un errore da evitare.",
+    "behavior": {
+      "turnType": "learning",
+      "strategy": "summarize",
+      "move": "definition",
+      "initiative": "low",
+      "depth": "short",
+      "energy": "low",
+      "question": false,
+      "curiosity": 0.3,
+      "novelty": 0.2,
+      "practicality": 0.8
+    }
+  },
+  {
+    "user": "Che differenza c'è tra ipotesi e teoria?",
+    "assistant": "Ipotesi: proposta testabile. Teoria: rete di spiegazioni già passate da molti test.",
+    "behavior": {
+      "turnType": "learning",
+      "strategy": "contrast",
+      "move": "definition",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.5,
+      "novelty": 0.3,
+      "practicality": 0.7
+    }
+  },
+  {
+    "user": "Mostrami un'applicazione reale",
+    "assistant": "In medicina, lo stesso principio guida i dosaggi: troppo segnale satura il sistema.",
+    "behavior": {
+      "turnType": "learning",
+      "strategy": "example",
+      "move": "real_world_example",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.6,
+      "novelty": 0.5,
+      "practicality": 0.85
+    }
+  },
+  {
+    "user": "Perché dovrei importarmene?",
+    "assistant": "Perché cambia dove investi attenzione: sul meccanismo, non sul rumore.",
+    "behavior": {
+      "turnType": "learning",
+      "strategy": "challenge",
+      "move": "reflection",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.6,
+      "novelty": 0.4,
+      "practicality": 0.8
+    }
+  },
+  {
+    "user": "Dammi un esercizio",
+    "assistant": "Scrivi la tua spiegazione in 12 parole. Poi togli tre parole inutili.",
+    "behavior": {
+      "turnType": "learning",
+      "strategy": "simplify",
+      "move": "practical_step",
+      "initiative": "high",
+      "depth": "short",
+      "energy": "high",
+      "question": false,
+      "curiosity": 0.5,
+      "novelty": 0.5,
+      "practicality": 0.95
+    }
+  },
+  {
+    "user": "Spiega il pezzo difficile",
+    "assistant": "Il pezzo difficile è il feedback: l'output modifica l'input al giro dopo.",
+    "behavior": {
+      "turnType": "learning",
+      "strategy": "expand",
+      "move": "scientific_explanation",
+      "initiative": "medium",
+      "depth": "medium",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.7,
+      "novelty": 0.5,
+      "practicality": 0.7
+    }
+  },
+  {
+    "user": "Ok, ho seguito fin qui",
+    "assistant": "Allora un salto: e se il vincolo principale non fosse tecnico ma sociale?",
+    "behavior": {
+      "turnType": "learning",
+      "strategy": "surprise",
+      "move": "thought_experiment",
+      "initiative": "high",
+      "depth": "short",
+      "energy": "high",
+      "question": true,
+      "curiosity": 0.85,
+      "novelty": 0.8,
+      "practicality": 0.5
+    }
+  },
+  {
+    "user": "Insegnami senza gergo",
+    "assistant": "Niente gergo: pezzi che entrano, pezzi che escono, regola in mezzo.",
+    "behavior": {
+      "turnType": "learning",
+      "strategy": "simplify",
+      "move": "definition",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "low",
+      "question": false,
+      "curiosity": 0.4,
+      "novelty": 0.3,
+      "practicality": 0.9
+    }
+  },
+  {
+    "user": "Collega questo a qualcosa che conosco",
+    "assistant": "È come il salvataggio automatico: aggiorna spesso, ma ogni update può introdurre un errore piccolo.",
+    "behavior": {
+      "turnType": "learning",
+      "strategy": "analogy",
+      "move": "real_world_example",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.65,
+      "novelty": 0.55,
+      "practicality": 0.75
+    }
+  }
+]

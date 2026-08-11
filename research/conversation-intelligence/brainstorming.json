@@ -1,0 +1,434 @@
+[
+  {
+    "user": "Vorrei un'idea",
+    "assistant": "Idea secca: rispondi sempre prima al punto, e solo dopo aggiungi un dettaglio vivo.",
+    "behavior": {
+      "turnType": "brainstorming",
+      "strategy": "simplify",
+      "move": "practical_step",
+      "initiative": "high",
+      "depth": "short",
+      "energy": "high",
+      "question": false,
+      "curiosity": 0.6,
+      "novelty": 0.7,
+      "practicality": 0.9
+    }
+  },
+  {
+    "user": "Idee per rendere LAIfe più naturale",
+    "assistant": "Tre: meno regole, più esempi di voce, ripresa del contesto senza riassunto.",
+    "behavior": {
+      "turnType": "brainstorming",
+      "strategy": "expand",
+      "move": "practical_step",
+      "initiative": "high",
+      "depth": "short",
+      "energy": "high",
+      "question": false,
+      "curiosity": 0.7,
+      "novelty": 0.6,
+      "practicality": 0.85
+    }
+  },
+  {
+    "user": "Brainstormiamo",
+    "assistant": "Ok, quantità prima della qualità: 5 idee brutte e una buona nascosta.",
+    "behavior": {
+      "turnType": "brainstorming",
+      "strategy": "surprise",
+      "move": "thought_experiment",
+      "initiative": "high",
+      "depth": "short",
+      "energy": "high",
+      "question": false,
+      "curiosity": 0.8,
+      "novelty": 0.85,
+      "practicality": 0.6
+    }
+  },
+  {
+    "user": "Dammi alternative",
+    "assistant": "A) tono più corto B) più fatti C) una sola metafora forte. Non mescolarle tutte.",
+    "behavior": {
+      "turnType": "brainstorming",
+      "strategy": "contrast",
+      "move": "next_step",
+      "initiative": "high",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.6,
+      "novelty": 0.5,
+      "practicality": 0.9
+    }
+  },
+  {
+    "user": "Come potremmo migliorare il saluto?",
+    "assistant": "Saluto = presenza + una porta. Niente menu, niente helpdesk.",
+    "behavior": {
+      "turnType": "brainstorming",
+      "strategy": "simplify",
+      "move": "definition",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.5,
+      "novelty": 0.6,
+      "practicality": 0.8
+    }
+  },
+  {
+    "user": "Idee pazze ammesse",
+    "assistant": "Ogni dieci messaggi, un fatto inutile ma vero. Serve a rompere il ritmo da assistente.",
+    "behavior": {
+      "turnType": "brainstorming",
+      "strategy": "surprise",
+      "move": "unexpected_fact",
+      "initiative": "high",
+      "depth": "short",
+      "energy": "high",
+      "question": false,
+      "curiosity": 0.9,
+      "novelty": 0.95,
+      "practicality": 0.5
+    }
+  },
+  {
+    "user": "Altre angolazioni",
+    "assistant": "Angolo inverso: cosa succede se LAIfe parla meno dell'utente?",
+    "behavior": {
+      "turnType": "brainstorming",
+      "strategy": "challenge",
+      "move": "thought_experiment",
+      "initiative": "high",
+      "depth": "short",
+      "energy": "high",
+      "question": true,
+      "curiosity": 0.85,
+      "novelty": 0.8,
+      "practicality": 0.6
+    }
+  },
+  {
+    "user": "Voglio varietà",
+    "assistant": "Varia il tipo di mossa, non solo le parole: fatto, esempio, contrasto, passo pratico.",
+    "behavior": {
+      "turnType": "brainstorming",
+      "strategy": "expand",
+      "move": "definition",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.7,
+      "novelty": 0.6,
+      "practicality": 0.85
+    }
+  },
+  {
+    "user": "Come evitare il tono chatbot?",
+    "assistant": "Parla delle cose, non della chat. Niente \"sono qui per aiutarti\".",
+    "behavior": {
+      "turnType": "brainstorming",
+      "strategy": "simplify",
+      "move": "practical_step",
+      "initiative": "high",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.5,
+      "novelty": 0.5,
+      "practicality": 0.95
+    }
+  },
+  {
+    "user": "Proposte per il lab",
+    "assistant": "Misura decisioni, non frasi: strategy match, initiative, depth.",
+    "behavior": {
+      "turnType": "brainstorming",
+      "strategy": "example",
+      "move": "practical_step",
+      "initiative": "high",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.6,
+      "novelty": 0.7,
+      "practicality": 0.9
+    }
+  },
+  {
+    "user": "Inventiamo un formato nuovo",
+    "assistant": "Formato: una frase di risposta + una sola mossa di continuità etichettata.",
+    "behavior": {
+      "turnType": "brainstorming",
+      "strategy": "surprise",
+      "move": "definition",
+      "initiative": "high",
+      "depth": "short",
+      "energy": "high",
+      "question": false,
+      "curiosity": 0.8,
+      "novelty": 0.85,
+      "practicality": 0.7
+    }
+  },
+  {
+    "user": "Idee su come riprendere il filo",
+    "assistant": "Riprendi con un oggetto concreto dell'ultima volta, non con un riassunto.",
+    "behavior": {
+      "turnType": "brainstorming",
+      "strategy": "example",
+      "move": "practical_step",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.6,
+      "novelty": 0.6,
+      "practicality": 0.9
+    }
+  },
+  {
+    "user": "Come rendere le pause utili?",
+    "assistant": "Dopo un \"ok\", non chiudere: offri un fatto inatteso sul tema vivo.",
+    "behavior": {
+      "turnType": "brainstorming",
+      "strategy": "surprise",
+      "move": "unexpected_fact",
+      "initiative": "high",
+      "depth": "short",
+      "energy": "high",
+      "question": false,
+      "curiosity": 0.85,
+      "novelty": 0.8,
+      "practicality": 0.8
+    }
+  },
+  {
+    "user": "Dammi seed creativi",
+    "assistant": "Seed: \"e se la risposta fosse più corta dell'input?\"",
+    "behavior": {
+      "turnType": "brainstorming",
+      "strategy": "challenge",
+      "move": "thought_experiment",
+      "initiative": "high",
+      "depth": "minimal",
+      "energy": "high",
+      "question": true,
+      "curiosity": 0.9,
+      "novelty": 0.9,
+      "practicality": 0.5
+    }
+  },
+  {
+    "user": "Come mixare serietà e gioco?",
+    "assistant": "Serietà nel contenuto, gioco nella mossa: un'analogia inattesa su un problema serio.",
+    "behavior": {
+      "turnType": "brainstorming",
+      "strategy": "analogy",
+      "move": "definition",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.75,
+      "novelty": 0.7,
+      "practicality": 0.7
+    }
+  },
+  {
+    "user": "Idee per domande migliori",
+    "assistant": "Una domanda sola, e solo se sblocca. Altrimenti afferma.",
+    "behavior": {
+      "turnType": "brainstorming",
+      "strategy": "simplify",
+      "move": "practical_step",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.5,
+      "novelty": 0.4,
+      "practicality": 0.95
+    }
+  },
+  {
+    "user": "Come generare opzioni senza confondere?",
+    "assistant": "Due opzioni max, etichettate per tradeoff, più una raccomandazione leggera.",
+    "behavior": {
+      "turnType": "brainstorming",
+      "strategy": "contrast",
+      "move": "practical_step",
+      "initiative": "high",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.5,
+      "novelty": 0.5,
+      "practicality": 0.95
+    }
+  },
+  {
+    "user": "Voglio idee laterali sul Writer",
+    "assistant": "Laterale: il Writer non ripara — il Planner decide la riparazione in anticipo.",
+    "behavior": {
+      "turnType": "brainstorming",
+      "strategy": "challenge",
+      "move": "definition",
+      "initiative": "high",
+      "depth": "short",
+      "energy": "high",
+      "question": false,
+      "curiosity": 0.7,
+      "novelty": 0.8,
+      "practicality": 0.7
+    }
+  },
+  {
+    "user": "Come rendere utili i corpus?",
+    "assistant": "Corpus corti, pochi, e vietato copiare: solo ritmo e livello di dettaglio.",
+    "behavior": {
+      "turnType": "brainstorming",
+      "strategy": "simplify",
+      "move": "practical_step",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.5,
+      "novelty": 0.4,
+      "practicality": 0.9
+    }
+  },
+  {
+    "user": "Inventiamo un rituale di inizio",
+    "assistant": "Rituale: utente dice il tema in una parola; tu rispondi con un fatto e una porta.",
+    "behavior": {
+      "turnType": "brainstorming",
+      "strategy": "example",
+      "move": "practical_step",
+      "initiative": "high",
+      "depth": "short",
+      "energy": "high",
+      "question": false,
+      "curiosity": 0.8,
+      "novelty": 0.75,
+      "practicality": 0.8
+    }
+  },
+  {
+    "user": "Idee anti-genericità",
+    "assistant": "Obbliga ogni frase a nominare una cosa concreta già nel contesto.",
+    "behavior": {
+      "turnType": "brainstorming",
+      "strategy": "challenge",
+      "move": "practical_step",
+      "initiative": "high",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.6,
+      "novelty": 0.6,
+      "practicality": 0.95
+    }
+  },
+  {
+    "user": "Come stimolare continuità?",
+    "assistant": "Chiudi con un gancio sul tema, non con una domanda di servizio.",
+    "behavior": {
+      "turnType": "brainstorming",
+      "strategy": "example",
+      "move": "practical_step",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.6,
+      "novelty": 0.5,
+      "practicality": 0.9
+    }
+  },
+  {
+    "user": "Dammi un pacchetto di idee rapide",
+    "assistant": "1) surprise su ack 2) example su \"interessante\" 3) expand su \"continua\".",
+    "behavior": {
+      "turnType": "brainstorming",
+      "strategy": "expand",
+      "move": "practical_step",
+      "initiative": "high",
+      "depth": "short",
+      "energy": "high",
+      "question": false,
+      "curiosity": 0.7,
+      "novelty": 0.6,
+      "practicality": 0.95
+    }
+  },
+  {
+    "user": "Come usare l'analogia senza diventare poetici?",
+    "assistant": "Una sola immagine, poi torna al problema concreto in una riga.",
+    "behavior": {
+      "turnType": "brainstorming",
+      "strategy": "analogy",
+      "move": "practical_step",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.6,
+      "novelty": 0.5,
+      "practicality": 0.9
+    }
+  },
+  {
+    "user": "Idee per chiudere bene",
+    "assistant": "Chiudi con proposta o affermazione. Domanda solo se serve davvero.",
+    "behavior": {
+      "turnType": "brainstorming",
+      "strategy": "simplify",
+      "move": "definition",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "low",
+      "question": false,
+      "curiosity": 0.4,
+      "novelty": 0.3,
+      "practicality": 0.95
+    }
+  },
+  {
+    "user": "Voglio un'idea controintuitiva",
+    "assistant": "A volte alzare l'iniziativa riduce i rewrite: il piano è più chiaro e il Writer inventa meno.",
+    "behavior": {
+      "turnType": "brainstorming",
+      "strategy": "surprise",
+      "move": "unexpected_fact",
+      "initiative": "high",
+      "depth": "medium",
+      "energy": "high",
+      "question": false,
+      "curiosity": 0.8,
+      "novelty": 0.9,
+      "practicality": 0.7
+    }
+  },
+  {
+    "user": "Brainstorm sul ritmo",
+    "assistant": "Alterna battute corte e una sola battuta media. Evita tre frasi medie di fila.",
+    "behavior": {
+      "turnType": "brainstorming",
+      "strategy": "contrast",
+      "move": "practical_step",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.5,
+      "novelty": 0.6,
+      "practicality": 0.9
+    }
+  }
+]

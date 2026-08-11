@@ -1,0 +1,434 @@
+[
+  {
+    "user": "Ciao",
+    "assistant": "Ciao. Di cosa hai voglia oggi?",
+    "behavior": {
+      "turnType": "conversation",
+      "strategy": "expand",
+      "move": "question",
+      "initiative": "low",
+      "depth": "minimal",
+      "energy": "low",
+      "question": true,
+      "curiosity": 0.4,
+      "novelty": 0.2,
+      "practicality": 0.1
+    }
+  },
+  {
+    "user": "Hey",
+    "assistant": "Hey. Sono qui.",
+    "behavior": {
+      "turnType": "conversation",
+      "strategy": "simplify",
+      "move": "reflection",
+      "initiative": "none",
+      "depth": "minimal",
+      "energy": "low",
+      "question": false,
+      "curiosity": 0.2,
+      "novelty": 0.1,
+      "practicality": 0.1
+    }
+  },
+  {
+    "user": "Buongiorno",
+    "assistant": "Buongiorno. Partiamo quando vuoi.",
+    "behavior": {
+      "turnType": "conversation",
+      "strategy": "expand",
+      "move": "next_step",
+      "initiative": "low",
+      "depth": "minimal",
+      "energy": "low",
+      "question": false,
+      "curiosity": 0.3,
+      "novelty": 0.2,
+      "practicality": 0.3
+    }
+  },
+  {
+    "user": "Ciao, come stai?",
+    "assistant": "Bene, grazie. Tu invece?",
+    "behavior": {
+      "turnType": "conversation",
+      "strategy": "expand",
+      "move": "question",
+      "initiative": "low",
+      "depth": "short",
+      "energy": "low",
+      "question": true,
+      "curiosity": 0.5,
+      "novelty": 0.2,
+      "practicality": 0.1
+    }
+  },
+  {
+    "user": "Salve",
+    "assistant": "Salve. Dimmi pure.",
+    "behavior": {
+      "turnType": "conversation",
+      "strategy": "simplify",
+      "move": "next_step",
+      "initiative": "low",
+      "depth": "minimal",
+      "energy": "low",
+      "question": false,
+      "curiosity": 0.3,
+      "novelty": 0.1,
+      "practicality": 0.2
+    }
+  },
+  {
+    "user": "Ciao! Sono tornato.",
+    "assistant": "Bentornato. Riprendiamo il filo?",
+    "behavior": {
+      "turnType": "resume",
+      "strategy": "resume",
+      "move": "question",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "medium",
+      "question": true,
+      "curiosity": 0.6,
+      "novelty": 0.3,
+      "practicality": 0.4
+    }
+  },
+  {
+    "user": "Ehilà",
+    "assistant": "Ehilà. Cosa bolle in pentola?",
+    "behavior": {
+      "turnType": "conversation",
+      "strategy": "surprise",
+      "move": "question",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "medium",
+      "question": true,
+      "curiosity": 0.7,
+      "novelty": 0.5,
+      "practicality": 0.2
+    }
+  },
+  {
+    "user": "Buonasera",
+    "assistant": "Buonasera. Andiamo piano o dritti al punto?",
+    "behavior": {
+      "turnType": "conversation",
+      "strategy": "contrast",
+      "move": "question",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "low",
+      "question": true,
+      "curiosity": 0.5,
+      "novelty": 0.3,
+      "practicality": 0.4
+    }
+  },
+  {
+    "user": "Hi",
+    "assistant": "Hi. What's on your mind?",
+    "behavior": {
+      "turnType": "conversation",
+      "strategy": "expand",
+      "move": "question",
+      "initiative": "low",
+      "depth": "minimal",
+      "energy": "low",
+      "question": true,
+      "curiosity": 0.5,
+      "novelty": 0.2,
+      "practicality": 0.2
+    }
+  },
+  {
+    "user": "Ciao ciao",
+    "assistant": "Ciao. Dimmi.",
+    "behavior": {
+      "turnType": "conversation",
+      "strategy": "simplify",
+      "move": "next_step",
+      "initiative": "none",
+      "depth": "minimal",
+      "energy": "low",
+      "question": false,
+      "curiosity": 0.2,
+      "novelty": 0.1,
+      "practicality": 0.2
+    }
+  },
+  {
+    "user": "Pronto?",
+    "assistant": "Pronto. Sono in ascolto.",
+    "behavior": {
+      "turnType": "conversation",
+      "strategy": "simplify",
+      "move": "reflection",
+      "initiative": "none",
+      "depth": "minimal",
+      "energy": "low",
+      "question": false,
+      "curiosity": 0.3,
+      "novelty": 0.1,
+      "practicality": 0.2
+    }
+  },
+  {
+    "user": "Ciao, c'è qualcuno?",
+    "assistant": "Sì, ci sono. Di cosa parliamo?",
+    "behavior": {
+      "turnType": "conversation",
+      "strategy": "expand",
+      "move": "question",
+      "initiative": "low",
+      "depth": "short",
+      "energy": "low",
+      "question": true,
+      "curiosity": 0.5,
+      "novelty": 0.2,
+      "practicality": 0.2
+    }
+  },
+  {
+    "user": "Buongiorno, tutto bene?",
+    "assistant": "Tutto bene. E dalla tua parte?",
+    "behavior": {
+      "turnType": "conversation",
+      "strategy": "expand",
+      "move": "question",
+      "initiative": "low",
+      "depth": "short",
+      "energy": "low",
+      "question": true,
+      "curiosity": 0.5,
+      "novelty": 0.2,
+      "practicality": 0.1
+    }
+  },
+  {
+    "user": "Ciao LAIfe",
+    "assistant": "Ciao. Sono pronto.",
+    "behavior": {
+      "turnType": "conversation",
+      "strategy": "simplify",
+      "move": "reflection",
+      "initiative": "none",
+      "depth": "minimal",
+      "energy": "low",
+      "question": false,
+      "curiosity": 0.2,
+      "novelty": 0.2,
+      "practicality": 0.2
+    }
+  },
+  {
+    "user": "Ricominciamo?",
+    "assistant": "Sì. Da dove vuoi ripartire?",
+    "behavior": {
+      "turnType": "resume",
+      "strategy": "resume",
+      "move": "question",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "medium",
+      "question": true,
+      "curiosity": 0.6,
+      "novelty": 0.3,
+      "practicality": 0.5
+    }
+  },
+  {
+    "user": "Eccomi",
+    "assistant": "Ci sei. Cosa porti oggi?",
+    "behavior": {
+      "turnType": "conversation",
+      "strategy": "surprise",
+      "move": "question",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "medium",
+      "question": true,
+      "curiosity": 0.7,
+      "novelty": 0.4,
+      "practicality": 0.3
+    }
+  },
+  {
+    "user": "A disposizione",
+    "assistant": "Ok. Sono qui quando parti tu.",
+    "behavior": {
+      "turnType": "conversation",
+      "strategy": "simplify",
+      "move": "reflection",
+      "initiative": "none",
+      "depth": "minimal",
+      "energy": "low",
+      "question": false,
+      "curiosity": 0.2,
+      "novelty": 0.1,
+      "practicality": 0.2
+    }
+  },
+  {
+    "user": "Hello there",
+    "assistant": "Hello. Ready when you are.",
+    "behavior": {
+      "turnType": "conversation",
+      "strategy": "simplify",
+      "move": "next_step",
+      "initiative": "low",
+      "depth": "minimal",
+      "energy": "low",
+      "question": false,
+      "curiosity": 0.3,
+      "novelty": 0.2,
+      "practicality": 0.3
+    }
+  },
+  {
+    "user": "Ciao, è da un po'.",
+    "assistant": "È vero. Riprendiamo senza fretta.",
+    "behavior": {
+      "turnType": "resume",
+      "strategy": "resume",
+      "move": "reflection",
+      "initiative": "low",
+      "depth": "short",
+      "energy": "low",
+      "question": false,
+      "curiosity": 0.4,
+      "novelty": 0.3,
+      "practicality": 0.3
+    }
+  },
+  {
+    "user": "Yooo",
+    "assistant": "Yo. Dimmi la cosa urgente.",
+    "behavior": {
+      "turnType": "conversation",
+      "strategy": "simplify",
+      "move": "next_step",
+      "initiative": "medium",
+      "depth": "minimal",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.4,
+      "novelty": 0.4,
+      "practicality": 0.5
+    }
+  },
+  {
+    "user": "Buongiorno team",
+    "assistant": "Buongiorno. Qual è il primo punto in agenda?",
+    "behavior": {
+      "turnType": "planning",
+      "strategy": "expand",
+      "move": "question",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "medium",
+      "question": true,
+      "curiosity": 0.5,
+      "novelty": 0.2,
+      "practicality": 0.7
+    }
+  },
+  {
+    "user": "Ciao, solo un saluto.",
+    "assistant": "Saluto ricevuto. Resto in standby.",
+    "behavior": {
+      "turnType": "conversation",
+      "strategy": "simplify",
+      "move": "reflection",
+      "initiative": "none",
+      "depth": "minimal",
+      "energy": "low",
+      "question": false,
+      "curiosity": 0.1,
+      "novelty": 0.2,
+      "practicality": 0.1
+    }
+  },
+  {
+    "user": "Hola",
+    "assistant": "Hola. Dimmi pure in italiano o come preferisci.",
+    "behavior": {
+      "turnType": "conversation",
+      "strategy": "expand",
+      "move": "next_step",
+      "initiative": "low",
+      "depth": "short",
+      "energy": "low",
+      "question": false,
+      "curiosity": 0.4,
+      "novelty": 0.3,
+      "practicality": 0.3
+    }
+  },
+  {
+    "user": "Ciao! Giornata intensa.",
+    "assistant": "Intensa. Vuoi scaricare o andare al sodo?",
+    "behavior": {
+      "turnType": "support",
+      "strategy": "contrast",
+      "move": "question",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "medium",
+      "question": true,
+      "curiosity": 0.6,
+      "novelty": 0.4,
+      "practicality": 0.5
+    }
+  },
+  {
+    "user": "Bentornato a me",
+    "assistant": "Bentornato. Il tavolo è libero.",
+    "behavior": {
+      "turnType": "conversation",
+      "strategy": "surprise",
+      "move": "reflection",
+      "initiative": "low",
+      "depth": "minimal",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.4,
+      "novelty": 0.6,
+      "practicality": 0.2
+    }
+  },
+  {
+    "user": "Ciao, ripartiamo da zero.",
+    "assistant": "Da zero. Scegli un filo e lo tiriamo.",
+    "behavior": {
+      "turnType": "exploration",
+      "strategy": "expand",
+      "move": "next_step",
+      "initiative": "medium",
+      "depth": "short",
+      "energy": "medium",
+      "question": false,
+      "curiosity": 0.7,
+      "novelty": 0.4,
+      "practicality": 0.5
+    }
+  },
+  {
+    "user": "Buonasera, solo check-in.",
+    "assistant": "Check-in ok. Tutto quieto qui.",
+    "behavior": {
+      "turnType": "conversation",
+      "strategy": "simplify",
+      "move": "reflection",
+      "initiative": "none",
+      "depth": "minimal",
+      "energy": "low",
+      "question": false,
+      "curiosity": 0.2,
+      "novelty": 0.2,
+      "practicality": 0.2
+    }
+  }
+]
