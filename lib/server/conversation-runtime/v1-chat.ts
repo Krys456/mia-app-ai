@@ -279,7 +279,12 @@ async function runMemoryWithBudget(
   }
 }
 
-export async function runV1Chat(req: VercelRequest, res: VercelResponse) {
+export async function runV1Chat(
+  req: VercelRequest,
+  res: VercelResponse,
+  options: { runtime?: 'v1' | 'v2' } = {},
+) {
+  const runtime = options.runtime === 'v2' ? 'v2' : 'v1'
   // CORS on every request — including POST — so browsers never opaque-fail.
   applyCors(res)
 
@@ -2233,6 +2238,7 @@ export async function runV1Chat(req: VercelRequest, res: VercelResponse) {
       // learningSignals / voiceSession are additive / internal — not a public UI contract field.
       const payload = {
         content,
+        runtime,
         memoryEvent,
         learningSignals,
         ...(voiceSessionOut ? { voiceSession: voiceSessionOut } : {}),
@@ -2252,6 +2258,7 @@ export async function runV1Chat(req: VercelRequest, res: VercelResponse) {
         JSON.stringify({
           contentLen: content.length,
           memoryEvent,
+          runtime,
           keys: Object.keys(payload),
         }),
       )
@@ -2260,6 +2267,7 @@ export async function runV1Chat(req: VercelRequest, res: VercelResponse) {
 
     const payload = {
       content,
+      runtime,
       memoryEvent: null,
       learningSignals,
       ...(voiceSessionOut ? { voiceSession: voiceSessionOut } : {}),
@@ -2279,6 +2287,7 @@ export async function runV1Chat(req: VercelRequest, res: VercelResponse) {
       JSON.stringify({
         contentLen: content.length,
         memoryEvent: null,
+        runtime,
         keys: Object.keys(payload),
       }),
     )

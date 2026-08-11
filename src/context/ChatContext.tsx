@@ -491,6 +491,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
               systemPrompt: prompt,
               userId: getOrCreateUserId(),
               memoryEnabled: personalization.memoryEnabled !== false,
+              developerMode: true,
               ...(useV2 ? { engine: 'v2' as const } : { engine: 'v1' as const }),
               learningSignals: getLearningSignals(),
               welcomeSession: getWelcomeSession(),

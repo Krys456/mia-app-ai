@@ -213,9 +213,10 @@ export function SettingsDrawer({ onOpenMemory }: SettingsDrawerProps) {
             </div>
 
             <p className="settings-note settings-note--tight">
-              ON invia la preferenza client <code>engine=v2</code> e mostra il pannello debug se il
-              server lo restituisce. OFF invia <code>engine=v1</code>. Il runtime effettivo è deciso
-              dal server con <code>LAIFE_CONVERSATION_RUNTIME</code> (default V1).
+              ON seleziona il runtime V2 (<code>engine=v2</code>) e mostra il pannello debug se
+              disponibile. OFF seleziona V1. Richiede Developer Mode nel request (
+              <code>developerMode: true</code>). Senza Developer Mode, il server usa{' '}
+              <code>LAIFE_CONVERSATION_RUNTIME</code> (default V1).
             </p>
           </section>
 

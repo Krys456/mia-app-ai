@@ -22,10 +22,14 @@ export interface ChatApiRequest {
   memoryEnabled?: boolean
   /**
    * Client preference for conversation runtime (`v1` | `v2`).
-   * Server dispatch still uses LAIFE_CONVERSATION_RUNTIME; this flag is forwarded
-   * for preference / future wiring and does not change backend files here.
+   * Honored only when developerMode is true (server Priority 1).
    */
   engine?: 'v1' | 'v2'
+  /**
+   * Explicit Developer Mode opt-in. When false/omitted, server ignores `engine`
+   * and uses LAIFE_CONVERSATION_RUNTIME / default v1.
+   */
+  developerMode?: boolean
   /** Prior internal reflection signals — never shown in UI. */
   learningSignals?: LearningSignals | null
   /** Voice mode → spoken-natural answers. */
@@ -50,6 +54,8 @@ export interface ChatApiRequest {
 
 export interface ChatApiSuccess {
   content: string
+  /** Server-selected conversation runtime for this response. */
+  runtime?: 'v1' | 'v2'
   memoriesSaved?: number
   /** Discrete UI hint when auto-memory wrote something. */
   memoryEvent?: 'saved' | 'updated' | null
@@ -119,6 +125,7 @@ export async function requestChatCompletion(
       hasSystemPrompt: Boolean(payload.systemPrompt?.trim()),
       memoryEnabled: payload.memoryEnabled !== false,
       engine: payload.engine || 'v1',
+      developerMode: payload.developerMode === true,
     }),
   )
 
@@ -138,6 +145,7 @@ export async function requestChatCompletion(
         systemPrompt: payload.systemPrompt,
         userId: payload.userId,
         memoryEnabled: payload.memoryEnabled !== false,
+        ...(payload.developerMode === true ? { developerMode: true } : {}),
         ...(payload.engine === 'v1' || payload.engine === 'v2'
           ? { engine: payload.engine }
           : {}),
@@ -241,6 +249,7 @@ export async function requestChatCompletion(
 
   return {
     content,
+    runtime: data.runtime === 'v2' ? 'v2' : data.runtime === 'v1' ? 'v1' : undefined,
     memoriesSaved: typeof data.memoriesSaved === 'number' ? data.memoriesSaved : 0,
     memoryEvent,
     learningSignals: sanitizeLearningSignals(data.learningSignals),
