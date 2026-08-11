@@ -46,12 +46,15 @@ import type { ThemeDefinition } from '../lib/themes'
 import {
   DEFAULT_PERSONALIZATION,
   DEFAULT_THEME_SETTINGS,
+  DEFAULT_DEVELOPER_SETTINGS,
   isPersonalityMode,
   migrateLegacyTone,
   type AppSettings,
   type ChatMessage,
+  type DeveloperSettings,
   type PersonalizationSettings,
   type ThemeSettings,
+  type V2DebugInfo,
 } from '../types'
 
 const STORAGE_KEY = 'laife.settings.v2'
@@ -116,6 +119,16 @@ function normalizePersonalization(
   return merged
 }
 
+function normalizeDeveloper(
+  raw: Partial<DeveloperSettings> | undefined,
+): DeveloperSettings {
+  return {
+    ...DEFAULT_DEVELOPER_SETTINGS,
+    ...raw,
+    v2Experimental: raw?.v2Experimental === true,
+  }
+}
+
 function loadSettings(): AppSettings {
   try {
     const raw = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem('laife.settings.v1')
@@ -123,11 +136,13 @@ function loadSettings(): AppSettings {
       return {
         personalization: { ...DEFAULT_PERSONALIZATION },
         theme: { ...DEFAULT_THEME_SETTINGS, customThemes: [] },
+        developer: { ...DEFAULT_DEVELOPER_SETTINGS },
       }
     }
     const parsed = JSON.parse(raw) as Partial<AppSettings> & {
       theme?: Partial<ThemeSettings>
       personalization?: Partial<PersonalizationSettings> & { tone?: unknown }
+      developer?: Partial<DeveloperSettings>
     }
     return {
       personalization: normalizePersonalization(parsed.personalization),
@@ -135,11 +150,13 @@ function loadSettings(): AppSettings {
         activeThemeId: parsed.theme?.activeThemeId ?? DEFAULT_THEME_SETTINGS.activeThemeId,
         customThemes: sanitizeCustomThemes(parsed.theme?.customThemes),
       },
+      developer: normalizeDeveloper(parsed.developer),
     }
   } catch {
     return {
       personalization: { ...DEFAULT_PERSONALIZATION },
       theme: { ...DEFAULT_THEME_SETTINGS, customThemes: [] },
+      developer: { ...DEFAULT_DEVELOPER_SETTINGS },
     }
   }
 }
@@ -173,10 +190,17 @@ type Action =
   | { type: 'TOGGLE_SETTINGS' }
   | { type: 'UPDATE_PERSONALIZATION'; payload: Partial<PersonalizationSettings> }
   | { type: 'UPDATE_THEME'; payload: Partial<ThemeSettings> }
+  | { type: 'UPDATE_DEVELOPER'; payload: Partial<DeveloperSettings> }
   | { type: 'SEND_USER'; content: string }
   | { type: 'ASSISTANT_START'; id: string }
   | { type: 'ASSISTANT_PROGRESS'; id: string; content: string }
-  | { type: 'ASSISTANT_FINISH'; id: string; content: string; memoryEvent?: 'saved' | 'updated' | null }
+  | {
+      type: 'ASSISTANT_FINISH'
+      id: string
+      content: string
+      memoryEvent?: 'saved' | 'updated' | null
+      v2Debug?: V2DebugInfo | null
+    }
   | { type: 'ASSISTANT_FAIL'; error: string }
   | { type: 'CLEAR_MEMORY_NOTICE' }
   | { type: 'TRIM_TO'; count: number; thinking?: boolean }
@@ -234,6 +258,17 @@ function reducer(state: AppState, action: Action): AppState {
       saveSettings(next)
       return { ...state, settings: next }
     }
+    case 'UPDATE_DEVELOPER': {
+      const next: AppSettings = {
+        ...state.settings,
+        developer: normalizeDeveloper({
+          ...state.settings.developer,
+          ...action.payload,
+        }),
+      }
+      saveSettings(next)
+      return { ...state, settings: next }
+    }
     case 'SEND_USER': {
       const userMsg: ChatMessage = {
         id: uid(),
@@ -284,7 +319,13 @@ function reducer(state: AppState, action: Action): AppState {
     }
     case 'ASSISTANT_FINISH': {
       const messages = state.messages.map((msg) =>
-        msg.id === action.id ? { ...msg, content: action.content } : msg,
+        msg.id === action.id
+          ? {
+              ...msg,
+              content: action.content,
+              ...(action.v2Debug ? { v2Debug: action.v2Debug } : {}),
+            }
+          : msg,
       )
       return {
         ...state,
@@ -345,6 +386,7 @@ interface ChatContextValue {
   clearMemoryNotice: () => void
   updatePersonalization: (patch: Partial<PersonalizationSettings>) => void
   updateTheme: (patch: Partial<ThemeSettings>) => void
+  updateDeveloper: (patch: Partial<DeveloperSettings>) => void
   sendMessage: (content: string) => void
   /** Re-run the completion for an assistant message (drops that reply and regenerates). */
   regenerateAssistant: (assistantId: string) => void
@@ -408,20 +450,30 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'UPDATE_THEME', payload })
   }, [])
 
+  const updateDeveloper = useCallback((payload: Partial<DeveloperSettings>) => {
+    dispatch({ type: 'UPDATE_DEVELOPER', payload })
+  }, [])
+
   const runAssistantCompletion = useCallback(
-    (history: ChatApiMessage[], personalization: PersonalizationSettings) => {
+    (
+      history: ChatApiMessage[],
+      personalization: PersonalizationSettings,
+      developer: DeveloperSettings = DEFAULT_DEVELOPER_SETTINGS,
+    ) => {
       abortActiveCompletion()
       const controller = new AbortController()
       abortRef.current = controller
       const generation = ++generationRef.current
       inFlightRef.current = true
       const prompt = buildSystemPrompt(personalization, topicMemoryRef.current)
+      const useV2 = developer.v2Experimental === true
 
       void (async () => {
         try {
           console.log('[ChatContext] starting completion', {
             historyLen: history.length,
             generation,
+            engine: useV2 ? 'v2' : 'v1',
           })
           const {
             content: reply,
@@ -431,6 +483,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             pendingAutomation,
             conversationMemoryMap,
             conversationPreferenceProfile,
+            v2Debug,
           } =
             await requestChatCompletion(
             {
@@ -438,6 +491,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
               systemPrompt: prompt,
               userId: getOrCreateUserId(),
               memoryEnabled: personalization.memoryEnabled !== false,
+              ...(useV2 ? { engine: 'v2' as const } : { engine: 'v1' as const }),
               learningSignals: getLearningSignals(),
               welcomeSession: getWelcomeSession(),
               displayName: personalization.displayName?.trim() || undefined,
@@ -545,6 +599,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             id: assistantId,
             content: reply,
             memoryEvent: memoryEvent ?? null,
+            ...(useV2 && v2Debug ? { v2Debug } : {}),
           })
         } catch (error) {
           if (generation !== generationRef.current) return
@@ -569,6 +624,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       if (!content || inFlightRef.current || state.isThinking || state.isStreaming) return
 
       const personalization = state.settings.personalization
+      const developer = state.settings.developer ?? DEFAULT_DEVELOPER_SETTINGS
       const history: ChatApiMessage[] = [
         ...state.messages
           .filter((m) => m.role === 'user' || m.role === 'assistant')
@@ -579,13 +635,14 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
       inFlightRef.current = true
       dispatch({ type: 'SEND_USER', content })
-      runAssistantCompletion(history, personalization)
+      runAssistantCompletion(history, personalization, developer)
     },
     [
       state.isThinking,
       state.isStreaming,
       state.messages,
       state.settings.personalization,
+      state.settings.developer,
       runAssistantCompletion,
     ],
   )
@@ -611,13 +668,18 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
       inFlightRef.current = true
       dispatch({ type: 'TRIM_TO', count: kept.length, thinking: true })
-      runAssistantCompletion(history, state.settings.personalization)
+      runAssistantCompletion(
+        history,
+        state.settings.personalization,
+        state.settings.developer ?? DEFAULT_DEVELOPER_SETTINGS,
+      )
     },
     [
       state.isThinking,
       state.isStreaming,
       state.messages,
       state.settings.personalization,
+      state.settings.developer,
       runAssistantCompletion,
     ],
   )
@@ -637,6 +699,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       clearMemoryNotice,
       updatePersonalization,
       updateTheme,
+      updateDeveloper,
       sendMessage,
       regenerateAssistant,
     }),
@@ -654,6 +717,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       clearMemoryNotice,
       updatePersonalization,
       updateTheme,
+      updateDeveloper,
       sendMessage,
       regenerateAssistant,
     ],

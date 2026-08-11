@@ -8,9 +8,11 @@ import {
   type PointerEvent,
 } from 'react'
 import type { ChatMessage } from '../../types'
+import { useChat } from '../../context/ChatContext'
 import { MessageActions } from './MessageActions'
 import { StreamingRenderer } from './StreamingRenderer'
 import { TypingAnimation } from './TypingAnimation'
+import { V2DebugPanel } from './V2DebugPanel'
 import './MessageBubble.css'
 
 interface MessageBubbleProps {
@@ -31,6 +33,9 @@ function MessageBubbleComponent({
   canRegenerate = false,
   onRegenerate,
 }: MessageBubbleProps) {
+  const { settings } = useChat()
+  const showV2Debug =
+    settings.developer?.v2Experimental === true && Boolean(message.v2Debug)
   const isAssistant = message.role === 'assistant'
   const isError = isAssistant && message.kind === 'error'
   const isEmptyStream = isAssistant && !message.content && isStreaming && !isError
@@ -120,6 +125,9 @@ function MessageBubbleComponent({
               <StreamingRenderer content={message.content} isStreaming={isStreaming} />
             )}
           </div>
+          {showV2Debug && message.v2Debug && !isStreaming ? (
+            <V2DebugPanel debug={message.v2Debug} />
+          ) : null}
         </>
       ) : (
         <div className="bubble__user-row">

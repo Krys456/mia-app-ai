@@ -4,6 +4,7 @@ import {
 } from './learningSignals'
 import { sanitizeConversationMemoryMap } from './conversationMemoryMap'
 import { sanitizeConversationPreferenceProfile } from './conversationPreferenceProfile'
+import type { V2DebugInfo } from '../types'
 
 export type ChatApiRole = 'user' | 'assistant' | 'system'
 
@@ -19,6 +20,8 @@ export interface ChatApiRequest {
   systemPrompt: string
   userId?: string
   memoryEnabled?: boolean
+  /** Developer Toggle: prefer V2 experimental pipeline for this request. */
+  engine?: 'v1' | 'v2'
   /** Prior internal reflection signals — never shown in UI. */
   learningSignals?: LearningSignals | null
   /** Voice mode → spoken-natural answers. */
@@ -58,6 +61,8 @@ export interface ChatApiSuccess {
   conversationMemoryMap?: Record<string, unknown> | null
   /** Internal only — Conversation Preference Profile echo. */
   conversationPreferenceProfile?: Record<string, unknown> | null
+  /** Developer debug — only when engine=v2 was requested. */
+  v2Debug?: V2DebugInfo | null
 }
 
 export interface ChatApiErrorBody {
@@ -109,6 +114,7 @@ export async function requestChatCompletion(
       messageCount: payload.messages?.length ?? 0,
       hasSystemPrompt: Boolean(payload.systemPrompt?.trim()),
       memoryEnabled: payload.memoryEnabled !== false,
+      engine: payload.engine || 'v1',
     }),
   )
 
@@ -128,6 +134,9 @@ export async function requestChatCompletion(
         systemPrompt: payload.systemPrompt,
         userId: payload.userId,
         memoryEnabled: payload.memoryEnabled !== false,
+        ...(payload.engine === 'v1' || payload.engine === 'v2'
+          ? { engine: payload.engine }
+          : {}),
         ...(payload.learningSignals ? { learningSignals: payload.learningSignals } : {}),
         ...(payload.modality ? { modality: payload.modality } : {}),
         ...(payload.voice ? { voice: true } : {}),
@@ -224,6 +233,8 @@ export async function requestChatCompletion(
   const memoryEvent =
     data.memoryEvent === 'saved' || data.memoryEvent === 'updated' ? data.memoryEvent : null
 
+  const v2Debug = sanitizeV2Debug(data.v2Debug)
+
   return {
     content,
     memoriesSaved: typeof data.memoriesSaved === 'number' ? data.memoriesSaved : 0,
@@ -243,5 +254,38 @@ export async function requestChatCompletion(
     conversationPreferenceProfile: sanitizeConversationPreferenceProfile(
       data.conversationPreferenceProfile,
     ),
+    v2Debug,
+  }
+}
+
+/**
+ * @param {unknown} raw
+ * @returns {V2DebugInfo | null}
+ */
+function sanitizeV2Debug(raw: unknown): V2DebugInfo | null {
+  if (!raw || typeof raw !== 'object') return null
+  const d = raw as Record<string, unknown>
+  if (d.servedBy !== 'v2' && d.servedBy !== 'v1-fallback') return null
+  return {
+    servedBy: d.servedBy,
+    ...(typeof d.error === 'string' ? { error: d.error } : {}),
+    ...(d.perception && typeof d.perception === 'object'
+      ? { perception: d.perception as Record<string, unknown> }
+      : {}),
+    ...(d.decision && typeof d.decision === 'object'
+      ? { decision: d.decision as Record<string, unknown> }
+      : {}),
+    ...(d.plan && typeof d.plan === 'object' ? { plan: d.plan as Record<string, unknown> } : {}),
+    ...(d.writer && typeof d.writer === 'object'
+      ? { writer: d.writer as V2DebugInfo['writer'] }
+      : {}),
+    ...(d.reviewer && typeof d.reviewer === 'object'
+      ? { reviewer: d.reviewer as Record<string, unknown> }
+      : {}),
+    ...(d.timing && typeof d.timing === 'object'
+      ? { timing: d.timing as V2DebugInfo['timing'] }
+      : {}),
+    ...(typeof d.score === 'number' ? { score: d.score } : {}),
+    ...(typeof d.reviewDecision === 'string' ? { reviewDecision: d.reviewDecision } : {}),
   }
 }
