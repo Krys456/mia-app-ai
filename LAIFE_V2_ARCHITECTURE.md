@@ -74,42 +74,48 @@ Utente
   ↓
 Perception
   ↓
-Conversation State   ← WHAT IS CURRENTLY TRUE (Phase 2 runtime)
+Conversation State   ← WHAT IS CURRENTLY TRUE (session working state; echoed across turns)
   ↓
 Director (Mind)      ← strategy / Decision Record
   ↓
-Memory
+Memory               ← durable knowledge (not live in V2 Phase 3)
   ↓
 Planner              ← WHAT SHOULD HAPPEN NEXT
   ↓
 Writer               ← HOW TO SAY IT
   ↓
-Reviewer
+Contract Evaluator   ← optional contract fidelity (at most one HOW rewrite)
   ↓
-Risposta
+State Transition     ← nextConversationState after successful delivery
+  ↓
+Risposta (+ conversationState echo)
 ```
+
+### Conversation State vs Memory
+
+- **Conversation State** = short-lived conversation working state (topic, proposals, phase, mode).
+- **Memory** = durable user/context knowledge (not implemented in live V2 yet).
 
 ### Note di sequenza
 
 1. **Perception** osserva il turno; non decide la strategia.
-2. **Conversation State** consolida i fatti della situazione (topic, goal, mode, phase, engagement, pending proposal, short-reply, continuity). Non genera prosa e non sceglie la strategia.
-3. **Director (Mind)** prende le decisioni di turno in un **Decision Record** immutabile, consumando Conversation State senza sovrascrivere i fatti.
-4. **Memory** carica (e dopo la risposta salva) solo ciò che il Director ha autorizzato.
-5. **Planner** traduce Decision Record + Conversation State in un piano di risposta leggibile e corto.
-6. **Writer** genera il testo; non rinegozia le decisioni né i fatti di State.
-7. **Reviewer** valida; può richiedere **una sola** riscrittura; poi si pubblica.
-8. Dopo la risposta: aggiornamento memoria permanente/conversazione e echo stato client.
+2. **Conversation State** evolve i fatti da `previousState` + messaggi; non genera prosa.
+3. **Director (Mind)** decide il Decision Record senza sovrascrivere i fatti di State.
+4. **Memory** (futuro) carica solo ciò che è autorizzato.
+5. **Planner** produce piano + writer brief.
+6. **Writer** genera il testo.
+7. **Contract Evaluator** verifica fedeltà al contratto Planner; al massimo una riscrittura HOW.
+8. **State Transition** pubblica lo State del prossimo turno solo se Writer ha consegnato.
+9. Echo client di `conversationState` (non Supabase Memory).
 
-Il flusso Memory dopo Director è voluto: **prima si decide se e quale memoria serve**, poi si carica. Evita retrieve “sperando che serva” e riduce rumore nel prompt.
+### Split Focus / Resume / Director / Momentum (Phase 3)
 
-### Split Focus / Resume / Director (Phase 2)
-
-| Modulo | Resta | Spostato in Conversation State |
-|--------|--------|--------------------------------|
-| Resume | compat helper + eventuale `resumeSentence` Writer-only | `continuity.shouldResume` / `resumeTopic` / `resumePoint` (senza prosa) |
-| Focus | segnali di response-planning in Planner | `activeTopic` autorità unica |
-| Momentum | mirror compat `conversationMomentum` | `conversationMode` |
-| Director | `directorState` (objective, lead/ask/explain flags) | topic, engagement, pending action come fatti |
+| Modulo | Resta | Autorità |
+|--------|--------|----------|
+| Resume | compat `resumeSentence` Writer-only | continuity facts in State |
+| Focus | coda / avoidClarification (planning) | **non** pubblica activeTopic |
+| Momentum | deprecated alias `conversationMomentum.kind` | **conversationMode** in State |
+| Director | `directorState` decisions | topic/engagement from State |
 
 ## 2.2 Moduli — responsabilità, input, output, divieti
 
