@@ -5,6 +5,30 @@ export type AppView = 'chat' | 'memory' | 'vision'
 
 export type MessageRole = 'user' | 'assistant' | 'system'
 
+/** V2 debug snapshot attached to assistant messages when experimental mode is on. */
+export interface V2DebugInfo {
+  servedBy: 'v2' | 'v1-fallback'
+  error?: string
+  perception?: Record<string, unknown>
+  decision?: Record<string, unknown>
+  plan?: Record<string, unknown>
+  writer?: {
+    draft?: string
+    final?: string
+    rewritten?: boolean
+    model?: string
+    providerId?: string
+  }
+  reviewer?: Record<string, unknown>
+  timing?: {
+    totalMs?: number
+    writerMs?: number
+    reviewerMs?: number
+  }
+  score?: number
+  reviewDecision?: 'PASS' | 'REWRITE' | string
+}
+
 export interface ChatMessage {
   id: string
   role: MessageRole
@@ -12,6 +36,8 @@ export interface ChatMessage {
   createdAt: number
   /** When set, render as an error notice rather than a normal assistant reply. */
   kind?: 'error'
+  /** Present when Developer → LAIfe V2 Experimental is ON for that turn. */
+  v2Debug?: V2DebugInfo
 }
 
 /** Soft style bias for the Dynamic Behavior Model (not a fixed persona). */
@@ -54,9 +80,19 @@ export interface ThemeSettings {
   customThemes: ThemeDefinition[]
 }
 
+/** Developer-only preferences (device-local). */
+export interface DeveloperSettings {
+  /**
+   * When true, chat requests send engine=v2 (client preference).
+   * Server routing still follows LAIFE_CONVERSATION_RUNTIME.
+   */
+  v2Experimental: boolean
+}
+
 export interface AppSettings {
   personalization: PersonalizationSettings
   theme: ThemeSettings
+  developer: DeveloperSettings
 }
 
 export const DEFAULT_PERSONALIZATION: PersonalizationSettings = {
@@ -71,6 +107,10 @@ export const DEFAULT_PERSONALIZATION: PersonalizationSettings = {
 export const DEFAULT_THEME_SETTINGS: ThemeSettings = {
   activeThemeId: DEFAULT_THEME_ID,
   customThemes: [],
+}
+
+export const DEFAULT_DEVELOPER_SETTINGS: DeveloperSettings = {
+  v2Experimental: false,
 }
 
 export function isPersonalityMode(value: unknown): value is PersonalityMode {

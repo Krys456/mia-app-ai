@@ -58,14 +58,17 @@ import {
 } from '../lib/chatPersistence'
 import { explicitDeleteConversation } from '../lib/chatPersistence/sync'
 import {
+  DEFAULT_DEVELOPER_SETTINGS,
   DEFAULT_PERSONALIZATION,
   DEFAULT_THEME_SETTINGS,
   isPersonalityMode,
   migrateLegacyTone,
   type AppSettings,
   type ChatMessage,
+  type DeveloperSettings,
   type PersonalizationSettings,
   type ThemeSettings,
+  type V2DebugInfo,
 } from '../types'
 
 const STORAGE_KEY = 'laife.settings.v2'
@@ -130,6 +133,16 @@ function normalizePersonalization(
   return merged
 }
 
+function normalizeDeveloper(
+  raw: Partial<DeveloperSettings> | undefined,
+): DeveloperSettings {
+  return {
+    ...DEFAULT_DEVELOPER_SETTINGS,
+    ...raw,
+    v2Experimental: raw?.v2Experimental === true,
+  }
+}
+
 function loadSettings(): AppSettings {
   try {
     const raw = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem('laife.settings.v1')
@@ -137,11 +150,13 @@ function loadSettings(): AppSettings {
       return {
         personalization: { ...DEFAULT_PERSONALIZATION },
         theme: { ...DEFAULT_THEME_SETTINGS, customThemes: [] },
+        developer: { ...DEFAULT_DEVELOPER_SETTINGS },
       }
     }
     const parsed = JSON.parse(raw) as Partial<AppSettings> & {
       theme?: Partial<ThemeSettings>
       personalization?: Partial<PersonalizationSettings> & { tone?: unknown }
+      developer?: Partial<DeveloperSettings>
     }
     return {
       personalization: normalizePersonalization(parsed.personalization),
@@ -149,11 +164,13 @@ function loadSettings(): AppSettings {
         activeThemeId: parsed.theme?.activeThemeId ?? DEFAULT_THEME_SETTINGS.activeThemeId,
         customThemes: sanitizeCustomThemes(parsed.theme?.customThemes),
       },
+      developer: normalizeDeveloper(parsed.developer),
     }
   } catch {
     return {
       personalization: { ...DEFAULT_PERSONALIZATION },
       theme: { ...DEFAULT_THEME_SETTINGS, customThemes: [] },
+      developer: { ...DEFAULT_DEVELOPER_SETTINGS },
     }
   }
 }
@@ -183,6 +200,10 @@ interface AppState {
   conversationCreatedAt: number
   /** V2 working Conversation State keyed by conversationId (not Memory). */
   conversationState: Record<string, unknown> | null
+  /**
+   * Last-used engine label on the conversation record (persistence metadata).
+   * Source of truth for routing remains settings.developer.v2Experimental.
+   */
   engine: string
 }
 
@@ -193,10 +214,17 @@ type Action =
   | { type: 'TOGGLE_SETTINGS' }
   | { type: 'UPDATE_PERSONALIZATION'; payload: Partial<PersonalizationSettings> }
   | { type: 'UPDATE_THEME'; payload: Partial<ThemeSettings> }
+  | { type: 'UPDATE_DEVELOPER'; payload: Partial<DeveloperSettings> }
   | { type: 'SEND_USER'; id: string; content: string; createdAt: number }
   | { type: 'ASSISTANT_START'; id: string }
   | { type: 'ASSISTANT_PROGRESS'; id: string; content: string }
-  | { type: 'ASSISTANT_FINISH'; id: string; content: string; memoryEvent?: 'saved' | 'updated' | null }
+  | {
+      type: 'ASSISTANT_FINISH'
+      id: string
+      content: string
+      memoryEvent?: 'saved' | 'updated' | null
+      v2Debug?: V2DebugInfo | null
+    }
   | { type: 'ASSISTANT_FAIL'; error: string }
   | { type: 'CLEAR_MEMORY_NOTICE' }
   | { type: 'TRIM_TO'; count: number; thinking?: boolean }
@@ -212,10 +240,14 @@ type Action =
   | { type: 'SET_ENGINE'; engine: string }
 
 function createInitialState(): AppState {
+  const settings = loadSettings()
   const cached = loadActiveConversationForStartup()
+  // Toggle (settings.developer) is authoritative for which engine to use.
+  // Cached conversation.engine is metadata only and must not flip the toggle.
+  const engineFromToggle = settings.developer.v2Experimental ? 'v2' : 'v1'
   return {
     messages: cached?.messages ? cached.messages.map(toChatMessage) : [],
-    settings: loadSettings(),
+    settings,
     settingsOpen: false,
     isThinking: false,
     isStreaming: false,
@@ -226,17 +258,18 @@ function createInitialState(): AppState {
     conversationState: isUsableConversationState(cached?.conversationState)
       ? cached!.conversationState!
       : null,
-    engine: cached?.engine || 'v1',
+    engine: engineFromToggle,
   }
 }
 
-function toChatMessage(m: PersistedChatMessage): ChatMessage {
+function toChatMessage(m: PersistedChatMessage & { v2Debug?: V2DebugInfo }): ChatMessage {
   return {
     id: m.id,
     role: m.role,
     content: m.content,
     createdAt: m.createdAt,
     kind: m.kind,
+    ...(m.v2Debug ? { v2Debug: m.v2Debug } : {}),
   }
 }
 
@@ -307,6 +340,23 @@ function reducer(state: AppState, action: Action): AppState {
       saveSettings(next)
       return { ...state, settings: next }
     }
+    case 'UPDATE_DEVELOPER': {
+      const nextDeveloper = normalizeDeveloper({
+        ...state.settings.developer,
+        ...action.payload,
+      })
+      const next: AppSettings = {
+        ...state.settings,
+        developer: nextDeveloper,
+      }
+      saveSettings(next)
+      // Mirror engine metadata only — do NOT change conversationId or wipe messages.
+      return {
+        ...state,
+        settings: next,
+        engine: nextDeveloper.v2Experimental ? 'v2' : 'v1',
+      }
+    }
     case 'SEND_USER': {
       const userMsg: ChatMessage = {
         id: action.id,
@@ -357,7 +407,13 @@ function reducer(state: AppState, action: Action): AppState {
     }
     case 'ASSISTANT_FINISH': {
       const messages = state.messages.map((msg) =>
-        msg.id === action.id ? { ...msg, content: action.content } : msg,
+        msg.id === action.id
+          ? {
+              ...msg,
+              content: action.content,
+              ...(action.v2Debug ? { v2Debug: action.v2Debug } : {}),
+            }
+          : msg,
       )
       return {
         ...state,
@@ -421,6 +477,7 @@ interface ChatContextValue {
   clearMemoryNotice: () => void
   updatePersonalization: (patch: Partial<PersonalizationSettings>) => void
   updateTheme: (patch: Partial<ThemeSettings>) => void
+  updateDeveloper: (patch: Partial<DeveloperSettings>) => void
   sendMessage: (content: string) => void
   /** Re-run the completion for an assistant message (drops that reply and regenerates). */
   regenerateAssistant: (assistantId: string) => void
@@ -504,7 +561,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
                   merged.conversationId,
                 ),
             createdAt: merged.createdAt,
-            engine: merged.engine,
+            // Do not let remote/cached engine override the Developer toggle.
+            engine: state.settings.developer?.v2Experimental ? 'v2' : 'v1',
           })
         } else if (
           !state.conversationState &&
@@ -607,14 +665,45 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'UPDATE_THEME', payload })
   }, [])
 
+  const updateDeveloper = useCallback(
+    (payload: Partial<DeveloperSettings>) => {
+      dispatch({ type: 'UPDATE_DEVELOPER', payload })
+      // Persist engine mirror on the SAME conversation — never create a new ID.
+      const nextV2 =
+        payload.v2Experimental !== undefined
+          ? payload.v2Experimental === true
+          : state.settings.developer?.v2Experimental === true
+      const engine = nextV2 ? 'v2' : 'v1'
+      persistSnapshot(state.messages, state.conversationId, {
+        createdAt: state.conversationCreatedAt,
+        engine,
+        conversationState: state.conversationState,
+      })
+    },
+    [
+      persistSnapshot,
+      state.messages,
+      state.conversationId,
+      state.conversationCreatedAt,
+      state.conversationState,
+      state.settings.developer?.v2Experimental,
+    ],
+  )
+
   const runAssistantCompletion = useCallback(
-    (history: ChatApiMessage[], personalization: PersonalizationSettings, conversationId: string) => {
+    (
+      history: ChatApiMessage[],
+      personalization: PersonalizationSettings,
+      conversationId: string,
+      developer: DeveloperSettings = DEFAULT_DEVELOPER_SETTINGS,
+    ) => {
       abortActiveCompletion()
       const controller = new AbortController()
       abortRef.current = controller
       const generation = ++generationRef.current
       inFlightRef.current = true
       const prompt = buildSystemPrompt(personalization, topicMemoryRef.current)
+      const useV2 = developer.v2Experimental === true
 
       void (async () => {
         try {
@@ -622,6 +711,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             historyLen: history.length,
             generation,
             conversationId,
+            engine: useV2 ? 'v2' : 'v1',
           })
           const {
             content: reply,
@@ -632,6 +722,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             conversationMemoryMap,
             conversationPreferenceProfile,
             conversationState: nextConversationState,
+            v2Debug,
           } =
             await requestChatCompletion(
             {
@@ -639,6 +730,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
               systemPrompt: prompt,
               userId: getOrCreateUserId(),
               memoryEnabled: personalization.memoryEnabled !== false,
+              developerMode: true,
+              ...(useV2 ? { engine: 'v2' as const } : { engine: 'v1' as const }),
               learningSignals: getLearningSignals(),
               welcomeSession: getWelcomeSession(),
               displayName: personalization.displayName?.trim() || undefined,
@@ -756,6 +849,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             id: assistantId,
             content: reply,
             memoryEvent: memoryEvent ?? null,
+            ...(useV2 && v2Debug ? { v2Debug } : {}),
           })
         } catch (error) {
           if (generation !== generationRef.current) return
@@ -802,13 +896,19 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         state.conversationId,
         { createdAt: state.conversationCreatedAt },
       )
-      runAssistantCompletion(history, personalization, state.conversationId)
+      runAssistantCompletion(
+        history,
+        personalization,
+        state.conversationId,
+        state.settings.developer ?? DEFAULT_DEVELOPER_SETTINGS,
+      )
     },
     [
       state.isThinking,
       state.isStreaming,
       state.messages,
       state.settings.personalization,
+      state.settings.developer,
       state.conversationId,
       state.conversationCreatedAt,
       runAssistantCompletion,
@@ -840,13 +940,19 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       persistSnapshot(kept, state.conversationId, {
         createdAt: state.conversationCreatedAt,
       })
-      runAssistantCompletion(history, state.settings.personalization, state.conversationId)
+      runAssistantCompletion(
+        history,
+        state.settings.personalization,
+        state.conversationId,
+        state.settings.developer ?? DEFAULT_DEVELOPER_SETTINGS,
+      )
     },
     [
       state.isThinking,
       state.isStreaming,
       state.messages,
       state.settings.personalization,
+      state.settings.developer,
       state.conversationId,
       state.conversationCreatedAt,
       runAssistantCompletion,
@@ -871,6 +977,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       clearMemoryNotice,
       updatePersonalization,
       updateTheme,
+      updateDeveloper,
       sendMessage,
       regenerateAssistant,
     }),
@@ -890,6 +997,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       clearMemoryNotice,
       updatePersonalization,
       updateTheme,
+      updateDeveloper,
       sendMessage,
       regenerateAssistant,
     ],
