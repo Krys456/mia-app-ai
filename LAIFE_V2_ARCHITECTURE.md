@@ -74,13 +74,15 @@ Utente
   ↓
 Perception
   ↓
-Director
+Conversation State   ← WHAT IS CURRENTLY TRUE (Phase 2 runtime)
+  ↓
+Director (Mind)      ← strategy / Decision Record
   ↓
 Memory
   ↓
-Planner
+Planner              ← WHAT SHOULD HAPPEN NEXT
   ↓
-Writer
+Writer               ← HOW TO SAY IT
   ↓
 Reviewer
   ↓
@@ -90,14 +92,24 @@ Risposta
 ### Note di sequenza
 
 1. **Perception** osserva il turno; non decide la strategia.
-2. **Director** prende tutte le decisioni di turno in un **Decision Record** immutabile.
-3. **Memory** carica (e dopo la risposta salva) solo ciò che il Director ha autorizzato.
-4. **Planner** traduce il Decision Record in un piano di risposta leggibile e corto.
-5. **Writer** genera il testo; non rinegozia le decisioni.
-6. **Reviewer** valida; può richiedere **una sola** riscrittura; poi si pubblica.
-7. Dopo la risposta: aggiornamento memoria permanente/conversazione e echo stato client.
+2. **Conversation State** consolida i fatti della situazione (topic, goal, mode, phase, engagement, pending proposal, short-reply, continuity). Non genera prosa e non sceglie la strategia.
+3. **Director (Mind)** prende le decisioni di turno in un **Decision Record** immutabile, consumando Conversation State senza sovrascrivere i fatti.
+4. **Memory** carica (e dopo la risposta salva) solo ciò che il Director ha autorizzato.
+5. **Planner** traduce Decision Record + Conversation State in un piano di risposta leggibile e corto.
+6. **Writer** genera il testo; non rinegozia le decisioni né i fatti di State.
+7. **Reviewer** valida; può richiedere **una sola** riscrittura; poi si pubblica.
+8. Dopo la risposta: aggiornamento memoria permanente/conversazione e echo stato client.
 
 Il flusso Memory dopo Director è voluto: **prima si decide se e quale memoria serve**, poi si carica. Evita retrieve “sperando che serva” e riduce rumore nel prompt.
+
+### Split Focus / Resume / Director (Phase 2)
+
+| Modulo | Resta | Spostato in Conversation State |
+|--------|--------|--------------------------------|
+| Resume | compat helper + eventuale `resumeSentence` Writer-only | `continuity.shouldResume` / `resumeTopic` / `resumePoint` (senza prosa) |
+| Focus | segnali di response-planning in Planner | `activeTopic` autorità unica |
+| Momentum | mirror compat `conversationMomentum` | `conversationMode` |
+| Director | `directorState` (objective, lead/ask/explain flags) | topic, engagement, pending action come fatti |
 
 ## 2.2 Moduli — responsabilità, input, output, divieti
 

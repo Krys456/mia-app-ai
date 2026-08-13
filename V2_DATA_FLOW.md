@@ -15,11 +15,13 @@ User
   ↓
 Perception
   ↓
+Conversation State   ← WHAT IS CURRENTLY TRUE (Phase 2)
+  ↓
 Mind
   ↓
-Planner
+Planner              ← WHAT SHOULD HAPPEN NEXT
   ↓
-Writer
+Writer               ← HOW TO SAY IT
   ↓
 Reviewer
   ↓
@@ -32,12 +34,23 @@ Response
 
 1. L’utente invia un messaggio (e stato di sessione).
 2. **Perception** osserva e produce uno snapshot strutturato.
-3. **Mind** decide una sola volta e chiude un Decision Record.
-4. **Planner** traduce la decisione in piano + writer brief (senza ridecidere).
-5. **Writer** genera la bozza testuale (unica Call LLM primaria prevista).
-6. **Reviewer** valida; al massimo una riscrittura.
-7. **Memory** persiste/aggiorna ciò che è autorizzato, dopo il testo finale.
-8. **Response** torna al client (testo + echo di stato).
+3. **Conversation State** consolida i fatti della situazione conversazionale (topic, goal, mode, phase, engagement, pending proposal, short-reply, continuity). Non genera prosa e non sceglie la strategia di risposta.
+4. **Mind** decide una sola volta e chiude un Decision Record (consuma Conversation State; non sovrascrive i fatti).
+5. **Planner** traduce la decisione in piano + writer brief (senza ridecidere i fatti di State).
+6. **Writer** genera la bozza testuale (unica Call LLM primaria prevista).
+7. **Reviewer** valida; al massimo una riscrittura.
+8. **Memory** persiste/aggiorna ciò che è autorizzato, dopo il testo finale.
+9. **Response** torna al client (testo + echo di stato).
+
+### Autorità (Phase 2)
+
+| Domanda | Owner |
+|--------|--------|
+| Cosa è vero ora nella conversazione? | Conversation State |
+| Cosa deve fare LAIfe al prossimo turno? | Planner (Mind sceglie strategia; Director sceglie move) |
+| Come dirlo? | Writer |
+
+Conversation Resume / Focus restano helper di compatibilità: **non** sono autorità concorrenti su `activeTopic`.
 
 ### Nota su Memory in lettura
 
