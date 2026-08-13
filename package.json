@@ -13,7 +13,8 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "test:persistence": "tsx src/lib/chatPersistence/chat-persistence.test.mjs && tsx src/lib/chatPersistence/v2-toggle-persistence.test.mjs",
-    "test:v1-observability": "node lib/server/v1-observability.test.mjs && node src/components/chat/v1-debug-panel.test.mjs"
+    "test:v1-observability": "node lib/server/v1-observability.test.mjs && node src/components/chat/v1-debug-panel.test.mjs",
+    "test:v1-authority": "node lib/server/v1-presence-authority.test.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.2",

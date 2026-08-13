@@ -148,6 +148,8 @@ async function attachV1Debug(
     conversationPreferenceProfile: Record<string, unknown> | null
     pendingAutomation: Record<string, unknown> | null | undefined
     timing: Record<string, unknown>
+    gateApplicability?: Record<string, unknown> | null
+    authorityResolution?: Record<string, unknown> | null
   },
 ) {
   if (!args.observabilityEnabled) return
@@ -171,6 +173,8 @@ async function attachV1Debug(
       conversationPreferenceProfile: args.conversationPreferenceProfile,
       pendingAutomation: args.pendingAutomation,
       timing: args.timing,
+      gateApplicability: args.gateApplicability,
+      authorityResolution: args.authorityResolution,
     })
     if (debug) payload.debug = debug
   } catch (error) {
@@ -445,6 +449,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let observabilityRefineRequested = false
     let observabilityRefineApplied = false
     let observabilityOutputSource: 'draft' | 'refined' = 'draft'
+    let observabilityGateApplicability: Record<string, unknown> | null = null
+    let observabilityAuthorityResolution: Record<string, unknown> | null = null
     const conversationIdForDebug =
       typeof body.conversationId === 'string' ? body.conversationId.trim() || null : null
 
@@ -1705,6 +1711,41 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         })
 
         const companionBriefs: string[] = []
+        const {
+          gateApplicabilityForTurn,
+          isGateSkipped,
+          appendDirectiveRefineConstraints,
+          draftHasUnauthorizedConversationalQuestion,
+          stripUnauthorizedQuestions,
+        } = await import('../lib/server/v1-turn-authority.js')
+        const gateApplicability = gateApplicabilityForTurn(conversationPlannerPlan, {
+          primaryIntent:
+            typeof (cognitiveResultForDebug as { plan?: { understanding?: { primaryIntent?: string } } } | null)
+              ?.plan?.understanding?.primaryIntent === 'string'
+              ? (cognitiveResultForDebug as { plan?: { understanding?: { primaryIntent?: string } } })
+                  ?.plan?.understanding?.primaryIntent
+              : undefined,
+          socialIntent:
+            typeof smallTalkIntelligencePlan?.isSmallTalk === 'boolean' &&
+            smallTalkIntelligencePlan.isSmallTalk
+              ? 'greeting'
+              : conversationPlannerPlan?.plan?.lookingFor === 'companionship'
+                ? 'greeting'
+                : undefined,
+        })
+        if (observabilityEnabled) {
+          observabilityGateApplicability = gateApplicability as unknown as Record<string, unknown>
+          if (
+            writerDirectives &&
+            typeof (writerDirectives as { authorityResolution?: unknown }).authorityResolution ===
+              'object'
+          ) {
+            observabilityAuthorityResolution = (writerDirectives as { authorityResolution?: Record<string, unknown> })
+              .authorityResolution as Record<string, unknown>
+          }
+        }
+        const skipGate = (id: string) => isGateSkipped(id, gateApplicability)
+
         if (writerDirectives) {
           const directiveValidation = validateDraftAgainstDirectives(
             content,
@@ -1764,6 +1805,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           )
         }
         if (
+          !skipGate('cognitive_authority') &&
           draftViolatesCognitiveAuthority(content, cognitiveAuthorityPlan as never, {
             userMessage: lastUserMessage.content,
             openingIntelligence: openingIntelligencePlan,
@@ -1937,12 +1979,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             'Conversation Director: riscrivi — non generare informazione; dirigere conversazione. Crea curiosità, invita partecipazione, comprimi le spiegazioni, preferisci storia/osservazione/meraviglia. Engagement emotivo > densità. Check: vorrei rispondere a questo messaggio?',
           )
         }
-        if (draftViolatesDeepThinkingWriter(content, deepThinkingWriterPlan as never)) {
+        if (
+          !skipGate('deep_thinking_writer') &&
+          draftViolatesDeepThinkingWriter(content, deepThinkingWriterPlan as never)
+        ) {
           companionBriefs.push(
             'Deep Thinking Writer: riscrivi — non la prima risposta accettabile. Costruisci a strati: Reaction → Main idea → Explanation → Example/Analogy → Reflection/Continuation. Depth ≥ 3 quando appropriato. Includi ≥2 tra: explanation · observation · analogy · example · reflection · curiosity. Evita filler tipo “AI is changing the world.” e dump a un paragrafo. Check: layered conversation, or flat first-pass?',
           )
         }
-        if (draftViolatesReasoningExpansion(content, reasoningExpansionPlan as never)) {
+        if (
+          !skipGate('reasoning_expansion') &&
+          draftViolatesReasoningExpansion(content, reasoningExpansionPlan as never)
+        ) {
           companionBriefs.push(
             'Reasoning Expansion: riscrivi — espandi l’idea sul tema CORRENTE, non cambiare argomento per allungare. Albero: Reaction → Core idea → Why it matters → Example/analogy/scenario → Broader implication. Check interno: “Have I explored this idea, or have I merely mentioned it?” Se solo menzionato → espandi. Obiettivo: “I’ve learned something, but it also made me think.” — non una versione più lunga della stessa risposta. Vietato: “Let’s talk about music…” quando chiedono più dettaglio.',
           )
@@ -1997,12 +2045,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             )
           }
         }
-        if (draftViolatesConversationOpening(content, conversationOpeningPlan as never)) {
+        if (
+          !skipGate('conversation_opening_useful') &&
+          draftViolatesConversationOpening(content, conversationOpeningPlan as never)
+        ) {
           companionBriefs.push(
             'Conversation Opening (Useful): riscrivi — apri con un FATTO concreto (useful/interesting/surprising/thought-provoking/practical). Chiudi con curiosità, non con una conclusione. Vietato: “The little things in life matter.” / “It’s fascinating how our daily choices…” / “Sometimes routines can change everything.” / “Life is made of small moments.” / “Ciao! 😊” / “Sai cosa mi è venuto in mente…”. Se domanda reale o nessun valore: niente opener forzato.',
           )
         }
         if (
+          !skipGate('opening_intelligence') &&
           draftViolatesOpeningIntelligence(content, openingIntelligencePlan as never, {
             userMessage: lastUserMessage.content,
           })
@@ -2012,6 +2064,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           )
         }
         if (
+          !skipGate('small_talk_intelligence') &&
           draftViolatesSmallTalkIntelligence(content, smallTalkIntelligencePlan as never, {
             userMessage: lastUserMessage.content,
           })
@@ -2079,24 +2132,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           companionBriefs.push(directorGate.refineBrief)
         }
 
-        const { gate: openingIntelGate, shouldRefine: openingIntelRefine } =
-          runOpeningIntelligenceGate({
-            userMessage: lastUserMessage.content,
-            draft: content,
-            plan: openingIntelligencePlan,
-          })
-        if (openingIntelRefine && openingIntelGate.refineBrief) {
-          companionBriefs.push(openingIntelGate.refineBrief)
+        if (!skipGate('opening_intelligence')) {
+          const { gate: openingIntelGate, shouldRefine: openingIntelRefine } =
+            runOpeningIntelligenceGate({
+              userMessage: lastUserMessage.content,
+              draft: content,
+              plan: openingIntelligencePlan,
+            })
+          if (openingIntelRefine && openingIntelGate.refineBrief) {
+            companionBriefs.push(openingIntelGate.refineBrief)
+          }
         }
 
-        const { gate: smallTalkGate, shouldRefine: smallTalkRefine } =
-          runSmallTalkIntelligenceGate({
-            userMessage: lastUserMessage.content,
-            draft: content,
-            plan: smallTalkIntelligencePlan,
-          })
-        if (smallTalkRefine && smallTalkGate.refineBrief) {
-          companionBriefs.push(smallTalkGate.refineBrief)
+        if (!skipGate('small_talk_intelligence')) {
+          const { gate: smallTalkGate, shouldRefine: smallTalkRefine } =
+            runSmallTalkIntelligenceGate({
+              userMessage: lastUserMessage.content,
+              draft: content,
+              plan: smallTalkIntelligencePlan,
+            })
+          if (smallTalkRefine && smallTalkGate.refineBrief) {
+            companionBriefs.push(smallTalkGate.refineBrief)
+          }
         }
 
         const { gate: personalVoiceGate, shouldRefine: personalVoiceRefine } =
@@ -2120,19 +2177,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         // Authority Review (post-Writer hard gate): APPROVE or REJECT → auto-rewrite
-        const { gate: authorityGate, shouldRefine: authorityRefine } =
-          runCognitiveAuthorityGate({
-            userMessage: lastUserMessage.content,
-            draft: content,
-            plan: cognitiveAuthorityPlan,
-            openingIntelligence: openingIntelligencePlan,
-            smallTalkIntelligence: smallTalkIntelligencePlan,
-            conversationDirector: conversationDirectorPlan,
-            naturalConversation: naturalConversationPlan,
-          })
-        if (authorityRefine && authorityGate.refineBrief) {
-          // Authority briefs go first — mandatory rewrite signal
-          companionBriefs.unshift(authorityGate.refineBrief)
+        if (!skipGate('cognitive_authority')) {
+          const { gate: authorityGate, shouldRefine: authorityRefine } =
+            runCognitiveAuthorityGate({
+              userMessage: lastUserMessage.content,
+              draft: content,
+              plan: cognitiveAuthorityPlan,
+              openingIntelligence: openingIntelligencePlan,
+              smallTalkIntelligence: smallTalkIntelligencePlan,
+              conversationDirector: conversationDirectorPlan,
+              naturalConversation: naturalConversationPlan,
+            })
+          if (authorityRefine && authorityGate.refineBrief) {
+            // Authority briefs go first — mandatory rewrite signal
+            companionBriefs.unshift(authorityGate.refineBrief)
+          }
         }
 
         const { gate: diversityGate, shouldRefine: diversityRefine } =
@@ -2214,29 +2273,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           companionBriefs.push(manifestoGate.refineBrief)
         }
 
-        const { gate: ownershipGate, shouldRefine: ownershipRefine } =
-          runConversationOwnershipGate({
-            userMessage: lastUserMessage.content,
-            draft: content,
-            plan: conversationOwnershipPlan || undefined,
-            priorAssistant: priorAssistant || '',
-          })
-        if (ownershipRefine && ownershipGate.refineBrief) {
-          companionBriefs.push(ownershipGate.refineBrief)
+        if (!skipGate('conversation_ownership')) {
+          const { gate: ownershipGate, shouldRefine: ownershipRefine } =
+            runConversationOwnershipGate({
+              userMessage: lastUserMessage.content,
+              draft: content,
+              plan: conversationOwnershipPlan || undefined,
+              priorAssistant: priorAssistant || '',
+              conversationPlanner: conversationPlannerPlan?.plan || conversationPlannerPlan,
+            } as never)
+          if (ownershipRefine && ownershipGate.refineBrief) {
+            companionBriefs.push(ownershipGate.refineBrief)
+          }
         }
 
-        const { gate: worthReadingGate, shouldRefine: worthReadingRefine } =
-          runWorthReadingGate({
-            userMessage: lastUserMessage.content,
-            draft: content,
-            priorAssistant: priorAssistant || '',
-          })
-        if (worthReadingRefine && worthReadingGate.refineBrief) {
-          companionBriefs.push(worthReadingGate.refineBrief)
+        if (!skipGate('worth_reading')) {
+          const { gate: worthReadingGate, shouldRefine: worthReadingRefine } =
+            runWorthReadingGate({
+              userMessage: lastUserMessage.content,
+              draft: content,
+              priorAssistant: priorAssistant || '',
+            })
+          if (worthReadingRefine && worthReadingGate.refineBrief) {
+            companionBriefs.push(worthReadingGate.refineBrief)
+          }
         }
 
-        // Conversation Quality Gate (MANDATORY highest-priority): REJECT → one rewrite
+        // Conversation Quality Gate — gift/initiative dims soft-skipped on presence restraint
         if (
+          !skipGate('conversation_quality_gift') &&
           draftViolatesConversationQuality(content, conversationQualityPlan as never, {
             userMessage: lastUserMessage.content,
             messages,
@@ -2247,20 +2312,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             'Conversation Quality Gate: REJECT — riscrivi UNA volta. Lascia ≥1 gift (idea · prospettiva · esempio · incoraggiamento · sorriso · curiosità). Vietato: “It’s always nice to hear from you.” / “Thanks for sharing.” / “That’s a great question.” / “How are you?” loops / domande forzate finali / dump enciclopedico / filler da qualsiasi utente. Obiettivo: “I want to keep talking.”',
           )
         }
-        const { gate: qualityGate, shouldRefine: qualityRefine, rejected: qualityRejected } =
-          runConversationQualityGate({
-            userMessage: lastUserMessage.content,
-            draft: content,
-            plan: conversationQualityPlan,
-            messages,
-            recentConcepts: conversationQualityPlan?.recentConcepts,
-          })
-        if ((qualityRefine || qualityRejected) && qualityGate.refineBrief) {
-          // Highest-priority mandatory rewrite signal (alongside Authority)
-          companionBriefs.unshift(qualityGate.refineBrief)
+        if (!skipGate('conversation_quality_gift')) {
+          const { gate: qualityGate, shouldRefine: qualityRefine, rejected: qualityRejected } =
+            runConversationQualityGate({
+              userMessage: lastUserMessage.content,
+              draft: content,
+              plan: conversationQualityPlan,
+              messages,
+              recentConcepts: conversationQualityPlan?.recentConcepts,
+            })
+          if ((qualityRefine || qualityRejected) && qualityGate.refineBrief) {
+            companionBriefs.unshift(qualityGate.refineBrief)
+          }
         }
 
-        const merged = mergePreSendRefineBudget({
+        let merged = mergePreSendRefineBudget({
           satisfactionShouldRefine: satRefine,
           satisfactionBrief: estimate.refineBrief || '',
           critiqueShouldRefine: critiqueRefine,
@@ -2268,6 +2334,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           companionBriefs,
           draft: content,
         })
+        if (merged.shouldRefine && merged.instructions && writerDirectives) {
+          merged = {
+            ...merged,
+            instructions: appendDirectiveRefineConstraints(
+              merged.instructions,
+              writerDirectives as Record<string, unknown>,
+            ),
+          }
+        }
 
         // Observability snapshot of gate briefs — copy only; does not alter refine inputs.
         if (observabilityEnabled) {
@@ -2308,8 +2383,38 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               const { stripDelightKillers: stripDelightAgain } = await import(
                 '../lib/server/conversation-delight.js'
               )
+              const { softEnforceDirectives: softAgain } = await import(
+                '../lib/server/directive-authority.js'
+              )
               content = stripAgain(content)
               content = stripDelightAgain(content)
+              if (writerDirectives) {
+                content = softAgain(content, writerDirectives as never)
+              }
+              // Post-refine askQuestion=false: strip unauthorized invites; if still violating, keep draft.
+              if (
+                writerDirectives &&
+                (writerDirectives as { askQuestion?: boolean }).askQuestion === false &&
+                draftHasUnauthorizedConversationalQuestion(content)
+              ) {
+                const stripped = stripUnauthorizedQuestions(content)
+                if (
+                  stripped &&
+                  stripped.length >= 2 &&
+                  !draftHasUnauthorizedConversationalQuestion(stripped)
+                ) {
+                  content = stripped
+                } else if (
+                  draftBeforeRefine &&
+                  !draftHasUnauthorizedConversationalQuestion(draftBeforeRefine)
+                ) {
+                  content = draftBeforeRefine
+                  if (observabilityEnabled) {
+                    observabilityRefineApplied = false
+                    observabilityOutputSource = 'draft'
+                  }
+                }
+              }
             } catch {
               /* keep refined */
             }
@@ -2384,6 +2489,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           memoryWriteMs,
           totalMs: Date.now() - timingStartedAt,
         },
+        gateApplicability: observabilityGateApplicability,
+        authorityResolution: observabilityAuthorityResolution,
       })
       console.log(
         '[api/chat] final response',
@@ -2436,6 +2543,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         memoryWriteMs,
         totalMs: Date.now() - timingStartedAt,
       },
+      gateApplicability: observabilityGateApplicability,
+      authorityResolution: observabilityAuthorityResolution,
     })
     console.log(
       '[api/chat] final response',
