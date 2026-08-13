@@ -15,6 +15,8 @@ User
   ↓
 Perception
   ↓
+Conversation Signals ← WHAT SIGNALS ARE PRESENT THIS TURN
+  ↓
 Conversation State   ← WHAT IS CURRENTLY TRUE
   ↓
 Mind                 ← strategy + Adaptive Response Profile (HOW bias)
@@ -44,24 +46,27 @@ Memory V2 (durable user knowledge) remains **outside** the live V2 path for now.
 
 1. L’utente invia un messaggio (e stato di sessione, incluso `conversationState` echo).
 2. **Perception** osserva e produce uno snapshot strutturato.
-3. **Conversation State** evolve i fatti della situazione da `previousState` + messaggi recenti.
-4. **Mind** decide strategia e deriva l’**Adaptive Response Profile** (tono/profondità/verbosità/energia).
-5. **Planner** traduce la decisione in piano + writer brief e può vincolare il profilo (mai il WHAT).
-6. **Writer** genera la bozza testuale seguendo piano + profilo (senza re-inferire un profilo conflittuale).
-7. **Contract Evaluator** verifica fedeltà al contratto WHAT + delivery HOW; al massimo **una** riscrittura HOW (mai un nuovo move).
-8. **State Transition** pubblica `nextConversationState` (incluso profilo + recentOpeners) solo se Writer ha consegnato.
-9. **Response** torna al client (testo + echo di `conversationState`).
+3. **Conversation Signals** deriva cue di turno condivisi (affect/style/interaction/engagement) — osservazioni, non decisioni.
+4. **Conversation State** evolve i fatti della situazione da `previousState` + messaggi + Signals.
+5. **Mind** decide strategia e deriva l’**Adaptive Response Profile** (consumando Signals).
+6. **Planner** traduce la decisione in piano + writer brief e può vincolare il profilo (mai il WHAT).
+7. **Writer** genera la bozza testuale seguendo piano + profilo (senza re-inferire un profilo conflittuale).
+8. **Contract Evaluator** verifica fedeltà al contratto WHAT + delivery HOW (usa Signals per contesto); al massimo **una** riscrittura HOW.
+9. **State Transition** pubblica `nextConversationState` solo se Writer ha consegnato.
+10. **Response** torna al client (testo + echo di `conversationState`).
 
-### Autorità (Phase 4–5)
+### Autorità (Phase 4–6)
 
 | Domanda | Owner |
 |--------|--------|
+| Quali cue di turno sono presenti? | Conversation Signals (observations only) |
 | Cosa è vero ora nella conversazione? | Conversation State |
 | Quale bias di comunicazione usare? | Mind (Adaptive Response Profile) |
 | Cosa deve fare LAIfe al prossimo turno? | Planner (Mind + Director) |
 | Come dirlo? | Writer (consumes profile) |
 | Il testo rispetta WHAT + delivery HOW? | Contract Evaluator (fidelity only; no planning) |
 | Chi pubblica lo State del prossimo turno? | Runtime / State Transition |
+| Short-reply intent contestuale? | `short-reply.js` (autorità) |
 
 Focus / Resume restano helper: **non** autorità concorrenti su `activeTopic`.
 `conversationMomentum` è un alias deprecato di `conversationMode`.
