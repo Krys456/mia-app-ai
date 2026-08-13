@@ -15,17 +15,17 @@ User
   ↓
 Perception
   ↓
-Conversation State   ← WHAT IS CURRENTLY TRUE (persisted across turns via session echo)
+Conversation State   ← WHAT IS CURRENTLY TRUE
   ↓
-Mind
+Mind                 ← strategy + Adaptive Response Profile (HOW bias)
   ↓
-Planner              ← WHAT SHOULD HAPPEN NEXT
+Planner              ← WHAT SHOULD HAPPEN NEXT (+ constrain profile)
   ↓
-Writer               ← HOW TO SAY IT
+Writer               ← HOW TO SAY IT (consumes profile; no independent inference)
   ↓
-Contract Evaluator   ← optional fidelity gate (at most one HOW rewrite)
+Contract Evaluator   ← optional fidelity gate
   ↓
-State Transition     ← publish nextConversationState after successful delivery
+State Transition
   ↓
 Response (+ conversationState echo)
 ```
@@ -37,30 +37,31 @@ Memory V2 (durable user knowledge) remains **outside** the live V2 path for now.
 | | Conversation State | Memory |
 |--|-------------------|--------|
 | Lifetime | Short-lived session / conversation working state | Durable user/context knowledge |
-| Storage (Phase 3) | Client session echo (`conversationState`) | Not wired in live V2 yet |
-| Contents | topic, goal, mode, phase, engagement, pending proposal, continuity | facts, preferences, long-term profile |
+| Storage (Phase 3+) | Client session echo (`conversationState`) | Not wired in live V2 yet |
+| Contents | topic, goal, mode, phase, engagement, pending proposal, continuity, responseProfile | facts, preferences, long-term profile |
 
 ### Lettura del flusso
 
 1. L’utente invia un messaggio (e stato di sessione, incluso `conversationState` echo).
 2. **Perception** osserva e produce uno snapshot strutturato.
 3. **Conversation State** evolve i fatti della situazione da `previousState` + messaggi recenti.
-4. **Mind** decide una sola volta (consuma State; non sovrascrive i fatti).
-5. **Planner** traduce la decisione in piano + writer brief.
-6. **Writer** genera la bozza testuale.
+4. **Mind** decide strategia e deriva l’**Adaptive Response Profile** (tono/profondità/verbosità/energia).
+5. **Planner** traduce la decisione in piano + writer brief e può vincolare il profilo (mai il WHAT).
+6. **Writer** genera la bozza testuale seguendo piano + profilo (senza re-inferire un profilo conflittuale).
 7. **Contract Evaluator** (opzionale) verifica fedeltà al contratto; al massimo una riscrittura HOW.
-8. **State Transition** pubblica `nextConversationState` solo se Writer ha consegnato con successo.
+8. **State Transition** pubblica `nextConversationState` (incluso profilo) solo se Writer ha consegnato.
 9. **Response** torna al client (testo + echo di `conversationState`).
 
-### Autorità (Phase 3)
+### Autorità (Phase 4)
 
 | Domanda | Owner |
 |--------|--------|
 | Cosa è vero ora nella conversazione? | Conversation State |
+| Quale bias di comunicazione usare? | Mind (Adaptive Response Profile) |
 | Cosa deve fare LAIfe al prossimo turno? | Planner (Mind + Director) |
-| Come dirlo? | Writer |
+| Come dirlo? | Writer (consumes profile) |
 | Il testo rispetta il contratto? | Contract Evaluator (fidelity only) |
-| Chi pubblica lo State del prossimo turno? | Runtime / State Transition (non Planner/Writer) |
+| Chi pubblica lo State del prossimo turno? | Runtime / State Transition |
 
 Focus / Resume restano helper: **non** autorità concorrenti su `activeTopic`.
 `conversationMomentum` è un alias deprecato di `conversationMode`.
