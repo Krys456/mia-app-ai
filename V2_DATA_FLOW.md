@@ -23,7 +23,7 @@ Planner              ← WHAT SHOULD HAPPEN NEXT (+ constrain profile)
   ↓
 Writer               ← HOW TO SAY IT (consumes profile; no independent inference)
   ↓
-Contract Evaluator   ← optional fidelity gate
+Contract Evaluator   ← WHAT + adaptive HOW fidelity (≤1 rewrite)
   ↓
 State Transition
   ↓
@@ -38,7 +38,7 @@ Memory V2 (durable user knowledge) remains **outside** the live V2 path for now.
 |--|-------------------|--------|
 | Lifetime | Short-lived session / conversation working state | Durable user/context knowledge |
 | Storage (Phase 3+) | Client session echo (`conversationState`) | Not wired in live V2 yet |
-| Contents | topic, goal, mode, phase, engagement, pending proposal, continuity, responseProfile | facts, preferences, long-term profile |
+| Contents | topic, goal, mode, phase, engagement, pending proposal, continuity, responseProfile, recentOpeners | facts, preferences, long-term profile |
 
 ### Lettura del flusso
 
@@ -48,11 +48,11 @@ Memory V2 (durable user knowledge) remains **outside** the live V2 path for now.
 4. **Mind** decide strategia e deriva l’**Adaptive Response Profile** (tono/profondità/verbosità/energia).
 5. **Planner** traduce la decisione in piano + writer brief e può vincolare il profilo (mai il WHAT).
 6. **Writer** genera la bozza testuale seguendo piano + profilo (senza re-inferire un profilo conflittuale).
-7. **Contract Evaluator** (opzionale) verifica fedeltà al contratto; al massimo una riscrittura HOW.
-8. **State Transition** pubblica `nextConversationState` (incluso profilo) solo se Writer ha consegnato.
+7. **Contract Evaluator** verifica fedeltà al contratto WHAT + delivery HOW; al massimo **una** riscrittura HOW (mai un nuovo move).
+8. **State Transition** pubblica `nextConversationState` (incluso profilo + recentOpeners) solo se Writer ha consegnato.
 9. **Response** torna al client (testo + echo di `conversationState`).
 
-### Autorità (Phase 4)
+### Autorità (Phase 4–5)
 
 | Domanda | Owner |
 |--------|--------|
@@ -60,7 +60,7 @@ Memory V2 (durable user knowledge) remains **outside** the live V2 path for now.
 | Quale bias di comunicazione usare? | Mind (Adaptive Response Profile) |
 | Cosa deve fare LAIfe al prossimo turno? | Planner (Mind + Director) |
 | Come dirlo? | Writer (consumes profile) |
-| Il testo rispetta il contratto? | Contract Evaluator (fidelity only) |
+| Il testo rispetta WHAT + delivery HOW? | Contract Evaluator (fidelity only; no planning) |
 | Chi pubblica lo State del prossimo turno? | Runtime / State Transition |
 
 Focus / Resume restano helper: **non** autorità concorrenti su `activeTopic`.
