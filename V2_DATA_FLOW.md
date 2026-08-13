@@ -17,6 +17,8 @@ Perception
   ↓
 Conversation Signals ← WHAT SIGNALS ARE PRESENT THIS TURN
   ↓
+Reference Resolution ← short-range grounding candidates (feeds State)
+  ↓
 Conversation State   ← WHAT IS CURRENTLY TRUE
   ↓
 Mind                 ← strategy + Adaptive Response Profile (HOW bias)
@@ -25,7 +27,7 @@ Planner              ← WHAT SHOULD HAPPEN NEXT (+ constrain profile)
   ↓
 Writer               ← HOW TO SAY IT (consumes profile; no independent inference)
   ↓
-Contract Evaluator   ← WHAT + adaptive HOW fidelity (≤1 rewrite)
+Contract Evaluator   ← WHAT + adaptive HOW + referent fidelity (≤1 rewrite)
   ↓
 State Transition
   ↓
@@ -40,33 +42,36 @@ Memory V2 (durable user knowledge) remains **outside** the live V2 path for now.
 |--|-------------------|--------|
 | Lifetime | Short-lived session / conversation working state | Durable user/context knowledge |
 | Storage (Phase 3+) | Client session echo (`conversationState`) | Not wired in live V2 yet |
-| Contents | topic, goal, mode, phase, engagement, pending proposal, continuity, responseProfile, recentOpeners | facts, preferences, long-term profile |
+| Contents | topic, goal, mode, phase, engagement, pending proposal, continuity, responseProfile, recentOpeners, repair, recentAlternatives, references | facts, preferences, long-term profile |
 
 ### Lettura del flusso
 
 1. L’utente invia un messaggio (e stato di sessione, incluso `conversationState` echo).
 2. **Perception** osserva e produce uno snapshot strutturato.
 3. **Conversation Signals** deriva cue di turno condivisi (affect/style/interaction/engagement) — osservazioni, non decisioni.
-4. **Conversation State** evolve i fatti della situazione da `previousState` + messaggi + Signals.
-5. **Mind** decide strategia e deriva l’**Adaptive Response Profile** (consumando Signals).
-6. **Planner** traduce la decisione in piano + writer brief e può vincolare il profilo (mai il WHAT).
-7. **Writer** genera la bozza testuale seguendo piano + profilo (senza re-inferire un profilo conflittuale).
-8. **Contract Evaluator** verifica fedeltà al contratto WHAT + delivery HOW (usa Signals per contesto); al massimo **una** riscrittura HOW.
-9. **State Transition** pubblica `nextConversationState` solo se Writer ha consegnato.
-10. **Response** torna al client (testo + echo di `conversationState`).
+4. **Reference Resolution** (helper di State) risolve referenti a corto raggio / riparazioni; non decide la mossa.
+5. **Conversation State** evolve i fatti della situazione (incluso `repair` / referenti risolti).
+6. **Mind** decide strategia e deriva l’**Adaptive Response Profile**.
+7. **Planner** traduce la decisione in piano + writer brief (continua se resolved; chiarisce se ambiguous).
+8. **Writer** genera la bozza (riparazione naturale, senza termini interni).
+9. **Contract Evaluator** verifica fedeltà WHAT/HOW e grounding del referente; al massimo **una** riscrittura HOW.
+10. **State Transition** pubblica `nextConversationState` solo se Writer ha consegnato.
+11. **Response** torna al client.
 
-### Autorità (Phase 4–6)
+### Autorità (Phase 4–7)
 
 | Domanda | Owner |
 |--------|--------|
 | Quali cue di turno sono presenti? | Conversation Signals (observations only) |
+| Quale referente recente è intenzionato? | Reference Resolution → Conversation State |
 | Cosa è vero ora nella conversazione? | Conversation State |
 | Quale bias di comunicazione usare? | Mind (Adaptive Response Profile) |
 | Cosa deve fare LAIfe al prossimo turno? | Planner (Mind + Director) |
 | Come dirlo? | Writer (consumes profile) |
-| Il testo rispetta WHAT + delivery HOW? | Contract Evaluator (fidelity only; no planning) |
+| Il testo rispetta WHAT + delivery HOW + referent? | Contract Evaluator (fidelity only; no planning) |
 | Chi pubblica lo State del prossimo turno? | Runtime / State Transition |
 | Short-reply intent contestuale? | `short-reply.js` (autorità) |
+| Memory a lungo termine? | Deferred (non in live path) |
 
 Focus / Resume restano helper: **non** autorità concorrenti su `activeTopic`.
 `conversationMomentum` è un alias deprecato di `conversationMode`.
