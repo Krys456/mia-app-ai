@@ -22,11 +22,17 @@ function sectionPayload(debug: Record<string, unknown>, tab: Tab): unknown {
     case 'Perception':
       return debug.perception ?? { unavailable: true }
     case 'Mind':
-      return debug.mind ?? { unavailable: true }
+      return {
+        ...(typeof debug.mind === 'object' && debug.mind ? (debug.mind as object) : {}),
+        authorityResolution: debug.authorityResolution ?? null,
+      }
     case 'Planner':
       return debug.planner ?? { unavailable: true }
     case 'Writer':
-      return debug.writer ?? { unavailable: true }
+      return {
+        ...(typeof debug.writer === 'object' && debug.writer ? (debug.writer as object) : {}),
+        gateApplicability: debug.gateApplicability ?? null,
+      }
     case 'Memory':
       return debug.memory ?? { unavailable: true }
     case 'State':
