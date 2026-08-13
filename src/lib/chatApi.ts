@@ -39,6 +39,10 @@ export interface ChatApiRequest {
   conversationMemoryMap?: Record<string, unknown> | null
   /** Conversation Preference Profile — style prefs from feedback. */
   conversationPreferenceProfile?: Record<string, unknown> | null
+  /** Stable conversation id for persistence / V2 state association. */
+  conversationId?: string
+  /** V2 working Conversation State echo (session continuity, not Memory). */
+  conversationState?: Record<string, unknown> | null
 }
 
 export interface ChatApiSuccess {
@@ -58,6 +62,8 @@ export interface ChatApiSuccess {
   conversationMemoryMap?: Record<string, unknown> | null
   /** Internal only — Conversation Preference Profile echo. */
   conversationPreferenceProfile?: Record<string, unknown> | null
+  /** Internal only — V2 Conversation State echo when server provides it. */
+  conversationState?: Record<string, unknown> | null
 }
 
 export interface ChatApiErrorBody {
@@ -144,6 +150,10 @@ export async function requestChatCompletion(
           : {}),
         ...(payload.conversationPreferenceProfile
           ? { conversationPreferenceProfile: payload.conversationPreferenceProfile }
+          : {}),
+        ...(payload.conversationId ? { conversationId: payload.conversationId } : {}),
+        ...(payload.conversationState
+          ? { conversationState: payload.conversationState }
           : {}),
       }),
       signal: init?.signal,
@@ -243,5 +253,9 @@ export async function requestChatCompletion(
     conversationPreferenceProfile: sanitizeConversationPreferenceProfile(
       data.conversationPreferenceProfile,
     ),
+    conversationState:
+      data.conversationState && typeof data.conversationState === 'object'
+        ? data.conversationState
+        : null,
   }
 }

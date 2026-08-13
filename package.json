@@ -11,7 +11,8 @@
     "build": "tsc -b && vite build",
     "typecheck": "tsc -b --pretty false",
     "preview": "vite preview",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "test:persistence": "tsx src/lib/chatPersistence/chat-persistence.test.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.2",

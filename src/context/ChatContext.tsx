@@ -3,6 +3,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useReducer,
   useRef,
@@ -43,6 +44,19 @@ import {
 import { revealReplyText } from '../lib/revealText'
 import { getOrCreateUserId } from '../lib/userId'
 import type { ThemeDefinition } from '../lib/themes'
+import {
+  createConversationId,
+  createMessageId,
+  installOnlineRetryListener,
+  isUsableConversationState,
+  loadActiveConversationForStartup,
+  persistMessagesNow,
+  reconcileActiveWithRemote,
+  reconstructConversationStateFromMessages,
+  setActiveConversationId,
+  type PersistedChatMessage,
+} from '../lib/chatPersistence'
+import { explicitDeleteConversation } from '../lib/chatPersistence/sync'
 import {
   DEFAULT_PERSONALIZATION,
   DEFAULT_THEME_SETTINGS,
@@ -153,7 +167,7 @@ function saveSettings(settings: AppSettings) {
 }
 
 function uid(): string {
-  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`
+  return createMessageId()
 }
 
 interface AppState {
@@ -164,33 +178,73 @@ interface AppState {
   isStreaming: boolean
   memoryNotice: 'saved' | 'updated' | null
   topicMemory: TopicMemory
+  /** Stable conversation id — survives refresh / navigation. */
+  conversationId: string
+  conversationCreatedAt: number
+  /** V2 working Conversation State keyed by conversationId (not Memory). */
+  conversationState: Record<string, unknown> | null
+  engine: string
 }
 
 type Action =
-  | { type: 'NEW_CHAT' }
+  | { type: 'NEW_CHAT'; conversationId: string; createdAt: number }
   | { type: 'OPEN_SETTINGS' }
   | { type: 'CLOSE_SETTINGS' }
   | { type: 'TOGGLE_SETTINGS' }
   | { type: 'UPDATE_PERSONALIZATION'; payload: Partial<PersonalizationSettings> }
   | { type: 'UPDATE_THEME'; payload: Partial<ThemeSettings> }
-  | { type: 'SEND_USER'; content: string }
+  | { type: 'SEND_USER'; id: string; content: string; createdAt: number }
   | { type: 'ASSISTANT_START'; id: string }
   | { type: 'ASSISTANT_PROGRESS'; id: string; content: string }
   | { type: 'ASSISTANT_FINISH'; id: string; content: string; memoryEvent?: 'saved' | 'updated' | null }
   | { type: 'ASSISTANT_FAIL'; error: string }
   | { type: 'CLEAR_MEMORY_NOTICE' }
   | { type: 'TRIM_TO'; count: number; thinking?: boolean }
+  | {
+      type: 'HYDRATE_CONVERSATION'
+      conversationId: string
+      messages: ChatMessage[]
+      conversationState: Record<string, unknown> | null
+      createdAt: number
+      engine?: string
+    }
+  | { type: 'SET_CONVERSATION_STATE'; conversationState: Record<string, unknown> | null }
+  | { type: 'SET_ENGINE'; engine: string }
 
 function createInitialState(): AppState {
+  const cached = loadActiveConversationForStartup()
   return {
-    messages: [],
+    messages: cached?.messages ? cached.messages.map(toChatMessage) : [],
     settings: loadSettings(),
     settingsOpen: false,
     isThinking: false,
     isStreaming: false,
     memoryNotice: null,
     topicMemory: createEmptyMemory(),
+    conversationId: cached?.conversationId || createConversationId(),
+    conversationCreatedAt: cached?.createdAt || Date.now(),
+    conversationState: isUsableConversationState(cached?.conversationState)
+      ? cached!.conversationState!
+      : null,
+    engine: cached?.engine || 'v1',
   }
+}
+
+function toChatMessage(m: PersistedChatMessage): ChatMessage {
+  return {
+    id: m.id,
+    role: m.role,
+    content: m.content,
+    createdAt: m.createdAt,
+    kind: m.kind,
+  }
+}
+
+function toPersistedMessages(messages: ChatMessage[]): PersistedChatMessage[] {
+  return messages.map((m) => ({
+    ...m,
+    syncStatus: 'pending' as const,
+  }))
 }
 
 function reducer(state: AppState, action: Action): AppState {
@@ -204,7 +258,26 @@ function reducer(state: AppState, action: Action): AppState {
         settingsOpen: false,
         memoryNotice: null,
         topicMemory: createEmptyMemory(),
+        conversationId: action.conversationId,
+        conversationCreatedAt: action.createdAt,
+        conversationState: null,
       }
+    case 'HYDRATE_CONVERSATION':
+      return {
+        ...state,
+        conversationId: action.conversationId,
+        conversationCreatedAt: action.createdAt,
+        messages: action.messages,
+        conversationState: action.conversationState,
+        engine: action.engine || state.engine,
+        isThinking: false,
+        isStreaming: false,
+        memoryNotice: null,
+      }
+    case 'SET_CONVERSATION_STATE':
+      return { ...state, conversationState: action.conversationState }
+    case 'SET_ENGINE':
+      return { ...state, engine: action.engine }
     case 'OPEN_SETTINGS':
       return { ...state, settingsOpen: true }
     case 'CLOSE_SETTINGS':
@@ -236,10 +309,10 @@ function reducer(state: AppState, action: Action): AppState {
     }
     case 'SEND_USER': {
       const userMsg: ChatMessage = {
-        id: uid(),
+        id: action.id,
         role: 'user',
         content: action.content,
-        createdAt: Date.now(),
+        createdAt: action.createdAt,
       }
       let topicMemory = state.topicMemory
       const signal = detectRepetitionSignals(action.content)
@@ -338,7 +411,10 @@ interface ChatContextValue {
   isThinking: boolean
   isStreaming: boolean
   memoryNotice: 'saved' | 'updated' | null
+  conversationId: string
   newChat: () => void
+  /** Explicit delete only — never used by new chat / navigation / errors. */
+  deleteConversation: (conversationId?: string) => Promise<void>
   openSettings: () => void
   closeSettings: () => void
   toggleSettings: () => void
@@ -367,31 +443,154 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const abortRef = useRef<AbortController | null>(null)
   const topicMemoryRef = useRef(state.topicMemory)
   topicMemoryRef.current = state.topicMemory
+  const conversationStateRef = useRef(state.conversationState)
+  conversationStateRef.current = state.conversationState
+  const hydratedRef = useRef(false)
+  const persistReadyRef = useRef(false)
 
   const abortActiveCompletion = useCallback(() => {
     abortRef.current?.abort()
     abortRef.current = null
   }, [])
 
+  const persistSnapshot = useCallback(
+    (messages: ChatMessage[], conversationId: string, extras?: {
+      conversationState?: Record<string, unknown> | null
+      createdAt?: number
+      engine?: string
+    }) => {
+      try {
+        persistMessagesNow({
+          conversationId,
+          messages: toPersistedMessages(messages),
+          conversationState:
+            extras?.conversationState !== undefined
+              ? extras.conversationState
+              : conversationStateRef.current,
+          createdAt: extras?.createdAt,
+          engine: extras?.engine || state.engine,
+        })
+      } catch (error) {
+        console.error('[ChatContext] local persist failed', error)
+      }
+    },
+    [state.engine],
+  )
+
+  // Mark active id on mount; reconcile with server without wiping local.
+  useEffect(() => {
+    setActiveConversationId(state.conversationId)
+    persistReadyRef.current = true
+    const stopOnline = installOnlineRetryListener()
+    const conversationId = state.conversationId
+    let cancelled = false
+    void (async () => {
+      try {
+        const merged = await reconcileActiveWithRemote(conversationId)
+        if (cancelled || !merged) return
+        if (merged.conversationId !== conversationId) return
+        // Only hydrate if remote added messages we don't have — never replace with empty.
+        if (merged.messages.length === 0) return
+        const localCount = state.messages.length
+        if (merged.messages.length > localCount) {
+          dispatch({
+            type: 'HYDRATE_CONVERSATION',
+            conversationId: merged.conversationId,
+            messages: merged.messages.map(toChatMessage),
+            conversationState: isUsableConversationState(merged.conversationState)
+              ? merged.conversationState
+              : reconstructConversationStateFromMessages(
+                  merged.messages,
+                  merged.conversationId,
+                ),
+            createdAt: merged.createdAt,
+            engine: merged.engine,
+          })
+        } else if (
+          !state.conversationState &&
+          isUsableConversationState(merged.conversationState)
+        ) {
+          dispatch({
+            type: 'SET_CONVERSATION_STATE',
+            conversationState: merged.conversationState,
+          })
+        }
+      } catch (error) {
+        console.error('[ChatContext] startup reconcile failed', error)
+      } finally {
+        hydratedRef.current = true
+      }
+    })()
+    return () => {
+      cancelled = true
+      stopOnline()
+    }
+    // Intentionally once on mount for this provider instance.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Durable local cache whenever the visible transcript changes.
+  useEffect(() => {
+    if (!persistReadyRef.current) return
+    if (state.isStreaming) {
+      // Persist partial assistant text so refresh mid-reveal keeps progress.
+    }
+    persistSnapshot(state.messages, state.conversationId, {
+      conversationState: state.conversationState,
+      createdAt: state.conversationCreatedAt,
+      engine: state.engine,
+    })
+  }, [
+    state.messages,
+    state.conversationId,
+    state.conversationState,
+    state.conversationCreatedAt,
+    state.engine,
+    state.isStreaming,
+    persistSnapshot,
+  ])
+
   const newChat = useCallback(() => {
     generationRef.current += 1
     inFlightRef.current = false
     abortActiveCompletion()
-    // Close the conversation: keep preference/mistake signals, drop turn noise.
-    // Invisible — never surfaces in UI; never writes factual memory.
+    // Preserve previous conversation in local cache (already persisted via effect).
     try {
       finalizeConversationLearning()
     } catch {
       /* ignore */
     }
-    // Conversation Preference Profile is session-scoped — reset on new chat.
     try {
       clearConversationPreferenceProfile()
     } catch {
       /* ignore */
     }
-    dispatch({ type: 'NEW_CHAT' })
-  }, [abortActiveCompletion])
+    const nextId = createConversationId()
+    const createdAt = Date.now()
+    setActiveConversationId(nextId)
+    // Seed empty conversation shell so ID is stable before first message.
+    persistSnapshot([], nextId, {
+      conversationState: null,
+      createdAt,
+      engine: state.engine,
+    })
+    dispatch({ type: 'NEW_CHAT', conversationId: nextId, createdAt })
+  }, [abortActiveCompletion, persistSnapshot, state.engine])
+
+  const deleteConversation = useCallback(
+    async (conversationId?: string) => {
+      const id = conversationId || state.conversationId
+      await explicitDeleteConversation(id)
+      if (id === state.conversationId) {
+        const nextId = createConversationId()
+        const createdAt = Date.now()
+        setActiveConversationId(nextId)
+        dispatch({ type: 'NEW_CHAT', conversationId: nextId, createdAt })
+      }
+    },
+    [state.conversationId],
+  )
+
   const openSettings = useCallback(() => dispatch({ type: 'OPEN_SETTINGS' }), [])
   const closeSettings = useCallback(() => dispatch({ type: 'CLOSE_SETTINGS' }), [])
   const toggleSettings = useCallback(() => dispatch({ type: 'TOGGLE_SETTINGS' }), [])
@@ -409,7 +608,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const runAssistantCompletion = useCallback(
-    (history: ChatApiMessage[], personalization: PersonalizationSettings) => {
+    (history: ChatApiMessage[], personalization: PersonalizationSettings, conversationId: string) => {
       abortActiveCompletion()
       const controller = new AbortController()
       abortRef.current = controller
@@ -422,6 +621,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           console.log('[ChatContext] starting completion', {
             historyLen: history.length,
             generation,
+            conversationId,
           })
           const {
             content: reply,
@@ -431,6 +631,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             pendingAutomation,
             conversationMemoryMap,
             conversationPreferenceProfile,
+            conversationState: nextConversationState,
           } =
             await requestChatCompletion(
             {
@@ -446,6 +647,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
               conversationMemoryMap: getConversationMemoryMap() || undefined,
               conversationPreferenceProfile:
                 getConversationPreferenceProfile() || undefined,
+              conversationId,
+              conversationState: conversationStateRef.current,
             },
             { signal: controller.signal },
           )
@@ -526,6 +729,14 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             }
           }
 
+          if (isUsableConversationState(nextConversationState)) {
+            dispatch({
+              type: 'SET_CONVERSATION_STATE',
+              conversationState: nextConversationState,
+            })
+            conversationStateRef.current = nextConversationState
+          }
+
           const assistantId = uid()
           dispatch({ type: 'ASSISTANT_START', id: assistantId })
 
@@ -551,6 +762,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           if (isAbortError(error) || controller.signal.aborted) return
           console.error('[ChatContext] completion failed', error)
           const message = error instanceof Error ? error.message : String(error)
+          // Failure isolation: keep prior messages; only append error notice.
           dispatch({ type: 'ASSISTANT_FAIL', error: message })
         } finally {
           if (generation === generationRef.current) {
@@ -577,16 +789,30 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         { role: 'user', content },
       ]
 
+      const messageId = uid()
+      const createdAt = Date.now()
       inFlightRef.current = true
-      dispatch({ type: 'SEND_USER', content })
-      runAssistantCompletion(history, personalization)
+      dispatch({ type: 'SEND_USER', id: messageId, content, createdAt })
+      // Immediate durable write of the optimistic user message (before network).
+      persistSnapshot(
+        [
+          ...state.messages,
+          { id: messageId, role: 'user', content, createdAt },
+        ],
+        state.conversationId,
+        { createdAt: state.conversationCreatedAt },
+      )
+      runAssistantCompletion(history, personalization, state.conversationId)
     },
     [
       state.isThinking,
       state.isStreaming,
       state.messages,
       state.settings.personalization,
+      state.conversationId,
+      state.conversationCreatedAt,
       runAssistantCompletion,
+      persistSnapshot,
     ],
   )
 
@@ -611,14 +837,20 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
       inFlightRef.current = true
       dispatch({ type: 'TRIM_TO', count: kept.length, thinking: true })
-      runAssistantCompletion(history, state.settings.personalization)
+      persistSnapshot(kept, state.conversationId, {
+        createdAt: state.conversationCreatedAt,
+      })
+      runAssistantCompletion(history, state.settings.personalization, state.conversationId)
     },
     [
       state.isThinking,
       state.isStreaming,
       state.messages,
       state.settings.personalization,
+      state.conversationId,
+      state.conversationCreatedAt,
       runAssistantCompletion,
+      persistSnapshot,
     ],
   )
 
@@ -630,7 +862,9 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       isThinking: state.isThinking,
       isStreaming: state.isStreaming,
       memoryNotice: state.memoryNotice,
+      conversationId: state.conversationId,
       newChat,
+      deleteConversation,
       openSettings,
       closeSettings,
       toggleSettings,
@@ -647,7 +881,9 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       state.isThinking,
       state.isStreaming,
       state.memoryNotice,
+      state.conversationId,
       newChat,
+      deleteConversation,
       openSettings,
       closeSettings,
       toggleSettings,

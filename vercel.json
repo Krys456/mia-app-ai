@@ -23,6 +23,18 @@
     "api/memories/[id].ts": {
       "includeFiles": "lib/server/**",
       "maxDuration": 15
+    },
+    "api/conversations/index.ts": {
+      "includeFiles": "lib/server/**",
+      "maxDuration": 15
+    },
+    "api/conversations/[id].ts": {
+      "includeFiles": "lib/server/**",
+      "maxDuration": 15
+    },
+    "api/conversations/[id]/messages.ts": {
+      "includeFiles": "lib/server/**",
+      "maxDuration": 20
     }
   },
   "rewrites": [
