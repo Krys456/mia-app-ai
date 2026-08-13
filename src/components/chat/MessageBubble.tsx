@@ -12,6 +12,7 @@ import { MessageActions } from './MessageActions'
 import { StreamingRenderer } from './StreamingRenderer'
 import { TypingAnimation } from './TypingAnimation'
 import { V2DebugPanel } from './V2DebugPanel'
+import { V1DebugPanel } from './V1DebugPanel'
 import { useChat } from '../../context/ChatContext'
 import './MessageBubble.css'
 
@@ -36,6 +37,8 @@ function MessageBubbleComponent({
   const { settings } = useChat()
   const showV2Debug =
     settings.developer?.v2Experimental === true && Boolean(message.v2Debug)
+  const showV1Debug =
+    settings.developer?.v1Observability === true && Boolean(message.v1Debug)
   const isAssistant = message.role === 'assistant'
   const isError = isAssistant && message.kind === 'error'
   const isEmptyStream = isAssistant && !message.content && isStreaming && !isError
@@ -127,6 +130,9 @@ function MessageBubbleComponent({
           </div>
           {showV2Debug && message.v2Debug && !isStreaming ? (
             <V2DebugPanel debug={message.v2Debug} />
+          ) : null}
+          {showV1Debug && message.v1Debug && !isStreaming ? (
+            <V1DebugPanel debug={message.v1Debug} />
           ) : null}
         </>
       ) : (

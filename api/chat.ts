@@ -126,6 +126,62 @@ function buildInstructions(
   return parts.join('\n\n')
 }
 
+/**
+ * Fail-soft attach of V1 observability. Never throws into chat. Never mutates generation inputs.
+ */
+async function attachV1Debug(
+  payload: Record<string, unknown>,
+  args: {
+    observabilityEnabled: boolean
+    cognitiveResultForDebug: Record<string, unknown> | null
+    writerDirectives: Record<string, unknown> | null
+    model: string
+    companionBriefs: string[]
+    refineRequested: boolean
+    refineApplied: boolean
+    outputSource: 'draft' | 'refined'
+    memoryEnabled: boolean
+    memoryEvent: 'saved' | 'updated' | null
+    conversationId: string | null
+    learningSignals: unknown
+    conversationMemoryMap: Record<string, unknown> | null
+    conversationPreferenceProfile: Record<string, unknown> | null
+    pendingAutomation: Record<string, unknown> | null | undefined
+    timing: Record<string, unknown>
+  },
+) {
+  if (!args.observabilityEnabled) return
+  try {
+    const { buildV1ObservabilityDebug } = await import('../lib/server/v1-observability.js')
+    const debug = buildV1ObservabilityDebug({
+      enabled: true,
+      cognitiveResult: args.cognitiveResultForDebug,
+      writerDirectives: args.writerDirectives,
+      model: args.model,
+      provider: 'openai',
+      companionBriefs: args.companionBriefs,
+      refineRequested: args.refineRequested,
+      refineApplied: args.refineApplied,
+      outputSource: args.outputSource,
+      memoryEnabled: args.memoryEnabled,
+      memoryEvent: args.memoryEvent,
+      conversationId: args.conversationId,
+      learningSignals: args.learningSignals,
+      conversationMemoryMap: args.conversationMemoryMap,
+      conversationPreferenceProfile: args.conversationPreferenceProfile,
+      pendingAutomation: args.pendingAutomation,
+      timing: args.timing,
+    })
+    if (debug) payload.debug = debug
+  } catch (error) {
+    console.error('[api/chat] v1 observability attach failed', error)
+    payload.debug = {
+      engine: 'v1',
+      error: 'debug_attach_failed',
+    }
+  }
+}
+
 type ChatRole = 'user' | 'assistant' | 'system'
 
 interface ChatAttachment {
@@ -186,6 +242,16 @@ interface ChatApiRequestBody {
   conversationMemoryMap?: Record<string, unknown> | null
   /** Conversation Preference Profile — style prefs from feedback (client echoes back). */
   conversationPreferenceProfile?: Record<string, unknown> | null
+  /** Stable conversation id (persistence / observability only — not used for generation). */
+  conversationId?: string
+  /** Opt-in V1 observability side-channel (does not affect generation). */
+  observability?: boolean
+  /** Alias for observability. */
+  debug?: boolean
+  includeV1Debug?: boolean
+  /** Developer Mode opt-in for engine routing (unchanged). */
+  developerMode?: boolean
+  engine?: 'v1' | 'v2'
 }
 
 function isChatRole(value: unknown): value is ChatRole {
@@ -359,6 +425,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const model = process.env.OPENAI_MODEL?.trim() || 'gpt-4o-mini'
 
     const lastUserMessage = [...messages].reverse().find((msg) => msg.role === 'user')
+
+    // Observability is a SIDE CHANNEL only — never feeds generation.
+    let observabilityEnabled = false
+    try {
+      const { shouldCollectV1Observability } = await import('../lib/server/v1-observability.js')
+      observabilityEnabled = shouldCollectV1Observability(body)
+    } catch {
+      observabilityEnabled = false
+    }
+    const timingStartedAt = Date.now()
+    let cognitiveMs: number | null = null
+    let modelMs: number | null = null
+    let refineMs: number | null = null
+    let memoryWriteMs: number | null = null
+    /** @type {Record<string, unknown> | null} */
+    let cognitiveResultForDebug: Record<string, unknown> | null = null
+    let observabilityCompanionBriefs: string[] = []
+    let observabilityRefineRequested = false
+    let observabilityRefineApplied = false
+    let observabilityOutputSource: 'draft' | 'refined' = 'draft'
+    const conversationIdForDebug =
+      typeof body.conversationId === 'string' ? body.conversationId.trim() || null : null
 
     // Cognitive Engine + Coordinator (invisible): advisors propose → coordinate → Writer.
     // Includes conversation reflection learning signals (never factual memory).
@@ -761,6 +849,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     } | null = null
     if (lastUserMessage?.content) {
       try {
+        const cognitiveStarted = Date.now()
         const { runCognitiveEngine } = await import('../lib/server/cognitive-engine.js')
         const result = await runCognitiveEngine({
           userMessage: lastUserMessage.content,
@@ -782,6 +871,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           conversationMemoryMap: conversationMemoryMapIn,
           conversationPreferenceProfile: conversationPreferenceProfileIn,
         })
+        cognitiveMs = Date.now() - cognitiveStarted
+        if (observabilityEnabled && result && typeof result === 'object') {
+          // Snapshot reference only — never mutated or re-injected into prompts.
+          cognitiveResultForDebug = result as Record<string, unknown>
+        }
         cognitiveBlock = result?.context || ''
         if (result?.writerDirectives && typeof result.writerDirectives === 'object') {
           writerDirectives = result.writerDirectives as Record<string, unknown>
@@ -1332,6 +1426,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
+    const modelStarted = Date.now()
     const response = await client.responses.create({
       model,
       instructions: buildInstructions(clientSystemPrompt, cognitiveBlock),
@@ -1345,6 +1440,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         content: msg.content,
       })),
     })
+    modelMs = Date.now() - modelStarted
 
     let content = response.output_text?.trim()
     // Temporary pipeline logging — outgoing OpenAI response shape.
@@ -2173,7 +2269,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           draft: content,
         })
 
+        // Observability snapshot of gate briefs — copy only; does not alter refine inputs.
+        if (observabilityEnabled) {
+          observabilityCompanionBriefs = companionBriefs.slice()
+          observabilityRefineRequested = Boolean(merged.shouldRefine && merged.instructions)
+        }
+
         if (merged.shouldRefine && merged.instructions) {
+          const refineStarted = Date.now()
+          const draftBeforeRefine = content
           const refined = await client.responses.create({
             model,
             instructions: merged.instructions,
@@ -2189,9 +2293,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               },
             ],
           })
+          refineMs = Date.now() - refineStarted
           const improved = refined.output_text?.trim()
           if (improved && improved.length > 20) {
             content = improved
+            if (observabilityEnabled) {
+              observabilityRefineApplied = content !== draftBeforeRefine
+              observabilityOutputSource = 'refined'
+            }
             try {
               const { stripRoboticOpeners: stripAgain } = await import(
                 '../lib/server/warm-conversation.js'
@@ -2228,13 +2337,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (lastUserMessage?.content) {
+      const memoryStarted = Date.now()
       const memoryEvent = await runMemoryWithBudget(
         lastUserMessage.content,
         content,
         memoryEnabled,
       )
+      memoryWriteMs = Date.now() - memoryStarted
       // learningSignals / voiceSession are additive / internal — not a public UI contract field.
-      const payload = {
+      const payload: Record<string, unknown> = {
         content,
         memoryEvent,
         learningSignals,
@@ -2250,18 +2361,43 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           ? { pendingAutomation: pendingAutomationOut }
           : {}),
       }
+      await attachV1Debug(payload, {
+        observabilityEnabled,
+        cognitiveResultForDebug,
+        writerDirectives,
+        model,
+        companionBriefs: observabilityCompanionBriefs,
+        refineRequested: observabilityRefineRequested,
+        refineApplied: observabilityRefineApplied,
+        outputSource: observabilityOutputSource,
+        memoryEnabled,
+        memoryEvent,
+        conversationId: conversationIdForDebug,
+        learningSignals,
+        conversationMemoryMap: conversationMemoryMapOut,
+        conversationPreferenceProfile: conversationPreferenceProfileOut,
+        pendingAutomation: pendingAutomationOut,
+        timing: {
+          cognitiveMs,
+          modelMs,
+          refineMs,
+          memoryWriteMs,
+          totalMs: Date.now() - timingStartedAt,
+        },
+      })
       console.log(
         '[api/chat] final response',
         JSON.stringify({
           contentLen: content.length,
           memoryEvent,
           keys: Object.keys(payload),
+          hasDebug: Boolean(payload.debug),
         }),
       )
       return sendJson(res, 200, payload)
     }
 
-    const payload = {
+    const payload: Record<string, unknown> = {
       content,
       memoryEvent: null,
       learningSignals,
@@ -2277,12 +2413,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ? { pendingAutomation: pendingAutomationOut }
         : {}),
     }
+    await attachV1Debug(payload, {
+      observabilityEnabled,
+      cognitiveResultForDebug,
+      writerDirectives,
+      model,
+      companionBriefs: observabilityCompanionBriefs,
+      refineRequested: observabilityRefineRequested,
+      refineApplied: observabilityRefineApplied,
+      outputSource: observabilityOutputSource,
+      memoryEnabled,
+      memoryEvent: null,
+      conversationId: conversationIdForDebug,
+      learningSignals,
+      conversationMemoryMap: conversationMemoryMapOut,
+      conversationPreferenceProfile: conversationPreferenceProfileOut,
+      pendingAutomation: pendingAutomationOut,
+      timing: {
+        cognitiveMs,
+        modelMs,
+        refineMs,
+        memoryWriteMs,
+        totalMs: Date.now() - timingStartedAt,
+      },
+    })
     console.log(
       '[api/chat] final response',
       JSON.stringify({
         contentLen: content.length,
         memoryEvent: null,
         keys: Object.keys(payload),
+        hasDebug: Boolean(payload.debug),
       }),
     )
     return sendJson(res, 200, payload)

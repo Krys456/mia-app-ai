@@ -89,3 +89,46 @@
   white-space: pre-wrap;
   word-break: break-word;
 }
+
+/* V1 Observability tab strip (reuses .v2-debug shell) */
+.v1-debug__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin: 0.35rem 0 0.25rem;
+}
+
+.v1-debug__tab {
+  appearance: none;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  background: color-mix(in srgb, var(--surface2) 70%, transparent);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  padding: 0.22rem 0.48rem;
+  border-radius: 0.4rem;
+  cursor: pointer;
+}
+
+.v1-debug__tab:hover {
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+}
+
+.v1-debug__tab--active {
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.v1-debug__tab--empty {
+  opacity: 0.55;
+}
+
+.v1-debug__hint {
+  margin: 0.35rem 0 0;
+  opacity: 0.85;
+  font-size: 0.68rem;
+}

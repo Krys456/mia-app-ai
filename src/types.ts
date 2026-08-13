@@ -38,6 +38,8 @@ export interface ChatMessage {
   kind?: 'error'
   /** Present when Developer → LAIfe V2 Experimental is ON for that turn. */
   v2Debug?: V2DebugInfo
+  /** Present when Developer → V1 Observability is ON — side-channel only. */
+  v1Debug?: Record<string, unknown>
 }
 
 /** Soft style bias for the Dynamic Behavior Model (not a fixed persona). */
@@ -87,6 +89,11 @@ export interface DeveloperSettings {
    * Server routing still follows LAIFE_CONVERSATION_RUNTIME.
    */
   v2Experimental: boolean
+  /**
+   * When true, request V1 observability debug metadata (side-channel only).
+   * Does not change V1 generation.
+   */
+  v1Observability: boolean
 }
 
 export interface AppSettings {
@@ -111,6 +118,7 @@ export const DEFAULT_THEME_SETTINGS: ThemeSettings = {
 
 export const DEFAULT_DEVELOPER_SETTINGS: DeveloperSettings = {
   v2Experimental: false,
+  v1Observability: false,
 }
 
 export function isPersonalityMode(value: unknown): value is PersonalityMode {

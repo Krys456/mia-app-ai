@@ -54,6 +54,8 @@ export interface ChatApiRequest {
   conversationId?: string
   /** V2 working Conversation State echo (session continuity, not Memory). */
   conversationState?: Record<string, unknown> | null
+  /** Request V1 observability debug metadata (side-channel only). */
+  observability?: boolean
 }
 
 export interface ChatApiSuccess {
@@ -77,6 +79,9 @@ export interface ChatApiSuccess {
   conversationState?: Record<string, unknown> | null
   /** Developer debug — present when the server returns a V2 debug snapshot. */
   v2Debug?: V2DebugInfo | null
+  /** V1 observability side-channel — never influences generation. */
+  debug?: Record<string, unknown> | null
+  v1Debug?: Record<string, unknown> | null
 }
 
 export interface ChatApiErrorBody {
@@ -174,6 +179,7 @@ export async function requestChatCompletion(
         ...(payload.conversationState
           ? { conversationState: payload.conversationState }
           : {}),
+        ...(payload.observability === true ? { observability: true } : {}),
       }),
       signal: init?.signal,
     })
@@ -279,6 +285,14 @@ export async function requestChatCompletion(
         ? data.conversationState
         : null,
     v2Debug,
+    debug:
+      data.debug && typeof data.debug === 'object'
+        ? (data.debug as Record<string, unknown>)
+        : null,
+    v1Debug:
+      data.debug && typeof data.debug === 'object'
+        ? (data.debug as Record<string, unknown>)
+        : null,
   }
 }
 

@@ -218,6 +218,39 @@ export function SettingsDrawer({ onOpenMemory }: SettingsDrawerProps) {
               <code>developerMode: true</code>). Senza Developer Mode, il server usa{' '}
               <code>LAIFE_CONVERSATION_RUNTIME</code> (default V1).
             </p>
+
+            <div className="memory-toggle-row" style={{ marginTop: '0.85rem' }}>
+              <span className="field__label" id="v1-obs-toggle-label">
+                V1 Observability
+              </span>
+              <div
+                className="memory-toggle"
+                role="group"
+                aria-labelledby="v1-obs-toggle-label"
+              >
+                <button
+                  type="button"
+                  className={`memory-toggle__opt${!developer?.v1Observability ? ' memory-toggle__opt--active' : ''}`}
+                  aria-pressed={!developer?.v1Observability}
+                  onClick={() => updateDeveloper({ v1Observability: false })}
+                >
+                  OFF
+                </button>
+                <button
+                  type="button"
+                  className={`memory-toggle__opt${developer?.v1Observability ? ' memory-toggle__opt--active' : ''}`}
+                  aria-pressed={Boolean(developer?.v1Observability)}
+                  onClick={() => updateDeveloper({ v1Observability: true })}
+                >
+                  ON
+                </button>
+              </div>
+            </div>
+
+            <p className="settings-note settings-note--tight">
+              ON richiede metadati di debug V1 (Perception / Mind / Planner / Writer / Memory /
+              State / Timing) sotto le risposte. Solo osservazione — non cambia il testo generato.
+            </p>
           </section>
 
           <div className="settings-divider" role="separator" />

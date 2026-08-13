@@ -140,6 +140,7 @@ function normalizeDeveloper(
     ...DEFAULT_DEVELOPER_SETTINGS,
     ...raw,
     v2Experimental: raw?.v2Experimental === true,
+    v1Observability: raw?.v1Observability === true,
   }
 }
 
@@ -224,6 +225,7 @@ type Action =
       content: string
       memoryEvent?: 'saved' | 'updated' | null
       v2Debug?: V2DebugInfo | null
+      v1Debug?: Record<string, unknown> | null
     }
   | { type: 'ASSISTANT_FAIL'; error: string }
   | { type: 'CLEAR_MEMORY_NOTICE' }
@@ -412,6 +414,7 @@ function reducer(state: AppState, action: Action): AppState {
               ...msg,
               content: action.content,
               ...(action.v2Debug ? { v2Debug: action.v2Debug } : {}),
+              ...(action.v1Debug ? { v1Debug: action.v1Debug } : {}),
             }
           : msg,
       )
@@ -723,6 +726,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             conversationPreferenceProfile,
             conversationState: nextConversationState,
             v2Debug,
+            debug: v1DebugPayload,
           } =
             await requestChatCompletion(
             {
@@ -732,6 +736,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
               memoryEnabled: personalization.memoryEnabled !== false,
               developerMode: true,
               ...(useV2 ? { engine: 'v2' as const } : { engine: 'v1' as const }),
+              observability: developer.v1Observability === true,
               learningSignals: getLearningSignals(),
               welcomeSession: getWelcomeSession(),
               displayName: personalization.displayName?.trim() || undefined,
@@ -850,6 +855,9 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             content: reply,
             memoryEvent: memoryEvent ?? null,
             ...(useV2 && v2Debug ? { v2Debug } : {}),
+            ...(developer.v1Observability === true && v1DebugPayload
+              ? { v1Debug: v1DebugPayload }
+              : {}),
           })
         } catch (error) {
           if (generation !== generationRef.current) return
