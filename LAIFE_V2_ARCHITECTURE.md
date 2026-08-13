@@ -74,39 +74,58 @@ Utente
   ↓
 Perception
   ↓
+Conversation Signals ← WHAT SIGNALS ARE PRESENT THIS TURN (observations)
+  ↓
+Reference Resolution ← short-range grounding candidates (State helper)
+  ↓
 Conversation State   ← WHAT IS CURRENTLY TRUE (session working state; echoed across turns)
   ↓
-Director (Mind)      ← strategy / Decision Record
+Director (Mind)      ← strategy / Decision Record + Adaptive Response Profile
   ↓
-Memory               ← durable knowledge (not live in V2 Phase 3)
+Memory               ← durable knowledge (deferred — not live in V2)
   ↓
 Planner              ← WHAT SHOULD HAPPEN NEXT
   ↓
 Writer               ← HOW TO SAY IT
   ↓
-Contract Evaluator   ← optional contract fidelity (at most one HOW rewrite)
+Contract Evaluator   ← optional contract fidelity + referent grounding (at most one HOW rewrite)
   ↓
 State Transition     ← nextConversationState after successful delivery
   ↓
 Risposta (+ conversationState echo)
 ```
 
+### Layer authority (Phase 6–7)
+
+| Layer | Role |
+|-------|------|
+| **Conversation Signals** | Surface cues for the turn (affect/style/interaction). Observations only. |
+| **Reference Resolution** | Short-range pronoun/ordinal/correction grounding. Produces candidates + repair facts; does not plan. |
+| **Conversation State** | Authoritative conversational facts (topic, proposals, phase, repair, references). |
+| **Mind** | Strategy + adaptive profile bias. |
+| **Planner** | Next move (trust strong resolution; may clarify when ambiguous). |
+| **Writer** | Expression (natural repair; no internal terms). |
+| **Evaluator** | Fidelity to Planner WHAT + resolved referent. No re-resolution. |
+| **Memory** | Still deferred (no Memory V2 in live path). |
+
 ### Conversation State vs Memory
 
-- **Conversation State** = short-lived conversation working state (topic, proposals, phase, mode).
+- **Conversation State** = short-lived conversation working state (topic, proposals, phase, mode, repair, recentAlternatives).
 - **Memory** = durable user/context knowledge (not implemented in live V2 yet).
 
 ### Note di sequenza
 
 1. **Perception** osserva il turno; non decide la strategia.
-2. **Conversation State** evolve i fatti da `previousState` + messaggi; non genera prosa.
-3. **Director (Mind)** decide il Decision Record senza sovrascrivere i fatti di State.
-4. **Memory** (futuro) carica solo ciò che è autorizzato.
-5. **Planner** produce piano + writer brief.
-6. **Writer** genera il testo.
-7. **Contract Evaluator** verifica fedeltà al contratto Planner; al massimo una riscrittura HOW.
-8. **State Transition** pubblica lo State del prossimo turno solo se Writer ha consegnato.
-9. Echo client di `conversationState` (non Supabase Memory).
+2. **Conversation Signals** espone cue di turno condivisi; non risolve referenti né decide la mossa.
+3. **Reference Resolution** (helper di State) produce grounding a corto raggio / repair; non inventa referenti deboli.
+4. **Conversation State** evolve i fatti da `previousState` + messaggi + resolution; non genera prosa.
+5. **Director (Mind)** decide il Decision Record senza sovrascrivere i fatti di State.
+6. **Memory** (futuro) carica solo ciò che è autorizzato.
+7. **Planner** produce piano + writer brief (continua se resolved; chiarisce se ambiguous materiale).
+8. **Writer** genera il testo (riparazione naturale).
+9. **Contract Evaluator** verifica fedeltà al contratto Planner e al referente risolto; al massimo una riscrittura HOW.
+10. **State Transition** pubblica lo State del prossimo turno solo se Writer ha consegnato.
+11. Echo client di `conversationState` (non Supabase Memory).
 
 ### Split Focus / Resume / Director / Momentum (Phase 3)
 
