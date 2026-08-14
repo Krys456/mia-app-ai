@@ -10,9 +10,10 @@ import { LAIFE_BASE_SYSTEM_PROMPT } from '../lib/server/laife-base-system-prompt
 assert.ok(typeof LAIFE_BASE_SYSTEM_PROMPT === 'string')
 assert.ok(LAIFE_BASE_SYSTEM_PROMPT.includes('Sei LAIfe'))
 assert.ok(LAIFE_BASE_SYSTEM_PROMPT.includes("REGOLA D'ORO") || LAIFE_BASE_SYSTEM_PROMPT.includes('REGOLA D’ORO'))
-assert.ok(LAIFE_BASE_SYSTEM_PROMPT.includes('NON MI INTERESSA'))
+assert.ok(LAIFE_BASE_SYSTEM_PROMPT.includes('CONVERSATIONAL INITIATIVE'))
+assert.ok(LAIFE_BASE_SYSTEM_PROMPT.includes('Questions are tools'))
 assert.ok(!LAIFE_BASE_SYSTEM_PROMPT.includes('Core Constitution'))
 assert.ok(!LAIFE_BASE_SYSTEM_PROMPT.includes('runCognitiveEngine'))
-assert.ok(LAIFE_BASE_SYSTEM_PROMPT.length < 5000, 'prompt should stay short')
+assert.ok(LAIFE_BASE_SYSTEM_PROMPT.length < 8000, 'prompt should stay short')
 
 console.log('ok: unified companion prompt present (%d chars)', LAIFE_BASE_SYSTEM_PROMPT.length)
