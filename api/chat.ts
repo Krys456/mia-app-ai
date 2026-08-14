@@ -239,6 +239,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const payload: Record<string, unknown> = {
       content,
       runtime: 'core',
+      model,
       memoryEvent,
       // Echo session fields the client already sent — no cognitive engines.
       ...(body.learningSignals != null ? { learningSignals: body.learningSignals } : {}),
@@ -265,6 +266,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       JSON.stringify({
         contentLen: content.length,
         memoryEvent,
+        model,
         keys: Object.keys(payload),
         runtime: 'core',
         singleShot: true,
