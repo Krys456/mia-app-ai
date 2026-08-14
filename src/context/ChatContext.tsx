@@ -30,7 +30,6 @@ import {
   getPendingAutomation,
   savePendingAutomation,
 } from '../lib/pendingAutomation'
-import { buildSystemPrompt } from '../lib/personality'
 import {
   applyPivotSuppression,
   COMFORT_TRAP_TOPICS,
@@ -465,7 +464,6 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       abortRef.current = controller
       const generation = ++generationRef.current
       inFlightRef.current = true
-      const prompt = buildSystemPrompt(personalization, topicMemoryRef.current)
       const useV2 = developer.v2Experimental === true
 
       void (async () => {
@@ -473,7 +471,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           console.log('[ChatContext] starting completion', {
             historyLen: history.length,
             generation,
-            engine: useV2 ? 'v2' : 'v1',
+            runtime: 'core',
           })
           const {
             content: reply,
@@ -488,15 +486,15 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             await requestChatCompletion(
             {
               messages: history,
-              systemPrompt: prompt,
               userId: getOrCreateUserId(),
               memoryEnabled: personalization.memoryEnabled !== false,
-              developerMode: true,
-              ...(useV2 ? { engine: 'v2' as const } : { engine: 'v1' as const }),
               learningSignals: getLearningSignals(),
               welcomeSession: getWelcomeSession(),
               displayName: personalization.displayName?.trim() || undefined,
               personalityBias: personalization.personality || 'automatic',
+              replyLength: personalization.replyLength,
+              useEmojis: personalization.useEmojis,
+              customInstructions: personalization.customInstructions?.trim() || undefined,
               pendingAutomation: getPendingAutomation() || undefined,
               conversationMemoryMap: getConversationMemoryMap() || undefined,
               conversationPreferenceProfile:
