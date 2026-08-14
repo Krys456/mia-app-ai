@@ -79,16 +79,23 @@ Open **Settings → Theme** to:
 
 Preferences persist in `localStorage` (`laife.settings.v2`).
 
+## Conversational core
+
+Chat generation is a **single OpenAI call** with one unified companion prompt
+(`LAIFE_BASE_SYSTEM_PROMPT` in `src/lib/personality.ts`, served via
+`lib/server/laife-base-system-prompt.js`). No multi-engine cognitive stack on
+the live path — trust the model, don’t cage it.
+
 ## Structure
 
 ```
 src/
   components/     Header, ChatThread, Composer, SettingsDrawer, ThemeSettings
   context/        ChatProvider + ThemeProvider
-  lib/            themes, personality, browser supabase (src/lib/supabase.ts)
+  lib/            themes, personality (unified prompt), browser supabase
   types.ts
   App.tsx
-api/              Vercel serverless routes (chat, memories, vision)
+api/              Vercel serverless routes (chat = new core, memories, vision)
 lib/server/       Shared server helpers — supabase.js is the ONLY backend Supabase client
 supabase/         SQL migrations for BrAIn schema
 ```

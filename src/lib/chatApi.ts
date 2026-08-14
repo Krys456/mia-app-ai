@@ -17,18 +17,13 @@ export type { LearningSignals }
 
 export interface ChatApiRequest {
   messages: ChatApiMessage[]
-  systemPrompt: string
+  /** Optional; ignored by the new core (prompt is server-side). Kept for compat. */
+  systemPrompt?: string
   userId?: string
   memoryEnabled?: boolean
-  /**
-   * Client preference for conversation runtime (`v1` | `v2`).
-   * Honored only when developerMode is true (server Priority 1).
-   */
+  /** Legacy — ignored by the new core. */
   engine?: 'v1' | 'v2'
-  /**
-   * Explicit Developer Mode opt-in. When false/omitted, server ignores `engine`
-   * and uses LAIFE_CONVERSATION_RUNTIME / default v1.
-   */
+  /** Legacy — ignored by the new core. */
   developerMode?: boolean
   /** Prior internal reflection signals — never shown in UI. */
   learningSignals?: LearningSignals | null
@@ -40,8 +35,11 @@ export interface ChatApiRequest {
   /** Welcome Engine session — used greeting ids. */
   welcomeSession?: Record<string, unknown> | null
   displayName?: string
-  /** Soft style bias for Dynamic Behavior Model. */
+  /** Soft style bias (automatic | friendly | …). */
   personalityBias?: string
+  replyLength?: 'concise' | 'balanced' | 'detailed'
+  useEmojis?: boolean
+  customInstructions?: string
   /** Optional multi-source life signals (calendar, weather, traffic, …). */
   lifeContext?: Record<string, unknown> | null
   /** NL Automation draft awaiting confirm/edit. */
@@ -54,8 +52,8 @@ export interface ChatApiRequest {
 
 export interface ChatApiSuccess {
   content: string
-  /** Server-selected conversation runtime for this response. */
-  runtime?: 'v1' | 'v2'
+  /** Conversational core for this response (`core` = single-prompt path). */
+  runtime?: 'core' | 'v1' | 'v2'
   memoriesSaved?: number
   /** Discrete UI hint when auto-memory wrote something. */
   memoryEvent?: 'saved' | 'updated' | null
@@ -122,10 +120,9 @@ export async function requestChatCompletion(
     JSON.stringify({
       endpoint,
       messageCount: payload.messages?.length ?? 0,
-      hasSystemPrompt: Boolean(payload.systemPrompt?.trim()),
       memoryEnabled: payload.memoryEnabled !== false,
-      engine: payload.engine || 'v1',
-      developerMode: payload.developerMode === true,
+      personalityBias: payload.personalityBias || null,
+      replyLength: payload.replyLength || null,
     }),
   )
 
@@ -142,13 +139,8 @@ export async function requestChatCompletion(
       credentials: 'include',
       body: JSON.stringify({
         messages: payload.messages,
-        systemPrompt: payload.systemPrompt,
         userId: payload.userId,
         memoryEnabled: payload.memoryEnabled !== false,
-        ...(payload.developerMode === true ? { developerMode: true } : {}),
-        ...(payload.engine === 'v1' || payload.engine === 'v2'
-          ? { engine: payload.engine }
-          : {}),
         ...(payload.learningSignals ? { learningSignals: payload.learningSignals } : {}),
         ...(payload.modality ? { modality: payload.modality } : {}),
         ...(payload.voice ? { voice: true } : {}),
@@ -156,6 +148,11 @@ export async function requestChatCompletion(
         ...(payload.welcomeSession ? { welcomeSession: payload.welcomeSession } : {}),
         ...(payload.displayName ? { displayName: payload.displayName } : {}),
         ...(payload.personalityBias ? { personalityBias: payload.personalityBias } : {}),
+        ...(payload.replyLength ? { replyLength: payload.replyLength } : {}),
+        ...(typeof payload.useEmojis === 'boolean' ? { useEmojis: payload.useEmojis } : {}),
+        ...(payload.customInstructions
+          ? { customInstructions: payload.customInstructions }
+          : {}),
         ...(payload.lifeContext ? { lifeContext: payload.lifeContext } : {}),
         ...(payload.pendingAutomation
           ? { pendingAutomation: payload.pendingAutomation }
@@ -249,7 +246,14 @@ export async function requestChatCompletion(
 
   return {
     content,
-    runtime: data.runtime === 'v2' ? 'v2' : data.runtime === 'v1' ? 'v1' : undefined,
+    runtime:
+      data.runtime === 'core'
+        ? 'core'
+        : data.runtime === 'v2'
+          ? 'v2'
+          : data.runtime === 'v1'
+            ? 'v1'
+            : undefined,
     memoriesSaved: typeof data.memoriesSaved === 'number' ? data.memoriesSaved : 0,
     memoryEvent,
     learningSignals: sanitizeLearningSignals(data.learningSignals),
