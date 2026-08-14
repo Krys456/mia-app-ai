@@ -1,10 +1,11 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { applyCors, sendCorsPreflight, sendJson } from '../lib/server/http.js'
-import { LAIFE_BASE_SYSTEM_PROMPT } from '../src/lib/personality.js'
+import { LAIFE_BASE_SYSTEM_PROMPT } from '../lib/server/laife-base-system-prompt.js'
 
 /**
  * Chat generation — single OpenAI call with the personality system prompt
- * from src/lib/personality.ts (LAIFE_BASE_SYSTEM_PROMPT).
+ * (LAIFE_BASE_SYSTEM_PROMPT, sourced from src/lib/personality.ts via
+ * lib/server/laife-base-system-prompt.js so the Vercel function can resolve it).
  * No Cognitive Engine, no coordinator, no post-generation refine chain.
  */
 

@@ -6,7 +6,7 @@
   "installCommand": "npm install",
   "functions": {
     "api/chat.ts": {
-      "includeFiles": "{lib/server/**,src/lib/personality.ts,src/lib/diversity/**,src/types.ts}",
+      "includeFiles": "lib/server/**",
       "maxDuration": 60
     },
     "api/memory-test.ts": {
