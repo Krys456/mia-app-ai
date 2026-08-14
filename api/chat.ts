@@ -144,6 +144,13 @@ function buildInstructions(body: ChatApiRequestBody): string {
   return parts.join('\n\n')
 }
 
+function resolveChatModel(env: NodeJS.ProcessEnv = process.env): string {
+  const raw = typeof env.OPENAI_MODEL === 'string' ? env.OPENAI_MODEL.trim() : ''
+  // Common typo: digit zero instead of letter o (gpt-40 → gpt-4o).
+  const normalized = raw.replace(/\bgpt-40\b/gi, 'gpt-4o')
+  return normalized || 'gpt-4o'
+}
+
 async function runMemoryIfEnabled(
   userMessage: string,
   assistantMessage: string,
@@ -210,7 +217,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const instructions = buildInstructions(body)
     const OpenAI = (await import('openai')).default
     const client = new OpenAI({ apiKey })
-    const model = process.env.OPENAI_MODEL?.trim() || 'gpt-4o-mini'
+    const model = resolveChatModel(process.env)
 
     const response = await client.responses.create({
       model,
