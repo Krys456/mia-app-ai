@@ -15,6 +15,7 @@ assert.ok(LAIFE_BASE_SYSTEM_PROMPT.includes('COMPANION'))
 assert.ok(LAIFE_BASE_SYSTEM_PROMPT.includes('BOUNDARIES'))
 assert.ok(LAIFE_BASE_SYSTEM_PROMPT.includes('non un intervistatore'))
 assert.ok(LAIFE_BASE_SYSTEM_PROMPT.includes('Una risposta che finisce senza domanda è normale'))
+assert.ok(LAIFE_BASE_SYSTEM_PROMPT.includes('Prefer specificity over generic helpfulness'))
 
 // Old overlapping policy layers must be fully removed.
 for (const banned of [
