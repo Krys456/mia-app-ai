@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef } from 'react'
 import { useChat } from '../context/ChatContext'
 import { useTheme } from '../context/ThemeContext'
+import { isMemoryManageUiEnabled } from '../lib/memoryManageUi'
 import type { PersonalizationSettings } from '../types'
 import { ThemeSettings } from './ThemeSettings'
 import './SettingsDrawer.css'
@@ -165,16 +166,23 @@ export function SettingsDrawer({ onOpenMemory }: SettingsDrawerProps) {
               chat: tutto avviene in background.
             </p>
 
-            <button
-              type="button"
-              className="settings-link-btn"
-              onClick={() => {
-                closeSettings()
-                onOpenMemory?.()
-              }}
-            >
-              Gestisci Memoria
-            </button>
+            {isMemoryManageUiEnabled() ? (
+              <button
+                type="button"
+                className="settings-link-btn"
+                onClick={() => {
+                  closeSettings()
+                  onOpenMemory?.()
+                }}
+              >
+                Gestisci Memoria
+              </button>
+            ) : (
+              <p className="settings-note settings-note--tight">
+                Gestione memorie temporaneamente nascosta in Production (Phase 0). Tornerà con la
+                memoria autenticata per utente (Phase 1A).
+              </p>
+            )}
           </section>
 
           <div className="settings-divider" role="separator" />

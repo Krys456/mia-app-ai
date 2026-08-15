@@ -1,5 +1,6 @@
 import { BrandLogo } from './BrandLogo'
 import { useChat } from '../context/ChatContext'
+import { isMemoryManageUiEnabled } from '../lib/memoryManageUi'
 import type { AppView } from '../types'
 import './Header.css'
 
@@ -127,6 +128,7 @@ export function Header({ onNavigate, onOpenMemory }: HeaderProps) {
             }}
             aria-label="Gestisci memoria"
             title="Memoria"
+            hidden={!isMemoryManageUiEnabled()}
           >
             <IconMemory />
           </button>

@@ -8,6 +8,7 @@ import { Vision } from './pages/Vision'
 import { ChatProvider, useChat } from './context/ChatContext'
 import { ThemeProvider } from './context/ThemeContext'
 import { useVisualViewportHeight } from './hooks/useVisualViewportHeight'
+import { isMemoryManageUiEnabled } from './lib/memoryManageUi'
 import type { AppView } from './types'
 import './App.css'
 
@@ -29,11 +30,13 @@ function AppShell() {
   }
 
   const openMemoryManage = (fromSettings = true) => {
+    if (!isMemoryManageUiEnabled()) return
     memoryReturnToSettingsRef.current = fromSettings
     navigate('memory')
   }
 
   const openMemoryFromHeader = () => {
+    if (!isMemoryManageUiEnabled()) return
     memoryReturnToSettingsRef.current = false
     navigate('memory')
   }
@@ -66,7 +69,7 @@ function AppShell() {
         <MemoryToast />
       </div>
 
-      {view === 'memory' ? (
+      {view === 'memory' && isMemoryManageUiEnabled() ? (
         <div className="app-view" key="memory">
           <MemoryManage onBack={backFromMemory} />
         </div>
