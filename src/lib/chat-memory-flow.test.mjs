@@ -237,22 +237,19 @@ resetAuthBootstrapForTests()
   assert.match(chatSrc, /if\s*\(\s*!memoryEnabled\s*\|\|\s*!ownerUserId\s*\)/)
 }
 
-// 4b) Preview retest: animale still not in whitelist (coverage is Extraction V2 PR2).
-// Explicit "Ricorda" no longer dumps unknown facts into settings — it strips and
-// reclassifies; without a matching family, nothing is stored.
+// 4b) Extraction V2 PR2: natural favorites work without Ricorda; explicit intent still preferences.
 {
   const bare = analyzeConversation('Il mio animale preferito è il lupo.', 'Ok')
-  assert.equal(bare.save, false, 'bare animale favorite is not extracted (unchanged rules)')
+  assert.equal(bare.save, true)
+  assert.equal(bare.category, 'preferences')
 
   const withRicorda = analyzeConversation(
     'Ricorda che il mio animale preferito è il lupo.',
     'Ok',
   )
-  assert.equal(
-    withRicorda.save,
-    false,
-    'Ricorda + animale still needs coverage PR2; must not store as settings dump',
-  )
+  assert.equal(withRicorda.save, true)
+  assert.equal(withRicorda.category, 'preferences')
+  assert.equal(withRicorda.source, 'explicit')
 
   const ricordaColore = analyzeConversation(
     'Ricorda che il mio colore preferito è il verde.',
