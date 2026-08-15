@@ -137,14 +137,20 @@ export async function requestChatCompletion(
       ...(payload.userId ? { 'X-LAIfe-User-Id': payload.userId } : {}),
     }
 
+    // Safe client auth hint for Preview diagnostics (never a token).
+    // Values: unconfigured | absent | present
+    let clientAuthHint: 'unconfigured' | 'absent' | 'present' = 'unconfigured'
     let clientSessionPresent = false
     let clientBearerAttached = false
+    let bootstrapStatus: string | null = null
 
     // Ensure silent anon session exists before chat (avoids race with bootstrap).
     if (isSupabaseConfigured()) {
+      clientAuthHint = 'absent'
       try {
         const { bootstrapLaifeAuth } = await import('./authSession')
         const boot = await bootstrapLaifeAuth()
+        bootstrapStatus = boot.status
         clientSessionPresent = boot.status === 'ready' && Boolean(boot.userId)
 
         const { data, error } = await getSupabase().auth.getSession()
@@ -154,6 +160,7 @@ export async function requestChatCompletion(
             headers.Authorization = `Bearer ${token}`
             clientBearerAttached = true
             clientSessionPresent = true
+            clientAuthHint = 'present'
           }
         }
       } catch {
@@ -161,10 +168,15 @@ export async function requestChatCompletion(
       }
     }
 
+    // Preview-safe: lets server distinguish "no client session" vs "header stripped".
+    headers['X-LAIfe-Client-Auth'] = clientAuthHint
+
     console.log(
       '[chatApi] auth for memory',
       JSON.stringify({
         supabaseConfigured: isSupabaseConfigured(),
+        bootstrapStatus,
+        clientAuthHint,
         clientSessionPresent,
         clientBearerAttached,
       }),

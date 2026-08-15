@@ -182,10 +182,22 @@ async function runMemoryIfEnabled(
       errorMessage: null,
     }
   }
+
+  // Always extract for diagnostics — even when owner is missing — so Preview can
+  // distinguish "auth skipped" from "extractor missed the utterance".
+  let extractedFactCount = 0
+  try {
+    const { extractDurableFacts } = await import('../lib/server/brain-memory.js')
+    const facts = extractDurableFacts(userMessage)
+    extractedFactCount = Array.isArray(facts) ? facts.length : 0
+  } catch {
+    extractedFactCount = 0
+  }
+
   if (!ownerUserId) {
     return {
       event: null,
-      extractedFactCount: 0,
+      extractedFactCount,
       pipelineAttempted: false,
       writeOutcome: 'skipped_no_owner',
       errorCode: 'no_owner',
@@ -194,12 +206,7 @@ async function runMemoryIfEnabled(
   }
 
   try {
-    const { extractDurableFacts, runMemoryPipeline } = await import(
-      '../lib/server/brain-memory.js'
-    )
-
-    const facts = extractDurableFacts(userMessage)
-    const extractedFactCount = Array.isArray(facts) ? facts.length : 0
+    const { runMemoryPipeline } = await import('../lib/server/brain-memory.js')
 
     const result = await runMemoryPipeline({
       userMessage,
@@ -242,7 +249,7 @@ async function runMemoryIfEnabled(
     const { sanitizeMemoryDiagError } = await import('../lib/server/chat-memory-auth.js')
     return {
       event: null,
-      extractedFactCount: 0,
+      extractedFactCount,
       pipelineAttempted: true,
       writeOutcome: 'failed',
       errorCode: 'pipeline_error',
@@ -360,7 +367,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Temporary Preview-safe diagnostics — no JWTs, secrets, or memory content.
     const memoryDiag = {
+      clientAuthHint: ownerResult.diag.clientAuthHint,
       bearerPresent: ownerResult.diag.bearerPresent,
+      jwtVerified: ownerResult.diag.jwtVerified,
+      usersRowEnsured: ownerResult.diag.usersRowEnsured,
       ownerPresent: ownerResult.diag.ownerPresent,
       ownerUserIdPrefix: ownerResult.diag.ownerUserIdPrefix,
       authCode: ownerResult.diag.authCode,
