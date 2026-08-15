@@ -1,4 +1,5 @@
 import type { MemoryDraft, MemoryItem } from './memory'
+import { getSupabase, isSupabaseConfigured } from './supabase'
 import { getOrCreateUserId } from './userId'
 
 export class MemoryApiError extends Error {
@@ -34,11 +35,30 @@ function memoriesUrl(path = '', query?: Record<string, string | undefined>) {
   return url.toString()
 }
 
-function authHeaders(json = false): HeadersInit {
+/**
+ * Auth for Memory CRUD: Bearer access token from silent anonymous session.
+ * Legacy X-LAIfe-User-Id is still sent for compat but is not ownership authority.
+ */
+async function authHeaders(json = false): Promise<HeadersInit> {
   const headers: Record<string, string> = {
     'X-LAIfe-User-Id': getOrCreateUserId(),
   }
   if (json) headers['Content-Type'] = 'application/json'
+
+  if (isSupabaseConfigured()) {
+    try {
+      const { data, error } = await getSupabase().auth.getSession()
+      if (!error) {
+        const token = data.session?.access_token?.trim()
+        if (token) {
+          headers.Authorization = `Bearer ${token}`
+        }
+      }
+    } catch {
+      // Soft: server will 401 if token missing; UI stays usable.
+    }
+  }
+
   return headers
 }
 
@@ -93,7 +113,7 @@ export async function listMemories(options?: {
         category,
         q: options?.q?.trim() || undefined,
       }),
-      { headers: authHeaders(), credentials: 'include' },
+      { headers: await authHeaders(), credentials: 'include' },
     ),
   )
   return (data.memories ?? []).map((item) =>
@@ -106,7 +126,7 @@ export async function createBrainMemory(input: BrainMemoryCreateInput): Promise<
   const data = await parseJson<{ success?: boolean; error?: string }>(
     await fetch(memoriesUrl(), {
       method: 'POST',
-      headers: authHeaders(true),
+      headers: await authHeaders(true),
       credentials: 'include',
       body: JSON.stringify({
         category: input.category,
@@ -150,7 +170,7 @@ export async function updateMemory(id: string, draft: MemoryDraft): Promise<Memo
   const data = await parseJson<{ memory: MemoryItem }>(
     await fetch(memoriesUrl(`/${encodeURIComponent(id)}`), {
       method: 'PUT',
-      headers: authHeaders(true),
+      headers: await authHeaders(true),
       credentials: 'include',
       body: JSON.stringify(draft),
     }),
@@ -162,18 +182,18 @@ export async function deleteMemory(id: string): Promise<void> {
   await parseJson<{ ok: boolean }>(
     await fetch(memoriesUrl(`/${encodeURIComponent(id)}`), {
       method: 'DELETE',
-      headers: authHeaders(),
+      headers: await authHeaders(),
       credentials: 'include',
     }),
   )
 }
 
-/** Deletes every memory for the default API user. */
+/** Deletes every memory for the authenticated API user. */
 export async function deleteAllMemories(): Promise<number> {
   const data = await parseJson<{ success?: boolean; deleted?: number }>(
     await fetch(memoriesUrl('', { clear: '1' }), {
       method: 'DELETE',
-      headers: authHeaders(),
+      headers: await authHeaders(),
       credentials: 'include',
     }),
   )

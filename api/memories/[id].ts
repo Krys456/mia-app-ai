@@ -4,7 +4,7 @@ import {
   getMemoryById,
   updateMemory,
 } from '../../lib/server/brain-memory.js'
-import { assertMemoryAdminAccess } from '../../lib/server/memory-admin-auth.js'
+import { memoryOwnerScope, requireMemoryApiUser } from '../../lib/server/memory-api-auth.js'
 import { applyCors, errorMessage, parseJsonBody, sendCorsPreflight, sendJson } from '../../lib/server/http.js'
 
 export const config = {
@@ -27,9 +27,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return sendCorsPreflight(res)
     }
 
-    if (!assertMemoryAdminAccess(req, res)) {
+    const owner = await requireMemoryApiUser(req, res)
+    if (!owner) {
       return undefined
     }
+    const scope = memoryOwnerScope(owner.userId)
 
     const id = getId(req)
     if (!id) {
@@ -37,7 +39,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (req.method === 'GET') {
-      const memory = await getMemoryById(id)
+      const memory = await getMemoryById(id, scope)
       if (!memory) {
         return sendJson(res, 404, { error: 'Memory not found' })
       }
@@ -63,7 +65,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return sendJson(res, 400, { error: 'Title is required' })
       }
 
-      const memory = await updateMemory(id, { category, title, content })
+      // Ignore forged body.userId — scope is JWT-only.
+      const memory = await updateMemory(id, { category, title, content }, scope)
       if (!memory) {
         return sendJson(res, 404, { error: 'Memory not found' })
       }
@@ -71,7 +74,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (req.method === 'DELETE') {
-      const ok = await deleteMemory(id)
+      const ok = await deleteMemory(id, scope)
       if (!ok) {
         return sendJson(res, 404, { error: 'Memory not found' })
       }

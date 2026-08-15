@@ -4,7 +4,7 @@ import {
   listMemories,
   saveMemory,
 } from '../../lib/server/brain-memory.js'
-import { assertMemoryAdminAccess } from '../../lib/server/memory-admin-auth.js'
+import { memoryOwnerScope, requireMemoryApiUser } from '../../lib/server/memory-api-auth.js'
 import { errorMessage, parseJsonBody, sendCorsPreflight, sendJson, applyCors } from '../../lib/server/http.js'
 
 export const config = {
@@ -85,15 +85,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return sendCorsPreflight(res)
     }
 
-    if (!assertMemoryAdminAccess(req, res)) {
+    const owner = await requireMemoryApiUser(req, res)
+    if (!owner) {
       return undefined
     }
+    const scope = memoryOwnerScope(owner.userId)
 
     if (req.method === 'GET') {
       const category =
         typeof req.query.category === 'string' ? req.query.category.trim() : undefined
       const q = typeof req.query.q === 'string' ? req.query.q.trim() : undefined
       const memories = await listMemories({
+        ...scope,
         category: category || undefined,
         q: q || undefined,
       })
@@ -112,7 +115,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           error: 'Pass ?clear=1 to delete all memories',
         })
       }
-      const deleted = await deleteAllMemories()
+      const deleted = await deleteAllMemories(scope)
       return sendJson(res, 200, { success: true, deleted })
     }
 
@@ -145,9 +148,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       })
     }
 
+    // Ignore forged body.userId — ownership comes only from verified JWT.
     await saveMemory({
       ...validated.data,
       source: 'manual',
+      userId: owner.userId,
+      requireExplicitUserId: true,
     })
     return sendJson(res, 201, { success: true })
   } catch (error) {
