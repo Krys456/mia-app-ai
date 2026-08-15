@@ -214,28 +214,47 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ? 'text'
         : undefined
 
+  let requestProbe: Record<string, unknown> | null = null
+
   try {
     const instructions = buildInstructions(body)
     const OpenAI = (await import('openai')).default
     const client = new OpenAI({ apiKey })
     const model = resolveChatModel(process.env)
 
-    const response = await client.responses.create(
-      buildCoreResponsesCreateParams({
-        model,
-        instructions,
-        maxOutputTokens: modality === 'voice' ? 700 : 4096,
-        input: messages.map((msg) => ({
-          type: 'message' as const,
-          role: msg.role,
-          content: msg.content,
-        })),
-      }),
-    )
+    const openaiParams = buildCoreResponsesCreateParams({
+      model,
+      instructions,
+      maxOutputTokens: modality === 'voice' ? 700 : 4096,
+      input: messages.map((msg) => ({
+        type: 'message' as const,
+        role: msg.role,
+        content: msg.content,
+      })),
+    })
+
+    // Audit probe — proves which request shape hit OpenAI (no prompt content).
+    requestProbe = {
+      handler: 'api/chat.ts#core',
+      compatRev: 'omit-temp-a412d0f+',
+      model,
+      keys: Object.keys(openaiParams).sort(),
+      hasTemperature: Object.prototype.hasOwnProperty.call(openaiParams, 'temperature'),
+      temperature: Object.prototype.hasOwnProperty.call(openaiParams, 'temperature')
+        ? openaiParams.temperature
+        : null,
+      hasReasoning: Object.prototype.hasOwnProperty.call(openaiParams, 'reasoning'),
+      reasoning: Object.prototype.hasOwnProperty.call(openaiParams, 'reasoning')
+        ? openaiParams.reasoning
+        : null,
+    }
+    console.log('[api/chat] openai request probe', JSON.stringify(requestProbe))
+
+    const response = await client.responses.create(openaiParams)
 
     const content = response.output_text?.trim() || ''
     if (!content) {
-      return sendJson(res, 502, { error: 'Empty response from OpenAI' })
+      return sendJson(res, 502, { error: 'Empty response from OpenAI', requestProbe })
     }
 
     const lastUserMessage = [...messages].reverse().find((msg) => msg.role === 'user')
@@ -248,6 +267,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       content,
       runtime: 'core',
       model,
+      requestProbe,
       memoryEvent,
       // Echo session fields the client already sent — no cognitive engines.
       ...(body.learningSignals != null ? { learningSignals: body.learningSignals } : {}),
@@ -278,6 +298,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         keys: Object.keys(payload),
         runtime: 'core',
         singleShot: true,
+        requestProbe,
       }),
     )
     return sendJson(res, 200, payload)
@@ -295,6 +316,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           error: error.message,
           code: error.code,
           type: error.type,
+          requestProbe,
+          // If requestProbe is null, the failure happened before params were built
+          // or this deployment is not the instrumented /api/chat.
         })
       }
     } catch {
@@ -303,6 +327,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return sendJson(res, 500, {
       error: error instanceof Error ? error.message : String(error),
+      requestProbe,
     })
   }
 }
