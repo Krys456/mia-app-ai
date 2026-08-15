@@ -11,6 +11,7 @@ import { buildCoreResponsesCreateParams } from '../lib/server/core-responses-par
 import { resolveChatMemoryOwnerUserId } from '../lib/server/chat-memory-auth.js'
 import {
   appendMemoryPackToInstructions,
+  isPersonalMemoryProbe,
   loadCoreMemoryPack,
 } from '../lib/server/core-memory-recall.js'
 import { applyCors, sendCorsPreflight, sendJson } from '../lib/server/http.js'
@@ -361,8 +362,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     let memoryEvent: 'saved' | 'updated' | null = null
 
-    // Overview turns must not create new durable facts from the inspection request.
-    if (lastUserMessage?.content && !overviewHandled) {
+    // Overview + personal memory probes inspect memory; do not auto-extract
+    // durable facts from the inspection question itself.
+    const skipExtractionForInspection =
+      overviewHandled ||
+      (typeof lastUserMessage?.content === 'string' &&
+        isPersonalMemoryProbe(lastUserMessage.content))
+
+    if (lastUserMessage?.content && !skipExtractionForInspection) {
       const write = await runMemoryIfEnabled(
         lastUserMessage.content,
         content,
