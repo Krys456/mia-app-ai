@@ -281,7 +281,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       String(req.headers['x-laife-memory-trace'] || '').trim() === '1' ||
       String(process.env.LAIFE_MEMORY_TRACE || '')
         .trim()
-        .toLowerCase() === '1'
+        .toLowerCase() === '1' ||
+      // Preview-only auto-enable (Vercel); never Production.
+      String(process.env.VERCEL_ENV || '')
+        .trim()
+        .toLowerCase() === 'preview'
 
     if (lastUserMessage?.content) {
       const write = await runMemoryIfEnabled(
