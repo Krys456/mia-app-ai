@@ -275,16 +275,13 @@ export async function bootstrapLaifeAuth(
     return runBootstrapLaifeAuth(options)
   }
 
-  if (sharedBootstrapInFlight) {
-    return sharedBootstrapInFlight
+  // Assign before any await so concurrent callers always join the same promise.
+  if (!sharedBootstrapInFlight) {
+    sharedBootstrapInFlight = runBootstrapLaifeAuth(options).finally(() => {
+      sharedBootstrapInFlight = null
+    })
   }
-
-  sharedBootstrapInFlight = runBootstrapLaifeAuth(options)
-  try {
-    return await sharedBootstrapInFlight
-  } finally {
-    sharedBootstrapInFlight = null
-  }
+  return sharedBootstrapInFlight
 }
 
 /** Test helper — clears module single-flight state. */

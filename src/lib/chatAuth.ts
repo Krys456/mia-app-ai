@@ -77,13 +77,17 @@ export async function resolveChatAuthForRequest(
     }
 
     // Memory on: await shared bootstrap (mount + chat join the same in-flight promise).
+    const client =
+      options.getClient?.() ??
+      ((await import('./supabase')).getSupabase() as AuthSessionClient)
+
     const runBootstrap =
       options.bootstrap ??
       (() => {
         if (options.getClient) {
           return bootstrapLaifeAuth({
             isConfigured: () => true,
-            getClient: options.getClient,
+            getClient: () => client,
             useSharedInFlight: false,
           })
         }
@@ -92,6 +96,21 @@ export async function resolveChatAuthForRequest(
 
     const boot = await runBootstrap()
     let token = readToken(boot)
+
+    // Same client re-read — covers bootstrap ready without token in the result object.
+    if (!token) {
+      try {
+        if (typeof client.auth.initialize === 'function') {
+          await client.auth.initialize()
+        }
+        const { data, error } = await client.auth.getSession()
+        if (!error && typeof data.session?.access_token === 'string') {
+          token = data.session.access_token.trim() || null
+        }
+      } catch {
+        // soft
+      }
+    }
 
     if (!token && boot.status !== 'error' && boot.status !== 'skipped') {
       const retry = await runBootstrap()
