@@ -7,6 +7,7 @@
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { buildCoreResponsesCreateParams } from '../lib/server/core-responses-params.js'
 import { applyCors, sendCorsPreflight, sendJson } from '../lib/server/http.js'
 import { LAIFE_BASE_SYSTEM_PROMPT } from '../lib/server/laife-base-system-prompt.js'
 
@@ -219,18 +220,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const client = new OpenAI({ apiKey })
     const model = resolveChatModel(process.env)
 
-    const response = await client.responses.create({
-      model,
-      instructions,
-      temperature: 0.85,
-      max_output_tokens: modality === 'voice' ? 700 : 4096,
-      stream: false,
-      input: messages.map((msg) => ({
-        type: 'message' as const,
-        role: msg.role,
-        content: msg.content,
-      })),
-    })
+    const response = await client.responses.create(
+      buildCoreResponsesCreateParams({
+        model,
+        instructions,
+        maxOutputTokens: modality === 'voice' ? 700 : 4096,
+        input: messages.map((msg) => ({
+          type: 'message' as const,
+          role: msg.role,
+          content: msg.content,
+        })),
+      }),
+    )
 
     const content = response.output_text?.trim() || ''
     if (!content) {
