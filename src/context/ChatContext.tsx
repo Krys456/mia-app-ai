@@ -179,6 +179,8 @@ interface AppState {
   isThinking: boolean
   isStreaming: boolean
   memoryNotice: 'saved' | 'updated' | null
+  /** Temporary Preview-safe /api/chat memory write diagnostics (no tokens/content). */
+  memoryDiag: Record<string, unknown> | null
   topicMemory: TopicMemory
 }
 
@@ -198,10 +200,12 @@ type Action =
       id: string
       content: string
       memoryEvent?: 'saved' | 'updated' | null
+      memoryDiag?: Record<string, unknown> | null
       v2Debug?: V2DebugInfo | null
     }
   | { type: 'ASSISTANT_FAIL'; error: string }
   | { type: 'CLEAR_MEMORY_NOTICE' }
+  | { type: 'CLEAR_MEMORY_DIAG' }
   | { type: 'TRIM_TO'; count: number; thinking?: boolean }
 
 function createInitialState(): AppState {
@@ -212,6 +216,7 @@ function createInitialState(): AppState {
     isThinking: false,
     isStreaming: false,
     memoryNotice: null,
+    memoryDiag: null,
     topicMemory: createEmptyMemory(),
   }
 }
@@ -226,6 +231,7 @@ function reducer(state: AppState, action: Action): AppState {
         isStreaming: false,
         settingsOpen: false,
         memoryNotice: null,
+        memoryDiag: null,
         topicMemory: createEmptyMemory(),
       }
     case 'OPEN_SETTINGS':
@@ -335,6 +341,10 @@ function reducer(state: AppState, action: Action): AppState {
           action.memoryEvent === 'saved' || action.memoryEvent === 'updated'
             ? action.memoryEvent
             : null,
+        memoryDiag:
+          action.memoryDiag && typeof action.memoryDiag === 'object'
+            ? action.memoryDiag
+            : null,
         topicMemory: rememberAssistantMessage(state.topicMemory, action.content),
       }
     }
@@ -356,6 +366,8 @@ function reducer(state: AppState, action: Action): AppState {
     }
     case 'CLEAR_MEMORY_NOTICE':
       return { ...state, memoryNotice: null }
+    case 'CLEAR_MEMORY_DIAG':
+      return { ...state, memoryDiag: null }
     case 'TRIM_TO': {
       const count = Math.max(0, Math.min(action.count, state.messages.length))
       return {
@@ -378,11 +390,13 @@ interface ChatContextValue {
   isThinking: boolean
   isStreaming: boolean
   memoryNotice: 'saved' | 'updated' | null
+  memoryDiag: Record<string, unknown> | null
   newChat: () => void
   openSettings: () => void
   closeSettings: () => void
   toggleSettings: () => void
   clearMemoryNotice: () => void
+  clearMemoryDiag: () => void
   updatePersonalization: (patch: Partial<PersonalizationSettings>) => void
   updateTheme: (patch: Partial<ThemeSettings>) => void
   updateDeveloper: (patch: Partial<DeveloperSettings>) => void
@@ -437,6 +451,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const closeSettings = useCallback(() => dispatch({ type: 'CLOSE_SETTINGS' }), [])
   const toggleSettings = useCallback(() => dispatch({ type: 'TOGGLE_SETTINGS' }), [])
   const clearMemoryNotice = useCallback(() => dispatch({ type: 'CLEAR_MEMORY_NOTICE' }), [])
+  const clearMemoryDiag = useCallback(() => dispatch({ type: 'CLEAR_MEMORY_DIAG' }), [])
 
   const updatePersonalization = useCallback(
     (payload: Partial<PersonalizationSettings>) => {
@@ -476,6 +491,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           const {
             content: reply,
             memoryEvent,
+            memoryDiag,
             learningSignals,
             welcomeSession,
             pendingAutomation,
@@ -507,6 +523,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             generation,
             replyLen: reply?.length ?? 0,
             memoryEvent: memoryEvent ?? null,
+            memoryDiag: memoryDiag ?? null,
           })
 
           if (generation !== generationRef.current) return
@@ -598,6 +615,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             id: assistantId,
             content: reply,
             memoryEvent: memoryEvent ?? null,
+            memoryDiag: memoryDiag ?? null,
             ...(useV2 && v2Debug ? { v2Debug } : {}),
           })
         } catch (error) {
@@ -691,11 +709,13 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       isThinking: state.isThinking,
       isStreaming: state.isStreaming,
       memoryNotice: state.memoryNotice,
+      memoryDiag: state.memoryDiag,
       newChat,
       openSettings,
       closeSettings,
       toggleSettings,
       clearMemoryNotice,
+      clearMemoryDiag,
       updatePersonalization,
       updateTheme,
       updateDeveloper,
@@ -709,11 +729,13 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       state.isThinking,
       state.isStreaming,
       state.memoryNotice,
+      state.memoryDiag,
       newChat,
       openSettings,
       closeSettings,
       toggleSettings,
       clearMemoryNotice,
+      clearMemoryDiag,
       updatePersonalization,
       updateTheme,
       updateDeveloper,

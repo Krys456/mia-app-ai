@@ -367,20 +367,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Temporary Preview-safe diagnostics — no JWTs, secrets, or memory content.
     const memoryDiag = {
-      clientAuthHint: ownerResult.diag.clientAuthHint,
+      clientBearerAttached: ownerResult.diag.clientAuthHint === 'present',
       bearerPresent: ownerResult.diag.bearerPresent,
       jwtVerified: ownerResult.diag.jwtVerified,
       usersRowEnsured: ownerResult.diag.usersRowEnsured,
       ownerPresent: ownerResult.diag.ownerPresent,
-      ownerUserIdPrefix: ownerResult.diag.ownerUserIdPrefix,
-      authCode: ownerResult.diag.authCode,
-      authError: ownerResult.diag.authError,
-      memoryEnabled,
       extractedFactCount: memoryWrite.extractedFactCount,
       pipelineAttempted: memoryWrite.pipelineAttempted,
       writeOutcome: memoryWrite.writeOutcome,
-      errorCode: memoryWrite.errorCode,
-      errorMessage: memoryWrite.errorMessage,
+      errorCode: memoryWrite.errorCode ?? ownerResult.diag.authCode,
+      errorMessage: memoryWrite.errorMessage ?? ownerResult.diag.authError,
     }
 
     console.log('[api/chat] memoryDiag', JSON.stringify(memoryDiag))

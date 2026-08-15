@@ -3,6 +3,7 @@ import { Header } from './components/Header'
 import { ChatContainer } from './components/chat'
 import { SettingsDrawer } from './components/SettingsDrawer'
 import { MemoryToast } from './components/MemoryToast'
+import { MemoryDiagPanel } from './components/MemoryDiagPanel'
 import { MemoryManage } from './pages/MemoryManage'
 import { Vision } from './pages/Vision'
 import { ChatProvider, useChat } from './context/ChatContext'
@@ -70,6 +71,7 @@ function AppShell() {
       >
         <ChatContainer />
         <MemoryToast />
+        <MemoryDiagPanel />
       </div>
 
       {view === 'memory' && isMemoryManageUiEnabled() ? (

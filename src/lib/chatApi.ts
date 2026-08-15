@@ -292,10 +292,7 @@ export async function requestChatCompletion(
   const memoryEvent =
     data.memoryEvent === 'saved' || data.memoryEvent === 'updated' ? data.memoryEvent : null
 
-  const memoryDiag =
-    data.memoryDiag && typeof data.memoryDiag === 'object'
-      ? (data.memoryDiag as Record<string, unknown>)
-      : null
+  const memoryDiag = sanitizeMemoryDiag(data.memoryDiag)
 
   if (memoryDiag) {
     console.info('[chatApi] memoryDiag', JSON.stringify(memoryDiag))
@@ -333,6 +330,33 @@ export async function requestChatCompletion(
     ),
     v2Debug,
   }
+}
+
+/**
+ * Temporary Preview-safe subset of /api/chat memoryDiag.
+ * Strips anything outside the allowlisted diagnostic fields.
+ */
+function sanitizeMemoryDiag(raw: unknown): Record<string, unknown> | null {
+  if (!raw || typeof raw !== 'object') return null
+  const d = raw as Record<string, unknown>
+  const out: Record<string, unknown> = {}
+
+  if (typeof d.clientBearerAttached === 'boolean') out.clientBearerAttached = d.clientBearerAttached
+  if (typeof d.bearerPresent === 'boolean') out.bearerPresent = d.bearerPresent
+  if (typeof d.jwtVerified === 'boolean') out.jwtVerified = d.jwtVerified
+  if (typeof d.usersRowEnsured === 'boolean') out.usersRowEnsured = d.usersRowEnsured
+  if (typeof d.ownerPresent === 'boolean') out.ownerPresent = d.ownerPresent
+  if (typeof d.extractedFactCount === 'number') out.extractedFactCount = d.extractedFactCount
+  if (typeof d.pipelineAttempted === 'boolean') out.pipelineAttempted = d.pipelineAttempted
+  if (typeof d.writeOutcome === 'string') out.writeOutcome = d.writeOutcome.slice(0, 64)
+  if (typeof d.errorCode === 'string' && d.errorCode.trim()) {
+    out.errorCode = d.errorCode.trim().slice(0, 64)
+  }
+  if (typeof d.errorMessage === 'string' && d.errorMessage.trim()) {
+    out.errorMessage = d.errorMessage.trim().slice(0, 180)
+  }
+
+  return Object.keys(out).length > 0 ? out : null
 }
 
 /**
