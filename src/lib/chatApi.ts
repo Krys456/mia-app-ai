@@ -58,6 +58,8 @@ export interface ChatApiSuccess {
   memoriesSaved?: number
   /** Discrete UI hint when auto-memory wrote something. */
   memoryEvent?: 'saved' | 'updated' | null
+  /** Temporary Preview-safe memory write diagnostics (no tokens/content). */
+  memoryDiag?: Record<string, unknown> | null
   /** Internal only — client stores silently; never render. */
   learningSignals?: LearningSignals | null
   /** Internal only — client stores for voice interrupt/resume. */
@@ -135,18 +137,38 @@ export async function requestChatCompletion(
       ...(payload.userId ? { 'X-LAIfe-User-Id': payload.userId } : {}),
     }
 
-    // Memory ownership authority: Supabase access token (server verifies auth.uid()).
+    let clientSessionPresent = false
+    let clientBearerAttached = false
+
+    // Ensure silent anon session exists before chat (avoids race with bootstrap).
     if (isSupabaseConfigured()) {
       try {
+        const { bootstrapLaifeAuth } = await import('./authSession')
+        const boot = await bootstrapLaifeAuth()
+        clientSessionPresent = boot.status === 'ready' && Boolean(boot.userId)
+
         const { data, error } = await getSupabase().auth.getSession()
         if (!error) {
           const token = data.session?.access_token?.trim()
-          if (token) headers.Authorization = `Bearer ${token}`
+          if (token) {
+            headers.Authorization = `Bearer ${token}`
+            clientBearerAttached = true
+            clientSessionPresent = true
+          }
         }
       } catch {
         // Soft: chat still works; server skips memory write without a valid JWT.
       }
     }
+
+    console.log(
+      '[chatApi] auth for memory',
+      JSON.stringify({
+        supabaseConfigured: isSupabaseConfigured(),
+        clientSessionPresent,
+        clientBearerAttached,
+      }),
+    )
 
     response = await fetch(endpoint, {
       method: 'POST',
@@ -258,6 +280,15 @@ export async function requestChatCompletion(
   const memoryEvent =
     data.memoryEvent === 'saved' || data.memoryEvent === 'updated' ? data.memoryEvent : null
 
+  const memoryDiag =
+    data.memoryDiag && typeof data.memoryDiag === 'object'
+      ? (data.memoryDiag as Record<string, unknown>)
+      : null
+
+  if (memoryDiag) {
+    console.info('[chatApi] memoryDiag', JSON.stringify(memoryDiag))
+  }
+
   const v2Debug = sanitizeV2Debug(data.v2Debug)
 
   return {
@@ -272,6 +303,7 @@ export async function requestChatCompletion(
             : undefined,
     memoriesSaved: typeof data.memoriesSaved === 'number' ? data.memoriesSaved : 0,
     memoryEvent,
+    memoryDiag,
     learningSignals: sanitizeLearningSignals(data.learningSignals),
     voiceSession:
       data.voiceSession && typeof data.voiceSession === 'object' ? data.voiceSession : null,

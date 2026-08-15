@@ -158,12 +158,49 @@ async function runMemoryIfEnabled(
   assistantMessage: string,
   memoryEnabled: boolean,
   ownerUserId: string | null,
-): Promise<'saved' | 'updated' | null> {
-  if (!memoryEnabled) return null
-  // No valid auth.uid() → skip persistence (never fall back to brain-api@local).
-  if (!ownerUserId) return null
+): Promise<{
+  event: 'saved' | 'updated' | null
+  extractedFactCount: number
+  pipelineAttempted: boolean
+  writeOutcome:
+    | 'saved'
+    | 'updated'
+    | 'skipped_disabled'
+    | 'skipped_no_owner'
+    | 'skipped_no_facts'
+    | 'failed'
+  errorCode: string | null
+  errorMessage: string | null
+}> {
+  if (!memoryEnabled) {
+    return {
+      event: null,
+      extractedFactCount: 0,
+      pipelineAttempted: false,
+      writeOutcome: 'skipped_disabled',
+      errorCode: null,
+      errorMessage: null,
+    }
+  }
+  if (!ownerUserId) {
+    return {
+      event: null,
+      extractedFactCount: 0,
+      pipelineAttempted: false,
+      writeOutcome: 'skipped_no_owner',
+      errorCode: 'no_owner',
+      errorMessage: 'No verified auth owner for memory write',
+    }
+  }
+
   try {
-    const { runMemoryPipeline } = await import('../lib/server/brain-memory.js')
+    const { extractDurableFacts, runMemoryPipeline } = await import(
+      '../lib/server/brain-memory.js'
+    )
+
+    const facts = extractDurableFacts(userMessage)
+    const extractedFactCount = Array.isArray(facts) ? facts.length : 0
+
     const result = await runMemoryPipeline({
       userMessage,
       assistantMessage,
@@ -171,11 +208,46 @@ async function runMemoryIfEnabled(
       userId: ownerUserId,
       requireExplicitUserId: true,
     })
-    if (result?.updated) return 'updated'
-    if (result?.saved) return 'saved'
-    return null
-  } catch {
-    return null
+
+    if (result?.updated) {
+      return {
+        event: 'updated',
+        extractedFactCount,
+        pipelineAttempted: true,
+        writeOutcome: 'updated',
+        errorCode: null,
+        errorMessage: null,
+      }
+    }
+    if (result?.saved) {
+      return {
+        event: 'saved',
+        extractedFactCount,
+        pipelineAttempted: true,
+        writeOutcome: 'saved',
+        errorCode: null,
+        errorMessage: null,
+      }
+    }
+
+    return {
+      event: null,
+      extractedFactCount,
+      pipelineAttempted: true,
+      writeOutcome: 'skipped_no_facts',
+      errorCode: result?.reason ? String(result.reason) : 'no_write',
+      errorMessage: null,
+    }
+  } catch (error) {
+    const { sanitizeMemoryDiagError } = await import('../lib/server/chat-memory-auth.js')
+    return {
+      event: null,
+      extractedFactCount: 0,
+      pipelineAttempted: true,
+      writeOutcome: 'failed',
+      errorCode: 'pipeline_error',
+      errorMessage: sanitizeMemoryDiagError(error),
+    }
   }
 }
 
@@ -221,7 +293,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         : undefined
 
   // Soft auth for memory ownership only — never blocks chat generation.
-  const memoryOwnerUserId = await resolveChatMemoryOwnerUserId(req)
+  const ownerResult = await resolveChatMemoryOwnerUserId(req)
+  const memoryOwnerUserId = ownerResult.userId
 
   try {
     const instructions = buildInstructions(body)
@@ -249,20 +322,65 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const lastUserMessage = [...messages].reverse().find((msg) => msg.role === 'user')
     let memoryEvent: 'saved' | 'updated' | null = null
+    let memoryWrite = {
+      extractedFactCount: 0,
+      pipelineAttempted: false,
+      writeOutcome: 'skipped_no_facts' as
+        | 'saved'
+        | 'updated'
+        | 'skipped_disabled'
+        | 'skipped_no_owner'
+        | 'skipped_no_facts'
+        | 'failed',
+      errorCode: null as string | null,
+      errorMessage: null as string | null,
+    }
+
     if (lastUserMessage?.content) {
-      memoryEvent = await runMemoryIfEnabled(
+      const write = await runMemoryIfEnabled(
         lastUserMessage.content,
         content,
         memoryEnabled,
         memoryOwnerUserId,
       )
+      memoryEvent = write.event
+      memoryWrite = {
+        extractedFactCount: write.extractedFactCount,
+        pipelineAttempted: write.pipelineAttempted,
+        writeOutcome: write.writeOutcome,
+        errorCode: write.errorCode,
+        errorMessage: write.errorMessage,
+      }
+    } else if (!memoryEnabled) {
+      memoryWrite.writeOutcome = 'skipped_disabled'
+    } else if (!memoryOwnerUserId) {
+      memoryWrite.writeOutcome = 'skipped_no_owner'
+      memoryWrite.errorCode = 'no_owner'
     }
+
+    // Temporary Preview-safe diagnostics — no JWTs, secrets, or memory content.
+    const memoryDiag = {
+      bearerPresent: ownerResult.diag.bearerPresent,
+      ownerPresent: ownerResult.diag.ownerPresent,
+      ownerUserIdPrefix: ownerResult.diag.ownerUserIdPrefix,
+      authCode: ownerResult.diag.authCode,
+      authError: ownerResult.diag.authError,
+      memoryEnabled,
+      extractedFactCount: memoryWrite.extractedFactCount,
+      pipelineAttempted: memoryWrite.pipelineAttempted,
+      writeOutcome: memoryWrite.writeOutcome,
+      errorCode: memoryWrite.errorCode,
+      errorMessage: memoryWrite.errorMessage,
+    }
+
+    console.log('[api/chat] memoryDiag', JSON.stringify(memoryDiag))
 
     const payload: Record<string, unknown> = {
       content,
       runtime: 'core',
       model,
       memoryEvent,
+      memoryDiag,
       // Echo session fields the client already sent — no cognitive engines.
       ...(body.learningSignals != null ? { learningSignals: body.learningSignals } : {}),
       ...(body.voiceSession && typeof body.voiceSession === 'object'
