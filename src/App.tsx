@@ -7,6 +7,7 @@ import { MemoryManage } from './pages/MemoryManage'
 import { Vision } from './pages/Vision'
 import { ChatProvider, useChat } from './context/ChatContext'
 import { ThemeProvider } from './context/ThemeContext'
+import { useAuthBootstrap } from './hooks/useAuthBootstrap'
 import { useVisualViewportHeight } from './hooks/useVisualViewportHeight'
 import { isMemoryManageUiEnabled } from './lib/memoryManageUi'
 import type { AppView } from './types'
@@ -19,6 +20,8 @@ function AppShell() {
   const memoryReturnToSettingsRef = useRef(false)
   const { openSettings, closeSettings } = useChat()
   useVisualViewportHeight()
+  // Phase 1A step 1 — silent anonymous session; does not gate chat.
+  useAuthBootstrap()
 
   const navigate = (next: AppView) => {
     setView((current) => {
