@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import {
   deleteAllMemories,
   listMemories,
-  saveMemory,
+  upsertMemory,
 } from '../../lib/server/brain-memory.js'
 import { memoryOwnerScope, requireMemoryApiUser } from '../../lib/server/memory-api-auth.js'
 import { errorMessage, parseJsonBody, sendCorsPreflight, sendJson, applyCors } from '../../lib/server/http.js'
@@ -149,7 +149,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Ignore forged body.userId — ownership comes only from verified JWT.
-    await saveMemory({
+    // Use upsertMemory so single-valued fact_key writes cannot create duplicate actives.
+    await upsertMemory({
       ...validated.data,
       source: 'manual',
       userId: owner.userId,
