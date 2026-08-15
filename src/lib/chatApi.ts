@@ -4,6 +4,7 @@ import {
 } from './learningSignals'
 import { sanitizeConversationMemoryMap } from './conversationMemoryMap'
 import { sanitizeConversationPreferenceProfile } from './conversationPreferenceProfile'
+import { getSupabase, isSupabaseConfigured } from './supabase'
 import type { V2DebugInfo } from '../types'
 
 export type ChatApiRole = 'user' | 'assistant' | 'system'
@@ -128,13 +129,28 @@ export async function requestChatCompletion(
 
   let response: Response
   try {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      ...(payload.userId ? { 'X-LAIfe-User-Id': payload.userId } : {}),
+    }
+
+    // Memory ownership authority: Supabase access token (server verifies auth.uid()).
+    if (isSupabaseConfigured()) {
+      try {
+        const { data, error } = await getSupabase().auth.getSession()
+        if (!error) {
+          const token = data.session?.access_token?.trim()
+          if (token) headers.Authorization = `Bearer ${token}`
+        }
+      } catch {
+        // Soft: chat still works; server skips memory write without a valid JWT.
+      }
+    }
+
     response = await fetch(endpoint, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-        ...(payload.userId ? { 'X-LAIfe-User-Id': payload.userId } : {}),
-      },
+      headers,
       // Needed for Vercel Deployment Protection cookies on preview/prod.
       credentials: 'include',
       body: JSON.stringify({

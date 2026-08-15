@@ -8,6 +8,7 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { buildCoreResponsesCreateParams } from '../lib/server/core-responses-params.js'
+import { resolveChatMemoryOwnerUserId } from '../lib/server/chat-memory-auth.js'
 import { applyCors, sendCorsPreflight, sendJson } from '../lib/server/http.js'
 import { LAIFE_BASE_SYSTEM_PROMPT } from '../lib/server/laife-base-system-prompt.js'
 
@@ -156,14 +157,19 @@ async function runMemoryIfEnabled(
   userMessage: string,
   assistantMessage: string,
   memoryEnabled: boolean,
+  ownerUserId: string | null,
 ): Promise<'saved' | 'updated' | null> {
   if (!memoryEnabled) return null
+  // No valid auth.uid() → skip persistence (never fall back to brain-api@local).
+  if (!ownerUserId) return null
   try {
     const { runMemoryPipeline } = await import('../lib/server/brain-memory.js')
     const result = await runMemoryPipeline({
       userMessage,
       assistantMessage,
       memoryEnabled: true,
+      userId: ownerUserId,
+      requireExplicitUserId: true,
     })
     if (result?.updated) return 'updated'
     if (result?.saved) return 'saved'
@@ -214,6 +220,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ? 'text'
         : undefined
 
+  // Soft auth for memory ownership only — never blocks chat generation.
+  const memoryOwnerUserId = await resolveChatMemoryOwnerUserId(req)
+
   try {
     const instructions = buildInstructions(body)
     const OpenAI = (await import('openai')).default
@@ -241,7 +250,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const lastUserMessage = [...messages].reverse().find((msg) => msg.role === 'user')
     let memoryEvent: 'saved' | 'updated' | null = null
     if (lastUserMessage?.content) {
-      memoryEvent = await runMemoryIfEnabled(lastUserMessage.content, content, memoryEnabled)
+      memoryEvent = await runMemoryIfEnabled(
+        lastUserMessage.content,
+        content,
+        memoryEnabled,
+        memoryOwnerUserId,
+      )
     }
 
     const payload: Record<string, unknown> = {
