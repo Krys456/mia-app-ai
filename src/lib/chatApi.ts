@@ -4,7 +4,7 @@ import {
 } from './learningSignals'
 import { sanitizeConversationMemoryMap } from './conversationMemoryMap'
 import { sanitizeConversationPreferenceProfile } from './conversationPreferenceProfile'
-import { getSupabase, isSupabaseConfigured } from './supabase'
+import { resolveChatAuthForRequest } from './chatAuth'
 import type { V2DebugInfo } from '../types'
 
 export type ChatApiRole = 'user' | 'assistant' | 'system'
@@ -137,50 +137,37 @@ export async function requestChatCompletion(
       ...(payload.userId ? { 'X-LAIfe-User-Id': payload.userId } : {}),
     }
 
-    // Safe client auth hint for Preview diagnostics (never a token).
-    // Values: unconfigured | absent | present
-    let clientAuthHint: 'unconfigured' | 'absent' | 'present' = 'unconfigured'
-    let clientSessionPresent = false
-    let clientBearerAttached = false
-    let bootstrapStatus: string | null = null
+    // Soft auth for memory ownership: reuse anon session; recover when memory ON.
+    const auth = await resolveChatAuthForRequest({
+      memoryEnabled: payload.memoryEnabled !== false,
+    })
 
-    // Ensure silent anon session exists before chat (avoids race with bootstrap).
-    if (isSupabaseConfigured()) {
-      clientAuthHint = 'absent'
-      try {
-        const { bootstrapLaifeAuth } = await import('./authSession')
-        const boot = await bootstrapLaifeAuth()
-        bootstrapStatus = boot.status
-        clientSessionPresent = boot.status === 'ready' && Boolean(boot.userId)
-
-        const { data, error } = await getSupabase().auth.getSession()
-        if (!error) {
-          const token = data.session?.access_token?.trim()
-          if (token) {
-            headers.Authorization = `Bearer ${token}`
-            clientBearerAttached = true
-            clientSessionPresent = true
-            clientAuthHint = 'present'
-          }
-        }
-      } catch {
-        // Soft: chat still works; server skips memory write without a valid JWT.
-      }
+    if (auth.authorization) {
+      headers.Authorization = auth.authorization
     }
 
     // Preview-safe: lets server distinguish "no client session" vs "header stripped".
-    headers['X-LAIfe-Client-Auth'] = clientAuthHint
+    headers['X-LAIfe-Client-Auth'] = auth.clientAuthHint
 
     console.log(
       '[chatApi] auth for memory',
       JSON.stringify({
-        supabaseConfigured: isSupabaseConfigured(),
-        bootstrapStatus,
-        clientAuthHint,
-        clientSessionPresent,
-        clientBearerAttached,
+        supabaseConfigured: auth.supabaseConfigured,
+        bootstrapStatus: auth.bootstrapStatus,
+        clientAuthHint: auth.clientAuthHint,
+        clientBearerAttached: auth.clientBearerAttached,
+        recoveredSession: auth.recoveredSession,
       }),
     )
+
+    if (payload.memoryEnabled !== false && !auth.clientBearerAttached) {
+      console.warn(
+        '[chatApi] memory ON but no Bearer attached',
+        auth.supabaseConfigured
+          ? `(bootstrap=${auth.bootstrapStatus || 'unknown'})`
+          : '(VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY missing in this build)',
+      )
+    }
 
     response = await fetch(endpoint, {
       method: 'POST',
@@ -342,6 +329,7 @@ function sanitizeMemoryDiag(raw: unknown): Record<string, unknown> | null {
   const out: Record<string, unknown> = {}
 
   if (typeof d.clientBearerAttached === 'boolean') out.clientBearerAttached = d.clientBearerAttached
+  if (typeof d.supabaseConfigured === 'boolean') out.supabaseConfigured = d.supabaseConfigured
   if (typeof d.bearerPresent === 'boolean') out.bearerPresent = d.bearerPresent
   if (typeof d.jwtVerified === 'boolean') out.jwtVerified = d.jwtVerified
   if (typeof d.usersRowEnsured === 'boolean') out.usersRowEnsured = d.usersRowEnsured

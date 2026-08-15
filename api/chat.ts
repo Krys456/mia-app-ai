@@ -368,6 +368,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Temporary Preview-safe diagnostics — no JWTs, secrets, or memory content.
     const memoryDiag = {
       clientBearerAttached: ownerResult.diag.clientAuthHint === 'present',
+      supabaseConfigured: ownerResult.diag.clientAuthHint !== 'unconfigured',
       bearerPresent: ownerResult.diag.bearerPresent,
       jwtVerified: ownerResult.diag.jwtVerified,
       usersRowEnsured: ownerResult.diag.usersRowEnsured,

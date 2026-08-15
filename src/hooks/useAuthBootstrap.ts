@@ -11,6 +11,7 @@ const INITIAL: AuthBootstrapResult = {
   isAnonymous: null,
   error: null,
   signedInAnonymously: false,
+  accessToken: null,
 }
 
 /**
@@ -57,6 +58,7 @@ export function useAuthBootstrap(): {
           isAnonymous: null,
           error: message,
           signedInAnonymously: false,
+          accessToken: null,
         })
       })
 
