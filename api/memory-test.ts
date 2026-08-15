@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { runMemoryPipeline } from '../lib/server/brain-memory.js'
+import { assertMemoryAdminAccess } from '../lib/server/memory-admin-auth.js'
 import {
   applyCors,
   errorMessage,
@@ -19,6 +20,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (req.method === 'OPTIONS') {
       return sendCorsPreflight(res)
+    }
+
+    if (!assertMemoryAdminAccess(req, res)) {
+      return undefined
     }
 
     if (req.method !== 'POST') {

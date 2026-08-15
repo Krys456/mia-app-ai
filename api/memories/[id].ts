@@ -4,6 +4,7 @@ import {
   getMemoryById,
   updateMemory,
 } from '../../lib/server/brain-memory.js'
+import { assertMemoryAdminAccess } from '../../lib/server/memory-admin-auth.js'
 import { applyCors, errorMessage, parseJsonBody, sendCorsPreflight, sendJson } from '../../lib/server/http.js'
 
 export const config = {
@@ -24,6 +25,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (req.method === 'OPTIONS') {
       return sendCorsPreflight(res)
+    }
+
+    if (!assertMemoryAdminAccess(req, res)) {
+      return undefined
     }
 
     const id = getId(req)
