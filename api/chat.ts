@@ -9,6 +9,10 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { buildCoreResponsesCreateParams } from '../lib/server/core-responses-params.js'
 import { resolveChatMemoryOwnerUserId } from '../lib/server/chat-memory-auth.js'
+import {
+  appendMemoryPackToInstructions,
+  loadCoreMemoryPack,
+} from '../lib/server/core-memory-recall.js'
 import { applyCors, sendCorsPreflight, sendJson } from '../lib/server/http.js'
 import { LAIFE_BASE_SYSTEM_PROMPT } from '../lib/server/laife-base-system-prompt.js'
 
@@ -231,7 +235,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const memoryOwnerUserId = await resolveChatMemoryOwnerUserId(req)
 
   try {
-    const instructions = buildInstructions(body)
+    const lastUserMessage = [...messages].reverse().find((msg) => msg.role === 'user')
+
+    // Recall V1: small owner-scoped pack before the single responses.create.
+    // Soft-fail inside loadCoreMemoryPack — never brain-api@local.
+    const memoryPack =
+      memoryEnabled && lastUserMessage?.content
+        ? await loadCoreMemoryPack({
+            userMessage: lastUserMessage.content,
+            ownerUserId: memoryOwnerUserId,
+            memoryEnabled: true,
+          })
+        : ''
+
+    const instructions = appendMemoryPackToInstructions(buildInstructions(body), memoryPack)
     const OpenAI = (await import('openai')).default
     const client = new OpenAI({ apiKey })
     const model = resolveChatModel(process.env)
@@ -254,7 +271,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return sendJson(res, 502, { error: 'Empty response from OpenAI' })
     }
 
-    const lastUserMessage = [...messages].reverse().find((msg) => msg.role === 'user')
     let memoryEvent: 'saved' | 'updated' | null = null
 
     if (lastUserMessage?.content) {
