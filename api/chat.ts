@@ -162,8 +162,7 @@ async function runMemoryIfEnabled(
   assistantMessage: string,
   memoryEnabled: boolean,
   ownerUserId: string | null,
-  memoryTrace = false,
-): Promise<{ event: 'saved' | 'updated' | null; memoryTrace?: unknown }> {
+): Promise<{ event: 'saved' | 'updated' | null }> {
   if (!memoryEnabled || !ownerUserId) {
     return { event: null }
   }
@@ -177,14 +176,11 @@ async function runMemoryIfEnabled(
       memoryEnabled: true,
       userId: ownerUserId,
       requireExplicitUserId: true,
-      ...(memoryTrace ? { memoryTrace: true } : {}),
     })
 
-    const trace = memoryTrace && result && typeof result === 'object' ? (result as { memoryTrace?: unknown }).memoryTrace : undefined
-
-    if (result?.updated) return { event: 'updated', ...(trace ? { memoryTrace: trace } : {}) }
-    if (result?.saved) return { event: 'saved', ...(trace ? { memoryTrace: trace } : {}) }
-    return { event: null, ...(trace ? { memoryTrace: trace } : {}) }
+    if (result?.updated) return { event: 'updated' }
+    if (result?.saved) return { event: 'saved' }
+    return { event: null }
   } catch (error) {
     console.warn(
       '[api/chat] memory write skipped:',
@@ -276,16 +272,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     let memoryEvent: 'saved' | 'updated' | null = null
-    let memoryTrace: unknown = undefined
-    const wantMemoryTrace =
-      String(req.headers['x-laife-memory-trace'] || '').trim() === '1' ||
-      String(process.env.LAIFE_MEMORY_TRACE || '')
-        .trim()
-        .toLowerCase() === '1' ||
-      // Preview-only auto-enable (Vercel); never Production.
-      String(process.env.VERCEL_ENV || '')
-        .trim()
-        .toLowerCase() === 'preview'
 
     if (lastUserMessage?.content) {
       const write = await runMemoryIfEnabled(
@@ -293,10 +279,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         content,
         memoryEnabled,
         memoryOwnerUserId,
-        wantMemoryTrace,
       )
       memoryEvent = write.event
-      memoryTrace = write.memoryTrace
     }
 
     const payload: Record<string, unknown> = {
@@ -304,7 +288,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       runtime: 'core',
       model,
       memoryEvent,
-      ...(memoryTrace != null ? { memoryTrace } : {}),
       // Echo session fields the client already sent — no cognitive engines.
       ...(body.learningSignals != null ? { learningSignals: body.learningSignals } : {}),
       ...(body.voiceSession && typeof body.voiceSession === 'object'
