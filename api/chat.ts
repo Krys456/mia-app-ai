@@ -8,6 +8,7 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { buildCoreResponsesCreateParams } from '../lib/server/core-responses-params.js'
+import { resolveChatMemoryOwnerUserId } from '../lib/server/chat-memory-auth.js'
 import { applyCors, sendCorsPreflight, sendJson } from '../lib/server/http.js'
 import { LAIFE_BASE_SYSTEM_PROMPT } from '../lib/server/laife-base-system-prompt.js'
 
@@ -156,20 +157,32 @@ async function runMemoryIfEnabled(
   userMessage: string,
   assistantMessage: string,
   memoryEnabled: boolean,
-): Promise<'saved' | 'updated' | null> {
-  if (!memoryEnabled) return null
+  ownerUserId: string | null,
+): Promise<{ event: 'saved' | 'updated' | null }> {
+  if (!memoryEnabled || !ownerUserId) {
+    return { event: null }
+  }
+
   try {
     const { runMemoryPipeline } = await import('../lib/server/brain-memory.js')
+
     const result = await runMemoryPipeline({
       userMessage,
       assistantMessage,
       memoryEnabled: true,
+      userId: ownerUserId,
+      requireExplicitUserId: true,
     })
-    if (result?.updated) return 'updated'
-    if (result?.saved) return 'saved'
-    return null
-  } catch {
-    return null
+
+    if (result?.updated) return { event: 'updated' }
+    if (result?.saved) return { event: 'saved' }
+    return { event: null }
+  } catch (error) {
+    console.warn(
+      '[api/chat] memory write skipped:',
+      error instanceof Error ? error.message.slice(0, 180) : String(error).slice(0, 180),
+    )
+    return { event: null }
   }
 }
 
@@ -214,6 +227,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ? 'text'
         : undefined
 
+  // Soft auth for memory ownership only — never blocks chat generation.
+  const memoryOwnerUserId = await resolveChatMemoryOwnerUserId(req)
+
   try {
     const instructions = buildInstructions(body)
     const OpenAI = (await import('openai')).default
@@ -240,8 +256,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const lastUserMessage = [...messages].reverse().find((msg) => msg.role === 'user')
     let memoryEvent: 'saved' | 'updated' | null = null
+
     if (lastUserMessage?.content) {
-      memoryEvent = await runMemoryIfEnabled(lastUserMessage.content, content, memoryEnabled)
+      const write = await runMemoryIfEnabled(
+        lastUserMessage.content,
+        content,
+        memoryEnabled,
+        memoryOwnerUserId,
+      )
+      memoryEvent = write.event
     }
 
     const payload: Record<string, unknown> = {
@@ -269,17 +292,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         : {}),
     }
 
-    console.log(
-      '[api/chat] final response',
-      JSON.stringify({
-        contentLen: content.length,
-        memoryEvent,
-        model,
-        keys: Object.keys(payload),
-        runtime: 'core',
-        singleShot: true,
-      }),
-    )
     return sendJson(res, 200, payload)
   } catch (error) {
     console.error(error)

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   bootstrapLaifeAuth,
   type AuthBootstrapResult,
@@ -11,10 +11,13 @@ const INITIAL: AuthBootstrapResult = {
   isAnonymous: null,
   error: null,
   signedInAnonymously: false,
+  accessToken: null,
 }
 
 /**
- * Runs silent anonymous auth bootstrap once on mount.
+ * Runs silent anonymous auth bootstrap on mount.
+ * Joins the app-wide single-flight bootstrapLaifeAuth() so chat requests
+ * await the same in-flight promise instead of racing a second sign-in.
  * Never blocks rendering; failures are soft (status/error only).
  */
 export function useAuthBootstrap(): {
@@ -25,26 +28,17 @@ export function useAuthBootstrap(): {
   result: AuthBootstrapResult
 } {
   const [result, setResult] = useState<AuthBootstrapResult>(INITIAL)
-  const startedRef = useRef(false)
 
   useEffect(() => {
-    if (startedRef.current) return
-    startedRef.current = true
-
     let cancelled = false
     setResult((prev) => ({ ...prev, status: 'pending' }))
 
+    // Shares in-flight promise with chatApi → resolveChatAuthForRequest.
     void bootstrapLaifeAuth()
       .then((next) => {
         if (!cancelled) setResult(next)
         if (next.status === 'error') {
           console.warn('[auth] silent bootstrap failed', next.error)
-        } else if (next.status === 'ready') {
-          console.info('[auth] session ready', {
-            userId: next.userId,
-            isAnonymous: next.isAnonymous,
-            signedInAnonymously: next.signedInAnonymously,
-          })
         }
       })
       .catch((error) => {
@@ -57,6 +51,7 @@ export function useAuthBootstrap(): {
           isAnonymous: null,
           error: message,
           signedInAnonymously: false,
+          accessToken: null,
         })
       })
 

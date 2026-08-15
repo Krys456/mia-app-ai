@@ -4,6 +4,7 @@ import {
 } from './learningSignals'
 import { sanitizeConversationMemoryMap } from './conversationMemoryMap'
 import { sanitizeConversationPreferenceProfile } from './conversationPreferenceProfile'
+import { resolveChatAuthForRequest } from './chatAuth'
 import type { V2DebugInfo } from '../types'
 
 export type ChatApiRole = 'user' | 'assistant' | 'system'
@@ -114,27 +115,27 @@ export async function requestChatCompletion(
   init?: { signal?: AbortSignal },
 ): Promise<ChatApiSuccess> {
   const endpoint = resolveChatEndpoint()
-  // Temporary pipeline logging — outgoing client request.
-  console.log(
-    '[chatApi] request',
-    JSON.stringify({
-      endpoint,
-      messageCount: payload.messages?.length ?? 0,
-      memoryEnabled: payload.memoryEnabled !== false,
-      personalityBias: payload.personalityBias || null,
-      replyLength: payload.replyLength || null,
-    }),
-  )
 
   let response: Response
   try {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      ...(payload.userId ? { 'X-LAIfe-User-Id': payload.userId } : {}),
+    }
+
+    // Soft auth for memory ownership: reuse anon session; recover when memory ON.
+    // Awaits the same app-wide single-flight bootstrap as useAuthBootstrap (no race).
+    const auth = await resolveChatAuthForRequest({
+      memoryEnabled: payload.memoryEnabled !== false,
+    })
+    if (auth.authorization) {
+      headers.Authorization = auth.authorization
+    }
+
     response = await fetch(endpoint, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-        ...(payload.userId ? { 'X-LAIfe-User-Id': payload.userId } : {}),
-      },
+      headers,
       // Needed for Vercel Deployment Protection cookies on preview/prod.
       credentials: 'include',
       body: JSON.stringify({
@@ -171,18 +172,6 @@ export async function requestChatCompletion(
     throw new ChatApiError(describeFetchFailure(error, endpoint), 0)
   }
 
-  const contentType = response.headers.get('content-type') || ''
-  console.log(
-    '[chatApi] fetch result',
-    JSON.stringify({
-      status: response.status,
-      ok: response.ok,
-      contentType,
-      redirected: response.redirected,
-      url: response.url,
-    }),
-  )
-
   let data: Partial<ChatApiSuccess> & ChatApiErrorBody = {}
   let rawText = ''
   try {
@@ -190,20 +179,7 @@ export async function requestChatCompletion(
     if (rawText.trim()) {
       data = JSON.parse(rawText) as Partial<ChatApiSuccess> & ChatApiErrorBody
     }
-    console.log(
-      '[chatApi] parse ok',
-      JSON.stringify({
-        keys: Object.keys(data || {}),
-        contentLen: typeof data.content === 'string' ? data.content.length : 0,
-        hasError: Boolean(data.error),
-      }),
-    )
-  } catch (parseError) {
-    console.error('[chatApi] parse failed', {
-      contentType,
-      preview: rawText.slice(0, 240),
-      parseError,
-    })
+  } catch {
     if (!response.ok) {
       throw new ChatApiError(
         `Chat API request failed (${response.status}) — non-JSON body`,
