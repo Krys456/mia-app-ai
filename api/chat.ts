@@ -238,13 +238,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const lastUserMessage = [...messages].reverse().find((msg) => msg.role === 'user')
     const model = resolveChatModel(process.env)
 
-    // Specific forget gate — before Recall / Extraction / responses.create.
-    // Works even when Memory is OFF (user-initiated cleanup). Zero model calls.
+    // Memory-control gate (forget-all + specific forget) before Recall / Extraction /
+    // responses.create. Works even when Memory is OFF. Zero model calls when handled.
     if (lastUserMessage?.content) {
-      const { tryHandleSpecificForget } = await import('../lib/server/memory-control-forget.js')
-      const forget = await tryHandleSpecificForget({
+      const { tryHandleMemoryControl } = await import('../lib/server/memory-control-forget.js')
+      const forget = await tryHandleMemoryControl({
         userMessage: lastUserMessage.content,
         userId: memoryOwnerUserId,
+        messages,
       })
       if (forget.handled) {
         const payload: Record<string, unknown> = {
