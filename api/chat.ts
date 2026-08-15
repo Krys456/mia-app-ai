@@ -45,8 +45,6 @@ interface ChatApiRequestBody {
   conversationPreferenceProfile?: Record<string, unknown> | null
   conversationId?: string
   learningSignals?: unknown
-  /** Temporary Preview-safe client auth flow diagnostics (no tokens). */
-  clientAuthDiag?: Record<string, unknown> | null
   /** Legacy V1/V2 flags — ignored by the new core. */
   developerMode?: boolean
   engine?: 'v1' | 'v2'
@@ -160,51 +158,9 @@ async function runMemoryIfEnabled(
   assistantMessage: string,
   memoryEnabled: boolean,
   ownerUserId: string | null,
-): Promise<{
-  event: 'saved' | 'updated' | null
-  extractedFactCount: number
-  pipelineAttempted: boolean
-  writeOutcome:
-    | 'saved'
-    | 'updated'
-    | 'skipped_disabled'
-    | 'skipped_no_owner'
-    | 'skipped_no_facts'
-    | 'failed'
-  errorCode: string | null
-  errorMessage: string | null
-}> {
-  if (!memoryEnabled) {
-    return {
-      event: null,
-      extractedFactCount: 0,
-      pipelineAttempted: false,
-      writeOutcome: 'skipped_disabled',
-      errorCode: null,
-      errorMessage: null,
-    }
-  }
-
-  // Always extract for diagnostics — even when owner is missing — so Preview can
-  // distinguish "auth skipped" from "extractor missed the utterance".
-  let extractedFactCount = 0
-  try {
-    const { extractDurableFacts } = await import('../lib/server/brain-memory.js')
-    const facts = extractDurableFacts(userMessage)
-    extractedFactCount = Array.isArray(facts) ? facts.length : 0
-  } catch {
-    extractedFactCount = 0
-  }
-
-  if (!ownerUserId) {
-    return {
-      event: null,
-      extractedFactCount,
-      pipelineAttempted: false,
-      writeOutcome: 'skipped_no_owner',
-      errorCode: 'no_owner',
-      errorMessage: 'No verified auth owner for memory write',
-    }
+): Promise<{ event: 'saved' | 'updated' | null }> {
+  if (!memoryEnabled || !ownerUserId) {
+    return { event: null }
   }
 
   try {
@@ -218,45 +174,15 @@ async function runMemoryIfEnabled(
       requireExplicitUserId: true,
     })
 
-    if (result?.updated) {
-      return {
-        event: 'updated',
-        extractedFactCount,
-        pipelineAttempted: true,
-        writeOutcome: 'updated',
-        errorCode: null,
-        errorMessage: null,
-      }
-    }
-    if (result?.saved) {
-      return {
-        event: 'saved',
-        extractedFactCount,
-        pipelineAttempted: true,
-        writeOutcome: 'saved',
-        errorCode: null,
-        errorMessage: null,
-      }
-    }
-
-    return {
-      event: null,
-      extractedFactCount,
-      pipelineAttempted: true,
-      writeOutcome: 'skipped_no_facts',
-      errorCode: result?.reason ? String(result.reason) : 'no_write',
-      errorMessage: null,
-    }
+    if (result?.updated) return { event: 'updated' }
+    if (result?.saved) return { event: 'saved' }
+    return { event: null }
   } catch (error) {
-    const { sanitizeMemoryDiagError } = await import('../lib/server/chat-memory-auth.js')
-    return {
-      event: null,
-      extractedFactCount,
-      pipelineAttempted: true,
-      writeOutcome: 'failed',
-      errorCode: 'pipeline_error',
-      errorMessage: sanitizeMemoryDiagError(error),
-    }
+    console.warn(
+      '[api/chat] memory write skipped:',
+      error instanceof Error ? error.message.slice(0, 180) : String(error).slice(0, 180),
+    )
+    return { event: null }
   }
 }
 
@@ -302,8 +228,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         : undefined
 
   // Soft auth for memory ownership only — never blocks chat generation.
-  const ownerResult = await resolveChatMemoryOwnerUserId(req)
-  const memoryOwnerUserId = ownerResult.userId
+  const memoryOwnerUserId = await resolveChatMemoryOwnerUserId(req)
 
   try {
     const instructions = buildInstructions(body)
@@ -331,19 +256,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const lastUserMessage = [...messages].reverse().find((msg) => msg.role === 'user')
     let memoryEvent: 'saved' | 'updated' | null = null
-    let memoryWrite = {
-      extractedFactCount: 0,
-      pipelineAttempted: false,
-      writeOutcome: 'skipped_no_facts' as
-        | 'saved'
-        | 'updated'
-        | 'skipped_disabled'
-        | 'skipped_no_owner'
-        | 'skipped_no_facts'
-        | 'failed',
-      errorCode: null as string | null,
-      errorMessage: null as string | null,
-    }
 
     if (lastUserMessage?.content) {
       const write = await runMemoryIfEnabled(
@@ -353,85 +265,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         memoryOwnerUserId,
       )
       memoryEvent = write.event
-      memoryWrite = {
-        extractedFactCount: write.extractedFactCount,
-        pipelineAttempted: write.pipelineAttempted,
-        writeOutcome: write.writeOutcome,
-        errorCode: write.errorCode,
-        errorMessage: write.errorMessage,
-      }
-    } else if (!memoryEnabled) {
-      memoryWrite.writeOutcome = 'skipped_disabled'
-    } else if (!memoryOwnerUserId) {
-      memoryWrite.writeOutcome = 'skipped_no_owner'
-      memoryWrite.errorCode = 'no_owner'
     }
-
-    // Temporary Preview-safe diagnostics — no JWTs, secrets, or memory content.
-    const clientAuthDiag =
-      body.clientAuthDiag && typeof body.clientAuthDiag === 'object'
-        ? (body.clientAuthDiag as Record<string, unknown>)
-        : {}
-
-    const memoryDiag = {
-      clientBearerAttached: ownerResult.diag.clientAuthHint === 'present',
-      supabaseConfigured: ownerResult.diag.clientAuthHint !== 'unconfigured',
-      bearerPresent: ownerResult.diag.bearerPresent,
-      jwtVerified: ownerResult.diag.jwtVerified,
-      usersRowEnsured: ownerResult.diag.usersRowEnsured,
-      ownerPresent: ownerResult.diag.ownerPresent,
-      extractedFactCount: memoryWrite.extractedFactCount,
-      pipelineAttempted: memoryWrite.pipelineAttempted,
-      writeOutcome: memoryWrite.writeOutcome,
-      errorCode: memoryWrite.errorCode ?? ownerResult.diag.authCode,
-      errorMessage: memoryWrite.errorMessage ?? ownerResult.diag.authError,
-      // Echo client auth flow diag (booleans/strings only; never tokens).
-      ...(typeof clientAuthDiag.bootstrapStarted === 'boolean'
-        ? { bootstrapStarted: clientAuthDiag.bootstrapStarted }
-        : {}),
-      ...(typeof clientAuthDiag.bootstrapCompleted === 'boolean'
-        ? { bootstrapCompleted: clientAuthDiag.bootstrapCompleted }
-        : {}),
-      ...(typeof clientAuthDiag.signInAttempted === 'boolean'
-        ? { signInAttempted: clientAuthDiag.signInAttempted }
-        : {}),
-      ...(typeof clientAuthDiag.signInSucceeded === 'boolean'
-        ? { signInSucceeded: clientAuthDiag.signInSucceeded }
-        : {}),
-      ...(typeof clientAuthDiag.signInFailed === 'boolean'
-        ? { signInFailed: clientAuthDiag.signInFailed }
-        : {}),
-      ...(typeof clientAuthDiag.getSessionHasSession === 'boolean'
-        ? { getSessionHasSession: clientAuthDiag.getSessionHasSession }
-        : {}),
-      ...(typeof clientAuthDiag.sessionHasAccessToken === 'boolean'
-        ? { sessionHasAccessToken: clientAuthDiag.sessionHasAccessToken }
-        : {}),
-      ...(typeof clientAuthDiag.usedSharedInFlight === 'boolean'
-        ? { usedSharedInFlight: clientAuthDiag.usedSharedInFlight }
-        : {}),
-      ...(typeof clientAuthDiag.recoveredSession === 'boolean'
-        ? { recoveredSession: clientAuthDiag.recoveredSession }
-        : {}),
-      ...(typeof clientAuthDiag.bootstrapStatus === 'string'
-        ? { bootstrapStatus: String(clientAuthDiag.bootstrapStatus).slice(0, 32) }
-        : {}),
-      ...(typeof clientAuthDiag.authErrorCode === 'string'
-        ? { authErrorCode: String(clientAuthDiag.authErrorCode).slice(0, 64) }
-        : {}),
-      ...(typeof clientAuthDiag.authErrorMessage === 'string'
-        ? { authErrorMessage: String(clientAuthDiag.authErrorMessage).slice(0, 180) }
-        : {}),
-    }
-
-    console.log('[api/chat] memoryDiag', JSON.stringify(memoryDiag))
 
     const payload: Record<string, unknown> = {
       content,
       runtime: 'core',
       model,
       memoryEvent,
-      memoryDiag,
       // Echo session fields the client already sent — no cognitive engines.
       ...(body.learningSignals != null ? { learningSignals: body.learningSignals } : {}),
       ...(body.voiceSession && typeof body.voiceSession === 'object'
@@ -452,17 +292,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         : {}),
     }
 
-    console.log(
-      '[api/chat] final response',
-      JSON.stringify({
-        contentLen: content.length,
-        memoryEvent,
-        model,
-        keys: Object.keys(payload),
-        runtime: 'core',
-        singleShot: true,
-      }),
-    )
     return sendJson(res, 200, payload)
   } catch (error) {
     console.error(error)

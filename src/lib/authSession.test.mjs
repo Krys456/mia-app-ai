@@ -93,7 +93,6 @@ resetAuthBootstrapForTests()
   assert.equal(result.userId, 'existing-user')
   assert.equal(result.accessToken, 'tok-existing')
   assert.equal(result.signedInAnonymously, false)
-  assert.equal(result.diag.sessionHasAccessToken, true)
   assert.equal(mock.signInCalls, 0)
 }
 
@@ -106,8 +105,6 @@ resetAuthBootstrapForTests()
   assert.equal(result.isAnonymous, true)
   assert.equal(result.signedInAnonymously, true)
   assert.equal(result.accessToken, 'anon-access-token')
-  assert.equal(result.diag.signInAttempted, true)
-  assert.equal(result.diag.signInSucceeded, true)
   assert.equal(mock.signInCalls, 1)
 }
 
@@ -166,7 +163,6 @@ resetAuthBootstrapForTests()
   const result = await ensureAnonymousAuthSession(mock.client)
   assert.equal(result.status, 'ready')
   assert.equal(result.accessToken, 'recovered-token')
-  assert.equal(result.diag.signInAttempted, true)
   assert.equal(mock.signInCalls, 1)
 }
 
@@ -231,15 +227,13 @@ resetAuthBootstrapForTests()
   assert.equal(second.signInCalls, 0)
 }
 
-// Auth failure does not throw / crash — diag captures sanitized error
+// Auth failure does not throw / crash
 {
   const mock = createMockClient({ signInError: 'Anonymous provider disabled' })
   const result = await ensureAnonymousAuthSession(mock.client)
   assert.equal(result.status, 'error')
   assert.equal(result.accessToken, null)
-  assert.equal(result.diag.signInFailed, true)
   assert.match(result.error || '', /Anonymous provider disabled/)
-  assert.match(result.diag.authErrorMessage || '', /Anonymous provider disabled/)
 }
 
 {
@@ -266,7 +260,6 @@ resetAuthBootstrapForTests()
   const result = await ensureAnonymousAuthSession(mock.client)
   assert.equal(result.status, 'error')
   assert.match(result.error || '', /no access token/)
-  assert.equal(result.diag.signInFailed, true)
 }
 
 // bootstrap skips when not configured

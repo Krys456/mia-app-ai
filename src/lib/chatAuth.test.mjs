@@ -5,7 +5,7 @@
 
 import assert from 'node:assert/strict'
 import { resetAuthBootstrapForTests } from './authSession.ts'
-import { resolveChatAuthForRequest, chatAuthFlowDiagFields } from './chatAuth.ts'
+import { resolveChatAuthForRequest } from './chatAuth.ts'
 
 function createClient(options = {}) {
   const {
@@ -69,11 +69,7 @@ resetAuthBootstrapForTests()
     getClient: () => mock.client,
   })
 
-  assert.equal(result.clientBearerAttached, true)
   assert.equal(result.authorization, 'Bearer existing-token')
-  assert.equal(result.clientAuthHint, 'present')
-  assert.equal(result.supabaseConfigured, true)
-  assert.equal(result.flowDiag.sessionHasAccessToken, true)
   assert.equal(mock.signInCalls, 0)
 }
 
@@ -87,15 +83,11 @@ resetAuthBootstrapForTests()
     getClient: () => mock.client,
   })
 
-  assert.equal(result.clientBearerAttached, true)
   assert.equal(result.authorization, 'Bearer recovered-token')
-  assert.equal(result.recoveredSession, true)
-  assert.equal(result.flowDiag.signInAttempted, true)
-  assert.equal(result.flowDiag.signInSucceeded, true)
   assert.equal(mock.signInCalls, 1)
 }
 
-// Slow sign-in: concurrent chat resolves await the same in-flight sign-in (no second user)
+// Slow sign-in: concurrent chat resolves await the same in-flight sign-in
 {
   const mock = createClient({ session: null, signInDelayMs: 40 })
 
@@ -135,11 +127,10 @@ resetAuthBootstrapForTests()
     getClient: () => mock.client,
   })
   assert.equal(second.authorization, 'Bearer recovered-token')
-  assert.equal(second.recoveredSession, false)
   assert.equal(mock.signInCalls, 1)
 }
 
-// Auth bootstrap failure → no Bearer; diag captures error; chat path can continue
+// Auth bootstrap failure → no Bearer; chat path can continue without memory
 {
   const mock = createClient({ session: null, signInError: 'Anonymous provider disabled' })
 
@@ -149,19 +140,10 @@ resetAuthBootstrapForTests()
     getClient: () => mock.client,
   })
 
-  assert.equal(result.clientBearerAttached, false)
   assert.equal(result.authorization, null)
-  assert.equal(result.clientAuthHint, 'absent')
-  assert.equal(result.bootstrapStatus, 'error')
-  assert.equal(result.flowDiag.signInFailed, true)
-  assert.match(result.flowDiag.authErrorMessage || '', /Anonymous provider disabled/)
-
-  const flat = chatAuthFlowDiagFields(result)
-  assert.equal(flat.signInFailed, true)
-  assert.ok(flat.authErrorMessage)
 }
 
-// Supabase not configured → unconfigured, no Bearer
+// Supabase not configured → no Bearer
 {
   const result = await resolveChatAuthForRequest({
     memoryEnabled: true,
@@ -171,10 +153,7 @@ resetAuthBootstrapForTests()
     },
   })
 
-  assert.equal(result.supabaseConfigured, false)
-  assert.equal(result.clientAuthHint, 'unconfigured')
   assert.equal(result.authorization, null)
-  assert.equal(result.clientBearerAttached, false)
 }
 
 // Memory OFF does not force anonymous sign-in
@@ -189,7 +168,6 @@ resetAuthBootstrapForTests()
 
   assert.equal(mock.signInCalls, 0)
   assert.equal(result.authorization, null)
-  assert.equal(result.clientAuthHint, 'absent')
 }
 
 // Memory OFF still attaches Bearer when session already exists
@@ -209,7 +187,6 @@ resetAuthBootstrapForTests()
 
   assert.equal(mock.signInCalls, 0)
   assert.equal(result.authorization, 'Bearer existing-token')
-  assert.equal(result.clientBearerAttached, true)
 }
 
 // Authorization header merge: resolve output is a full Bearer value (not dropped)
@@ -230,10 +207,8 @@ resetAuthBootstrapForTests()
     Accept: 'application/json',
   }
   if (auth.authorization) headers.Authorization = auth.authorization
-  headers['X-LAIfe-Client-Auth'] = auth.clientAuthHint
 
   assert.equal(headers.Authorization, 'Bearer hdr-token')
-  assert.equal(headers['X-LAIfe-Client-Auth'], 'present')
 }
 
 console.log('ok: chatAuth Bearer resolution')

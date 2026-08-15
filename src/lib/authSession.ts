@@ -15,20 +15,6 @@ export type AuthBootstrapStatus =
   | 'skipped'
   | 'error'
 
-/** Temporary Preview-safe auth flow diagnostics — never includes tokens. */
-export interface AuthFlowDiag {
-  bootstrapStarted: boolean
-  bootstrapCompleted: boolean
-  signInAttempted: boolean
-  signInSucceeded: boolean
-  signInFailed: boolean
-  getSessionHasSession: boolean
-  sessionHasAccessToken: boolean
-  usedSharedInFlight: boolean
-  authErrorCode: string | null
-  authErrorMessage: string | null
-}
-
 export interface AuthBootstrapResult {
   status: AuthBootstrapStatus
   userId: string | null
@@ -38,11 +24,9 @@ export interface AuthBootstrapResult {
   signedInAnonymously: boolean
   /**
    * Access token when a session is available.
-   * Never log or put this into memoryDiag / UI.
+   * Never log this value.
    */
   accessToken: string | null
-  /** Preview-safe flow diagnostics (no tokens). */
-  diag: AuthFlowDiag
 }
 
 type AuthSessionUser = { id?: string; is_anonymous?: boolean } | null | undefined
@@ -74,62 +58,6 @@ export interface AuthSessionClient {
   }
 }
 
-function emptyDiag(partial: Partial<AuthFlowDiag> = {}): AuthFlowDiag {
-  return {
-    bootstrapStarted: false,
-    bootstrapCompleted: false,
-    signInAttempted: false,
-    signInSucceeded: false,
-    signInFailed: false,
-    getSessionHasSession: false,
-    sessionHasAccessToken: false,
-    usedSharedInFlight: false,
-    authErrorCode: null,
-    authErrorMessage: null,
-    ...partial,
-  }
-}
-
-/**
- * Sanitize auth errors for Preview diagnostics — no JWTs / secrets.
- * @param {unknown} error
- * @returns {{ code: string | null, message: string | null }}
- */
-export function sanitizeAuthFlowError(error: unknown): {
-  code: string | null
-  message: string | null
-} {
-  if (error == null) return { code: null, message: null }
-
-  let code: string | null = null
-  let message: string
-
-  if (typeof error === 'object') {
-    const obj = error as { code?: unknown; message?: unknown; name?: unknown }
-    if (typeof obj.code === 'string' && obj.code.trim()) code = obj.code.trim().slice(0, 64)
-    else if (typeof obj.name === 'string' && obj.name.trim()) code = obj.name.trim().slice(0, 64)
-    message =
-      typeof obj.message === 'string' && obj.message.trim()
-        ? obj.message
-        : String(error)
-  } else if (error instanceof Error) {
-    code = error.name || null
-    message = error.message
-  } else {
-    message = String(error)
-  }
-
-  message = message
-    .replace(/Bearer\s+eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/gi, 'Bearer [redacted]')
-    .replace(/\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g, '[redacted-jwt]')
-    .replace(/service[_-]?role[^\s]*/gi, '[redacted]')
-    .replace(/sb_secret_[^\s]+/gi, '[redacted]')
-    .replace(/apikey[^\s=]*=\s*\S+/gi, 'apikey=[redacted]')
-    .slice(0, 180)
-
-  return { code, message: message || null }
-}
-
 function readUserMeta(user: AuthSessionUser): {
   userId: string | null
   isAnonymous: boolean | null
@@ -149,7 +77,6 @@ function readyResult(input: {
   isAnonymous: boolean | null
   signedInAnonymously: boolean
   accessToken: string
-  diag: AuthFlowDiag
 }): AuthBootstrapResult {
   return {
     status: 'ready',
@@ -158,36 +85,24 @@ function readyResult(input: {
     error: null,
     signedInAnonymously: input.signedInAnonymously,
     accessToken: input.accessToken,
-    diag: {
-      ...input.diag,
-      bootstrapCompleted: true,
-      getSessionHasSession: true,
-      sessionHasAccessToken: true,
-      authErrorCode: null,
-      authErrorMessage: null,
-    },
   }
 }
 
-function errorResult(
-  error: unknown,
-  diag: AuthFlowDiag,
-  signedInAnonymously = false,
-): AuthBootstrapResult {
-  const sanitized = sanitizeAuthFlowError(error)
+function errorResult(error: unknown, signedInAnonymously = false): AuthBootstrapResult {
+  const message =
+    error instanceof Error
+      ? error.message
+      : error && typeof error === 'object' && typeof (error as { message?: unknown }).message === 'string'
+        ? String((error as { message: string }).message)
+        : String(error || 'unknown_error')
+
   return {
     status: 'error',
     userId: null,
     isAnonymous: null,
-    error: sanitized.message,
+    error: message.slice(0, 180),
     signedInAnonymously,
     accessToken: null,
-    diag: {
-      ...diag,
-      bootstrapCompleted: true,
-      authErrorCode: sanitized.code,
-      authErrorMessage: sanitized.message,
-    },
   }
 }
 
@@ -207,30 +122,14 @@ async function ensureAuthInitialized(client: AuthSessionClient): Promise<void> {
   }
 }
 
-async function signInAnonymouslyOnce(
-  client: AuthSessionClient,
-  diag: AuthFlowDiag,
-): Promise<AuthBootstrapResult> {
+async function signInAnonymouslyOnce(client: AuthSessionClient): Promise<AuthBootstrapResult> {
   const existingLock = anonSignInLocks.get(client)
-  if (existingLock) {
-    const shared = await existingLock
-    return {
-      ...shared,
-      diag: {
-        ...shared.diag,
-        usedSharedInFlight: true,
-        bootstrapStarted: true,
-        bootstrapCompleted: true,
-      },
-    }
-  }
+  if (existingLock) return existingLock
 
   const lock = (async (): Promise<AuthBootstrapResult> => {
-    diag.signInAttempted = true
     const signedIn = await client.auth.signInAnonymously()
     if (signedIn.error) {
-      diag.signInFailed = true
-      return errorResult(signedIn.error, diag, true)
+      return errorResult(signedIn.error, true)
     }
 
     const session = signedIn.data.session
@@ -238,36 +137,26 @@ async function signInAnonymouslyOnce(
     const { userId, isAnonymous } = readUserMeta(user)
     let token = readAccessToken(session)
 
-    diag.getSessionHasSession = Boolean(session)
-    diag.sessionHasAccessToken = Boolean(token)
-
     if (!userId) {
-      diag.signInFailed = true
-      return errorResult('Anonymous sign-in returned no user id', diag, true)
+      return errorResult('Anonymous sign-in returned no user id', true)
     }
 
-    // Response session missing token — re-read once from the same client.
     if (!token) {
       const refresh = await client.auth.getSession()
       if (!refresh.error) {
-        diag.getSessionHasSession = Boolean(refresh.data.session)
         token = readAccessToken(refresh.data.session)
-        diag.sessionHasAccessToken = Boolean(token)
       }
     }
 
     if (!token) {
-      diag.signInFailed = true
-      return errorResult('Anonymous sign-in returned no access token', diag, true)
+      return errorResult('Anonymous sign-in returned no access token', true)
     }
 
-    diag.signInSucceeded = true
     return readyResult({
       userId,
       isAnonymous: isAnonymous ?? true,
       signedInAnonymously: true,
       accessToken: token,
-      diag,
     })
   })()
 
@@ -287,32 +176,24 @@ async function signInAnonymouslyOnce(
 export async function ensureAnonymousAuthSession(
   client: AuthSessionClient,
 ): Promise<AuthBootstrapResult> {
-  const diag = emptyDiag({ bootstrapStarted: true })
-
   try {
     await ensureAuthInitialized(client)
 
     const existing = await client.auth.getSession()
     if (existing.error) {
-      return errorResult(existing.error, diag)
+      return errorResult(existing.error)
     }
 
     const existingSession = existing.data.session
-    diag.getSessionHasSession = Boolean(existingSession)
-
     const existingUser = existingSession?.user
     if (existingUser?.id) {
       const { userId, isAnonymous } = readUserMeta(existingUser)
       let accessToken = readAccessToken(existingSession)
-      diag.sessionHasAccessToken = Boolean(accessToken)
 
-      // Session row present but token missing — soft re-read / refresh before sign-in.
       if (userId && !accessToken) {
         const refresh = await client.auth.getSession()
         if (!refresh.error) {
-          diag.getSessionHasSession = Boolean(refresh.data.session)
           accessToken = readAccessToken(refresh.data.session)
-          diag.sessionHasAccessToken = Boolean(accessToken)
         }
       }
 
@@ -321,8 +202,6 @@ export async function ensureAnonymousAuthSession(
           const refreshed = await client.auth.refreshSession()
           if (!refreshed.error) {
             accessToken = readAccessToken(refreshed.data.session)
-            diag.getSessionHasSession = Boolean(refreshed.data.session)
-            diag.sessionHasAccessToken = Boolean(accessToken)
           }
         } catch {
           // fall through to anonymous sign-in
@@ -335,16 +214,13 @@ export async function ensureAnonymousAuthSession(
           isAnonymous,
           signedInAnonymously: false,
           accessToken,
-          diag,
         })
       }
-
-      // User present without token (corrupt/partial storage) — recover via anon sign-in.
     }
 
-    return await signInAnonymouslyOnce(client, diag)
+    return await signInAnonymouslyOnce(client)
   } catch (error) {
-    return errorResult(error, diag)
+    return errorResult(error)
   }
 }
 
@@ -370,12 +246,6 @@ async function runBootstrapLaifeAuth(
         error: 'Supabase is not configured in this environment',
         signedInAnonymously: false,
         accessToken: null,
-        diag: emptyDiag({
-          bootstrapStarted: true,
-          bootstrapCompleted: true,
-          authErrorCode: 'not_configured',
-          authErrorMessage: 'Supabase is not configured in this environment',
-        }),
       }
     }
 
@@ -385,7 +255,7 @@ async function runBootstrapLaifeAuth(
 
     return await ensureAnonymousAuthSession(client)
   } catch (error) {
-    return errorResult(error, emptyDiag({ bootstrapStarted: true, bootstrapCompleted: true }))
+    return errorResult(error)
   }
 }
 
@@ -406,16 +276,7 @@ export async function bootstrapLaifeAuth(
   }
 
   if (sharedBootstrapInFlight) {
-    const shared = await sharedBootstrapInFlight
-    return {
-      ...shared,
-      diag: {
-        ...shared.diag,
-        usedSharedInFlight: true,
-        bootstrapStarted: true,
-        bootstrapCompleted: true,
-      },
-    }
+    return sharedBootstrapInFlight
   }
 
   sharedBootstrapInFlight = runBootstrapLaifeAuth(options)

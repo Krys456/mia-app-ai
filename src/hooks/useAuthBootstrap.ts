@@ -12,18 +12,6 @@ const INITIAL: AuthBootstrapResult = {
   error: null,
   signedInAnonymously: false,
   accessToken: null,
-  diag: {
-    bootstrapStarted: false,
-    bootstrapCompleted: false,
-    signInAttempted: false,
-    signInSucceeded: false,
-    signInFailed: false,
-    getSessionHasSession: false,
-    sessionHasAccessToken: false,
-    usedSharedInFlight: false,
-    authErrorCode: null,
-    authErrorMessage: null,
-  },
 }
 
 /**
@@ -50,15 +38,7 @@ export function useAuthBootstrap(): {
       .then((next) => {
         if (!cancelled) setResult(next)
         if (next.status === 'error') {
-          console.warn('[auth] silent bootstrap failed', next.error, next.diag)
-        } else if (next.status === 'ready') {
-          console.info('[auth] session ready', {
-            userId: next.userId,
-            isAnonymous: next.isAnonymous,
-            signedInAnonymously: next.signedInAnonymously,
-            sessionHasAccessToken: next.diag.sessionHasAccessToken,
-            usedSharedInFlight: next.diag.usedSharedInFlight,
-          })
+          console.warn('[auth] silent bootstrap failed', next.error)
         }
       })
       .catch((error) => {
@@ -72,13 +52,6 @@ export function useAuthBootstrap(): {
           error: message,
           signedInAnonymously: false,
           accessToken: null,
-          diag: {
-            ...INITIAL.diag,
-            bootstrapStarted: true,
-            bootstrapCompleted: true,
-            authErrorCode: 'bootstrap_crashed',
-            authErrorMessage: message.slice(0, 180),
-          },
         })
       })
 

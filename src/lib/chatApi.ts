@@ -4,7 +4,7 @@ import {
 } from './learningSignals'
 import { sanitizeConversationMemoryMap } from './conversationMemoryMap'
 import { sanitizeConversationPreferenceProfile } from './conversationPreferenceProfile'
-import { resolveChatAuthForRequest, chatAuthFlowDiagFields } from './chatAuth'
+import { resolveChatAuthForRequest } from './chatAuth'
 import type { V2DebugInfo } from '../types'
 
 export type ChatApiRole = 'user' | 'assistant' | 'system'
@@ -58,8 +58,6 @@ export interface ChatApiSuccess {
   memoriesSaved?: number
   /** Discrete UI hint when auto-memory wrote something. */
   memoryEvent?: 'saved' | 'updated' | null
-  /** Temporary Preview-safe memory write diagnostics (no tokens/content). */
-  memoryDiag?: Record<string, unknown> | null
   /** Internal only — client stores silently; never render. */
   learningSignals?: LearningSignals | null
   /** Internal only — client stores for voice interrupt/resume. */
@@ -117,22 +115,8 @@ export async function requestChatCompletion(
   init?: { signal?: AbortSignal },
 ): Promise<ChatApiSuccess> {
   const endpoint = resolveChatEndpoint()
-  // Temporary pipeline logging — outgoing client request.
-  console.log(
-    '[chatApi] request',
-    JSON.stringify({
-      endpoint,
-      messageCount: payload.messages?.length ?? 0,
-      memoryEnabled: payload.memoryEnabled !== false,
-      personalityBias: payload.personalityBias || null,
-      replyLength: payload.replyLength || null,
-    }),
-  )
 
   let response: Response
-  let clientAuthDiag: Record<string, unknown> = {}
-  let clientBearerAttached = false
-  let supabaseConfigured = false
   try {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -145,32 +129,8 @@ export async function requestChatCompletion(
     const auth = await resolveChatAuthForRequest({
       memoryEnabled: payload.memoryEnabled !== false,
     })
-    clientAuthDiag = chatAuthFlowDiagFields(auth)
-    clientBearerAttached = auth.clientBearerAttached
-    supabaseConfigured = auth.supabaseConfigured
-
     if (auth.authorization) {
       headers.Authorization = auth.authorization
-    }
-
-    // Preview-safe: lets server distinguish "no client session" vs "header stripped".
-    headers['X-LAIfe-Client-Auth'] = auth.clientAuthHint
-
-    console.log(
-      '[chatApi] auth for memory',
-      JSON.stringify({
-        supabaseConfigured: auth.supabaseConfigured,
-        clientAuthHint: auth.clientAuthHint,
-        clientBearerAttached: auth.clientBearerAttached,
-        ...clientAuthDiag,
-      }),
-    )
-
-    if (payload.memoryEnabled !== false && !auth.clientBearerAttached) {
-      console.warn(
-        '[chatApi] memory ON but no Bearer attached',
-        JSON.stringify(clientAuthDiag),
-      )
     }
 
     response = await fetch(endpoint, {
@@ -182,8 +142,6 @@ export async function requestChatCompletion(
         messages: payload.messages,
         userId: payload.userId,
         memoryEnabled: payload.memoryEnabled !== false,
-        // Temporary Preview-safe client auth flow diag (no tokens).
-        clientAuthDiag,
         ...(payload.learningSignals ? { learningSignals: payload.learningSignals } : {}),
         ...(payload.modality ? { modality: payload.modality } : {}),
         ...(payload.voice ? { voice: true } : {}),
@@ -214,18 +172,6 @@ export async function requestChatCompletion(
     throw new ChatApiError(describeFetchFailure(error, endpoint), 0)
   }
 
-  const contentType = response.headers.get('content-type') || ''
-  console.log(
-    '[chatApi] fetch result',
-    JSON.stringify({
-      status: response.status,
-      ok: response.ok,
-      contentType,
-      redirected: response.redirected,
-      url: response.url,
-    }),
-  )
-
   let data: Partial<ChatApiSuccess> & ChatApiErrorBody = {}
   let rawText = ''
   try {
@@ -233,20 +179,7 @@ export async function requestChatCompletion(
     if (rawText.trim()) {
       data = JSON.parse(rawText) as Partial<ChatApiSuccess> & ChatApiErrorBody
     }
-    console.log(
-      '[chatApi] parse ok',
-      JSON.stringify({
-        keys: Object.keys(data || {}),
-        contentLen: typeof data.content === 'string' ? data.content.length : 0,
-        hasError: Boolean(data.error),
-      }),
-    )
-  } catch (parseError) {
-    console.error('[chatApi] parse failed', {
-      contentType,
-      preview: rawText.slice(0, 240),
-      parseError,
-    })
+  } catch {
     if (!response.ok) {
       throw new ChatApiError(
         `Chat API request failed (${response.status}) — non-JSON body`,
@@ -285,20 +218,6 @@ export async function requestChatCompletion(
   const memoryEvent =
     data.memoryEvent === 'saved' || data.memoryEvent === 'updated' ? data.memoryEvent : null
 
-  // Merge server memoryDiag with client auth flow diag (Preview-safe, no tokens).
-  const memoryDiag = sanitizeMemoryDiag({
-    ...(data.memoryDiag && typeof data.memoryDiag === 'object'
-      ? (data.memoryDiag as Record<string, unknown>)
-      : {}),
-    ...clientAuthDiag,
-    clientBearerAttached,
-    supabaseConfigured,
-  })
-
-  if (memoryDiag) {
-    console.info('[chatApi] memoryDiag', JSON.stringify(memoryDiag))
-  }
-
   const v2Debug = sanitizeV2Debug(data.v2Debug)
 
   return {
@@ -313,7 +232,6 @@ export async function requestChatCompletion(
             : undefined,
     memoriesSaved: typeof data.memoriesSaved === 'number' ? data.memoriesSaved : 0,
     memoryEvent,
-    memoryDiag,
     learningSignals: sanitizeLearningSignals(data.learningSignals),
     voiceSession:
       data.voiceSession && typeof data.voiceSession === 'object' ? data.voiceSession : null,
@@ -331,56 +249,6 @@ export async function requestChatCompletion(
     ),
     v2Debug,
   }
-}
-
-/**
- * Temporary Preview-safe subset of /api/chat memoryDiag.
- * Strips anything outside the allowlisted diagnostic fields.
- */
-function sanitizeMemoryDiag(raw: unknown): Record<string, unknown> | null {
-  if (!raw || typeof raw !== 'object') return null
-  const d = raw as Record<string, unknown>
-  const out: Record<string, unknown> = {}
-
-  if (typeof d.clientBearerAttached === 'boolean') out.clientBearerAttached = d.clientBearerAttached
-  if (typeof d.supabaseConfigured === 'boolean') out.supabaseConfigured = d.supabaseConfigured
-  if (typeof d.bearerPresent === 'boolean') out.bearerPresent = d.bearerPresent
-  if (typeof d.jwtVerified === 'boolean') out.jwtVerified = d.jwtVerified
-  if (typeof d.usersRowEnsured === 'boolean') out.usersRowEnsured = d.usersRowEnsured
-  if (typeof d.ownerPresent === 'boolean') out.ownerPresent = d.ownerPresent
-  if (typeof d.extractedFactCount === 'number') out.extractedFactCount = d.extractedFactCount
-  if (typeof d.pipelineAttempted === 'boolean') out.pipelineAttempted = d.pipelineAttempted
-  if (typeof d.writeOutcome === 'string') out.writeOutcome = d.writeOutcome.slice(0, 64)
-  if (typeof d.errorCode === 'string' && d.errorCode.trim()) {
-    out.errorCode = d.errorCode.trim().slice(0, 64)
-  }
-  if (typeof d.errorMessage === 'string' && d.errorMessage.trim()) {
-    out.errorMessage = d.errorMessage.trim().slice(0, 180)
-  }
-
-  // Temporary Preview client auth flow fields (no tokens).
-  for (const key of [
-    'bootstrapStarted',
-    'bootstrapCompleted',
-    'signInAttempted',
-    'signInSucceeded',
-    'signInFailed',
-    'getSessionHasSession',
-    'sessionHasAccessToken',
-    'usedSharedInFlight',
-    'recoveredSession',
-  ] as const) {
-    if (typeof d[key] === 'boolean') out[key] = d[key]
-  }
-  if (typeof d.bootstrapStatus === 'string') out.bootstrapStatus = d.bootstrapStatus.slice(0, 32)
-  if (typeof d.authErrorCode === 'string' && d.authErrorCode.trim()) {
-    out.authErrorCode = d.authErrorCode.trim().slice(0, 64)
-  }
-  if (typeof d.authErrorMessage === 'string' && d.authErrorMessage.trim()) {
-    out.authErrorMessage = d.authErrorMessage.trim().slice(0, 180)
-  }
-
-  return Object.keys(out).length > 0 ? out : null
 }
 
 /**
