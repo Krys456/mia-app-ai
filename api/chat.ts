@@ -236,6 +236,45 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const lastUserMessage = [...messages].reverse().find((msg) => msg.role === 'user')
+    const model = resolveChatModel(process.env)
+
+    // Specific forget gate — before Recall / Extraction / responses.create.
+    // Works even when Memory is OFF (user-initiated cleanup). Zero model calls.
+    if (lastUserMessage?.content) {
+      const { tryHandleSpecificForget } = await import('../lib/server/memory-control-forget.js')
+      const forget = await tryHandleSpecificForget({
+        userMessage: lastUserMessage.content,
+        userId: memoryOwnerUserId,
+      })
+      if (forget.handled) {
+        const payload: Record<string, unknown> = {
+          content: forget.message,
+          runtime: 'core',
+          model,
+          memoryEvent: null,
+          memoryControl: forget.status,
+          // Echo session fields the client already sent — no cognitive engines.
+          ...(body.learningSignals != null ? { learningSignals: body.learningSignals } : {}),
+          ...(body.voiceSession && typeof body.voiceSession === 'object'
+            ? { voiceSession: body.voiceSession }
+            : {}),
+          ...(body.welcomeSession && typeof body.welcomeSession === 'object'
+            ? { welcomeSession: body.welcomeSession }
+            : {}),
+          ...(body.conversationMemoryMap && typeof body.conversationMemoryMap === 'object'
+            ? { conversationMemoryMap: body.conversationMemoryMap }
+            : {}),
+          ...(body.conversationPreferenceProfile &&
+          typeof body.conversationPreferenceProfile === 'object'
+            ? { conversationPreferenceProfile: body.conversationPreferenceProfile }
+            : {}),
+          ...(body.pendingAutomation !== undefined
+            ? { pendingAutomation: body.pendingAutomation }
+            : {}),
+        }
+        return sendJson(res, 200, payload)
+      }
+    }
 
     // Recall V1: small owner-scoped pack before the single responses.create.
     // Soft-fail inside loadCoreMemoryPack — never brain-api@local.
@@ -251,7 +290,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const instructions = appendMemoryPackToInstructions(buildInstructions(body), memoryPack)
     const OpenAI = (await import('openai')).default
     const client = new OpenAI({ apiKey })
-    const model = resolveChatModel(process.env)
 
     const response = await client.responses.create(
       buildCoreResponsesCreateParams({
