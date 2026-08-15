@@ -237,7 +237,9 @@ resetAuthBootstrapForTests()
   assert.match(chatSrc, /if\s*\(\s*!memoryEnabled\s*\|\|\s*!ownerUserId\s*\)/)
 }
 
-// 4b) Preview retest utterance without "Ricorda" is NOT durable under current rules
+// 4b) Preview retest: animale still not in whitelist (coverage is Extraction V2 PR2).
+// Explicit "Ricorda" no longer dumps unknown facts into settings — it strips and
+// reclassifies; without a matching family, nothing is stored.
 {
   const bare = analyzeConversation('Il mio animale preferito è il lupo.', 'Ok')
   assert.equal(bare.save, false, 'bare animale favorite is not extracted (unchanged rules)')
@@ -246,10 +248,23 @@ resetAuthBootstrapForTests()
     'Ricorda che il mio animale preferito è il lupo.',
     'Ok',
   )
-  assert.equal(withRicorda.save, true)
+  assert.equal(
+    withRicorda.save,
+    false,
+    'Ricorda + animale still needs coverage PR2; must not store as settings dump',
+  )
+
+  const ricordaColore = analyzeConversation(
+    'Ricorda che il mio colore preferito è il verde.',
+    'Ok',
+  )
+  assert.equal(ricordaColore.save, true)
+  assert.equal(ricordaColore.category, 'preferences')
+  assert.equal(ricordaColore.source, 'explicit')
 
   const colore = analyzeConversation('Il mio colore preferito è il verde.', 'Ok')
   assert.equal(colore.save, true)
+  assert.equal(colore.source, 'automatic')
 }
 
 // 5) no auth → chat would succeed but memory skips (owner null; no Bearer)
