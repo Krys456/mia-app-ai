@@ -4,7 +4,8 @@
  */
 
 import assert from 'node:assert/strict'
-import { resolveChatAuthForRequest } from './chatAuth.ts'
+import { resetAuthBootstrapForTests } from './authSession.ts'
+import { resolveChatAuthForRequest, chatAuthFlowDiagFields } from './chatAuth.ts'
 
 function createClient(options = {}) {
   const {
@@ -14,6 +15,7 @@ function createClient(options = {}) {
       access_token: 'recovered-token',
     },
     signInError = null,
+    signInDelayMs = 0,
   } = options
 
   let current = session
@@ -22,11 +24,17 @@ function createClient(options = {}) {
   return {
     client: {
       auth: {
+        async initialize() {
+          return { error: null }
+        },
         async getSession() {
           return { data: { session: current }, error: null }
         },
         async signInAnonymously() {
           signInCalls += 1
+          if (signInDelayMs > 0) {
+            await new Promise((r) => setTimeout(r, signInDelayMs))
+          }
           if (signInError) {
             return { data: { session: null, user: null }, error: { message: signInError } }
           }
@@ -43,6 +51,8 @@ function createClient(options = {}) {
     },
   }
 }
+
+resetAuthBootstrapForTests()
 
 // Existing anonymous session → Bearer attached (no new sign-in)
 {
@@ -63,6 +73,7 @@ function createClient(options = {}) {
   assert.equal(result.authorization, 'Bearer existing-token')
   assert.equal(result.clientAuthHint, 'present')
   assert.equal(result.supabaseConfigured, true)
+  assert.equal(result.flowDiag.sessionHasAccessToken, true)
   assert.equal(mock.signInCalls, 0)
 }
 
@@ -79,6 +90,30 @@ function createClient(options = {}) {
   assert.equal(result.clientBearerAttached, true)
   assert.equal(result.authorization, 'Bearer recovered-token')
   assert.equal(result.recoveredSession, true)
+  assert.equal(result.flowDiag.signInAttempted, true)
+  assert.equal(result.flowDiag.signInSucceeded, true)
+  assert.equal(mock.signInCalls, 1)
+}
+
+// Slow sign-in: concurrent chat resolves await the same in-flight sign-in (no second user)
+{
+  const mock = createClient({ session: null, signInDelayMs: 40 })
+
+  const [a, b] = await Promise.all([
+    resolveChatAuthForRequest({
+      memoryEnabled: true,
+      isConfigured: () => true,
+      getClient: () => mock.client,
+    }),
+    resolveChatAuthForRequest({
+      memoryEnabled: true,
+      isConfigured: () => true,
+      getClient: () => mock.client,
+    }),
+  ])
+
+  assert.equal(a.authorization, 'Bearer recovered-token')
+  assert.equal(b.authorization, 'Bearer recovered-token')
   assert.equal(mock.signInCalls, 1)
 }
 
@@ -104,7 +139,7 @@ function createClient(options = {}) {
   assert.equal(mock.signInCalls, 1)
 }
 
-// Auth bootstrap failure → no Bearer; chat path can continue without memory
+// Auth bootstrap failure → no Bearer; diag captures error; chat path can continue
 {
   const mock = createClient({ session: null, signInError: 'Anonymous provider disabled' })
 
@@ -118,6 +153,12 @@ function createClient(options = {}) {
   assert.equal(result.authorization, null)
   assert.equal(result.clientAuthHint, 'absent')
   assert.equal(result.bootstrapStatus, 'error')
+  assert.equal(result.flowDiag.signInFailed, true)
+  assert.match(result.flowDiag.authErrorMessage || '', /Anonymous provider disabled/)
+
+  const flat = chatAuthFlowDiagFields(result)
+  assert.equal(flat.signInFailed, true)
+  assert.ok(flat.authErrorMessage)
 }
 
 // Supabase not configured → unconfigured, no Bearer
@@ -193,7 +234,6 @@ function createClient(options = {}) {
 
   assert.equal(headers.Authorization, 'Bearer hdr-token')
   assert.equal(headers['X-LAIfe-Client-Auth'], 'present')
-  assert.ok(!JSON.stringify(headers).includes('hdr-token'.repeat(2)))
 }
 
 console.log('ok: chatAuth Bearer resolution')

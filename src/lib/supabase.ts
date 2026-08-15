@@ -28,6 +28,9 @@ let supabaseClient: SupabaseClient | null = null
 /**
  * Returns the singleton browser Supabase client (anon key).
  * Creates the client once; does not run queries or inserts.
+ *
+ * Explicit auth options so Preview / mobile localStorage recovery is deterministic
+ * and mount + chatApi always share the same persisted session key.
  */
 export function getSupabase(): SupabaseClient {
   if (supabaseClient) {
@@ -40,7 +43,14 @@ export function getSupabase(): SupabaseClient {
     import.meta.env.VITE_SUPABASE_ANON_KEY,
   )
 
-  supabaseClient = createClient(url, anonKey)
+  supabaseClient = createClient(url, anonKey, {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: false,
+      storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+    },
+  })
   return supabaseClient
 }
 
@@ -49,4 +59,9 @@ export function isSupabaseConfigured(): boolean {
   const url = import.meta.env.VITE_SUPABASE_URL?.trim() ?? ''
   const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim() ?? ''
   return Boolean(url && anonKey)
+}
+
+/** Test helper — clears the browser client singleton. */
+export function resetSupabaseClientForTests(): void {
+  supabaseClient = null
 }

@@ -4,7 +4,7 @@ import {
 } from './learningSignals'
 import { sanitizeConversationMemoryMap } from './conversationMemoryMap'
 import { sanitizeConversationPreferenceProfile } from './conversationPreferenceProfile'
-import { resolveChatAuthForRequest } from './chatAuth'
+import { resolveChatAuthForRequest, chatAuthFlowDiagFields } from './chatAuth'
 import type { V2DebugInfo } from '../types'
 
 export type ChatApiRole = 'user' | 'assistant' | 'system'
@@ -130,6 +130,9 @@ export async function requestChatCompletion(
   )
 
   let response: Response
+  let clientAuthDiag: Record<string, unknown> = {}
+  let clientBearerAttached = false
+  let supabaseConfigured = false
   try {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -138,9 +141,13 @@ export async function requestChatCompletion(
     }
 
     // Soft auth for memory ownership: reuse anon session; recover when memory ON.
+    // Awaits the same app-wide single-flight bootstrap as useAuthBootstrap (no race).
     const auth = await resolveChatAuthForRequest({
       memoryEnabled: payload.memoryEnabled !== false,
     })
+    clientAuthDiag = chatAuthFlowDiagFields(auth)
+    clientBearerAttached = auth.clientBearerAttached
+    supabaseConfigured = auth.supabaseConfigured
 
     if (auth.authorization) {
       headers.Authorization = auth.authorization
@@ -153,19 +160,16 @@ export async function requestChatCompletion(
       '[chatApi] auth for memory',
       JSON.stringify({
         supabaseConfigured: auth.supabaseConfigured,
-        bootstrapStatus: auth.bootstrapStatus,
         clientAuthHint: auth.clientAuthHint,
         clientBearerAttached: auth.clientBearerAttached,
-        recoveredSession: auth.recoveredSession,
+        ...clientAuthDiag,
       }),
     )
 
     if (payload.memoryEnabled !== false && !auth.clientBearerAttached) {
       console.warn(
         '[chatApi] memory ON but no Bearer attached',
-        auth.supabaseConfigured
-          ? `(bootstrap=${auth.bootstrapStatus || 'unknown'})`
-          : '(VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY missing in this build)',
+        JSON.stringify(clientAuthDiag),
       )
     }
 
@@ -178,6 +182,8 @@ export async function requestChatCompletion(
         messages: payload.messages,
         userId: payload.userId,
         memoryEnabled: payload.memoryEnabled !== false,
+        // Temporary Preview-safe client auth flow diag (no tokens).
+        clientAuthDiag,
         ...(payload.learningSignals ? { learningSignals: payload.learningSignals } : {}),
         ...(payload.modality ? { modality: payload.modality } : {}),
         ...(payload.voice ? { voice: true } : {}),
@@ -279,7 +285,15 @@ export async function requestChatCompletion(
   const memoryEvent =
     data.memoryEvent === 'saved' || data.memoryEvent === 'updated' ? data.memoryEvent : null
 
-  const memoryDiag = sanitizeMemoryDiag(data.memoryDiag)
+  // Merge server memoryDiag with client auth flow diag (Preview-safe, no tokens).
+  const memoryDiag = sanitizeMemoryDiag({
+    ...(data.memoryDiag && typeof data.memoryDiag === 'object'
+      ? (data.memoryDiag as Record<string, unknown>)
+      : {}),
+    ...clientAuthDiag,
+    clientBearerAttached,
+    supabaseConfigured,
+  })
 
   if (memoryDiag) {
     console.info('[chatApi] memoryDiag', JSON.stringify(memoryDiag))
@@ -342,6 +356,28 @@ function sanitizeMemoryDiag(raw: unknown): Record<string, unknown> | null {
   }
   if (typeof d.errorMessage === 'string' && d.errorMessage.trim()) {
     out.errorMessage = d.errorMessage.trim().slice(0, 180)
+  }
+
+  // Temporary Preview client auth flow fields (no tokens).
+  for (const key of [
+    'bootstrapStarted',
+    'bootstrapCompleted',
+    'signInAttempted',
+    'signInSucceeded',
+    'signInFailed',
+    'getSessionHasSession',
+    'sessionHasAccessToken',
+    'usedSharedInFlight',
+    'recoveredSession',
+  ] as const) {
+    if (typeof d[key] === 'boolean') out[key] = d[key]
+  }
+  if (typeof d.bootstrapStatus === 'string') out.bootstrapStatus = d.bootstrapStatus.slice(0, 32)
+  if (typeof d.authErrorCode === 'string' && d.authErrorCode.trim()) {
+    out.authErrorCode = d.authErrorCode.trim().slice(0, 64)
+  }
+  if (typeof d.authErrorMessage === 'string' && d.authErrorMessage.trim()) {
+    out.authErrorMessage = d.authErrorMessage.trim().slice(0, 180)
   }
 
   return Object.keys(out).length > 0 ? out : null

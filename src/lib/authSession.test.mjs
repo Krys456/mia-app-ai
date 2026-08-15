@@ -7,6 +7,7 @@ import assert from 'node:assert/strict'
 import {
   bootstrapLaifeAuth,
   ensureAnonymousAuthSession,
+  resetAuthBootstrapForTests,
 } from './authSession.ts'
 
 function createMockClient(options = {}) {
@@ -18,7 +19,6 @@ function createMockClient(options = {}) {
     anonymousAccessToken = 'anon-access-token',
     signInError = null,
     throwOnGetSession = false,
-    /** After first getSession miss, persist the signed-in session for later reads. */
     persistSignInToGetSession = true,
   } = options
 
@@ -29,6 +29,9 @@ function createMockClient(options = {}) {
 
   const client = {
     auth: {
+      async initialize() {
+        return { error: null }
+      },
       async getSession() {
         getSessionCalls += 1
         if (throwOnGetSession) throw new Error('getSession exploded')
@@ -77,6 +80,8 @@ function createMockClient(options = {}) {
   }
 }
 
+resetAuthBootstrapForTests()
+
 // Existing session reused — no anonymous sign-in; token returned
 {
   const mock = createMockClient({
@@ -88,6 +93,7 @@ function createMockClient(options = {}) {
   assert.equal(result.userId, 'existing-user')
   assert.equal(result.accessToken, 'tok-existing')
   assert.equal(result.signedInAnonymously, false)
+  assert.equal(result.diag.sessionHasAccessToken, true)
   assert.equal(mock.signInCalls, 0)
 }
 
@@ -100,6 +106,8 @@ function createMockClient(options = {}) {
   assert.equal(result.isAnonymous, true)
   assert.equal(result.signedInAnonymously, true)
   assert.equal(result.accessToken, 'anon-access-token')
+  assert.equal(result.diag.signInAttempted, true)
+  assert.equal(result.diag.signInSucceeded, true)
   assert.equal(mock.signInCalls, 1)
 }
 
@@ -112,6 +120,9 @@ function createMockClient(options = {}) {
   })
   const client = {
     auth: {
+      async initialize() {
+        return { error: null }
+      },
       async getSession() {
         return { data: { session: null }, error: null }
       },
@@ -134,7 +145,6 @@ function createMockClient(options = {}) {
 
   const p1 = ensureAnonymousAuthSession(client)
   const p2 = ensureAnonymousAuthSession(client)
-  // Let both enter before releasing sign-in
   await Promise.resolve()
   releaseSignIn()
   const [a, b] = await Promise.all([p1, p2])
@@ -143,6 +153,58 @@ function createMockClient(options = {}) {
   assert.equal(b.userId, 'anon-shared')
   assert.equal(a.accessToken, 'shared-token')
   assert.equal(b.accessToken, 'shared-token')
+}
+
+// Session with user but no access token recovers via anonymous sign-in
+{
+  const mock = createMockClient({
+    sessionUser: { id: 'partial-user', is_anonymous: true },
+    sessionAccessToken: null,
+    anonymousUser: { id: 'recovered-user', is_anonymous: true },
+    anonymousAccessToken: 'recovered-token',
+  })
+  const result = await ensureAnonymousAuthSession(mock.client)
+  assert.equal(result.status, 'ready')
+  assert.equal(result.accessToken, 'recovered-token')
+  assert.equal(result.diag.signInAttempted, true)
+  assert.equal(mock.signInCalls, 1)
+}
+
+// bootstrap with injected client returns token (sign-in path)
+{
+  resetAuthBootstrapForTests()
+  let signInStarts = 0
+  const client = {
+    auth: {
+      async initialize() {
+        return { error: null }
+      },
+      async getSession() {
+        return { data: { session: null }, error: null }
+      },
+      async signInAnonymously() {
+        signInStarts += 1
+        return {
+          data: {
+            session: {
+              user: { id: 'flight-user', is_anonymous: true },
+              access_token: 'flight-token',
+            },
+            user: { id: 'flight-user', is_anonymous: true },
+          },
+          error: null,
+        }
+      },
+    },
+  }
+
+  const boot = await bootstrapLaifeAuth({
+    isConfigured: () => true,
+    getClient: () => client,
+  })
+  assert.equal(boot.status, 'ready')
+  assert.equal(boot.accessToken, 'flight-token')
+  assert.equal(signInStarts, 1)
 }
 
 // Reload simulation: second ensure with persisted session does not create a second identity
@@ -169,13 +231,15 @@ function createMockClient(options = {}) {
   assert.equal(second.signInCalls, 0)
 }
 
-// Auth failure does not throw / crash
+// Auth failure does not throw / crash — diag captures sanitized error
 {
   const mock = createMockClient({ signInError: 'Anonymous provider disabled' })
   const result = await ensureAnonymousAuthSession(mock.client)
   assert.equal(result.status, 'error')
   assert.equal(result.accessToken, null)
+  assert.equal(result.diag.signInFailed, true)
   assert.match(result.error || '', /Anonymous provider disabled/)
+  assert.match(result.diag.authErrorMessage || '', /Anonymous provider disabled/)
 }
 
 {
@@ -192,7 +256,6 @@ function createMockClient(options = {}) {
     anonymousAccessToken: null,
     persistSignInToGetSession: false,
   })
-  // Override sign-in to return user without token and no persistence
   mock.client.auth.signInAnonymously = async () => ({
     data: {
       session: { user: { id: 'anon-notoken', is_anonymous: true } },
@@ -203,6 +266,7 @@ function createMockClient(options = {}) {
   const result = await ensureAnonymousAuthSession(mock.client)
   assert.equal(result.status, 'error')
   assert.match(result.error || '', /no access token/)
+  assert.equal(result.diag.signInFailed, true)
 }
 
 // bootstrap skips when not configured

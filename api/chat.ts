@@ -45,6 +45,8 @@ interface ChatApiRequestBody {
   conversationPreferenceProfile?: Record<string, unknown> | null
   conversationId?: string
   learningSignals?: unknown
+  /** Temporary Preview-safe client auth flow diagnostics (no tokens). */
+  clientAuthDiag?: Record<string, unknown> | null
   /** Legacy V1/V2 flags — ignored by the new core. */
   developerMode?: boolean
   engine?: 'v1' | 'v2'
@@ -366,6 +368,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Temporary Preview-safe diagnostics — no JWTs, secrets, or memory content.
+    const clientAuthDiag =
+      body.clientAuthDiag && typeof body.clientAuthDiag === 'object'
+        ? (body.clientAuthDiag as Record<string, unknown>)
+        : {}
+
     const memoryDiag = {
       clientBearerAttached: ownerResult.diag.clientAuthHint === 'present',
       supabaseConfigured: ownerResult.diag.clientAuthHint !== 'unconfigured',
@@ -378,6 +385,43 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       writeOutcome: memoryWrite.writeOutcome,
       errorCode: memoryWrite.errorCode ?? ownerResult.diag.authCode,
       errorMessage: memoryWrite.errorMessage ?? ownerResult.diag.authError,
+      // Echo client auth flow diag (booleans/strings only; never tokens).
+      ...(typeof clientAuthDiag.bootstrapStarted === 'boolean'
+        ? { bootstrapStarted: clientAuthDiag.bootstrapStarted }
+        : {}),
+      ...(typeof clientAuthDiag.bootstrapCompleted === 'boolean'
+        ? { bootstrapCompleted: clientAuthDiag.bootstrapCompleted }
+        : {}),
+      ...(typeof clientAuthDiag.signInAttempted === 'boolean'
+        ? { signInAttempted: clientAuthDiag.signInAttempted }
+        : {}),
+      ...(typeof clientAuthDiag.signInSucceeded === 'boolean'
+        ? { signInSucceeded: clientAuthDiag.signInSucceeded }
+        : {}),
+      ...(typeof clientAuthDiag.signInFailed === 'boolean'
+        ? { signInFailed: clientAuthDiag.signInFailed }
+        : {}),
+      ...(typeof clientAuthDiag.getSessionHasSession === 'boolean'
+        ? { getSessionHasSession: clientAuthDiag.getSessionHasSession }
+        : {}),
+      ...(typeof clientAuthDiag.sessionHasAccessToken === 'boolean'
+        ? { sessionHasAccessToken: clientAuthDiag.sessionHasAccessToken }
+        : {}),
+      ...(typeof clientAuthDiag.usedSharedInFlight === 'boolean'
+        ? { usedSharedInFlight: clientAuthDiag.usedSharedInFlight }
+        : {}),
+      ...(typeof clientAuthDiag.recoveredSession === 'boolean'
+        ? { recoveredSession: clientAuthDiag.recoveredSession }
+        : {}),
+      ...(typeof clientAuthDiag.bootstrapStatus === 'string'
+        ? { bootstrapStatus: String(clientAuthDiag.bootstrapStatus).slice(0, 32) }
+        : {}),
+      ...(typeof clientAuthDiag.authErrorCode === 'string'
+        ? { authErrorCode: String(clientAuthDiag.authErrorCode).slice(0, 64) }
+        : {}),
+      ...(typeof clientAuthDiag.authErrorMessage === 'string'
+        ? { authErrorMessage: String(clientAuthDiag.authErrorMessage).slice(0, 180) }
+        : {}),
     }
 
     console.log('[api/chat] memoryDiag', JSON.stringify(memoryDiag))
