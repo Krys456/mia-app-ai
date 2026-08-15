@@ -238,8 +238,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const lastUserMessage = [...messages].reverse().find((msg) => msg.role === 'user')
     const model = resolveChatModel(process.env)
 
-    // Memory-control gate (forget-all + specific forget) before Recall / Extraction /
-    // responses.create. Works even when Memory is OFF. Zero model calls when handled.
+    // Memory-control gate (forget-all + specific forget) before Overview / Recall /
+    // Extraction / responses.create. Works even when Memory is OFF. Zero model calls
+    // when handled.
     if (lastUserMessage?.content) {
       const { tryHandleMemoryControl } = await import('../lib/server/memory-control-forget.js')
       const forget = await tryHandleMemoryControl({
@@ -277,10 +278,58 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
+    // Memory Overview (PR3): explicit "what do you remember about me?" inspection.
+    // Runs after Forget controls, before Recall V1. Works when Memory is OFF.
+    // Empty/unauth → deterministic, zero model. Non-empty → bounded pack + one Core call.
+    let overviewPack = ''
+    let overviewHandled = false
+    if (lastUserMessage?.content) {
+      const { tryHandleMemoryOverview } = await import(
+        '../lib/server/memory-control-overview.js'
+      )
+      const overview = await tryHandleMemoryOverview({
+        userMessage: lastUserMessage.content,
+        userId: memoryOwnerUserId,
+      })
+      if (overview.handled && overview.skippedModel) {
+        const payload: Record<string, unknown> = {
+          content: overview.message,
+          runtime: 'core',
+          model,
+          memoryEvent: null,
+          memoryControl: overview.status,
+          ...(body.learningSignals != null ? { learningSignals: body.learningSignals } : {}),
+          ...(body.voiceSession && typeof body.voiceSession === 'object'
+            ? { voiceSession: body.voiceSession }
+            : {}),
+          ...(body.welcomeSession && typeof body.welcomeSession === 'object'
+            ? { welcomeSession: body.welcomeSession }
+            : {}),
+          ...(body.conversationMemoryMap && typeof body.conversationMemoryMap === 'object'
+            ? { conversationMemoryMap: body.conversationMemoryMap }
+            : {}),
+          ...(body.conversationPreferenceProfile &&
+          typeof body.conversationPreferenceProfile === 'object'
+            ? { conversationPreferenceProfile: body.conversationPreferenceProfile }
+            : {}),
+          ...(body.pendingAutomation !== undefined
+            ? { pendingAutomation: body.pendingAutomation }
+            : {}),
+        }
+        return sendJson(res, 200, payload)
+      }
+      if (overview.handled && overview.pack) {
+        overviewHandled = true
+        overviewPack = overview.pack
+      }
+    }
+
     // Recall V1: small owner-scoped pack before the single responses.create.
     // Soft-fail inside loadCoreMemoryPack — never brain-api@local.
-    const memoryPack =
-      memoryEnabled && lastUserMessage?.content
+    // Skipped when Overview already supplied a pack (Overview is not Recall V1).
+    const memoryPack = overviewHandled
+      ? overviewPack
+      : memoryEnabled && lastUserMessage?.content
         ? await loadCoreMemoryPack({
             userMessage: lastUserMessage.content,
             ownerUserId: memoryOwnerUserId,
@@ -312,7 +361,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     let memoryEvent: 'saved' | 'updated' | null = null
 
-    if (lastUserMessage?.content) {
+    // Overview turns must not create new durable facts from the inspection request.
+    if (lastUserMessage?.content && !overviewHandled) {
       const write = await runMemoryIfEnabled(
         lastUserMessage.content,
         content,
@@ -327,6 +377,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       runtime: 'core',
       model,
       memoryEvent,
+      ...(overviewHandled ? { memoryControl: 'overview' } : {}),
       // Echo session fields the client already sent — no cognitive engines.
       ...(body.learningSignals != null ? { learningSignals: body.learningSignals } : {}),
       ...(body.voiceSession && typeof body.voiceSession === 'object'
