@@ -17,6 +17,7 @@ import {
 import { applyCors, sendCorsPreflight, sendJson } from '../lib/server/http.js'
 import { buildCoreContinuityAppendix } from '../lib/server/conversation-continuity.js'
 import { buildCoreExpressionAppendix } from '../lib/server/conversation-expression.js'
+import { buildCoreProactiveIntelligenceAppendix } from '../lib/server/proactive-conversation.js'
 import { LAIFE_BASE_SYSTEM_PROMPT } from '../lib/server/laife-base-system-prompt.js'
 import { buildCoreLanguageAppendix } from '../lib/server/language-awareness.js'
 import { buildReferenceContextAppendix } from '../lib/server/core-reference-context.js'
@@ -207,10 +208,17 @@ function buildInstructions(body: ChatApiRequestBody, messages: ChatApiMessage[] 
 
   // Temporary Conversation Working State (#278) — deterministic, request-scoped.
   // Derived only from the same sanitized/selected messages for THIS request.
-  // After CONTINUITY / Reference Context, before Memory pack (appended later). No persistence.
+  // After CONTINUITY / Reference Context, before Proactive Intelligence / Memory.
   const workingStateAppendix = buildConversationWorkingStateAppendix(toTextOnlyMessages(messages))
   if (workingStateAppendix) {
     parts.push(workingStateAppendix)
+  }
+
+  // Ephemeral PROACTIVE INTELLIGENCE appendix (#285) — after Working State, before Memory.
+  // Model-led when-to-contribute; no classifiers / next-step engines / second LLM.
+  const proactiveAppendix = buildCoreProactiveIntelligenceAppendix()
+  if (proactiveAppendix) {
+    parts.push(proactiveAppendix)
   }
 
   return parts.join('\n\n')
