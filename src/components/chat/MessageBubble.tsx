@@ -68,7 +68,8 @@ function MessageBubbleComponent({
   }, [actionsPinned])
 
   const onPointerDown = (event: PointerEvent<HTMLElement>) => {
-    if (!showActions || isStreaming || isError || !message.content) return
+    if (!showActions || isStreaming || isError) return
+    if (!message.content && !message.attachments?.length) return
     if (event.pointerType === 'mouse') return
     clearLongPress()
     longPressTimer.current = window.setTimeout(() => {
@@ -83,8 +84,14 @@ function MessageBubbleComponent({
     if (event.key === 'Escape') setActionsPinned(false)
   }
 
+  const hasVisibleBody =
+    Boolean(message.content?.trim()) || Boolean(message.attachments?.length)
   const actionsEnabled =
-    showActions && !isStreaming && !isError && Boolean(message.content)
+    showActions &&
+    !isStreaming &&
+    !isError &&
+    (isAssistant ? Boolean(message.content) : Boolean(message.content.trim()))
+  // User image-only: no Copy toolbar (nothing safe to copy). Assistant unchanged.
 
   return (
     <article
@@ -93,7 +100,7 @@ function MessageBubbleComponent({
       className={`bubble bubble--${message.role}${isError ? ' bubble--error' : ''}${actionsPinned ? ' bubble--actions-open' : ''}`}
       aria-label={message.role === 'user' ? 'Tu' : isError ? 'Errore' : 'LAIfe'}
       role={isError ? 'alert' : undefined}
-      tabIndex={actionsEnabled ? 0 : undefined}
+      tabIndex={actionsEnabled || (showActions && hasVisibleBody) ? 0 : undefined}
       onPointerDown={onPointerDown}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
@@ -128,7 +135,21 @@ function MessageBubbleComponent({
       ) : (
         <div className="bubble__user-row">
           <div className="bubble__body">
-            <p>{message.content}</p>
+            {message.attachments?.some((a) => a.kind === 'image') ? (
+              <div className="bubble__attachments">
+                {message.attachments
+                  .filter((a) => a.kind === 'image')
+                  .map((att) => (
+                    <img
+                      key={att.id}
+                      src={att.previewUrl || att.dataUrl}
+                      alt=""
+                      className="bubble__attachment-img"
+                    />
+                  ))}
+              </div>
+            ) : null}
+            {message.content ? <p>{message.content}</p> : null}
           </div>
         </div>
       )}

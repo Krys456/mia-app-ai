@@ -53,12 +53,14 @@ import {
   migrateLegacyTone,
   type AppearanceSettings,
   type AppSettings,
+  type ChatAttachment,
   type ChatMessage,
   type DeveloperSettings,
   type PersonalizationSettings,
   type ThemeSettings,
   type V2DebugInfo,
 } from '../types'
+import { MAX_RECENT_IMAGE_TURNS } from '../lib/imageAttachment'
 
 const STORAGE_KEY = 'laife.settings.v2'
 
@@ -197,7 +199,7 @@ type Action =
   | { type: 'UPDATE_THEME'; payload: Partial<ThemeSettings> }
   | { type: 'UPDATE_APPEARANCE'; payload: Partial<AppearanceSettings> }
   | { type: 'UPDATE_DEVELOPER'; payload: Partial<DeveloperSettings> }
-  | { type: 'SEND_USER'; content: string }
+  | { type: 'SEND_USER'; content: string; attachments?: ChatAttachment[] }
   | { type: 'ASSISTANT_START'; id: string }
   | { type: 'ASSISTANT_PROGRESS'; id: string; content: string }
   | {
@@ -292,6 +294,7 @@ function reducer(state: AppState, action: Action): AppState {
         role: 'user',
         content: action.content,
         createdAt: Date.now(),
+        ...(action.attachments?.length ? { attachments: action.attachments } : {}),
       }
       let topicMemory = state.topicMemory
       const signal = detectRepetitionSignals(action.content)
@@ -406,7 +409,7 @@ interface ChatContextValue {
   updateAppearance: (patch: Partial<AppearanceSettings>) => void
   updateDeveloper: (patch: Partial<DeveloperSettings>) => void
   /** Returns true when the user turn was accepted into the thread. */
-  sendMessage: (content: string) => boolean
+  sendMessage: (content: string, attachments?: ChatAttachment[]) => boolean
   /** Re-run the completion for an assistant message (drops that reply and regenerates). */
   regenerateAssistant: (assistantId: string) => void
 }
@@ -418,6 +421,38 @@ function isAbortError(error: unknown): boolean {
     (error instanceof DOMException && error.name === 'AbortError') ||
     (error instanceof Error && error.name === 'AbortError')
   )
+}
+
+function toApiMessages(messages: ChatMessage[]): ChatApiMessage[] {
+  // Preserve multimodal form for the most recent N image-bearing user turns only.
+  let remainingImages = MAX_RECENT_IMAGE_TURNS
+  const reversed = [...messages]
+    .filter((m) => m.role === 'user' || m.role === 'assistant')
+    .filter((m) => m.kind !== 'error')
+    .reverse()
+    .map((m) => {
+      if (m.role !== 'user') {
+        return { role: 'assistant' as const, content: m.content }
+      }
+      const hasImage = Boolean(m.attachments?.some((a) => a.kind === 'image' && a.dataUrl))
+      if (hasImage && remainingImages > 0) {
+        remainingImages -= 1
+        return {
+          role: 'user' as const,
+          content: m.content,
+          attachments: (m.attachments ?? [])
+            .filter((a) => a.kind === 'image' && a.dataUrl)
+            .slice(0, 1)
+            .map((a) => ({
+              type: 'image' as const,
+              mimeType: a.mimeType,
+              dataUrl: a.dataUrl,
+            })),
+        }
+      }
+      return { role: 'user' as const, content: m.content }
+    })
+  return reversed.reverse()
 }
 
 export function ChatProvider({ children }: { children: ReactNode }) {
@@ -643,24 +678,40 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   )
 
   const sendMessage = useCallback(
-    (raw: string): boolean => {
+    (raw: string, attachments: ChatAttachment[] = []): boolean => {
       const content = raw.trim()
-      if (!content || inFlightRef.current || state.isThinking || state.isStreaming) {
+      const images = attachments
+        .filter((a) => a.kind === 'image' && a.dataUrl)
+        .slice(0, 1)
+      if ((!content && images.length === 0) || inFlightRef.current || state.isThinking || state.isStreaming) {
         return false
       }
 
       const personalization = state.settings.personalization
       const developer = state.settings.developer ?? DEFAULT_DEVELOPER_SETTINGS
       const history: ChatApiMessage[] = [
-        ...state.messages
-          .filter((m) => m.role === 'user' || m.role === 'assistant')
-          .filter((m) => m.kind !== 'error')
-          .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
-        { role: 'user', content },
+        ...toApiMessages(state.messages),
+        {
+          role: 'user',
+          content,
+          ...(images.length
+            ? {
+                attachments: images.map((a) => ({
+                  type: 'image' as const,
+                  mimeType: a.mimeType,
+                  dataUrl: a.dataUrl,
+                })),
+              }
+            : {}),
+        },
       ]
 
       inFlightRef.current = true
-      dispatch({ type: 'SEND_USER', content })
+      dispatch({
+        type: 'SEND_USER',
+        content,
+        ...(images.length ? { attachments: images } : {}),
+      })
       runAssistantCompletion(history, personalization, developer)
       return true
     },
@@ -688,10 +739,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       if (userIdx < 0) return
 
       const kept = msgs.slice(0, userIdx + 1)
-      const history: ChatApiMessage[] = kept
-        .filter((m) => m.role === 'user' || m.role === 'assistant')
-        .filter((m) => m.kind !== 'error')
-        .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }))
+      const history: ChatApiMessage[] = toApiMessages(kept)
 
       inFlightRef.current = true
       dispatch({ type: 'TRIM_TO', count: kept.length, thinking: true })

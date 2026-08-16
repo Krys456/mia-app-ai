@@ -18,6 +18,14 @@ import { applyCors, sendCorsPreflight, sendJson } from '../lib/server/http.js'
 import { buildCoreContinuityAppendix } from '../lib/server/conversation-continuity.js'
 import { LAIFE_BASE_SYSTEM_PROMPT } from '../lib/server/laife-base-system-prompt.js'
 import { buildCoreLanguageAppendix } from '../lib/server/language-awareness.js'
+import {
+  mapMessagesToResponsesInput,
+  modelSupportsImageInput,
+  redactAttachmentsForLog,
+  sanitizeMultimodalMessages,
+  summarizeImageForLog,
+  visibleUserText,
+} from '../lib/server/chat-image-input.js'
 
 export const config = {
   runtime: 'nodejs',
@@ -26,9 +34,16 @@ export const config = {
 
 type ChatRole = 'user' | 'assistant' | 'system'
 
+interface ChatApiImageAttachment {
+  type: 'image'
+  mimeType: string
+  dataUrl: string
+}
+
 interface ChatApiMessage {
   role: ChatRole
   content: string
+  attachments?: ChatApiImageAttachment[]
 }
 
 interface ChatApiRequestBody {
@@ -82,23 +97,9 @@ const LENGTH_BIAS: Record<string, string> = {
     'Preferenza lunghezza: dettagliata. Bias verso profondità; se emerge voglia di sintesi, avvicinati gradualmente.',
 }
 
-function isChatRole(value: unknown): value is ChatRole {
-  return value === 'user' || value === 'assistant' || value === 'system'
-}
-
-function sanitizeMessages(raw: unknown): ChatApiMessage[] {
-  if (!Array.isArray(raw)) return []
-  return raw
-    .filter((item): item is ChatApiMessage => {
-      if (!item || typeof item !== 'object') return false
-      const msg = item as ChatApiMessage
-      return isChatRole(msg.role) && typeof msg.content === 'string' && msg.content.trim().length > 0
-    })
-    .map((msg) => ({
-      role: msg.role,
-      content: msg.content.trim(),
-    }))
-    .slice(-40)
+/** Caption-only view for Memory control helpers that expect string history. */
+function toTextOnlyMessages(messages: ChatApiMessage[]): Array<{ role: ChatRole; content: string }> {
+  return messages.map((m) => ({ role: m.role, content: m.content }))
 }
 
 function parseBody(req: VercelRequest): ChatApiRequestBody {
@@ -154,10 +155,11 @@ function buildInstructions(body: ChatApiRequestBody, messages: ChatApiMessage[] 
   }
 
   // Ephemeral LANGUAGE appendix — reply-language only; not persisted; no second LLM.
+  // Caption text only — never data URLs / image bytes.
   const latestUser = [...messages].reverse().find((m) => m.role === 'user')
   const languageAppendix = buildCoreLanguageAppendix({
-    userMessage: latestUser?.content || '',
-    messages,
+    userMessage: visibleUserText(latestUser),
+    messages: toTextOnlyMessages(messages),
     browserLocale:
       (typeof body.browserLocale === 'string' && body.browserLocale) ||
       (typeof body.locale === 'string' && body.locale) ||
@@ -243,7 +245,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return sendJson(res, 400, { error: 'Invalid JSON body' })
   }
 
-  const messages = sanitizeMessages(body.messages).filter(
+  const sanitized = sanitizeMultimodalMessages(body.messages)
+  if (!sanitized.ok) {
+    console.warn(
+      '[api/chat] multimodal sanitize rejected',
+      redactAttachmentsForLog({
+        code: sanitized.code,
+        attachmentSummary: Array.isArray(body.messages)
+          ? body.messages.map((m) => ({
+              role: m?.role,
+              contentLen: typeof m?.content === 'string' ? m.content.length : 0,
+              attachmentCount: Array.isArray(m?.attachments) ? m.attachments.length : 0,
+              attachments: Array.isArray(m?.attachments)
+                ? m.attachments.map((a) => summarizeImageForLog(a ?? {}))
+                : [],
+            }))
+          : null,
+      }),
+    )
+    return sendJson(res, 400, { error: sanitized.error, code: sanitized.code })
+  }
+  const messages = sanitized.messages.filter(
     (msg) => msg.role === 'user' || msg.role === 'assistant',
   )
   if (messages.length === 0) {
@@ -263,17 +285,46 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const lastUserMessage = [...messages].reverse().find((msg) => msg.role === 'user')
+    const lastUserCaption = visibleUserText(lastUserMessage)
+    const lastUserHasImage = Boolean(lastUserMessage?.attachments?.length)
     const model = resolveChatModel(process.env)
+
+    if (lastUserHasImage && !modelSupportsImageInput(model)) {
+      console.warn(
+        '[api/chat] image rejected: model lacks vision',
+        redactAttachmentsForLog({
+          model,
+          attachments: lastUserMessage?.attachments?.map((a) => summarizeImageForLog(a)),
+        }),
+      )
+      return sendJson(res, 400, {
+        error:
+          'Questo modello non supporta le immagini. Invia solo testo, oppure configura un modello con vision (es. GPT-5.6 Sol / GPT-4o).',
+        code: 'image_unsupported_model',
+      })
+    }
+
+    if (lastUserHasImage) {
+      console.info(
+        '[api/chat] multimodal user turn',
+        redactAttachmentsForLog({
+          model,
+          captionLen: lastUserCaption.length,
+          attachmentCount: lastUserMessage?.attachments?.length ?? 0,
+          attachments: lastUserMessage?.attachments?.map((a) => summarizeImageForLog(a)),
+        }),
+      )
+    }
 
     // Memory-control gate (forget-all + specific forget) before Overview / Recall /
     // Extraction / responses.create. Works even when Memory is OFF. Zero model calls
-    // when handled.
-    if (lastUserMessage?.content) {
+    // when handled. Caption text only — never image bytes.
+    if (lastUserCaption) {
       const { tryHandleMemoryControl } = await import('../lib/server/memory-control-forget.js')
       const forget = await tryHandleMemoryControl({
-        userMessage: lastUserMessage.content,
+        userMessage: lastUserCaption,
         userId: memoryOwnerUserId,
-        messages,
+        messages: toTextOnlyMessages(messages),
       })
       if (forget.handled) {
         const payload: Record<string, unknown> = {
@@ -310,12 +361,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Empty/unauth → deterministic, zero model. Non-empty → bounded pack + one Core call.
     let overviewPack = ''
     let overviewHandled = false
-    if (lastUserMessage?.content) {
+    if (lastUserCaption) {
       const { tryHandleMemoryOverview } = await import(
         '../lib/server/memory-control-overview.js'
       )
       const overview = await tryHandleMemoryOverview({
-        userMessage: lastUserMessage.content,
+        userMessage: lastUserCaption,
         userId: memoryOwnerUserId,
       })
       if (overview.handled && overview.skippedModel) {
@@ -356,9 +407,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Skipped when Overview already supplied a pack (Overview is not Recall V1).
     const memoryPack = overviewHandled
       ? overviewPack
-      : memoryEnabled && lastUserMessage?.content
+      : memoryEnabled && lastUserCaption
         ? await loadCoreMemoryPack({
-            userMessage: lastUserMessage.content,
+            userMessage: lastUserCaption,
             ownerUserId: memoryOwnerUserId,
             memoryEnabled: true,
           })
@@ -373,11 +424,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         model,
         instructions,
         maxOutputTokens: modality === 'voice' ? 700 : 4096,
-        input: messages.map((msg) => ({
-          type: 'message' as const,
-          role: msg.role,
-          content: msg.content,
-        })),
+        input: mapMessagesToResponsesInput(messages),
       }),
     )
 
@@ -390,14 +437,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Overview + personal memory probes inspect memory; do not auto-extract
     // durable facts from the inspection question itself.
+    // Image-only turns (empty caption) skip durable extraction.
     const skipExtractionForInspection =
       overviewHandled ||
-      (typeof lastUserMessage?.content === 'string' &&
-        isPersonalMemoryProbe(lastUserMessage.content))
+      !lastUserCaption ||
+      isPersonalMemoryProbe(lastUserCaption)
 
-    if (lastUserMessage?.content && !skipExtractionForInspection) {
+    if (lastUserCaption && !skipExtractionForInspection) {
       const write = await runMemoryIfEnabled(
-        lastUserMessage.content,
+        lastUserCaption,
         content,
         memoryEnabled,
         memoryOwnerUserId,
@@ -433,7 +481,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return sendJson(res, 200, payload)
   } catch (error) {
-    console.error(error)
+    // Never log request payloads / data URLs — message + code only.
+    const errMsg = error instanceof Error ? error.message : String(error)
+    console.error('[api/chat] completion failed:', errMsg.slice(0, 240))
 
     try {
       const OpenAI = (await import('openai')).default
@@ -442,9 +492,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           typeof error.status === 'number' && error.status >= 400 && error.status < 600
             ? error.status
             : 502
+        const visionRejected =
+          /image|vision|multimodal|unsupported.*media|invalid.*image/i.test(errMsg)
         return sendJson(res, status, {
-          error: error.message,
-          code: error.code,
+          error: visionRejected
+            ? 'Il modello non ha accettato l’immagine. Riprova con un JPEG/PNG/WebP più piccolo, oppure invia solo testo.'
+            : error.message,
+          code: visionRejected ? 'image_model_rejected' : error.code,
           type: error.type,
         })
       }
