@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useChat } from '../../context/ChatContext'
 import { HomeHero } from '../HomeHero'
-import { InputBar } from './InputBar'
+import { ComposerShell } from './ComposerShell'
 import { MessageList } from './MessageList'
 import { ScrollToBottomButton } from './ScrollToBottomButton'
 import { useAutoScroll } from './useAutoScroll'
@@ -82,7 +82,7 @@ export function ChatContainer() {
         </div>
       )}
 
-      <InputBar onMessageSent={onUserMessage} />
+      <ComposerShell onMessageSent={onUserMessage} />
     </div>
   )
 }

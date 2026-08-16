@@ -405,7 +405,8 @@ interface ChatContextValue {
   updateTheme: (patch: Partial<ThemeSettings>) => void
   updateAppearance: (patch: Partial<AppearanceSettings>) => void
   updateDeveloper: (patch: Partial<DeveloperSettings>) => void
-  sendMessage: (content: string) => void
+  /** Returns true when the user turn was accepted into the thread. */
+  sendMessage: (content: string) => boolean
   /** Re-run the completion for an assistant message (drops that reply and regenerates). */
   regenerateAssistant: (assistantId: string) => void
 }
@@ -642,9 +643,11 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   )
 
   const sendMessage = useCallback(
-    (raw: string) => {
+    (raw: string): boolean => {
       const content = raw.trim()
-      if (!content || inFlightRef.current || state.isThinking || state.isStreaming) return
+      if (!content || inFlightRef.current || state.isThinking || state.isStreaming) {
+        return false
+      }
 
       const personalization = state.settings.personalization
       const developer = state.settings.developer ?? DEFAULT_DEVELOPER_SETTINGS
@@ -659,6 +662,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       inFlightRef.current = true
       dispatch({ type: 'SEND_USER', content })
       runAssistantCompletion(history, personalization, developer)
+      return true
     },
     [
       state.isThinking,
