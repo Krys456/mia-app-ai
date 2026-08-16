@@ -8,7 +8,7 @@ import {
   type PointerEvent,
 } from 'react'
 import type { ChatMessage } from '../../types'
-import { formatPdfSize, truncateFilename } from '../../lib/pdfAttachment'
+import { documentBadgeFor, formatDocumentSize, truncateFilename } from '../../lib/documentAttachment'
 import { MessageActions } from './MessageActions'
 import { StreamingRenderer } from './StreamingRenderer'
 import { TypingAnimation } from './TypingAnimation'
@@ -154,21 +154,24 @@ function MessageBubbleComponent({
               <div className="bubble__attachments">
                 {message.attachments
                   .filter((a) => a.kind === 'file')
-                  .map((att) => (
-                    <div key={att.id} className="bubble__attachment-file" aria-label={`PDF ${att.name}`}>
+                  .map((att) => {
+                    const badge = documentBadgeFor(att.mimeType, att.name)
+                    return (
+                    <div key={att.id} className="bubble__attachment-file" aria-label={`${badge} ${att.name}`}>
                       <span className="bubble__attachment-file-icon" aria-hidden="true">
-                        PDF
+                        {badge}
                       </span>
                       <span className="bubble__attachment-file-meta">
                         <span className="bubble__attachment-file-name">
                           {truncateFilename(att.name, 36)}
                         </span>
                         <span className="bubble__attachment-file-size">
-                          {formatPdfSize(att.size)}
+                          {formatDocumentSize(att.size)}
                         </span>
                       </span>
                     </div>
-                  ))}
+                    )
+                  })}
               </div>
             ) : null}
             {message.content ? <p>{message.content}</p> : null}

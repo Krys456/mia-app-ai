@@ -138,7 +138,7 @@ export function ComposerAttachMenu({ disabled = false, onPickFile }: ComposerAtt
       <input
         ref={documentRef}
         type="file"
-        accept="application/pdf,.pdf"
+        accept=".pdf,.txt,.docx,application/pdf,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         className="composer-attach__file"
         tabIndex={-1}
         aria-hidden="true"

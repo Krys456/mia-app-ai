@@ -1,8 +1,8 @@
 /**
- * Minimal composer draft model (#271 / #272 / #275).
+ * Minimal composer draft model (#271 / #272 / #275 / #276).
  */
 
-import type { SupportedImageMime } from '../../types'
+import type { SupportedDocumentMime, SupportedImageMime } from '../../types'
 
 export type ComposerAttachmentKind = 'image' | 'file'
 
@@ -23,7 +23,7 @@ export interface ComposerFileAttachment {
   id: string
   kind: 'file'
   name: string
-  mimeType: 'application/pdf'
+  mimeType: SupportedDocumentMime
   size: number
   /** Local File held until Send / upload — never placed in ChatMessage history. */
   localFile?: File

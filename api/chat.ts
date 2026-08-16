@@ -328,7 +328,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       )
       return sendJson(res, 400, {
         error:
-          'Questo modello non supporta i documenti PDF. Invia solo testo, oppure configura un modello compatibile (es. GPT-5.6 Sol / GPT-4o).',
+          'Questo modello non supporta i documenti allegati. Invia solo testo, oppure configura un modello compatibile (es. GPT-5.6 Sol / GPT-4o).',
         code: 'file_unsupported_model',
       })
     }

@@ -1,18 +1,18 @@
 /**
- * POST /api/files — thin PDF upload → OpenAI Files API (#275).
- * Returns { fileId, filename, size, expiresAt } only. No second LLM.
+ * POST /api/files — upload one supported document (PDF / TXT / DOCX) to OpenAI Files.
+ * Returns { fileId, filename, size, expiresAt, mimeType } only. No second LLM.
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { applyCors, sendCorsPreflight, sendJson } from '../lib/server/http.js'
 import { parseSingleMultipartFile } from '../lib/server/multipart-file.js'
 import {
+  SERVER_DOCUMENT_EXPIRES_SECONDS,
   SERVER_MAX_PDF_BYTES,
-  SERVER_PDF_EXPIRES_SECONDS,
   mapOpenAiFileError,
   summarizePdfForLog,
-  uploadPdfToOpenAiFiles,
-  validatePdfBuffer,
+  uploadDocumentToOpenAiFiles,
+  validateDocumentBuffer,
 } from '../lib/server/chat-pdf-files.js'
 
 export const config = {
@@ -55,7 +55,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         : 'upload_failed'
     if (code === 'too_large') {
       return sendJson(res, 413, {
-        error: 'PDF troppo grande. Massimo 10 MB.',
+        error: 'File troppo grande per questo formato.',
         code: 'too_large',
       })
     }
@@ -71,21 +71,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     })
   }
 
-  const validated = validatePdfBuffer(parsed.buffer, parsed.filename, parsed.mimeType)
+  const validated = validateDocumentBuffer(parsed.buffer, parsed.filename, parsed.mimeType)
   if (!validated.ok) {
-    console.warn('[api/files] pdf rejected', summarizePdfForLog({
-      name: parsed.filename,
-      size: parsed.buffer.length,
-      mimeType: parsed.mimeType,
-    }), validated.code)
-    return sendJson(res, 400, { error: validated.error, code: validated.code })
+    console.warn(
+      '[api/files] document rejected',
+      summarizePdfForLog({
+        name: parsed.filename,
+        size: parsed.buffer.length,
+        mimeType: parsed.mimeType,
+      }),
+      validated.code,
+    )
+    return sendJson(res, validated.code === 'too_large' ? 413 : 400, {
+      error: validated.error,
+      code: validated.code,
+    })
+  }
+
+  // JS validators return a runtime success object; narrow for TS.
+  const documentMeta = validated as {
+    ok: true
+    name: string
+    size: number
+    mimeType: string
   }
 
   try {
-    const uploaded = await uploadPdfToOpenAiFiles({
+    const uploaded = await uploadDocumentToOpenAiFiles({
       apiKey,
       buffer: parsed.buffer,
-      filename: validated.name,
+      filename: documentMeta.name,
+      mimeType: documentMeta.mimeType,
     })
     console.info(
       '[api/files] uploaded',
@@ -93,22 +109,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         name: uploaded.filename,
         size: uploaded.size,
         fileId: uploaded.fileId,
+        mimeType: uploaded.mimeType,
       }),
-      { expiresSeconds: SERVER_PDF_EXPIRES_SECONDS },
+      { expiresSeconds: SERVER_DOCUMENT_EXPIRES_SECONDS },
     )
     return sendJson(res, 200, {
       fileId: uploaded.fileId,
       filename: uploaded.filename,
       size: uploaded.size,
       expiresAt: uploaded.expiresAt,
-      mimeType: 'application/pdf',
+      mimeType: uploaded.mimeType,
     })
   } catch (error) {
-    const mapped = mapOpenAiFileError(error)
+    const mapped = mapOpenAiFileError(error, documentMeta.mimeType)
     console.warn(
       '[api/files] openai upload failed',
       mapped.code,
-      summarizePdfForLog({ name: validated.name, size: validated.size }),
+      summarizePdfForLog({
+        name: documentMeta.name,
+        size: documentMeta.size,
+        mimeType: documentMeta.mimeType,
+      }),
     )
     return sendJson(res, 400, { error: mapped.error, code: mapped.code })
   }
