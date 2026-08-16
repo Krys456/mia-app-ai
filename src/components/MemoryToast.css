@@ -1,12 +1,15 @@
 .memory-toast {
   position: fixed;
   left: 50%;
+  /* Above composer; leave room so Scroll-to-Bottom (in-flow, lower) stays reachable. */
   bottom: calc(var(--composer-h) + 1rem + env(safe-area-inset-bottom, 0px));
   z-index: 150;
   display: inline-flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.55rem;
+  box-sizing: border-box;
   max-width: min(92vw, 26rem);
+  width: max-content;
   padding: 0.7rem 1rem;
   border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border));
   border-radius: var(--radius-md);
@@ -22,12 +25,37 @@
   animation: memory-toast-in var(--duration) var(--ease-out),
     memory-toast-out var(--duration-enter) var(--ease-out) 2.9s forwards;
   pointer-events: none;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .memory-toast__icon {
   flex-shrink: 0;
   font-size: 1rem;
-  line-height: 1;
+  line-height: 1.3;
+}
+
+.memory-toast__body {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.memory-toast__label {
+  font-weight: 550;
+}
+
+.memory-toast__detail {
+  max-width: 100%;
+  color: color-mix(in srgb, var(--text) 72%, transparent);
+  font-size: 0.8rem;
+  font-weight: 450;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
 }
 
 @keyframes memory-toast-in {
@@ -45,5 +73,21 @@
   to {
     opacity: 0;
     transform: translateX(-50%) translateY(6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .memory-toast {
+    animation: none;
+    opacity: 1;
+    transform: translateX(-50%);
+  }
+}
+
+@media (max-width: 420px) {
+  .memory-toast {
+    max-width: min(94vw, 22rem);
+    padding: 0.65rem 0.9rem;
+    font-size: 0.84rem;
   }
 }

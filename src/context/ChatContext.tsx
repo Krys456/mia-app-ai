@@ -11,6 +11,7 @@ import {
 } from 'react'
 import { applyAppearanceToDocument, normalizeAppearance } from '../lib/appearance'
 import { requestChatCompletion, type ChatApiMessage } from '../lib/chatApi'
+import type { MemoryFeedbackEvent } from '../lib/memoryFeedback'
 import {
   finalizeConversationLearning,
   getLearningSignals,
@@ -187,7 +188,7 @@ interface AppState {
   settingsOpen: boolean
   isThinking: boolean
   isStreaming: boolean
-  memoryNotice: 'saved' | 'updated' | null
+  memoryNotice: MemoryFeedbackEvent | null
   topicMemory: TopicMemory
 }
 
@@ -207,7 +208,7 @@ type Action =
       type: 'ASSISTANT_FINISH'
       id: string
       content: string
-      memoryEvent?: 'saved' | 'updated' | null
+      memoryEvent?: MemoryFeedbackEvent | null
       v2Debug?: V2DebugInfo | null
     }
   | { type: 'ASSISTANT_FAIL'; error: string }
@@ -354,7 +355,10 @@ function reducer(state: AppState, action: Action): AppState {
         isThinking: false,
         isStreaming: false,
         memoryNotice:
-          action.memoryEvent === 'saved' || action.memoryEvent === 'updated'
+          action.memoryEvent &&
+          (action.memoryEvent.type === 'created' ||
+            action.memoryEvent.type === 'updated' ||
+            action.memoryEvent.type === 'removed')
             ? action.memoryEvent
             : null,
         topicMemory: rememberAssistantMessage(state.topicMemory, action.content),
@@ -399,7 +403,7 @@ interface ChatContextValue {
   settingsOpen: boolean
   isThinking: boolean
   isStreaming: boolean
-  memoryNotice: 'saved' | 'updated' | null
+  memoryNotice: MemoryFeedbackEvent | null
   newChat: () => void
   openSettings: () => void
   closeSettings: () => void
