@@ -18,6 +18,7 @@ import { applyCors, sendCorsPreflight, sendJson } from '../lib/server/http.js'
 import { buildCoreContinuityAppendix } from '../lib/server/conversation-continuity.js'
 import { LAIFE_BASE_SYSTEM_PROMPT } from '../lib/server/laife-base-system-prompt.js'
 import { buildCoreLanguageAppendix } from '../lib/server/language-awareness.js'
+import { buildConversationWorkingStateAppendix } from '../lib/server/core-working-state.js'
 import {
   mapMessagesToResponsesInput,
   modelSupportsFileInput,
@@ -180,11 +181,19 @@ function buildInstructions(body: ChatApiRequestBody, messages: ChatApiMessage[] 
     parts.push(languageAppendix)
   }
 
-  // Ephemeral CONTINUITY appendix (#263) — after LANGUAGE, before Memory pack.
+  // Ephemeral CONTINUITY appendix (#263) — after LANGUAGE, before Working State / Memory.
   // No resolver / second LLM / DB; model reasons from thread + this contract.
   const continuityAppendix = buildCoreContinuityAppendix()
   if (continuityAppendix) {
     parts.push(continuityAppendix)
+  }
+
+  // Temporary Conversation Working State (#278) — deterministic, request-scoped.
+  // Derived only from the same sanitized/selected messages for THIS request.
+  // After CONTINUITY, before Memory pack (appended later). No persistence.
+  const workingStateAppendix = buildConversationWorkingStateAppendix(toTextOnlyMessages(messages))
+  if (workingStateAppendix) {
+    parts.push(workingStateAppendix)
   }
 
   return parts.join('\n\n')
