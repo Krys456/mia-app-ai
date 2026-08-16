@@ -16,6 +16,7 @@ import {
 } from '../lib/server/core-memory-recall.js'
 import { applyCors, sendCorsPreflight, sendJson } from '../lib/server/http.js'
 import { buildCoreContinuityAppendix } from '../lib/server/conversation-continuity.js'
+import { buildCoreExpressionAppendix } from '../lib/server/conversation-expression.js'
 import { LAIFE_BASE_SYSTEM_PROMPT } from '../lib/server/laife-base-system-prompt.js'
 import { buildCoreLanguageAppendix } from '../lib/server/language-awareness.js'
 import { buildReferenceContextAppendix } from '../lib/server/core-reference-context.js'
@@ -151,11 +152,11 @@ function buildInstructions(body: ChatApiRequestBody, messages: ChatApiMessage[] 
 
   if (body.useEmojis === true) {
     parts.push(
-      'Preferenza emoji: consentite solo se calzano davvero al tono di questo turno (mai forzate).',
+      'Preferenza emoji: le emoji sono benvenute quando migliorano naturalmente tono o leggibilità. Usale in modo selettivo e contestuale; non aggiungerle in modo meccanico.',
     )
   } else if (body.useEmojis === false) {
     parts.push(
-      "Preferenza emoji: non usare emoji nel corpo della risposta, salvo che l'utente le usi per primo.",
+      "Preferenza emoji: non introdurre emoji solo per stile. Non usarle nel corpo della risposta, salvo che l'utente le usi per primo.",
     )
   }
 
@@ -165,6 +166,13 @@ function buildInstructions(body: ChatApiRequestBody, messages: ChatApiMessage[] 
       : ''
   if (custom) {
     parts.push(`Istruzioni personalizzate dell'utente (rispettale quando possibili):\n${custom}`)
+  }
+
+  // Ephemeral ADAPTIVE EXPRESSION appendix (#284) — after personalization, before LANGUAGE.
+  // Model-led presentation only; no classifiers / emoji engines / second LLM.
+  const expressionAppendix = buildCoreExpressionAppendix()
+  if (expressionAppendix) {
+    parts.push(expressionAppendix)
   }
 
   // Ephemeral LANGUAGE appendix — reply-language only; not persisted; no second LLM.
