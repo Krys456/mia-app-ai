@@ -215,18 +215,28 @@ function resolveChatModel(env: NodeJS.ProcessEnv = process.env): string {
   return normalized || 'gpt-4o'
 }
 
+type MemoryFeedbackEvent =
+  | {
+      type: 'created' | 'updated' | 'removed'
+      displayText?: string
+    }
+  | null
+
 async function runMemoryIfEnabled(
   userMessage: string,
   assistantMessage: string,
   memoryEnabled: boolean,
   ownerUserId: string | null,
-): Promise<{ event: 'saved' | 'updated' | null }> {
+): Promise<{ event: MemoryFeedbackEvent }> {
   if (!memoryEnabled || !ownerUserId) {
     return { event: null }
   }
 
   try {
     const { runMemoryPipeline } = await import('../lib/server/brain-memory.js')
+    const { mapMemoryPipelineToFeedbackEvent } = await import(
+      '../lib/server/memory-feedback-event.js'
+    )
 
     const result = await runMemoryPipeline({
       userMessage,
@@ -236,9 +246,7 @@ async function runMemoryIfEnabled(
       requireExplicitUserId: true,
     })
 
-    if (result?.updated) return { event: 'updated' }
-    if (result?.saved) return { event: 'saved' }
-    return { event: null }
+    return { event: mapMemoryPipelineToFeedbackEvent(result) }
   } catch (error) {
     console.warn(
       '[api/chat] memory write skipped:',
@@ -491,12 +499,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return sendJson(res, 502, { error: 'Empty response from OpenAI' })
     }
 
-    let memoryEvent: 'saved' | 'updated' | null = null
+    let memoryEvent: MemoryFeedbackEvent = null
 
     // Overview + personal memory probes inspect memory; do not auto-extract
     // durable facts from the inspection question itself.
     // Image-only / PDF-only turns (empty caption) skip durable extraction.
     // Vision Lens Read/Explain shortcuts are ephemeral task instructions — not user facts.
+    // Forget early-return already forces memoryEvent: null (assistant reply is authoritative).
     const skipExtractionForInspection =
       overviewHandled ||
       !lastUserCaption ||

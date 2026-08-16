@@ -11,6 +11,7 @@ import {
 } from 'react'
 import { applyAppearanceToDocument, normalizeAppearance } from '../lib/appearance'
 import { requestChatCompletion, type ChatApiMessage } from '../lib/chatApi'
+import type { MemoryFeedbackEvent } from '../lib/memoryFeedback'
 import {
   finalizeConversationLearning,
   getLearningSignals,
@@ -187,7 +188,6 @@ interface AppState {
   settingsOpen: boolean
   isThinking: boolean
   isStreaming: boolean
-  memoryNotice: 'saved' | 'updated' | null
   topicMemory: TopicMemory
 }
 
@@ -201,17 +201,16 @@ type Action =
   | { type: 'UPDATE_APPEARANCE'; payload: Partial<AppearanceSettings> }
   | { type: 'UPDATE_DEVELOPER'; payload: Partial<DeveloperSettings> }
   | { type: 'SEND_USER'; content: string; attachments?: ChatAttachment[] }
-  | { type: 'ASSISTANT_START'; id: string }
+  | { type: 'ASSISTANT_START'; id: string; memoryEvent?: MemoryFeedbackEvent | null }
   | { type: 'ASSISTANT_PROGRESS'; id: string; content: string }
   | {
       type: 'ASSISTANT_FINISH'
       id: string
       content: string
-      memoryEvent?: 'saved' | 'updated' | null
+      memoryEvent?: MemoryFeedbackEvent | null
       v2Debug?: V2DebugInfo | null
     }
   | { type: 'ASSISTANT_FAIL'; error: string }
-  | { type: 'CLEAR_MEMORY_NOTICE' }
   | { type: 'TRIM_TO'; count: number; thinking?: boolean }
 
 function createInitialState(): AppState {
@@ -221,7 +220,6 @@ function createInitialState(): AppState {
     settingsOpen: false,
     isThinking: false,
     isStreaming: false,
-    memoryNotice: null,
     topicMemory: createEmptyMemory(),
   }
 }
@@ -235,7 +233,6 @@ function reducer(state: AppState, action: Action): AppState {
         isThinking: false,
         isStreaming: false,
         settingsOpen: false,
-        memoryNotice: null,
         topicMemory: createEmptyMemory(),
       }
     case 'OPEN_SETTINGS':
@@ -310,16 +307,23 @@ function reducer(state: AppState, action: Action): AppState {
         messages: [...state.messages, userMsg],
         isThinking: true,
         isStreaming: false,
-        memoryNotice: null,
         topicMemory,
       }
     }
     case 'ASSISTANT_START': {
+      const startEvent =
+        action.memoryEvent &&
+        (action.memoryEvent.type === 'created' ||
+          action.memoryEvent.type === 'updated' ||
+          action.memoryEvent.type === 'removed')
+          ? action.memoryEvent
+          : null
       const assistantMsg: ChatMessage = {
         id: action.id,
         role: 'assistant',
         content: '',
         createdAt: Date.now(),
+        ...(startEvent ? { memoryEvent: startEvent } : {}),
       }
       return {
         ...state,
@@ -333,30 +337,36 @@ function reducer(state: AppState, action: Action): AppState {
       const messages = state.messages.map((msg) => {
         if (msg.id !== action.id) return msg
         changed = true
+        // Preserve memoryEvent across progressive reveal updates.
         return { ...msg, content: action.content }
       })
       if (!changed) return state
       return { ...state, messages, isStreaming: true, isThinking: false }
     }
     case 'ASSISTANT_FINISH': {
-      const messages = state.messages.map((msg) =>
-        msg.id === action.id
-          ? {
-              ...msg,
-              content: action.content,
-              ...(action.v2Debug ? { v2Debug: action.v2Debug } : {}),
-            }
-          : msg,
-      )
+      const memoryEvent =
+        action.memoryEvent &&
+        (action.memoryEvent.type === 'created' ||
+          action.memoryEvent.type === 'updated' ||
+          action.memoryEvent.type === 'removed')
+          ? action.memoryEvent
+          : null
+      const messages = state.messages.map((msg) => {
+        if (msg.id !== action.id) return msg
+        const next: ChatMessage = {
+          ...msg,
+          content: action.content,
+          ...(action.v2Debug ? { v2Debug: action.v2Debug } : {}),
+        }
+        if (memoryEvent) next.memoryEvent = memoryEvent
+        else delete next.memoryEvent
+        return next
+      })
       return {
         ...state,
         messages,
         isThinking: false,
         isStreaming: false,
-        memoryNotice:
-          action.memoryEvent === 'saved' || action.memoryEvent === 'updated'
-            ? action.memoryEvent
-            : null,
         topicMemory: rememberAssistantMessage(state.topicMemory, action.content),
       }
     }
@@ -373,11 +383,8 @@ function reducer(state: AppState, action: Action): AppState {
         messages: [...state.messages, assistantMsg],
         isThinking: false,
         isStreaming: false,
-        memoryNotice: null,
       }
     }
-    case 'CLEAR_MEMORY_NOTICE':
-      return { ...state, memoryNotice: null }
     case 'TRIM_TO': {
       const count = Math.max(0, Math.min(action.count, state.messages.length))
       return {
@@ -385,7 +392,6 @@ function reducer(state: AppState, action: Action): AppState {
         messages: state.messages.slice(0, count),
         isThinking: action.thinking === true,
         isStreaming: false,
-        memoryNotice: null,
       }
     }
     default:
@@ -399,12 +405,10 @@ interface ChatContextValue {
   settingsOpen: boolean
   isThinking: boolean
   isStreaming: boolean
-  memoryNotice: 'saved' | 'updated' | null
   newChat: () => void
   openSettings: () => void
   closeSettings: () => void
   toggleSettings: () => void
-  clearMemoryNotice: () => void
   updatePersonalization: (patch: Partial<PersonalizationSettings>) => void
   updateTheme: (patch: Partial<ThemeSettings>) => void
   updateAppearance: (patch: Partial<AppearanceSettings>) => void
@@ -511,7 +515,6 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const openSettings = useCallback(() => dispatch({ type: 'OPEN_SETTINGS' }), [])
   const closeSettings = useCallback(() => dispatch({ type: 'CLOSE_SETTINGS' }), [])
   const toggleSettings = useCallback(() => dispatch({ type: 'TOGGLE_SETTINGS' }), [])
-  const clearMemoryNotice = useCallback(() => dispatch({ type: 'CLEAR_MEMORY_NOTICE' }), [])
 
   const updatePersonalization = useCallback(
     (payload: Partial<PersonalizationSettings>) => {
@@ -661,7 +664,12 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           }
 
           const assistantId = uid()
-          dispatch({ type: 'ASSISTANT_START', id: assistantId })
+          dispatch({
+            type: 'ASSISTANT_START',
+            id: assistantId,
+            // Attach before reveal so progressive PROGRESS updates cannot orphan the event.
+            memoryEvent: memoryEvent ?? null,
+          })
 
           await revealReplyText(
             reply,
@@ -804,12 +812,10 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       settingsOpen: state.settingsOpen,
       isThinking: state.isThinking,
       isStreaming: state.isStreaming,
-      memoryNotice: state.memoryNotice,
       newChat,
       openSettings,
       closeSettings,
       toggleSettings,
-      clearMemoryNotice,
       updatePersonalization,
       updateTheme,
       updateAppearance,
@@ -823,12 +829,10 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       state.settingsOpen,
       state.isThinking,
       state.isStreaming,
-      state.memoryNotice,
       newChat,
       openSettings,
       closeSettings,
       toggleSettings,
-      clearMemoryNotice,
       updatePersonalization,
       updateTheme,
       updateAppearance,

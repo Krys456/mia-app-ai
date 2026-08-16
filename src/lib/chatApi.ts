@@ -5,7 +5,13 @@ import {
 import { sanitizeConversationMemoryMap } from './conversationMemoryMap'
 import { sanitizeConversationPreferenceProfile } from './conversationPreferenceProfile'
 import { resolveChatAuthForRequest } from './chatAuth'
+import {
+  parseMemoryFeedbackEvent,
+  type MemoryFeedbackEvent,
+} from './memoryFeedback'
 import type { V2DebugInfo } from '../types'
+
+export type { MemoryFeedbackEvent } from './memoryFeedback'
 
 export type ChatApiRole = 'user' | 'assistant' | 'system'
 
@@ -76,8 +82,8 @@ export interface ChatApiSuccess {
   /** Conversational core for this response (`core` = single-prompt path). */
   runtime?: 'core' | 'v1' | 'v2'
   memoriesSaved?: number
-  /** Discrete UI hint when auto-memory wrote something. */
-  memoryEvent?: 'saved' | 'updated' | null
+  /** Ephemeral UI hint when auto-memory actually wrote/changed something (#281). */
+  memoryEvent?: MemoryFeedbackEvent | null
   /** Internal only — client stores silently; never render. */
   learningSignals?: LearningSignals | null
   /** Internal only — client stores for voice interrupt/resume. */
@@ -235,8 +241,7 @@ export async function requestChatCompletion(
     throw new ChatApiError('Chat API returned an empty reply', response.status)
   }
 
-  const memoryEvent =
-    data.memoryEvent === 'saved' || data.memoryEvent === 'updated' ? data.memoryEvent : null
+  const memoryEvent = parseMemoryFeedbackEvent(data.memoryEvent)
 
   const v2Debug = sanitizeV2Debug(data.v2Debug)
 
