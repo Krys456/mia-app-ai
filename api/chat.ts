@@ -250,35 +250,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         messages,
       })
       if (forget.handled) {
-        // Preview-only Specific Forget forensic (#260 Test A) — no behavior change.
-        try {
-          const {
-            isSpecificForgetTraceEnabled,
-            logSpecificForgetTrace,
-            getSpecificForgetProjectDiagnostics,
-            truncateOwnerId,
-          } = await import('../lib/server/memory-specific-forget-trace.js')
-          if (isSpecificForgetTraceEnabled()) {
-            logSpecificForgetTrace('api_chat_specific_forget_result', {
-              truncatedUserId: truncateOwnerId(memoryOwnerUserId),
-              handled: forget.handled === true,
-              status: forget.status || null,
-              kind: (forget as { kind?: string }).kind || null,
-              factKey: (forget as { factKey?: string | null }).factKey ?? null,
-              obsoletedIds: Array.isArray((forget as { obsoletedIds?: string[] }).obsoletedIds)
-                ? (forget as { obsoletedIds: string[] }).obsoletedIds
-                : [],
-              error: (forget as { error?: string | null }).error ?? null,
-              skippedModel: forget.skippedModel === true,
-              earlyReturnBeforeExtraction: true,
-              earlyReturnBeforeRecall: true,
-              earlyReturnBeforeResponsesCreate: true,
-              project: getSpecificForgetProjectDiagnostics(),
-            })
-          }
-        } catch {
-          // Diagnostics must never break the forget response path.
-        }
         const payload: Record<string, unknown> = {
           content: forget.message,
           runtime: 'core',
