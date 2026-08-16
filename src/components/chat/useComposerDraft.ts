@@ -11,8 +11,10 @@ import {
 export interface ComposerDraftApi {
   draft: ComposerDraft
   setText: (text: string) => void
-  /** Replace the single image attachment (MVP max 1). Revokes prior preview. */
+  /** Replace the single attachment (image or PDF). Revokes prior image preview. */
   setImageAttachment: (attachment: ComposerAttachment) => void
+  /** Alias — replace single attachment (image XOR PDF). */
+  setAttachment: (attachment: ComposerAttachment) => void
   removeAttachment: (id: string) => void
   /** Wipe text + attachments (new chat / successful send). */
   clear: () => void
@@ -43,6 +45,8 @@ export function useComposerDraft(
       }
     })
   }, [])
+
+  const setAttachment = setImageAttachment
 
   const removeAttachment = useCallback((id: string) => {
     setDraft((prev) => {
@@ -87,6 +91,7 @@ export function useComposerDraft(
     draft,
     setText,
     setImageAttachment,
+    setAttachment,
     removeAttachment,
     clear,
     restore,

@@ -35,7 +35,7 @@ export interface ChatMessage {
   /** Visible caption / body text. Never a data URL. */
   content: string
   createdAt: number
-  /** Optional image attachments (#272). Max 1 image in MVP. */
+  /** Optional attachments (#272 image / #275 PDF). Max 1; image XOR file. */
   attachments?: ChatAttachment[]
   /** When set, render as an error notice rather than a normal assistant reply. */
   kind?: 'error'
@@ -46,7 +46,7 @@ export interface ChatMessage {
 /** Session-scoped image attachment on a chat message (#272). */
 export type SupportedImageMime = 'image/jpeg' | 'image/png' | 'image/webp'
 
-export interface ChatAttachment {
+export interface ChatImageAttachment {
   id: string
   kind: 'image'
   mimeType: SupportedImageMime
@@ -57,6 +57,19 @@ export interface ChatAttachment {
   width?: number
   height?: number
 }
+
+/** Session-scoped PDF attachment (#275) — metadata + OpenAI fileId only (no bytes). */
+export interface ChatFileAttachment {
+  id: string
+  kind: 'file'
+  name: string
+  mimeType: 'application/pdf'
+  size: number
+  fileId: string
+  expiresAt?: number
+}
+
+export type ChatAttachment = ChatImageAttachment | ChatFileAttachment
 
 /** Soft style bias for the Dynamic Behavior Model (not a fixed persona). */
 export type PersonalityMode =

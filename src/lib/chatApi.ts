@@ -15,11 +15,19 @@ export interface ChatApiImageAttachment {
   dataUrl: string
 }
 
+export interface ChatApiFileAttachment {
+  type: 'file'
+  fileId: string
+  name: string
+  mimeType: 'application/pdf'
+  size: number
+}
+
 export interface ChatApiMessage {
   role: ChatApiRole
   content: string
-  /** Optional image attachments (#272). Max 1 in MVP. */
-  attachments?: ChatApiImageAttachment[]
+  /** Optional attachments (#272 image / #275 PDF). Max 1; image XOR file. */
+  attachments?: Array<ChatApiImageAttachment | ChatApiFileAttachment>
 }
 
 export type { LearningSignals }

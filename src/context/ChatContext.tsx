@@ -61,6 +61,7 @@ import {
   type V2DebugInfo,
 } from '../types'
 import { MAX_RECENT_IMAGE_TURNS } from '../lib/imageAttachment'
+import { MAX_RECENT_FILE_TURNS } from '../lib/pdfAttachment'
 
 const STORAGE_KEY = 'laife.settings.v2'
 
@@ -424,8 +425,9 @@ function isAbortError(error: unknown): boolean {
 }
 
 function toApiMessages(messages: ChatMessage[]): ChatApiMessage[] {
-  // Preserve multimodal form for the most recent N image-bearing user turns only.
+  // Preserve multimodal form for the most recent N image / file turns separately.
   let remainingImages = MAX_RECENT_IMAGE_TURNS
+  let remainingFiles = MAX_RECENT_FILE_TURNS
   const reversed = [...messages]
     .filter((m) => m.role === 'user' || m.role === 'assistant')
     .filter((m) => m.kind !== 'error')
@@ -434,20 +436,38 @@ function toApiMessages(messages: ChatMessage[]): ChatApiMessage[] {
       if (m.role !== 'user') {
         return { role: 'assistant' as const, content: m.content }
       }
-      const hasImage = Boolean(m.attachments?.some((a) => a.kind === 'image' && a.dataUrl))
-      if (hasImage && remainingImages > 0) {
+      const imageAtts = (m.attachments ?? []).filter(
+        (a): a is Extract<ChatAttachment, { kind: 'image' }> =>
+          a.kind === 'image' && Boolean(a.dataUrl),
+      )
+      const fileAtts = (m.attachments ?? []).filter(
+        (a): a is Extract<ChatAttachment, { kind: 'file' }> =>
+          a.kind === 'file' && Boolean(a.fileId),
+      )
+      if (imageAtts.length && remainingImages > 0) {
         remainingImages -= 1
         return {
           role: 'user' as const,
           content: m.content,
-          attachments: (m.attachments ?? [])
-            .filter((a) => a.kind === 'image' && a.dataUrl)
-            .slice(0, 1)
-            .map((a) => ({
-              type: 'image' as const,
-              mimeType: a.mimeType,
-              dataUrl: a.dataUrl,
-            })),
+          attachments: imageAtts.slice(0, 1).map((a) => ({
+            type: 'image' as const,
+            mimeType: a.mimeType,
+            dataUrl: a.dataUrl,
+          })),
+        }
+      }
+      if (fileAtts.length && remainingFiles > 0) {
+        remainingFiles -= 1
+        return {
+          role: 'user' as const,
+          content: m.content,
+          attachments: fileAtts.slice(0, 1).map((a) => ({
+            type: 'file' as const,
+            fileId: a.fileId,
+            name: a.name,
+            mimeType: 'application/pdf' as const,
+            size: a.size,
+          })),
         }
       }
       return { role: 'user' as const, content: m.content }
@@ -681,9 +701,17 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     (raw: string, attachments: ChatAttachment[] = []): boolean => {
       const content = raw.trim()
       const images = attachments
-        .filter((a) => a.kind === 'image' && a.dataUrl)
+        .filter((a): a is Extract<ChatAttachment, { kind: 'image' }> => a.kind === 'image' && Boolean(a.dataUrl))
         .slice(0, 1)
-      if ((!content && images.length === 0) || inFlightRef.current || state.isThinking || state.isStreaming) {
+      const files = attachments
+        .filter(
+          (a): a is Extract<ChatAttachment, { kind: 'file' }> =>
+            a.kind === 'file' && Boolean(a.fileId),
+        )
+        .slice(0, 1)
+      // MVP: image XOR file (one attachment total).
+      const wireAtts: ChatAttachment[] = images.length ? images : files
+      if ((!content && wireAtts.length === 0) || inFlightRef.current || state.isThinking || state.isStreaming) {
         return false
       }
 
@@ -694,13 +722,23 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         {
           role: 'user',
           content,
-          ...(images.length
+          ...(wireAtts.length
             ? {
-                attachments: images.map((a) => ({
-                  type: 'image' as const,
-                  mimeType: a.mimeType,
-                  dataUrl: a.dataUrl,
-                })),
+                attachments: wireAtts.map((a) =>
+                  a.kind === 'image'
+                    ? {
+                        type: 'image' as const,
+                        mimeType: a.mimeType,
+                        dataUrl: a.dataUrl,
+                      }
+                    : {
+                        type: 'file' as const,
+                        fileId: a.fileId,
+                        name: a.name,
+                        mimeType: 'application/pdf' as const,
+                        size: a.size,
+                      },
+                ),
               }
             : {}),
         },
@@ -710,7 +748,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       dispatch({
         type: 'SEND_USER',
         content,
-        ...(images.length ? { attachments: images } : {}),
+        ...(wireAtts.length ? { attachments: wireAtts } : {}),
       })
       runAssistantCompletion(history, personalization, developer)
       return true

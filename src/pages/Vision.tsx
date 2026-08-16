@@ -16,7 +16,7 @@ import {
   isVideoFrameReady,
   summarizeCaptureForLog,
 } from '../lib/visionCameraCapture'
-import type { ChatAttachment } from '../types'
+import type { ChatImageAttachment } from '../types'
 import './Vision.css'
 
 interface VisionProps {
@@ -49,7 +49,7 @@ export function Vision({ onBack, onHandoffToChat }: VisionProps) {
   const fileInputId = useId()
 
   const [phase, setPhase] = useState<VisionPhase>('empty')
-  const [attachment, setAttachment] = useState<ChatAttachment | null>(null)
+  const [attachment, setAttachment] = useState<ChatImageAttachment | null>(null)
   const [cameraError, setCameraError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [status, setStatus] = useState<string | null>(null)
@@ -117,7 +117,7 @@ export function Vision({ onBack, onHandoffToChat }: VisionProps) {
   }, [phase, cameraSession])
 
   const setPreparedAttachment = useCallback(
-    (next: ChatAttachment, previewUrl: string) => {
+    (next: ChatImageAttachment, previewUrl: string) => {
       revokePreview()
       previewUrlRef.current = previewUrl
       setAttachment({ ...next, previewUrl })
@@ -139,7 +139,7 @@ export function Vision({ onBack, onHandoffToChat }: VisionProps) {
         if (!(prepared.width > 0 && prepared.height > 0)) {
           throw new ImageValidationError('unreadable')
         }
-        const att: ChatAttachment = {
+        const att: ChatImageAttachment = {
           id: uid(),
           kind: 'image',
           mimeType: prepared.mimeType,
@@ -279,7 +279,7 @@ export function Vision({ onBack, onHandoffToChat }: VisionProps) {
           : 'Spiegazione…',
     )
 
-    const wire: ChatAttachment = {
+    const wire: ChatImageAttachment = {
       id: attachment.id,
       kind: 'image',
       mimeType: attachment.mimeType,
