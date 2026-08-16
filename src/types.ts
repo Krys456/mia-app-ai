@@ -36,7 +36,7 @@ export interface ChatMessage {
   createdAt: number
   /** When set, render as an error notice rather than a normal assistant reply. */
   kind?: 'error'
-  /** Present when Developer → LAIfe V2 Experimental is ON for that turn. */
+  /** Legacy V2 debug payload (unused on Core path; kept for typed message compat). */
   v2Debug?: V2DebugInfo
 }
 
@@ -80,11 +80,11 @@ export interface ThemeSettings {
   customThemes: ThemeDefinition[]
 }
 
-/** Developer-only preferences (device-local). */
+/** Developer-only preferences (device-local). Kept for settings migration compat. */
 export interface DeveloperSettings {
   /**
-   * When true, chat requests send engine=v2 (client preference).
-   * Server routing still follows LAIFE_CONVERSATION_RUNTIME.
+   * Legacy flag (pre-Core). UI removed in #269; Core ignores this.
+   * Still normalized from localStorage so old devices don't break settings load.
    */
   v2Experimental: boolean
 }

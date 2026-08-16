@@ -457,14 +457,13 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     (
       history: ChatApiMessage[],
       personalization: PersonalizationSettings,
-      developer: DeveloperSettings = DEFAULT_DEVELOPER_SETTINGS,
+      _developer: DeveloperSettings = DEFAULT_DEVELOPER_SETTINGS,
     ) => {
       abortActiveCompletion()
       const controller = new AbortController()
       abortRef.current = controller
       const generation = ++generationRef.current
       inFlightRef.current = true
-      const useV2 = developer.v2Experimental === true
 
       void (async () => {
         try {
@@ -481,7 +480,6 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             pendingAutomation,
             conversationMemoryMap,
             conversationPreferenceProfile,
-            v2Debug,
           } =
             await requestChatCompletion(
             {
@@ -598,7 +596,6 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             id: assistantId,
             content: reply,
             memoryEvent: memoryEvent ?? null,
-            ...(useV2 && v2Debug ? { v2Debug } : {}),
           })
         } catch (error) {
           if (generation !== generationRef.current) return

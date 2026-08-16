@@ -38,12 +38,6 @@ function AppShell() {
     navigate('memory')
   }
 
-  const openMemoryFromHeader = () => {
-    if (!isMemoryManageUiEnabled()) return
-    memoryReturnToSettingsRef.current = false
-    navigate('memory')
-  }
-
   const backFromMemory = () => {
     const reopenSettings = memoryReturnToSettingsRef.current
     memoryReturnToSettingsRef.current = false
@@ -58,9 +52,7 @@ function AppShell() {
 
   return (
     <div className="app-shell">
-      {view === 'chat' ? (
-        <Header onNavigate={navigate} onOpenMemory={openMemoryFromHeader} />
-      ) : null}
+      {view === 'chat' ? <Header onNavigate={navigate} /> : null}
 
       {/* Keep chat mounted so scroll position and composer state survive Memory/Vision. */}
       <div

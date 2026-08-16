@@ -151,11 +151,12 @@ export function Vision({ onBack }: VisionProps) {
 
   return (
     <main className="brain-vision">
-      <PageHeader title="Vision AI" onBack={onBack} />
+          <PageHeader title="Vision AI — Coming soon" onBack={onBack} />
 
       <div className="brain-vision__body scroll-surface">
         <p className="brain-vision__lead">
-          Scatta o carica un’immagine, controlla l’anteprima e inviala. L’analisi arriverà in seguito.
+          <strong>Coming soon.</strong> Vision AI is in preview — you can still capture or upload
+          an image to exercise the stub endpoint, but analysis is not available yet.
         </p>
 
         <section className="brain-vision__actions" aria-label="Azioni Vision">

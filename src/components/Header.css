@@ -94,6 +94,23 @@
   gap: 0.65rem;
 }
 
+/* Vision is still a stub — keep entry but mark Coming soon without clutter. */
+.header-btn--soon {
+  flex-direction: column;
+  gap: 0.08rem;
+  padding: 0.28rem 0.4rem;
+}
+
+.header-btn__soon {
+  font-size: 0.55rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1;
+  color: var(--text-muted);
+  opacity: 0.9;
+}
+
 .brand-wordmark {
   display: flex;
   flex-direction: column;
