@@ -10,6 +10,11 @@
   box-sizing: border-box;
 }
 
+/* TEMP (#268): paired with viewport --diag-no-anchor for Preview/dev only. */
+.message-list--diag-no-anchor {
+  overflow-anchor: none;
+}
+
 .message-list__end {
   height: 1.5rem;
   flex-shrink: 0;

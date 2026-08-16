@@ -36,3 +36,15 @@
   /* Programmatic follow uses rAF deltas — keep CSS scroll-behavior off. */
   scroll-behavior: auto;
 }
+
+/*
+ * TEMP (#268 Preview/dev diagnostic only — toggled by AutoScrollController).
+ * Isolates native scroll anchoring vs JS scrollTop writes. Remove after root cause.
+ */
+.chat-container__viewport--diag-no-anchor,
+.chat-container__viewport--diag-no-anchor .message-list,
+.chat-container__viewport--diag-no-anchor .message-list--diag-no-anchor,
+.chat-container__viewport--diag-no-anchor .md-body,
+.chat-container__viewport--diag-no-anchor .bubble {
+  overflow-anchor: none;
+}

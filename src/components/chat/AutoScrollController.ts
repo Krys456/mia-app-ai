@@ -7,6 +7,9 @@
  * - IDLE: not revealing / settled at bottom; no active follow
  *
  * Never uses scrollIntoView() or scrollTop = scrollHeight jumps.
+ *
+ * TEMP (#268): Preview/dev `[chat-scroll][trace]` instrumentation — remove after
+ * the mid-reveal follow bug is fixed and proven.
  */
 
 export type AutoScrollState = 'FOLLOWING' | 'PAUSED_BY_USER' | 'IDLE'
@@ -24,6 +27,14 @@ const TOUCH_UP_INTENT_PX = 4
 
 /** Wheel deltaY below this (negative = scroll up) counts as upward intent. */
 const WHEEL_UP_INTENT = -2
+
+type UserIntentType =
+  | 'none'
+  | 'wheel_up'
+  | 'touch_move_up'
+  | 'keyboard_up'
+  | 'pointer_drag'
+  | 'scroll_away'
 
 function distanceFromBottom(el: HTMLElement): number {
   return el.scrollHeight - el.scrollTop - el.clientHeight
@@ -43,6 +54,62 @@ function isEditableTarget(target: EventTarget | null): boolean {
     tag === 'SELECT' ||
     target.isContentEditable
   )
+}
+
+/** Preview/dev only — never Production custom domains. */
+export function isChatScrollTraceEnabled(): boolean {
+  try {
+    // Vite dev server
+    if (typeof import.meta !== 'undefined' && import.meta.env?.DEV) return true
+  } catch {
+    // ignore
+  }
+  if (typeof globalThis === 'undefined') return false
+  const loc = (globalThis as { location?: Location }).location
+  if (!loc || typeof loc.hostname !== 'string') return false
+  const host = loc.hostname
+  // Vercel git Preview aliases (…-git-…vercel.app) and deployment URLs used for PR previews.
+  if (host.includes('-git-') && host.endsWith('.vercel.app')) return true
+  try {
+    return new URLSearchParams(loc.search || '').has('scrollTrace')
+  } catch {
+    return false
+  }
+}
+
+function readOverflowAnchor(el: Element | null): string | null {
+  if (!el || typeof getComputedStyle !== 'function') return null
+  try {
+    return getComputedStyle(el).overflowAnchor || null
+  } catch {
+    return null
+  }
+}
+
+function sampleVisualAnchor(scroller: HTMLElement | null): {
+  tag: string | null
+  id: string | null
+  top: number | null
+} {
+  if (!scroller || typeof document === 'undefined' || !document.elementFromPoint) {
+    return { tag: null, id: null, top: null }
+  }
+  try {
+    const rect = scroller.getBoundingClientRect()
+    const x = rect.left + Math.min(48, rect.width * 0.5)
+    const y = rect.top + Math.min(72, rect.height * 0.2)
+    const hit = document.elementFromPoint(x, y)
+    if (!(hit instanceof HTMLElement)) return { tag: null, id: null, top: null }
+    const bubble = hit.closest('.bubble, [data-message-id]') as HTMLElement | null
+    const target = bubble || hit
+    return {
+      tag: target.tagName.toLowerCase(),
+      id: target.getAttribute('data-message-id') || target.id || target.className?.toString?.().slice(0, 64) || null,
+      top: target.getBoundingClientRect().top,
+    }
+  } catch {
+    return { tag: null, id: null, top: null }
+  }
 }
 
 export class AutoScrollController {
@@ -65,8 +132,69 @@ export class AutoScrollController {
   private listeners = new Set<AutoScrollListener>()
   private bound = false
 
-  private markUserIntent() {
+  private traceEnabled = false
+  private traceStartedAt = 0
+  private lastUserIntentType: UserIntentType = 'none'
+  private lastUserIntentAt = 0
+  private resizeObserver: ResizeObserver | null = null
+  private lastVisualAnchorTop: number | null = null
+
+  private markUserIntent(type: UserIntentType) {
     this.userIntent = true
+    this.lastUserIntentType = type
+    this.lastUserIntentAt = Date.now()
+  }
+
+  private trace(event: string, extra: Record<string, unknown> = {}) {
+    if (!this.traceEnabled) return
+    const el = this.scroller
+    const scrollTop = el?.scrollTop ?? null
+    const scrollHeight = el?.scrollHeight ?? null
+    const clientHeight = el?.clientHeight ?? null
+    const dist =
+      el != null ? distanceFromBottom(el) : null
+    const anchor = sampleVisualAnchor(el)
+    console.log(
+      JSON.stringify({
+        tag: '[chat-scroll][trace]',
+        event,
+        elapsedMs: Date.now() - this.traceStartedAt,
+        timestamp: Date.now(),
+        controllerState: this.state,
+        scrollTop,
+        scrollHeight,
+        clientHeight,
+        distanceFromBottom: dist,
+        previousScrollHeight: this.lastHeight,
+        growthDelta: extra.growthDelta ?? null,
+        isRevealing: this.streaming,
+        nearBottom: el != null ? this.isNearBottom(el) : null,
+        unseenGrowth: this.hasUnseenGrowth,
+        lastUserIntentType: this.lastUserIntentType,
+        lastUserIntentAt: this.lastUserIntentAt || null,
+        programmaticScrollInProgress: this.ignoreScroll,
+        pendingDelta: this.pendingDelta,
+        rafId: this.rafId,
+        pinRafId: this.pinRafId,
+        visualAnchorTag: anchor.tag,
+        visualAnchorId: anchor.id,
+        visualAnchorTop: anchor.top,
+        visualAnchorTopDelta:
+          anchor.top != null && this.lastVisualAnchorTop != null
+            ? anchor.top - this.lastVisualAnchorTop
+            : null,
+        overflowAnchorScroller: readOverflowAnchor(el),
+        overflowAnchorMessageList: readOverflowAnchor(
+          el?.querySelector?.('.message-list') ?? null,
+        ),
+        overflowAnchorStreaming: readOverflowAnchor(
+          el?.querySelector?.('.md-body--streaming, .md-body--plain') ?? null,
+        ),
+        source: extra.source ?? 'AutoScrollController',
+        ...extra,
+      }),
+    )
+    if (anchor.top != null) this.lastVisualAnchorTop = anchor.top
   }
 
   /**
@@ -90,13 +218,22 @@ export class AutoScrollController {
     if (!this.scroller) return
     // Clear upward intent pauses immediately — do not wait for scroll settle.
     if (event.deltaY < WHEEL_UP_INTENT || distanceFromBottom(this.scroller) > NEAR_BOTTOM_PX) {
-      this.markUserIntent()
+      if (event.deltaY < WHEEL_UP_INTENT) {
+        this.trace('wheel_up', { source: 'onWheel', deltaY: event.deltaY })
+        this.markUserIntent('wheel_up')
+      } else {
+        this.markUserIntent('scroll_away')
+      }
       this.pauseByUser()
     }
   }
 
   private onTouchStart = (event: TouchEvent) => {
     this.lastTouchY = event.touches[0]?.clientY ?? null
+    this.trace('touch_start', {
+      source: 'onTouchStart',
+      touchY: this.lastTouchY,
+    })
   }
 
   private onTouchMove = (event: TouchEvent) => {
@@ -115,7 +252,16 @@ export class AutoScrollController {
     // Finger moving down → content scrolls up (reading earlier messages).
     // Also pause if already away from bottom (browsing history).
     if (dy > TOUCH_UP_INTENT_PX || distanceFromBottom(this.scroller) > NEAR_BOTTOM_PX) {
-      this.markUserIntent()
+      if (dy > TOUCH_UP_INTENT_PX) {
+        this.trace('touch_move_up', {
+          source: 'onTouchMove',
+          touchDy: dy,
+          stateBeforePause: this.state,
+        })
+        this.markUserIntent('touch_move_up')
+      } else {
+        this.markUserIntent('scroll_away')
+      }
       this.pauseByUser()
     }
   }
@@ -131,7 +277,7 @@ export class AutoScrollController {
     if (!this.scroller) return
     // Only pause when drag moves us away from bottom or during reveal follow.
     if (this.state === 'FOLLOWING' || distanceFromBottom(this.scroller) > NEAR_BOTTOM_PX) {
-      this.markUserIntent()
+      this.markUserIntent('pointer_drag')
       this.pauseByUser()
     }
   }
@@ -147,7 +293,8 @@ export class AutoScrollController {
       (event.key === 'ArrowDown' && away) ||
       (event.key === ' ' && !event.shiftKey && away)
     ) {
-      this.markUserIntent()
+      this.trace('keyboard_up', { source: 'onKeyDown', key: event.key })
+      this.markUserIntent('keyboard_up')
       this.pauseByUser()
     }
   }
@@ -156,11 +303,24 @@ export class AutoScrollController {
     if (this.ignoreScroll || !this.scroller) return
     const near = this.isNearBottom(this.scroller)
     const inFollowZone = this.isWithinFollowZone(this.scroller)
+    const stateBefore = this.state
+
+    this.trace('scroll_event', {
+      source: 'onScroll',
+      near,
+      inFollowZone,
+      userIntentFlag: this.userIntent,
+      ignoreScroll: this.ignoreScroll,
+    })
 
     if (this.state === 'FOLLOWING') {
       // Soft-follow may lag true bottom — only pause on clear away + intent,
       // or when position is beyond soft-follow slack (user scrolled up).
       if ((this.userIntent && !near) || !inFollowZone) {
+        this.trace('user_scroll_up', {
+          source: 'onScroll',
+          reason: this.userIntent && !near ? 'intent_not_near' : 'left_follow_zone',
+        })
         this.pauseByUser()
       }
       this.userIntent = false
@@ -173,7 +333,20 @@ export class AutoScrollController {
       this.hasUnseenGrowth = false
       this.pendingDelta = 0
       // Manual return to bottom may resume FOLLOWING while revealing.
+      // DIAG: also fires when still within NEAR_BOTTOM after a small upward pause.
+      this.trace('manual_bottom_detected', {
+        source: 'onScroll',
+        stateBefore,
+        willResumeFollowing: this.streaming,
+        resumeReason: 'near_bottom_while_not_following',
+      })
       this.setState(this.streaming ? 'FOLLOWING' : 'IDLE')
+      if (stateBefore === 'PAUSED_BY_USER' && this.streaming) {
+        this.trace('pause_exit', {
+          source: 'onScroll',
+          reason: 'near_bottom_auto_resume',
+        })
+      }
       return
     }
 
@@ -224,6 +397,7 @@ export class AutoScrollController {
       if (next === 'FOLLOWING' || this.needsLoop()) this.ensureLoop()
       return
     }
+    const prev = this.state
     this.state = next
     if (next === 'FOLLOWING' && this.scroller) {
       this.lastHeight = this.scroller.scrollHeight
@@ -235,6 +409,12 @@ export class AutoScrollController {
       this.stopPin()
       this.pendingDelta = 0
     }
+    if (next === 'PAUSED_BY_USER' && prev !== 'PAUSED_BY_USER') {
+      this.trace('pause_enter', { source: 'setState', prev })
+    }
+    if (prev === 'PAUSED_BY_USER' && next !== 'PAUSED_BY_USER') {
+      this.trace('pause_exit', { source: 'setState', next })
+    }
     this.emit()
     if (this.needsLoop()) this.ensureLoop()
   }
@@ -244,6 +424,9 @@ export class AutoScrollController {
     this.scroller = scroller
     this.lastHeight = scroller.scrollHeight
     this.bound = true
+    this.traceEnabled = isChatScrollTraceEnabled()
+    this.traceStartedAt = Date.now()
+    this.lastVisualAnchorTop = null
 
     scroller.addEventListener('wheel', this.onWheel, { passive: true })
     scroller.addEventListener('touchstart', this.onTouchStart, { passive: true })
@@ -253,6 +436,25 @@ export class AutoScrollController {
     scroller.addEventListener('pointermove', this.onPointerMove, { passive: true })
     scroller.addEventListener('scroll', this.onScroll, { passive: true })
     globalThis.addEventListener?.('keydown', this.onKeyDown)
+
+    // TEMP diagnostic: disable native scroll anchoring on Preview/dev only.
+    if (this.traceEnabled) {
+      this.scroller.classList?.add?.('chat-container__viewport--diag-no-anchor')
+      this.scroller.querySelector?.('.message-list')?.classList?.add?.(
+        'message-list--diag-no-anchor',
+      )
+      if (typeof ResizeObserver !== 'undefined') {
+        this.resizeObserver = new ResizeObserver(() => {
+          this.trace('resize_observer', { source: 'ResizeObserver' })
+        })
+        this.resizeObserver.observe(scroller)
+      }
+    }
+
+    this.trace('controller_init', {
+      source: 'attach',
+      traceEnabled: this.traceEnabled,
+    })
 
     if (this.needsLoop()) this.ensureLoop()
     this.emit()
@@ -265,7 +467,13 @@ export class AutoScrollController {
       cancelAnimationFrame(this.ignoreScrollRaf)
       this.ignoreScrollRaf = null
     }
+    this.resizeObserver?.disconnect()
+    this.resizeObserver = null
     if (this.scroller && this.bound) {
+      this.scroller.classList?.remove?.('chat-container__viewport--diag-no-anchor')
+      this.scroller
+        .querySelector?.('.message-list')
+        ?.classList?.remove?.('message-list--diag-no-anchor')
       this.scroller.removeEventListener('wheel', this.onWheel)
       this.scroller.removeEventListener('touchstart', this.onTouchStart)
       this.scroller.removeEventListener('touchmove', this.onTouchMove)
@@ -280,6 +488,7 @@ export class AutoScrollController {
     this.lastTouchY = null
     this.userIntent = false
     this.ignoreScroll = false
+    this.traceEnabled = false
   }
 
   setStreaming(streaming: boolean) {
@@ -297,6 +506,7 @@ export class AutoScrollController {
     }
 
     // Streaming ended → IDLE if we were following. Stay PAUSED if user is reading.
+    this.trace('stream_finish', { source: 'setStreaming', state: this.state })
     if (this.state === 'FOLLOWING') {
       this.setState('IDLE')
     } else {
@@ -309,6 +519,7 @@ export class AutoScrollController {
 
   /** User sent a message — always resume following the new turn. */
   onUserMessage() {
+    this.trace('new_user_message', { source: 'onUserMessage' })
     this.hasUnseenGrowth = false
     this.pendingDelta = 0
     this.userIntent = false
@@ -328,10 +539,32 @@ export class AutoScrollController {
 
   private applyDelta(delta: number) {
     if (!this.scroller || delta === 0) return
-    // Hard guard: never move scrollTop while paused.
-    if (this.state === 'PAUSED_BY_USER') return
+    // Hard guard: never move scrollTop while paused. Re-read CURRENT state
+    // (stale rAF must not trust the state from schedule time).
+    if (this.state === 'PAUSED_BY_USER') {
+      this.trace('scroll_write_before', {
+        source: 'applyDelta',
+        writeAllowed: false,
+        reason: 'paused',
+        delta,
+      })
+      return
+    }
+    const before = this.scroller.scrollTop
+    this.trace('scroll_write_before', {
+      source: 'applyDelta',
+      writeAllowed: true,
+      delta,
+      scrollTopBefore: before,
+    })
     this.ignoreScroll = true
     this.scroller.scrollTop += delta
+    this.trace('scroll_write_after', {
+      source: 'applyDelta',
+      delta,
+      scrollTopBefore: before,
+      scrollTopAfter: this.scroller.scrollTop,
+    })
     // Clear after paint so async scroll events from this write are ignored.
     if (this.ignoreScrollRaf != null) cancelAnimationFrame(this.ignoreScrollRaf)
     this.ignoreScrollRaf = requestAnimationFrame(() => {
@@ -375,9 +608,30 @@ export class AutoScrollController {
     const el = this.scroller
     if (!el) return
 
+    const stateAtCallback = this.state
     const height = el.scrollHeight
     const growth = height - this.lastHeight
     this.lastHeight = height
+
+    // Trace rAF callback when it can mutate scroll or when growth is observed
+    // (avoid logging every empty settle frame).
+    if (growth > 0 || this.pendingDelta > 0.5 || stateAtCallback === 'FOLLOWING') {
+      this.trace('raf_callback', {
+        source: 'tick',
+        stateAtCallback,
+        growthDelta: growth,
+        writeWouldBeAllowed: stateAtCallback === 'FOLLOWING',
+      })
+    }
+
+    if (growth > 0) {
+      this.trace('reveal_growth', {
+        source: 'tick',
+        growthDelta: growth,
+        willWriteScroll: this.state === 'FOLLOWING' && this.isWithinFollowZone(el),
+        skipWrite: this.state === 'PAUSED_BY_USER',
+      })
+    }
 
     if (this.state === 'FOLLOWING') {
       if (!this.isWithinFollowZone(el)) {
@@ -403,6 +657,12 @@ export class AutoScrollController {
 
     if (this.needsLoop()) {
       this.rafId = requestAnimationFrame(this.tick)
+      if (growth > 0 || this.state === 'FOLLOWING' || this.pendingDelta > 0.5) {
+        this.trace('raf_scheduled', {
+          source: 'tick',
+          stateAtSchedule: this.state,
+        })
+      }
     }
   }
 
@@ -419,18 +679,24 @@ export class AutoScrollController {
   private ensureLoop() {
     if (this.rafId != null) return
     this.rafId = requestAnimationFrame(this.tick)
+    this.trace('raf_scheduled', {
+      source: 'ensureLoop',
+      stateAtSchedule: this.state,
+    })
   }
 
   private stopLoop() {
     if (this.rafId == null) return
     cancelAnimationFrame(this.rafId)
     this.rafId = null
+    this.trace('raf_cancelled', { source: 'stopLoop' })
   }
 
   private stopPin() {
     if (this.pinRafId == null) return
     cancelAnimationFrame(this.pinRafId)
     this.pinRafId = null
+    this.trace('raf_cancelled', { source: 'stopPin' })
   }
 
   /** Smoothly ease toward bottom (or jump if reduced motion), then FOLLOWING/IDLE. */
@@ -438,6 +704,7 @@ export class AutoScrollController {
     const el = this.scroller
     if (!el) return
 
+    this.trace('scroll_to_bottom_click', { source: 'scrollToBottom' })
     this.stopPin()
     this.hasUnseenGrowth = false
     this.pendingDelta = 0
@@ -446,7 +713,17 @@ export class AutoScrollController {
 
     if (prefersReducedMotion()) {
       this.ignoreScroll = true
+      this.trace('scroll_write_before', {
+        source: 'scrollToBottom_reducedMotion',
+        writeAllowed: true,
+      })
+      const before = el.scrollTop
       el.scrollTop = el.scrollHeight - el.clientHeight
+      this.trace('scroll_write_after', {
+        source: 'scrollToBottom_reducedMotion',
+        scrollTopBefore: before,
+        scrollTopAfter: el.scrollTop,
+      })
       this.lastHeight = el.scrollHeight
       this.pendingDelta = 0
       requestAnimationFrame(() => {
@@ -459,7 +736,14 @@ export class AutoScrollController {
     const pinTick = () => {
       this.pinRafId = null
       const scroller = this.scroller
-      if (!scroller || this.state === 'PAUSED_BY_USER') return
+      if (!scroller || this.state === 'PAUSED_BY_USER') {
+        this.trace('raf_callback', {
+          source: 'pinTick',
+          writeAllowed: false,
+          reason: !scroller ? 'no_scroller' : 'paused',
+        })
+        return
+      }
 
       const remaining = distanceFromBottom(scroller)
       if (remaining <= 2) {

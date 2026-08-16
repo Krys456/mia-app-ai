@@ -55,10 +55,25 @@ function createMockScroller({
 } = {}) {
   /** @type {Record<string, Set<Function>>} */
   const listeners = {}
+  const classSet = new Set()
   const el = {
     clientHeight,
     scrollHeight,
     scrollTop,
+    classList: {
+      add(name) {
+        classSet.add(name)
+      },
+      remove(name) {
+        classSet.delete(name)
+      },
+      contains(name) {
+        return classSet.has(name)
+      },
+    },
+    querySelector() {
+      return null
+    },
     addEventListener(type, fn) {
       if (!listeners[type]) listeners[type] = new Set()
       listeners[type].add(fn)
@@ -237,6 +252,38 @@ function distanceOk(el) {
   el.scrollTop = el.scrollHeight - el.clientHeight - 40
   el.dispatch('scroll', {})
   assert.equal(c.getState(), 'FOLLOWING', 'soft-follow lag does not false-pause')
+  c.detach()
+}
+
+// —— DIAG K: upward touch while still within NEAR_BOTTOM, then scroll event ——
+// Documents current auto-resume: pause is cleared because `near` is still true.
+// This matches the Android “swipe up but reveal keeps following” Preview failure.
+{
+  const el = createMockScroller({ scrollHeight: 500, clientHeight: 400, scrollTop: 100 })
+  settleBottom(el)
+  const c = new AutoScrollController()
+  c.attach(el)
+  c.setStreaming(true)
+  assert.equal(c.getState(), 'FOLLOWING', 'K start FOLLOWING')
+
+  // User scrolled up only 20px — still “near” (NEAR_BOTTOM_PX=56).
+  el.scrollTop = el.scrollHeight - el.clientHeight - 20
+  el.dispatch('touchstart', { touches: [{ clientY: 300 }] })
+  el.dispatch('touchmove', { touches: [{ clientY: 320 }] }) // finger down → content up
+  assert.equal(c.getState(), 'PAUSED_BY_USER', 'K touch upward pauses')
+
+  // Same gesture / layout fires scroll while still near bottom.
+  el.dispatch('scroll', {})
+  assert.equal(
+    c.getState(),
+    'FOLLOWING',
+    'K DIAG: near-bottom scroll after pause auto-resumes FOLLOWING (eager resume)',
+  )
+
+  const topBefore = el.scrollTop
+  el.grow(100)
+  c.tickOnce()
+  assert.ok(el.scrollTop > topBefore, 'K after eager resume, growth writes scrollTop again')
   c.detach()
 }
 
