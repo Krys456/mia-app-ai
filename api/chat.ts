@@ -16,6 +16,7 @@ import {
 } from '../lib/server/core-memory-recall.js'
 import { applyCors, sendCorsPreflight, sendJson } from '../lib/server/http.js'
 import { LAIFE_BASE_SYSTEM_PROMPT } from '../lib/server/laife-base-system-prompt.js'
+import { buildCoreLanguageAppendix } from '../lib/server/language-awareness.js'
 
 export const config = {
   runtime: 'nodejs',
@@ -50,6 +51,9 @@ interface ChatApiRequestBody {
   conversationPreferenceProfile?: Record<string, unknown> | null
   conversationId?: string
   learningSignals?: unknown
+  /** Optional browser locale — final language fallback only when turn+sticky are uncertain. */
+  browserLocale?: string
+  locale?: string
   /** Legacy V1/V2 flags — ignored by the new core. */
   developerMode?: boolean
   engine?: 'v1' | 'v2'
@@ -107,7 +111,7 @@ function parseBody(req: VercelRequest): ChatApiRequestBody {
   return {}
 }
 
-function buildInstructions(body: ChatApiRequestBody): string {
+function buildInstructions(body: ChatApiRequestBody, messages: ChatApiMessage[] = []): string {
   const parts: string[] = [LAIFE_BASE_SYSTEM_PROMPT]
 
   const displayName =
@@ -146,6 +150,20 @@ function buildInstructions(body: ChatApiRequestBody): string {
       : ''
   if (custom) {
     parts.push(`Istruzioni personalizzate dell'utente (rispettale quando possibili):\n${custom}`)
+  }
+
+  // Ephemeral LANGUAGE appendix — reply-language only; not persisted; no second LLM.
+  const latestUser = [...messages].reverse().find((m) => m.role === 'user')
+  const languageAppendix = buildCoreLanguageAppendix({
+    userMessage: latestUser?.content || '',
+    messages,
+    browserLocale:
+      (typeof body.browserLocale === 'string' && body.browserLocale) ||
+      (typeof body.locale === 'string' && body.locale) ||
+      '',
+  })
+  if (languageAppendix) {
+    parts.push(languageAppendix)
   }
 
   return parts.join('\n\n')
@@ -338,7 +356,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           })
         : ''
 
-    const instructions = appendMemoryPackToInstructions(buildInstructions(body), memoryPack)
+    const instructions = appendMemoryPackToInstructions(buildInstructions(body, messages), memoryPack)
     const OpenAI = (await import('openai')).default
     const client = new OpenAI({ apiKey })
 

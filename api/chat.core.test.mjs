@@ -45,4 +45,19 @@ for (const banned of [
 
 assert.ok(LAIFE_BASE_SYSTEM_PROMPT.length < 4000, 'compact V2 prompt should stay short')
 
+// #262 language contract lives in ephemeral appendix, not the Italian-authored base prompt.
+import {
+  LANGUAGE_CONTRACT,
+  buildCoreLanguageAppendix,
+} from '../lib/server/language-awareness.js'
+assert.ok(LANGUAGE_CONTRACT.includes("Respond in the language of the user's latest"))
+assert.ok(!LAIFE_BASE_SYSTEM_PROMPT.includes('response language:'))
+const langAppendix = buildCoreLanguageAppendix({
+  userMessage: 'How are you?',
+  messages: [{ role: 'user', content: 'How are you?' }],
+})
+assert.ok(langAppendix.includes('response language: en'))
+assert.ok(langAppendix.includes('overrides base-prompt language inertia'))
+
 console.log('ok: compact V2 companion prompt present (%d chars)', LAIFE_BASE_SYSTEM_PROMPT.length)
+console.log('ok: #262 language appendix wired (%d chars)', langAppendix.length)
