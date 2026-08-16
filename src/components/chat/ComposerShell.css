@@ -1,4 +1,4 @@
-.input-bar-dock {
+.composer-dock {
   position: sticky;
   bottom: 0;
   z-index: 90;
@@ -9,7 +9,7 @@
   padding:
     0.65rem
     var(--page-gutter)
-    calc(0.65rem + var(--safe-bottom));
+    calc(0.55rem + var(--safe-bottom));
   background: linear-gradient(
     to top,
     var(--bg) 52%,
@@ -17,7 +17,24 @@
   );
 }
 
-.input-bar {
+/* Optional slots: only mounted when content is provided — no empty chrome. */
+.composer-tray,
+.composer-secondary {
+  width: 100%;
+  max-width: var(--content-max);
+  margin: 0 auto 0.45rem;
+  box-sizing: border-box;
+}
+
+.composer__left,
+.composer__right {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-end;
+}
+
+.composer {
   display: flex;
   align-items: flex-end;
   gap: 0.65rem;
@@ -36,13 +53,13 @@
   transition: border-color var(--duration) var(--ease-out), box-shadow var(--duration) var(--ease-out);
 }
 
-.input-bar:focus-within {
+.composer:focus-within {
   border-color: color-mix(in srgb, var(--accent) 42%, transparent);
   box-shadow: var(--shadow-dock), 0 0 0 1px color-mix(in srgb, var(--accent) 12%, transparent),
     var(--glow-brand);
 }
 
-.input-bar__input {
+.composer__input {
   flex: 1;
   min-width: 0;
   resize: none;
@@ -60,15 +77,15 @@
   field-sizing: content;
 }
 
-.input-bar__input::placeholder {
+.composer__input::placeholder {
   color: var(--text-muted);
 }
 
-.input-bar__input:disabled {
+.composer__input:disabled {
   opacity: 0.65;
 }
 
-.input-bar__send {
+.composer__send {
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
@@ -88,40 +105,40 @@
     filter var(--duration-press) var(--ease-out);
 }
 
-.input-bar__send:hover:not(:disabled) {
+.composer__send:hover:not(:disabled) {
   transform: scale(1.04);
   filter: brightness(1.06);
 }
 
-.input-bar__send:active:not(:disabled) {
+.composer__send:active:not(:disabled) {
   transform: scale(0.96);
 }
 
-.input-bar__send:disabled {
+.composer__send:disabled {
   opacity: 0.5;
   cursor: not-allowed;
   box-shadow: none;
 }
 
-.input-bar__send--busy:disabled {
+.composer__send--busy:disabled {
   opacity: 0.85;
   cursor: default;
   box-shadow: var(--glow-brand);
 }
 
-.input-bar__send-pulse {
+.composer__send-pulse {
   width: 0.7rem;
   height: 0.7rem;
   border-radius: var(--radius-pill);
   background: var(--on-accent);
-  animation: input-send-pulse 1.1s infinite var(--ease-out);
+  animation: composer-send-pulse 1.1s infinite var(--ease-out);
 }
 
-.input-bar--busy {
+.composer--busy {
   border-color: color-mix(in srgb, var(--accent) 28%, var(--border));
 }
 
-@keyframes input-send-pulse {
+@keyframes composer-send-pulse {
   0%,
   100% {
     opacity: 0.35;
@@ -134,29 +151,25 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .input-bar__send-pulse {
+  .composer__send-pulse {
     animation: none;
     opacity: 0.75;
   }
 }
 
-.input-bar__send:focus-visible {
+.composer__send:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
 /* Mobile-first: keyboard shortcut hint is hidden unless a fine pointer is present. */
-.input-bar__hint {
+.composer__hint {
   display: none;
-}
-
-.input-bar-dock {
-  padding-bottom: calc(0.55rem + var(--safe-bottom));
 }
 
 /* Desktop / trackpad / mouse: keep the Enter hint visible */
 @media (hover: hover) and (pointer: fine) {
-  .input-bar__hint {
+  .composer__hint {
     display: block;
     width: 100%;
     max-width: var(--content-max);
@@ -167,18 +180,18 @@
     color: var(--text-muted);
   }
 
-  .input-bar-dock {
+  .composer-dock {
     padding-bottom: calc(0.65rem + var(--safe-bottom));
   }
 }
 
 @media (min-width: 768px) {
-  .input-bar {
+  .composer {
     gap: 0.55rem;
     padding: 0.55rem 0.55rem 0.55rem 0.95rem;
   }
 
-  .input-bar__input {
+  .composer__input {
     min-height: 2.65rem;
     padding: 0.55rem 0;
   }
