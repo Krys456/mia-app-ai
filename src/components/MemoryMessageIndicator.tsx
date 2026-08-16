@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { MemoryFeedbackEvent } from '../lib/memoryFeedback'
 import {
+  localizeMemoryDisplayText,
   memoryFeedbackLabel,
   resolveMemoryFeedbackLocale,
 } from '../lib/memoryFeedback'
@@ -24,7 +25,7 @@ export function MemoryMessageIndicator({ event }: MemoryMessageIndicatorProps) {
   )
 
   const label = memoryFeedbackLabel(event.type, locale)
-  const detail = event.displayText?.trim() || ''
+  const detail = localizeMemoryDisplayText(event.displayText, locale)
   const srText = detail ? `${label}. ${detail}` : label
 
   // One-time polite announcement on mount (when the completion attaches the event).

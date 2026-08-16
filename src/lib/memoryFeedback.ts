@@ -67,6 +67,118 @@ export function memoryFeedbackLabel(
   return LABELS[locale]?.[type] ?? LABELS.en[type]
 }
 
+const SUBJECT_LABELS: Record<MemoryFeedbackLocale, Record<string, string>> = {
+  it: {
+    color: 'Colore preferito',
+    food: 'Cibo preferito',
+    character: 'Personaggio preferito',
+    anime: 'Anime preferito',
+    sport: 'Sport preferito',
+    animal: 'Animale preferito',
+    game: 'Gioco preferito',
+    book: 'Libro preferito',
+    music: 'Musica preferita',
+    film: 'Film preferito',
+    movie: 'Film preferito',
+    artist: 'Artista preferito',
+  },
+  en: {
+    color: 'Favorite color',
+    food: 'Favorite food',
+    character: 'Favorite character',
+    anime: 'Favorite anime',
+    sport: 'Favorite sport',
+    animal: 'Favorite animal',
+    game: 'Favorite game',
+    book: 'Favorite book',
+    music: 'Favorite music',
+    film: 'Favorite film',
+    movie: 'Favorite movie',
+    artist: 'Favorite artist',
+  },
+  fr: {
+    color: 'Couleur préférée',
+    food: 'Plat préféré',
+    character: 'Personnage préféré',
+    anime: 'Anime préféré',
+    sport: 'Sport préféré',
+  },
+  es: {
+    color: 'Color favorito',
+    food: 'Comida favorita',
+    character: 'Personaje favorito',
+    anime: 'Anime favorito',
+    sport: 'Deporte favorito',
+  },
+  de: {
+    color: 'Lieblingsfarbe',
+    food: 'Lieblingsessen',
+    character: 'Lieblingsfigur',
+    anime: 'Lieblingsanime',
+    sport: 'Lieblingssport',
+  },
+}
+
+const PROJECT_LABELS: Record<MemoryFeedbackLocale, string> = {
+  it: 'Progetto principale',
+  en: 'Primary project',
+  fr: 'Projet principal',
+  es: 'Proyecto principal',
+  de: 'Hauptprojekt',
+}
+
+/**
+ * Localize a safe server displayText gloss for the Memory indicator.
+ * Accepts "Favorite color: viola" / "Primary project: BrAIn" / plain values.
+ */
+export function localizeMemoryDisplayText(
+  displayText: string | undefined | null,
+  locale: MemoryFeedbackLocale = 'en',
+): string {
+  const raw = String(displayText || '')
+    .replace(/\s+/g, ' ')
+    .trim()
+  if (!raw) return ''
+
+  // Server gloss is English canonical ("Favorite color: viola"); localize label.
+  const favorite = raw.match(/^Favorite\s+([a-z][\w-]{1,40}):\s*(.+)$/i)
+  if (favorite) {
+    const subject = favorite[1].toLowerCase()
+    const value = favorite[2].trim()
+    if (/^(anche|also|pure|oltre)\b/i.test(value)) return ''
+    const label =
+      SUBJECT_LABELS[locale]?.[subject] ||
+      SUBJECT_LABELS.en[subject] ||
+      (locale === 'it' ? `Preferito: ${subject}` : `Favorite ${subject}`)
+    return `${label}: ${value}`
+  }
+
+  // Already-localized IT/other favorite gloss — keep value, refresh label if known.
+  const localizedFavorite = raw.match(
+    /^(Colore preferito|Cibo preferito|Personaggio preferito|Anime preferito|Sport preferito|Couleur préférée|Color favorito|Lieblingsfarbe):\s*(.+)$/i,
+  )
+  if (localizedFavorite) {
+    const value = localizedFavorite[2].trim()
+    if (/^(anche|also|pure|oltre)\b/i.test(value)) return ''
+    return raw
+  }
+
+  const project = raw.match(/^Primary project:\s*(.+)$/i)
+  if (project) {
+    return `${PROJECT_LABELS[locale] || PROJECT_LABELS.en}: ${project[1].trim()}`
+  }
+
+  const localizedProject = raw.match(
+    /^(Progetto principale|Projet principal|Proyecto principal|Hauptprojekt):\s*(.+)$/i,
+  )
+  if (localizedProject) {
+    return `${PROJECT_LABELS[locale] || PROJECT_LABELS.en}: ${localizedProject[2].trim()}`
+  }
+
+  if (/^(anche|also|pure|oltre)\b/i.test(raw)) return ''
+  return raw
+}
+
 /**
  * Normalize API memoryEvent (new object or legacy string) → typed notice.
  */
@@ -88,7 +200,8 @@ export function parseMemoryFeedbackEvent(raw: unknown): MemoryFeedbackEvent | nu
     if (
       cleaned &&
       cleaned.length <= DISPLAY_TEXT_CLIENT_MAX &&
-      !looksUnsafeClientDisplayText(cleaned)
+      !looksUnsafeClientDisplayText(cleaned) &&
+      !/^(anche|also|pure)\b/i.test(cleaned)
     ) {
       displayText = cleaned
     }
