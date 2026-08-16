@@ -1,6 +1,5 @@
 import { BrandLogo } from './BrandLogo'
 import { useChat } from '../context/ChatContext'
-import { isMemoryManageUiEnabled } from '../lib/memoryManageUi'
 import type { AppView } from '../types'
 import './Header.css'
 
@@ -13,26 +12,6 @@ function IconNewChat() {
         strokeWidth="1.8"
         strokeLinecap="round"
       />
-    </svg>
-  )
-}
-
-function IconMemory() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M6.5 7.5h11v11a2 2 0 0 1-2 2h-7a2 2 0 0 1-2-2v-11Z"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M9 7.5V5.8A1.8 1.8 0 0 1 10.8 4h2.4A1.8 1.8 0 0 1 15 5.8V7.5"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
-      <path d="M9.5 12h5M9.5 15.5h5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
     </svg>
   )
 }
@@ -67,11 +46,9 @@ function IconSettings() {
 
 interface HeaderProps {
   onNavigate: (view: AppView) => void
-  /** Open Memory without treating Settings as the return target. */
-  onOpenMemory?: () => void
 }
 
-export function Header({ onNavigate, onOpenMemory }: HeaderProps) {
+export function Header({ onNavigate }: HeaderProps) {
   const { newChat, toggleSettings, settingsOpen, messages } = useChat()
 
   const goHomeChat = () => {
@@ -121,25 +98,15 @@ export function Header({ onNavigate, onOpenMemory }: HeaderProps) {
           </button>
           <button
             type="button"
-            className="header-btn"
-            onClick={() => {
-              if (onOpenMemory) onOpenMemory()
-              else onNavigate('memory')
-            }}
-            aria-label="Gestisci memoria"
-            title="Memoria"
-            hidden={!isMemoryManageUiEnabled()}
-          >
-            <IconMemory />
-          </button>
-          <button
-            type="button"
-            className="header-btn"
+            className="header-btn header-btn--soon"
             onClick={() => onNavigate('vision')}
-            aria-label="Vision AI"
-            title="Vision AI"
+            aria-label="Vision AI — Coming soon"
+            title="Vision AI — Coming soon"
           >
             <IconVision />
+            <span className="header-btn__soon" aria-hidden="true">
+              Soon
+            </span>
           </button>
           <button
             type="button"
