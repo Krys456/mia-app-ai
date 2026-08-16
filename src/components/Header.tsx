@@ -98,15 +98,12 @@ export function Header({ onNavigate }: HeaderProps) {
           </button>
           <button
             type="button"
-            className="header-btn header-btn--soon"
+            className="header-btn"
             onClick={() => onNavigate('vision')}
-            aria-label="Vision AI — Coming soon"
-            title="Vision AI — Coming soon"
+            aria-label="Vision AI"
+            title="Vision AI"
           >
             <IconVision />
-            <span className="header-btn__soon" aria-hidden="true">
-              Soon
-            </span>
           </button>
           <button
             type="button"

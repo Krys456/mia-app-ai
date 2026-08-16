@@ -1,5 +1,5 @@
 /**
- * Recognition.lang hint for #273 dictation.
+ * Recognition.lang hint for #273 dictation / Vision sticky helper.
  * Client-only hybrid: recent user sticky → navigator.language → en-US.
  * Does not change Core #262 LANGUAGE semantics.
  */
@@ -14,16 +14,17 @@ const BCP47: Record<DictationLangCode, string> = {
   de: 'de-DE',
 }
 
+// Broader than mic-only hints — enough to recover sticky from normal chat turns.
 const IT =
-  /\b(che|come|sono|perché|perche|voglio|vorrei|ciao|grazie|dimmi|parliamo|oggi|domani|allenarmi|presto|qualcosa|fotografia)\b/i
+  /\b(che|come|cosa|sono|perché|perche|voglio|vorrei|ciao|grazie|dimmi|parliamo|oggi|domani|interessante|qualcosa|fotografia|luce|naturale|ritratti|parlare|italiano|bene|certo|ancora|molto|più|piu|questa|questo|quella|quello)\b/i
 const EN =
-  /\b(the|what|how|why|should|would|could|please|hello|hey|today|tomorrow|want|about|project|remember)\b/i
+  /\b(the|what|how|why|should|would|could|please|hello|hey|today|tomorrow|want|about|project|remember|interesting|something|light|natural|portraits|english|talk|speak)\b/i
 const ES =
-  /\b(qué|que|cómo|como|estoy|hola|gracias|quiero|porque|también|tambien|proyecto|recuerda)\b/i
+  /\b(qué|que|cómo|como|estoy|hola|gracias|quiero|porque|también|tambien|proyecto|recuerda|interesante|algo|luz|español|hablar)\b/i
 const FR =
-  /\b(que|qui|comment|pourquoi|bonjour|merci|veux|voudrais|aujourd|demain|projet|parlons)\b/i
+  /\b(que|qui|comment|pourquoi|bonjour|merci|veux|voudrais|aujourd|demain|projet|parlons|intéressant|quelque|lumière|lumiere|français|francais|parler)\b/i
 const DE =
-  /\b(was|wie|warum|hallo|danke|bitte|heute|morgen|projekt|möchte|mochte|erzähl|erzaehl)\b/i
+  /\b(was|wie|warum|hallo|danke|bitte|heute|morgen|projekt|möchte|mochte|erzähl|erzaehl|interessant|etwas|licht|deutsch|sprechen)\b/i
 
 function scoreLang(text: string): DictationLangCode | null {
   const t = String(text || '').trim()

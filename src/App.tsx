@@ -50,6 +50,10 @@ function AppShell() {
     navigate(previous === 'vision' ? 'chat' : previous)
   }
 
+  const handoffVisionToChat = () => {
+    navigate('chat')
+  }
+
   return (
     <div className="app-shell">
       {view === 'chat' ? <Header onNavigate={navigate} /> : null}
@@ -72,7 +76,7 @@ function AppShell() {
 
       {view === 'vision' ? (
         <div className="app-view" key="vision">
-          <Vision onBack={backFromVision} />
+          <Vision onBack={backFromVision} onHandoffToChat={handoffVisionToChat} />
         </div>
       ) : null}
 
