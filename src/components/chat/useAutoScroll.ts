@@ -3,12 +3,12 @@ import { AutoScrollController } from './AutoScrollController'
 
 /**
  * React binding for AutoScrollController.
- * Scroll decisions live in the controller; this hook only mirrors UI state needed for chrome.
+ * Scroll decisions live in the controller; this hook only mirrors UI chrome + start pin.
  */
 export function useAutoScroll(isStreaming: boolean) {
   const [scrollerEl, setScrollerEl] = useState<HTMLDivElement | null>(null)
   const controllerRef = useRef<AutoScrollController | null>(null)
-  const pendingFollowRef = useRef(false)
+  const pendingUserMessageRef = useRef(false)
   const [showButton, setShowButton] = useState(false)
 
   useEffect(() => {
@@ -25,8 +25,8 @@ export function useAutoScroll(isStreaming: boolean) {
     controller.attach(scrollerEl)
     controller.setStreaming(isStreaming)
 
-    if (pendingFollowRef.current) {
-      pendingFollowRef.current = false
+    if (pendingUserMessageRef.current) {
+      pendingUserMessageRef.current = false
       controller.onUserMessage()
     }
 
@@ -50,7 +50,7 @@ export function useAutoScroll(isStreaming: boolean) {
       controllerRef.current.scrollToBottom()
       return
     }
-    pendingFollowRef.current = true
+    pendingUserMessageRef.current = true
   }, [])
 
   const onUserMessage = useCallback(() => {
@@ -58,7 +58,11 @@ export function useAutoScroll(isStreaming: boolean) {
       controllerRef.current.onUserMessage()
       return
     }
-    pendingFollowRef.current = true
+    pendingUserMessageRef.current = true
+  }, [])
+
+  const onAssistantStart = useCallback((messageId: string, element: HTMLElement | null) => {
+    controllerRef.current?.onAssistantStart(messageId, element)
   }, [])
 
   return {
@@ -66,5 +70,6 @@ export function useAutoScroll(isStreaming: boolean) {
     showButton,
     scrollToBottom,
     onUserMessage,
+    onAssistantStart,
   }
 }
