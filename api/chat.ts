@@ -179,14 +179,64 @@ async function runMemoryIfEnabled(
       requireExplicitUserId: true,
     })
 
+    // Preview-only: surface replace_set ground-truth already logged inside apply.
+    try {
+      const { isReplaceSetTraceEnabled, logReplaceSetTrace } = await import(
+        '../lib/server/memory-replace-set-trace.js'
+      )
+      if (isReplaceSetTraceEnabled()) {
+        const replaceResults = Array.isArray((result as { replaceSetResults?: unknown })?.replaceSetResults)
+          ? (result as { replaceSetResults: unknown[] }).replaceSetResults
+          : []
+        for (const entry of replaceResults) {
+          const trace =
+            entry && typeof entry === 'object' && 'trace' in entry
+              ? (entry as { trace?: unknown }).trace
+              : null
+          if (trace) {
+            logReplaceSetTrace('pipeline_result', {
+              userId: `${ownerUserId.slice(0, 8)}…`,
+              saved: Boolean((result as { saved?: boolean })?.saved),
+              replaced: Boolean((result as { replaced?: boolean })?.replaced),
+              replaceSetResult: {
+                action: (entry as { action?: string }).action || null,
+                obsoletedIds: (entry as { obsoletedIds?: string[] }).obsoletedIds || [],
+                failedIds: (entry as { failedIds?: string[] }).failedIds || [],
+                error: (entry as { error?: string | null }).error || null,
+              },
+              trace,
+            })
+          }
+        }
+      }
+    } catch {
+      // Diagnostic-only — never affect chat response.
+    }
+
     if (result?.updated) return { event: 'updated' }
     if (result?.saved) return { event: 'saved' }
     return { event: null }
   } catch (error) {
-    console.warn(
-      '[api/chat] memory write skipped:',
-      error instanceof Error ? error.message.slice(0, 180) : String(error).slice(0, 180),
-    )
+    const message = error instanceof Error ? error.message.slice(0, 180) : String(error).slice(0, 180)
+    console.warn('[api/chat] memory write skipped:', message)
+    try {
+      const {
+        isReplaceSetTraceEnabled,
+        logReplaceSetTraceError,
+        extractCofavoriteReplaceHint,
+      } = await import('../lib/server/memory-replace-set-trace.js')
+      if (isReplaceSetTraceEnabled()) {
+        const hint = extractCofavoriteReplaceHint(userMessage)
+        logReplaceSetTraceError({
+          stage: 'runMemoryIfEnabled',
+          message,
+          operation: hint.operation,
+          subject: hint.subject,
+        })
+      }
+    } catch {
+      // ignore diagnostic failures
+    }
     return { event: null }
   }
 }
