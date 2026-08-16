@@ -36,9 +36,10 @@ function MessageListComponent({ messages, isThinking, isStreaming }: MessageList
             message={message}
             isStreaming={isThisStreaming}
             showActions={
-              message.role === 'assistant' &&
-              message.kind !== 'error' &&
-              !isThisStreaming
+              (message.role === 'assistant' &&
+                message.kind !== 'error' &&
+                !isThisStreaming) ||
+              (message.role === 'user' && Boolean(message.content))
             }
             canRegenerate={canRegenerate}
             onRegenerate={onRegenerate}

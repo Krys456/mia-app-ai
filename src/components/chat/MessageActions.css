@@ -14,10 +14,18 @@
 
 .message-actions--visible,
 .bubble--assistant:hover .message-actions,
-.bubble--assistant:focus-within .message-actions {
+.bubble--assistant:focus-within .message-actions,
+.bubble--user:hover .message-actions,
+.bubble--user:focus-within .message-actions {
   opacity: 1;
   transform: translateY(0);
   pointer-events: auto;
+}
+
+.message-actions--user {
+  justify-content: flex-end;
+  margin-top: 0.35rem;
+  max-width: 100%;
 }
 
 @media (hover: none), (pointer: coarse), (max-width: 767px) {

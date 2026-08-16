@@ -1,11 +1,13 @@
 .md-body {
   line-height: 1.7;
-  font-size: 1.02rem;
+  font-size: calc(1.02rem * var(--chat-font-scale, 1));
+  font-family: var(--font-sans);
   overflow-wrap: anywhere;
   word-break: break-word;
   max-width: 100%;
   /* Wide tables/code scroll inside; never widen the app shell. */
   overflow-x: hidden;
+  --md-block-gap: 0.92em;
 }
 
 .md-body--settle {
@@ -25,7 +27,7 @@
 }
 
 .md-body p {
-  margin: 0 0 0.85em;
+  margin: 0 0 var(--md-block-gap);
 }
 
 .md-plain {
@@ -39,7 +41,7 @@
 .md-body h2,
 .md-body h3,
 .md-body h4 {
-  margin: 1.15em 0 0.45em;
+  margin: 1.2em 0 0.5em;
   font-weight: 650;
   letter-spacing: -0.015em;
   line-height: 1.28;
@@ -47,16 +49,16 @@
 }
 
 .md-body h1 {
-  font-size: 1.28rem;
+  font-size: calc(1.28rem * var(--chat-font-scale, 1));
 }
 
 .md-body h2 {
-  font-size: 1.14rem;
+  font-size: calc(1.14rem * var(--chat-font-scale, 1));
 }
 
 .md-body h3,
 .md-body h4 {
-  font-size: 1.02rem;
+  font-size: calc(1.02rem * var(--chat-font-scale, 1));
 }
 
 .md-body h1 + p,
@@ -77,21 +79,21 @@
 
 .md-body ul,
 .md-body ol {
-  margin: 0.35em 0 0.9em;
+  margin: 0.4em 0 var(--md-block-gap);
   padding-left: 1.35rem;
 }
 
 .md-body li {
-  margin: 0.28em 0;
+  margin: 0.32em 0;
   padding-left: 0.15rem;
 }
 
 .md-body li > p {
-  margin: 0.2em 0;
+  margin: 0.22em 0;
 }
 
 .md-body li + li {
-  margin-top: 0.38em;
+  margin-top: 0.42em;
 }
 
 .md-body ul.contains-task-list {
@@ -130,7 +132,8 @@
 .md-inline-code,
 .md-body code:not(.hljs) {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 0.88em;
+  /* Keep monospace near rem so large reading size does not blow code. */
+  font-size: 0.88rem;
   background: var(--code-bg);
   padding: 0.12em 0.38em;
   border-radius: var(--radius-xs);

@@ -68,7 +68,7 @@ function MessageBubbleComponent({
   }, [actionsPinned])
 
   const onPointerDown = (event: PointerEvent<HTMLElement>) => {
-    if (!isAssistant || isStreaming || !showActions || isError) return
+    if (!showActions || isStreaming || isError || !message.content) return
     if (event.pointerType === 'mouse') return
     clearLongPress()
     longPressTimer.current = window.setTimeout(() => {
@@ -79,9 +79,12 @@ function MessageBubbleComponent({
   const onPointerUp = () => clearLongPress()
 
   const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
-    if (!isAssistant || !showActions) return
+    if (!showActions) return
     if (event.key === 'Escape') setActionsPinned(false)
   }
+
+  const actionsEnabled =
+    showActions && !isStreaming && !isError && Boolean(message.content)
 
   return (
     <article
@@ -90,7 +93,7 @@ function MessageBubbleComponent({
       className={`bubble bubble--${message.role}${isError ? ' bubble--error' : ''}${actionsPinned ? ' bubble--actions-open' : ''}`}
       aria-label={message.role === 'user' ? 'Tu' : isError ? 'Errore' : 'LAIfe'}
       role={isError ? 'alert' : undefined}
-      tabIndex={isAssistant && showActions && !isError ? 0 : undefined}
+      tabIndex={actionsEnabled ? 0 : undefined}
       onPointerDown={onPointerDown}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
@@ -130,11 +133,12 @@ function MessageBubbleComponent({
         </div>
       )}
 
-      {isAssistant && showActions && !isStreaming && !isError && message.content ? (
+      {actionsEnabled ? (
         <MessageActions
           messageId={message.id}
           content={message.content}
-          canRegenerate={canRegenerate}
+          variant={isAssistant ? 'assistant' : 'user'}
+          canRegenerate={isAssistant ? canRegenerate : false}
           forceVisible={actionsPinned}
           onRegenerate={() => {
             unpinActions()

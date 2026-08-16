@@ -2,7 +2,7 @@ import { useEffect, useId, useRef } from 'react'
 import { useChat } from '../context/ChatContext'
 import { useTheme } from '../context/ThemeContext'
 import { isMemoryManageUiEnabled } from '../lib/memoryManageUi'
-import type { PersonalizationSettings } from '../types'
+import type { AppearanceFontFamily, AppearanceFontSize, PersonalizationSettings } from '../types'
 import { ThemeSettings } from './ThemeSettings'
 import './SettingsDrawer.css'
 import './MemoryToggle.css'
@@ -20,6 +20,7 @@ export function SettingsDrawer({ onOpenMemory }: SettingsDrawerProps) {
     closeSettings,
     settings,
     updatePersonalization,
+    updateAppearance,
   } = useChat()
   const { clearPreview } = useTheme()
   const titleId = useId()
@@ -71,11 +72,15 @@ export function SettingsDrawer({ onOpenMemory }: SettingsDrawerProps) {
   }, [settingsOpen, closeSettings, clearPreview])
 
   const p = settings.personalization
+  const appearance = settings.appearance
 
   const set = <K extends keyof PersonalizationSettings>(
     key: K,
     value: PersonalizationSettings[K],
   ) => updatePersonalization({ [key]: value })
+
+  const setFontSize = (fontSize: AppearanceFontSize) => updateAppearance({ fontSize })
+  const setFontFamily = (fontFamily: AppearanceFontFamily) => updateAppearance({ fontFamily })
 
   return (
     <div
@@ -122,6 +127,76 @@ export function SettingsDrawer({ onOpenMemory }: SettingsDrawerProps) {
 
         <div className="settings-drawer__body">
           <ThemeSettings active={settingsOpen} />
+
+          <div className="settings-divider" role="separator" />
+
+          <section className="settings-appearance" aria-labelledby="appearance-settings-title">
+            <h3 id="appearance-settings-title" className="settings-section-title">
+              Aspetto
+            </h3>
+
+            <div className="appearance-row">
+              <span className="field__label" id="appearance-size-label">
+                Dimensione testo
+              </span>
+              <div
+                className="appearance-toggle"
+                role="group"
+                aria-labelledby="appearance-size-label"
+              >
+                {(
+                  [
+                    ['small', 'Small'],
+                    ['default', 'Default'],
+                    ['large', 'Large'],
+                  ] as const
+                ).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    className={`appearance-toggle__opt${appearance.fontSize === value ? ' appearance-toggle__opt--active' : ''}`}
+                    aria-pressed={appearance.fontSize === value}
+                    onClick={() => setFontSize(value)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="appearance-row">
+              <span className="field__label" id="appearance-font-label">
+                Carattere
+              </span>
+              <div
+                className="appearance-toggle"
+                role="group"
+                aria-labelledby="appearance-font-label"
+              >
+                {(
+                  [
+                    ['outfit', 'Outfit'],
+                    ['system', 'System'],
+                  ] as const
+                ).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    className={`appearance-toggle__opt${appearance.fontFamily === value ? ' appearance-toggle__opt--active' : ''}`}
+                    aria-pressed={appearance.fontFamily === value}
+                    onClick={() => setFontFamily(value)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <p className="settings-note settings-note--tight">
+              Solo lettura in chat su questo dispositivo. Non viene inviato a Core né salvato come
+              Memoria.
+            </p>
+          </section>
 
           <div className="settings-divider" role="separator" />
 
