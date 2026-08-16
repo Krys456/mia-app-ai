@@ -13,9 +13,6 @@
       "includeFiles": "lib/server/**",
       "maxDuration": 15
     },
-    "api/vision.ts": {
-      "maxDuration": 15
-    },
     "api/memories/index.ts": {
       "includeFiles": "lib/server/**",
       "maxDuration": 15

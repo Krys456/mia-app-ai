@@ -26,6 +26,7 @@ import {
   summarizeImageForLog,
   visibleUserText,
 } from '../lib/server/chat-image-input.js'
+import { isVisionTaskShortcut } from '../lib/server/vision-task-shortcuts.js'
 
 export const config = {
   runtime: 'nodejs',
@@ -438,10 +439,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Overview + personal memory probes inspect memory; do not auto-extract
     // durable facts from the inspection question itself.
     // Image-only turns (empty caption) skip durable extraction.
+    // Vision Lens Read/Explain shortcuts are ephemeral task instructions — not user facts.
     const skipExtractionForInspection =
       overviewHandled ||
       !lastUserCaption ||
-      isPersonalMemoryProbe(lastUserCaption)
+      isPersonalMemoryProbe(lastUserCaption) ||
+      isVisionTaskShortcut(lastUserCaption)
 
     if (lastUserCaption && !skipExtractionForInspection) {
       const write = await runMemoryIfEnabled(
