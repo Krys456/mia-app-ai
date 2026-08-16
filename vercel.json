@@ -7,7 +7,7 @@
   "functions": {
     "api/chat.ts": {
       "includeFiles": "lib/server/**",
-      "maxDuration": 60
+      "maxDuration": 120
     },
     "api/memory-test.ts": {
       "includeFiles": "lib/server/**",
