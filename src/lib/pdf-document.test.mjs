@@ -103,7 +103,7 @@ describe('#275 PDF document MVP', () => {
     assert.equal(mixed.code, 'too_many_images')
   })
 
-  it('maps PDF to input_file with detail low; PDF-only uses sticky IT nudge', () => {
+  it('maps PDF to input_file with file_id + detail only (no filename/file_data/file_url)', () => {
     const itHist = [
       { role: 'user', content: 'Ciao, parliamo in italiano per favore.' },
       { role: 'assistant', content: 'Certo, parliamo pure in italiano.' },
@@ -130,8 +130,17 @@ describe('#275 PDF document MVP', () => {
     assert.notEqual(text.text, DOCUMENT_ONLY_MODEL_NUDGE)
     assert.notEqual(text.text, IMAGE_ONLY_MODEL_NUDGE)
     assert.equal(file.file_id, 'file-abc123XYZ')
-    assert.equal(file.filename, 'report.pdf')
     assert.equal(file.detail, 'low')
+    assert.equal(Object.prototype.hasOwnProperty.call(file, 'filename'), false)
+    assert.equal(Object.prototype.hasOwnProperty.call(file, 'file_data'), false)
+    assert.equal(Object.prototype.hasOwnProperty.call(file, 'file_url'), false)
+    assert.deepEqual(file, {
+      type: 'input_file',
+      file_id: 'file-abc123XYZ',
+      detail: 'low',
+    })
+    // Filename remains on sanitized ChatApi/message metadata (UI), not Responses input.
+    assert.equal(itHist.at(-1).attachments[0].name, 'report.pdf')
     assert.equal(visibleUserText(itHist.at(-1)), '')
 
     const plan = buildLanguageAwarenessPlan({
