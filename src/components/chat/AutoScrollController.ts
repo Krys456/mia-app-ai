@@ -1,10 +1,10 @@
 /**
- * AutoScrollController — single-responsibility scroll follow for streaming chat.
+ * AutoScrollController — single authority for chat scroll follow during reveal.
  *
  * States:
- * - FOLLOWING: apply content growth each frame (scrollTop += Δheight)
- * - PAUSED_BY_USER: user took over; never force scroll
- * - IDLE: model finished; no active follow
+ * - FOLLOWING: soft-follow content growth only while near bottom
+ * - PAUSED_BY_USER: user reading above; never adjust scrollTop for growth
+ * - IDLE: not revealing / settled at bottom; no active follow
  *
  * Never uses scrollIntoView() or scrollTop = scrollHeight jumps.
  */
@@ -16,10 +16,22 @@ export type AutoScrollListener = (snapshot: {
   showButton: boolean
 }) => void
 
-const NEAR_BOTTOM_PX = 56
+/** Distance (px) treated as "at / near bottom" for follow + button. */
+export const NEAR_BOTTOM_PX = 56
+
+/** Upward touch delta (px) that counts as clear reading intent. */
+const TOUCH_UP_INTENT_PX = 4
+
+/** Wheel deltaY below this (negative = scroll up) counts as upward intent. */
+const WHEEL_UP_INTENT = -2
 
 function distanceFromBottom(el: HTMLElement): number {
   return el.scrollHeight - el.scrollTop - el.clientHeight
+}
+
+function prefersReducedMotion(): boolean {
+  if (typeof globalThis === 'undefined' || !globalThis.matchMedia) return false
+  return globalThis.matchMedia('(prefers-reduced-motion: reduce)').matches
 }
 
 function isEditableTarget(target: EventTarget | null): boolean {
@@ -57,9 +69,27 @@ export class AutoScrollController {
     this.userIntent = true
   }
 
+  /**
+   * Slack above NEAR_BOTTOM while FOLLOWING: soft-follow eases and can lag
+   * true bottom. Beyond this, treat position as "user reading above".
+   */
+  private followSlackPx(): number {
+    return Math.max(96, this.pendingDelta + 24)
+  }
+
+  private isNearBottom(el: HTMLElement = this.scroller!): boolean {
+    return distanceFromBottom(el) <= NEAR_BOTTOM_PX
+  }
+
+  /** Near enough that soft-follow may still catch up without dragging a reader. */
+  private isWithinFollowZone(el: HTMLElement): boolean {
+    return distanceFromBottom(el) <= NEAR_BOTTOM_PX + this.followSlackPx()
+  }
+
   private onWheel = (event: WheelEvent) => {
     if (!this.scroller) return
-    if (event.deltaY < 0 || distanceFromBottom(this.scroller) > NEAR_BOTTOM_PX) {
+    // Clear upward intent pauses immediately — do not wait for scroll settle.
+    if (event.deltaY < WHEEL_UP_INTENT || distanceFromBottom(this.scroller) > NEAR_BOTTOM_PX) {
       this.markUserIntent()
       this.pauseByUser()
     }
@@ -83,8 +113,8 @@ export class AutoScrollController {
     this.lastTouchY = y
 
     // Finger moving down → content scrolls up (reading earlier messages).
-    // Also pause if already away from bottom (user is browsing history).
-    if (dy > 6 || distanceFromBottom(this.scroller) > NEAR_BOTTOM_PX) {
+    // Also pause if already away from bottom (browsing history).
+    if (dy > TOUCH_UP_INTENT_PX || distanceFromBottom(this.scroller) > NEAR_BOTTOM_PX) {
       this.markUserIntent()
       this.pauseByUser()
     }
@@ -98,8 +128,12 @@ export class AutoScrollController {
     // Mouse / pen drag on the scroller (scrollbar or content drag).
     if (event.pointerType === 'touch') return
     if (event.buttons === 0) return
-    this.markUserIntent()
-    this.pauseByUser()
+    if (!this.scroller) return
+    // Only pause when drag moves us away from bottom or during reveal follow.
+    if (this.state === 'FOLLOWING' || distanceFromBottom(this.scroller) > NEAR_BOTTOM_PX) {
+      this.markUserIntent()
+      this.pauseByUser()
+    }
   }
 
   private onKeyDown = (event: KeyboardEvent) => {
@@ -120,11 +154,15 @@ export class AutoScrollController {
 
   private onScroll = () => {
     if (this.ignoreScroll || !this.scroller) return
-    const near = distanceFromBottom(this.scroller) <= NEAR_BOTTOM_PX
+    const near = this.isNearBottom(this.scroller)
+    const inFollowZone = this.isWithinFollowZone(this.scroller)
 
     if (this.state === 'FOLLOWING') {
-      // Soft-follow intentionally lags true bottom. Only pause on real user intent.
-      if (this.userIntent && !near) this.pauseByUser()
+      // Soft-follow may lag true bottom — only pause on clear away + intent,
+      // or when position is beyond soft-follow slack (user scrolled up).
+      if ((this.userIntent && !near) || !inFollowZone) {
+        this.pauseByUser()
+      }
       this.userIntent = false
       return
     }
@@ -134,6 +172,7 @@ export class AutoScrollController {
     if (near) {
       this.hasUnseenGrowth = false
       this.pendingDelta = 0
+      // Manual return to bottom may resume FOLLOWING while revealing.
       this.setState(this.streaming ? 'FOLLOWING' : 'IDLE')
       return
     }
@@ -162,6 +201,16 @@ export class AutoScrollController {
       showButton:
         this.state === 'PAUSED_BY_USER' || this.hasUnseenGrowth || away,
     }
+  }
+
+  /** Test helper — current controller state. */
+  getState(): AutoScrollState {
+    return this.state
+  }
+
+  /** Test helper — whether unseen reveal growth is pending. */
+  getHasUnseenGrowth(): boolean {
+    return this.hasUnseenGrowth
   }
 
   private emit() {
@@ -203,7 +252,7 @@ export class AutoScrollController {
     scroller.addEventListener('touchcancel', this.onTouchEnd, { passive: true })
     scroller.addEventListener('pointermove', this.onPointerMove, { passive: true })
     scroller.addEventListener('scroll', this.onScroll, { passive: true })
-    window.addEventListener('keydown', this.onKeyDown)
+    globalThis.addEventListener?.('keydown', this.onKeyDown)
 
     if (this.needsLoop()) this.ensureLoop()
     this.emit()
@@ -224,7 +273,7 @@ export class AutoScrollController {
       this.scroller.removeEventListener('touchcancel', this.onTouchEnd)
       this.scroller.removeEventListener('pointermove', this.onPointerMove)
       this.scroller.removeEventListener('scroll', this.onScroll)
-      window.removeEventListener('keydown', this.onKeyDown)
+      globalThis.removeEventListener?.('keydown', this.onKeyDown)
     }
     this.scroller = null
     this.bound = false
@@ -237,6 +286,7 @@ export class AutoScrollController {
     this.streaming = streaming
     if (streaming) {
       this.settleFrames = 0
+      // Never auto-unpause: growth alone must not resume FOLLOWING.
       if (this.state !== 'PAUSED_BY_USER') {
         this.setState('FOLLOWING')
       } else {
@@ -246,7 +296,7 @@ export class AutoScrollController {
       return
     }
 
-    // Streaming ended → IDLE if we were following.
+    // Streaming ended → IDLE if we were following. Stay PAUSED if user is reading.
     if (this.state === 'FOLLOWING') {
       this.setState('IDLE')
     } else {
@@ -267,6 +317,8 @@ export class AutoScrollController {
   }
 
   pauseByUser() {
+    // Drop any pending soft-follow so the next rAF cannot drag the reader.
+    this.pendingDelta = 0
     if (this.state === 'PAUSED_BY_USER') {
       this.emit()
       return
@@ -276,6 +328,8 @@ export class AutoScrollController {
 
   private applyDelta(delta: number) {
     if (!this.scroller || delta === 0) return
+    // Hard guard: never move scrollTop while paused.
+    if (this.state === 'PAUSED_BY_USER') return
     this.ignoreScroll = true
     this.scroller.scrollTop += delta
     // Clear after paint so async scroll events from this write are ignored.
@@ -291,6 +345,10 @@ export class AutoScrollController {
    * large spikes are eased over a few frames so scroll never jumps.
    */
   private followGrowth(growth: number) {
+    if (this.state !== 'FOLLOWING') {
+      this.pendingDelta = 0
+      return
+    }
     this.pendingDelta += growth
     if (this.pendingDelta <= 0) {
       this.pendingDelta = 0
@@ -307,6 +365,11 @@ export class AutoScrollController {
     this.pendingDelta -= step
   }
 
+  /** Run a single controller tick (used by tests). */
+  tickOnce() {
+    this.tick()
+  }
+
   private tick = () => {
     this.rafId = null
     const el = this.scroller
@@ -317,13 +380,19 @@ export class AutoScrollController {
     this.lastHeight = height
 
     if (this.state === 'FOLLOWING') {
-      if (growth > 0) {
+      if (!this.isWithinFollowZone(el)) {
+        // Reader moved above the follow zone — freeze viewport; mark unseen growth.
+        if (growth > 0) this.hasUnseenGrowth = true
+        this.pendingDelta = 0
+        this.pauseByUser()
+      } else if (growth > 0) {
         this.followGrowth(growth)
       } else if (this.pendingDelta > 0.5) {
         this.followGrowth(0)
       }
     } else if (growth > 0) {
       // New content while paused / idle away from bottom → show jump button.
+      // Never adjust scrollTop here — reading position must stay put.
       if (this.state === 'PAUSED_BY_USER' || distanceFromBottom(el) > NEAR_BOTTOM_PX) {
         this.hasUnseenGrowth = true
         this.emit()
@@ -364,7 +433,7 @@ export class AutoScrollController {
     this.pinRafId = null
   }
 
-  /** Smoothly ease toward bottom, then enter FOLLOWING (or IDLE if not streaming). */
+  /** Smoothly ease toward bottom (or jump if reduced motion), then FOLLOWING/IDLE. */
   scrollToBottom() {
     const el = this.scroller
     if (!el) return
@@ -374,6 +443,18 @@ export class AutoScrollController {
     this.pendingDelta = 0
     this.userIntent = false
     this.setState('FOLLOWING')
+
+    if (prefersReducedMotion()) {
+      this.ignoreScroll = true
+      el.scrollTop = el.scrollHeight - el.clientHeight
+      this.lastHeight = el.scrollHeight
+      this.pendingDelta = 0
+      requestAnimationFrame(() => {
+        this.ignoreScroll = false
+      })
+      this.setState(this.streaming ? 'FOLLOWING' : 'IDLE')
+      return
+    }
 
     const pinTick = () => {
       this.pinRafId = null

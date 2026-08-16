@@ -1,7 +1,7 @@
 .scroll-bottom-btn {
   position: absolute;
-  right: var(--page-gutter);
-  bottom: 0.85rem;
+  right: max(var(--page-gutter), env(safe-area-inset-right, 0px));
+  bottom: max(0.85rem, env(safe-area-inset-bottom, 0px));
   z-index: 40;
   display: inline-flex;
   align-items: center;
@@ -31,6 +31,17 @@
     border-color var(--duration) var(--ease-out),
     box-shadow var(--duration) var(--ease-out),
     background var(--duration) var(--ease-out);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scroll-bottom-btn {
+    transition: none;
+    transform: none;
+  }
+
+  .scroll-bottom-btn--visible {
+    transform: none;
+  }
 }
 
 .scroll-bottom-btn--visible {
