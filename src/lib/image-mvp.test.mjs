@@ -29,7 +29,8 @@ assert.match(types, /attachments\?: ChatAttachment\[\]/)
 assert.match(types, /kind: 'image'/)
 assert.match(types, /mimeType: SupportedImageMime/)
 assert.match(types, /dataUrl: string/)
-assert.match(chatApi, /attachments\?: ChatApiImageAttachment\[\]/)
+assert.match(chatApi, /ChatApiFileAttachment/)
+assert.match(chatApi, /attachments\?: Array<ChatApiImageAttachment \| ChatApiFileAttachment>/)
 assert.match(chatApi, /type: 'image'/)
 
 // Client validation + compression helpers
@@ -51,7 +52,9 @@ assert.match(attach, /Foto/)
 assert.match(attach, /Fotocamera/)
 assert.match(attach, /accept="image\/jpeg,image\/png,image\/webp,image\/\*"/)
 assert.match(attach, /capture="environment"/)
-assert.doesNotMatch(attach, /Coming soon|Files|PDF|multiple/)
+assert.doesNotMatch(attach, /Coming soon|DOCX|multiple/)
+assert.match(attach, /File \/ Documento/)
+assert.match(attach, /application\/pdf/)
 
 // Preview / remove / revoke
 assert.match(shell, /composer-preview/)
@@ -66,7 +69,8 @@ assert.match(chatContext, /requestChatCompletion/)
 assert.match(chatContext, /MAX_RECENT_IMAGE_TURNS/)
 assert.match(chatContext, /toApiMessages/)
 assert.match(chatContext, /regenerateAssistant/)
-assert.match(chatContext, /attachments: images\.map/)
+assert.match(chatContext, /wireAtts\.map|type: 'file'|type: 'image'/)
+assert.match(chatContext, /MAX_RECENT_FILE_TURNS/)
 
 // User bubble thumbnail + caption; Copy caption only / image-only no Copy
 assert.match(bubble, /bubble__attachment-img/)
@@ -112,7 +116,8 @@ assert.match(apiChat, /maxDuration:\s*120/)
 assert.doesNotMatch(autoScroll, /attachment|dataUrl|ComposerAttach|image_url/)
 
 // No second vision brain / Instant / mic
-assert.doesNotMatch(apiChat, /second vision|VisionBrain|file_id/)
+assert.doesNotMatch(apiChat, /second vision|VisionBrain/)
+assert.match(apiChat, /modelSupportsFileInput|file_unsupported_model/)
 assert.doesNotMatch(shell, /\bInstant\b|getUserMedia/)
 assert.doesNotMatch(attach, /getUserMedia/)
 

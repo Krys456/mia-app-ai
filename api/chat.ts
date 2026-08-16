@@ -20,12 +20,14 @@ import { LAIFE_BASE_SYSTEM_PROMPT } from '../lib/server/laife-base-system-prompt
 import { buildCoreLanguageAppendix } from '../lib/server/language-awareness.js'
 import {
   mapMessagesToResponsesInput,
+  modelSupportsFileInput,
   modelSupportsImageInput,
   redactAttachmentsForLog,
   sanitizeMultimodalMessages,
   summarizeImageForLog,
   visibleUserText,
 } from '../lib/server/chat-image-input.js'
+import { summarizePdfForLog } from '../lib/server/chat-pdf-files.js'
 import { isVisionTaskShortcut } from '../lib/server/vision-task-shortcuts.js'
 
 export const config = {
@@ -41,10 +43,18 @@ interface ChatApiImageAttachment {
   dataUrl: string
 }
 
+interface ChatApiFileAttachment {
+  type: 'file'
+  fileId: string
+  name: string
+  mimeType: string
+  size: number
+}
+
 interface ChatApiMessage {
   role: ChatRole
   content: string
-  attachments?: ChatApiImageAttachment[]
+  attachments?: Array<ChatApiImageAttachment | ChatApiFileAttachment>
 }
 
 interface ChatApiRequestBody {
@@ -287,7 +297,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const lastUserMessage = [...messages].reverse().find((msg) => msg.role === 'user')
     const lastUserCaption = visibleUserText(lastUserMessage)
-    const lastUserHasImage = Boolean(lastUserMessage?.attachments?.length)
+    const lastUserAttachments = lastUserMessage?.attachments ?? []
+    const lastUserHasImage = lastUserAttachments.some((a) => a.type === 'image')
+    const lastUserHasFile = lastUserAttachments.some((a) => a.type === 'file')
+    const lastUserHasAttachment = lastUserHasImage || lastUserHasFile
     const model = resolveChatModel(process.env)
 
     if (lastUserHasImage && !modelSupportsImageInput(model)) {
@@ -295,7 +308,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         '[api/chat] image rejected: model lacks vision',
         redactAttachmentsForLog({
           model,
-          attachments: lastUserMessage?.attachments?.map((a) => summarizeImageForLog(a)),
+          attachments: lastUserAttachments,
         }),
       )
       return sendJson(res, 400, {
@@ -305,14 +318,40 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       })
     }
 
-    if (lastUserHasImage) {
+    if (lastUserHasFile && !modelSupportsFileInput(model)) {
+      console.warn(
+        '[api/chat] file rejected: model lacks file input',
+        redactAttachmentsForLog({
+          model,
+          attachments: lastUserAttachments,
+        }),
+      )
+      return sendJson(res, 400, {
+        error:
+          'Questo modello non supporta i documenti PDF. Invia solo testo, oppure configura un modello compatibile (es. GPT-5.6 Sol / GPT-4o).',
+        code: 'file_unsupported_model',
+      })
+    }
+
+    if (lastUserHasAttachment) {
       console.info(
         '[api/chat] multimodal user turn',
         redactAttachmentsForLog({
           model,
           captionLen: lastUserCaption.length,
-          attachmentCount: lastUserMessage?.attachments?.length ?? 0,
-          attachments: lastUserMessage?.attachments?.map((a) => summarizeImageForLog(a)),
+          attachmentCount: lastUserAttachments.length,
+          hasImage: lastUserHasImage,
+          hasFile: lastUserHasFile,
+          attachments: lastUserAttachments.map((a) =>
+            a.type === 'file'
+              ? summarizePdfForLog({
+                  name: a.name,
+                  size: a.size,
+                  mimeType: a.mimeType,
+                  fileId: a.fileId,
+                })
+              : summarizeImageForLog(a),
+          ),
         }),
       )
     }
@@ -438,7 +477,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Overview + personal memory probes inspect memory; do not auto-extract
     // durable facts from the inspection question itself.
-    // Image-only turns (empty caption) skip durable extraction.
+    // Image-only / PDF-only turns (empty caption) skip durable extraction.
     // Vision Lens Read/Explain shortcuts are ephemeral task instructions — not user facts.
     const skipExtractionForInspection =
       overviewHandled ||

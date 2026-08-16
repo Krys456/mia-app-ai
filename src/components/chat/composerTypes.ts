@@ -1,13 +1,12 @@
 /**
- * Minimal composer draft model (#271 / #272).
+ * Minimal composer draft model (#271 / #272 / #275).
  */
 
 import type { SupportedImageMime } from '../../types'
 
 export type ComposerAttachmentKind = 'image' | 'file'
 
-/** Draft attachment — images in #272; `file` reserved for later. */
-export interface ComposerAttachment {
+export interface ComposerImageAttachment {
   id: string
   kind: 'image'
   mimeType: SupportedImageMime
@@ -19,6 +18,21 @@ export interface ComposerAttachment {
   previewIsObjectUrl?: boolean
   name?: string
 }
+
+export interface ComposerFileAttachment {
+  id: string
+  kind: 'file'
+  name: string
+  mimeType: 'application/pdf'
+  size: number
+  /** Local File held until Send / upload — never placed in ChatMessage history. */
+  localFile?: File
+  /** Set after successful /api/files upload — reused on chat retry. */
+  fileId?: string
+  expiresAt?: number
+}
+
+export type ComposerAttachment = ComposerImageAttachment | ComposerFileAttachment
 
 export interface ComposerDraft {
   text: string
@@ -45,7 +59,7 @@ export function composerDraftCanSend(draft: ComposerDraft): boolean {
 }
 
 export function revokeComposerAttachment(att: ComposerAttachment | undefined | null): void {
-  if (!att) return
+  if (!att || att.kind !== 'image') return
   if (att.previewIsObjectUrl && att.previewUrl.startsWith('blob:')) {
     try {
       URL.revokeObjectURL(att.previewUrl)

@@ -12,12 +12,21 @@ import {
   prepareImageAttachment,
   summarizeImageForLog,
 } from '../../lib/imageAttachment'
+import {
+  PdfValidationError,
+  assertValidPdfFile,
+  formatPdfSize,
+  summarizePdfForLog,
+  truncateFilename,
+} from '../../lib/pdfAttachment'
+import { PdfUploadError, uploadPdfAttachment } from '../../lib/pdfUpload'
 import type { ChatAttachment } from '../../types'
 import { ComposerAttachMenu } from './ComposerAttachMenu'
 import { ComposerMicrophoneButton } from './ComposerMicrophoneButton'
 import {
   composerDraftCanSend,
-  type ComposerAttachment,
+  type ComposerFileAttachment,
+  type ComposerImageAttachment,
 } from './composerTypes'
 import { useComposerDraft } from './useComposerDraft'
 import { useSpeechDictation } from './useSpeechDictation'
@@ -68,15 +77,14 @@ export type ComposerShellProps = {
 }
 
 /**
- * Extensible composer shell (#271 + #272 image + #273 dictation).
- * Tray / attach live in built-in slots (data-composer-slot) — no empty chrome.
+ * Extensible composer shell (#271 + #272 image + #273 dictation + #275 PDF).
  */
 export function ComposerShell({ onMessageSent }: ComposerShellProps) {
   const { sendMessage, messages, isThinking, isStreaming, settingsOpen } = useChat()
   const {
     draft,
     setText,
-    setImageAttachment,
+    setAttachment,
     removeAttachment,
     clear,
     restore,
@@ -87,11 +95,14 @@ export function ComposerShell({ onMessageSent }: ComposerShellProps) {
   const prevMessageCountRef = useRef(messages.length)
   const [attachError, setAttachError] = useState<string | null>(null)
   const [preparing, setPreparing] = useState(false)
+  const [uploading, setUploading] = useState(false)
   const busy = isThinking || isStreaming
-  const canSend = composerDraftCanSend(draft) && !busy && !preparing
+  const canSend = composerDraftCanSend(draft) && !busy && !preparing && !uploading
   const showKeyboardHint = useShowKeyboardHint()
   const chatSuspended = useChatViewSuspended()
-  const image = draft.attachments[0]
+  const attachment = draft.attachments[0]
+  const image = attachment?.kind === 'image' ? attachment : null
+  const pdf = attachment?.kind === 'file' ? attachment : null
 
   const focusInput = useCallback(() => {
     requestAnimationFrame(() => {
@@ -131,43 +142,61 @@ export function ComposerShell({ onMessageSent }: ComposerShellProps) {
   }, [draft.text])
 
   const onPickFile = useCallback(
-    async (file: File) => {
+    async (file: File, source: 'photos' | 'camera' | 'document') => {
       setAttachError(null)
       setPreparing(true)
       try {
-        const prepared = await prepareImageAttachment(file)
-        const attachment: ComposerAttachment = {
-          id: uid(),
-          kind: 'image',
-          mimeType: prepared.mimeType,
-          dataUrl: prepared.dataUrl,
-          previewUrl: prepared.previewUrl,
-          width: prepared.width,
-          height: prepared.height,
-          previewIsObjectUrl: prepared.previewIsObjectUrl,
-          name: file.name,
+        if (source === 'document') {
+          const validated = await assertValidPdfFile(file)
+          const next: ComposerFileAttachment = {
+            id: uid(),
+            kind: 'file',
+            name: validated.name,
+            mimeType: 'application/pdf',
+            size: validated.size,
+            localFile: file,
+          }
+          console.info('[composer] pdf prepared', summarizePdfForLog(next))
+          setAttachment(next)
+        } else {
+          const prepared = await prepareImageAttachment(file)
+          const next: ComposerImageAttachment = {
+            id: uid(),
+            kind: 'image',
+            mimeType: prepared.mimeType,
+            dataUrl: prepared.dataUrl,
+            previewUrl: prepared.previewUrl,
+            width: prepared.width,
+            height: prepared.height,
+            previewIsObjectUrl: prepared.previewIsObjectUrl,
+            name: file.name,
+          }
+          console.info('[composer] image prepared', summarizeImageForLog(prepared))
+          setAttachment(next)
         }
-        console.info('[composer] image prepared', summarizeImageForLog(prepared))
-        setImageAttachment(attachment)
       } catch (error) {
         const message =
-          error instanceof ImageValidationError
+          error instanceof ImageValidationError || error instanceof PdfValidationError
             ? error.message
-            : 'Impossibile allegare l’immagine.'
+            : source === 'document'
+              ? 'Impossibile allegare il PDF.'
+              : 'Impossibile allegare l’immagine.'
         setAttachError(message)
         console.warn(
-          '[composer] image rejected',
-          error instanceof ImageValidationError ? error.code : 'unknown',
+          '[composer] attachment rejected',
+          error instanceof ImageValidationError || error instanceof PdfValidationError
+            ? error.code
+            : 'unknown',
         )
       } finally {
         setPreparing(false)
       }
     },
-    [setImageAttachment],
+    [setAttachment],
   )
 
-  const submit = () => {
-    if (busy || preparing || dictation.listening) return
+  const submit = async () => {
+    if (busy || preparing || uploading || dictation.listening) return
     const text = draft.text.trim()
     const attachments = draft.attachments
     if (!text && attachments.length === 0) return
@@ -177,16 +206,78 @@ export function ComposerShell({ onMessageSent }: ComposerShellProps) {
       attachments: [...attachments],
     }
 
-    // Thread preview uses dataUrl so blob: URLs can be revoked on clear.
-    const wireAttachments: ChatAttachment[] = attachments.map((att) => ({
-      id: att.id,
-      kind: 'image' as const,
-      mimeType: att.mimeType,
-      dataUrl: att.dataUrl,
-      previewUrl: att.dataUrl,
-      width: att.width,
-      height: att.height,
-    }))
+    let wireAttachments: ChatAttachment[] = []
+
+    try {
+      if (attachments[0]?.kind === 'file') {
+        const pdfAtt = attachments[0]
+        setUploading(true)
+        setAttachError(null)
+
+        let fileId = pdfAtt.fileId
+        let expiresAt = pdfAtt.expiresAt
+        let name = pdfAtt.name
+        let size = pdfAtt.size
+
+        if (!fileId) {
+          if (!pdfAtt.localFile) {
+            setAttachError('PDF non disponibile. Selezionalo di nuovo.')
+            restore(snapshot)
+            return
+          }
+          const uploaded = await uploadPdfAttachment(pdfAtt.localFile)
+          fileId = uploaded.fileId
+          expiresAt = uploaded.expiresAt ?? undefined
+          name = uploaded.filename
+          size = uploaded.size
+          // Keep fileId on draft so a chat failure can retry without re-upload.
+          const withId: ComposerFileAttachment = {
+            ...pdfAtt,
+            fileId,
+            expiresAt,
+            name,
+            size,
+          }
+          restore({ text: snapshot.text, attachments: [withId] })
+          snapshot.attachments = [withId]
+        }
+
+        wireAttachments = [
+          {
+            id: pdfAtt.id,
+            kind: 'file',
+            name,
+            mimeType: 'application/pdf',
+            size,
+            fileId,
+            ...(expiresAt ? { expiresAt } : {}),
+          },
+        ]
+      } else if (attachments[0]?.kind === 'image') {
+        wireAttachments = attachments.map((att) => {
+          const img = att as ComposerImageAttachment
+          return {
+            id: img.id,
+            kind: 'image' as const,
+            mimeType: img.mimeType,
+            dataUrl: img.dataUrl,
+            previewUrl: img.dataUrl,
+            width: img.width,
+            height: img.height,
+          }
+        })
+      }
+    } catch (error) {
+      const message =
+        error instanceof PdfUploadError || error instanceof PdfValidationError
+          ? error.message
+          : 'Caricamento PDF non riuscito. Riprova.'
+      setAttachError(message)
+      restore(snapshot)
+      return
+    } finally {
+      setUploading(false)
+    }
 
     const accepted = sendMessage(text, wireAttachments)
     if (!accepted) {
@@ -201,13 +292,13 @@ export function ComposerShell({ onMessageSent }: ComposerShellProps) {
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault()
-    submit()
+    void submit()
   }
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
-      submit()
+      void submit()
     }
   }
 
@@ -228,23 +319,25 @@ export function ComposerShell({ onMessageSent }: ComposerShellProps) {
     dictation.start()
   }
 
-  // Right action: Send wins when sendable; Mic only on fully empty supported draft;
-  // while listening always show Stop (even if a final briefly lands before onend).
   const showMic =
     dictation.supported &&
-    (dictation.listening || (!composerDraftCanSend(draft) && !busy && !preparing))
+    (dictation.listening || (!composerDraftCanSend(draft) && !busy && !preparing && !uploading))
   const statusLabel = isThinking
     ? 'LAIfe sta pensando'
     : isStreaming
       ? 'LAIfe sta rispondendo'
-      : preparing
-        ? 'Preparazione immagine…'
-        : dictation.listening
-          ? 'Dettatura attiva'
-          : dictation.statusAnnouncement || undefined
+      : uploading
+        ? 'Caricamento PDF…'
+        : preparing
+          ? pdf
+            ? 'Preparazione PDF…'
+            : 'Preparazione immagine…'
+          : dictation.listening
+            ? 'Dettatura attiva'
+            : dictation.statusAnnouncement || undefined
 
   const tray =
-    image || attachError || dictation.error ? (
+    image || pdf || attachError || dictation.error ? (
       <div className="composer-tray-inner">
         {image ? (
           <div className="composer-preview">
@@ -259,6 +352,28 @@ export function ComposerShell({ onMessageSent }: ComposerShellProps) {
               aria-label="Rimuovi immagine"
               onClick={() => {
                 removeAttachment(image.id)
+                setAttachError(null)
+              }}
+            >
+              ×
+            </button>
+          </div>
+        ) : null}
+        {pdf ? (
+          <div className="composer-file-chip" aria-label={`PDF ${pdf.name}`}>
+            <span className="composer-file-chip__icon" aria-hidden="true">
+              PDF
+            </span>
+            <span className="composer-file-chip__meta">
+              <span className="composer-file-chip__name">{truncateFilename(pdf.name)}</span>
+              <span className="composer-file-chip__size">{formatPdfSize(pdf.size)}</span>
+            </span>
+            <button
+              type="button"
+              className="composer-file-chip__remove"
+              aria-label="Rimuovi PDF"
+              onClick={() => {
+                removeAttachment(pdf.id)
                 setAttachError(null)
               }}
             >
@@ -294,12 +409,12 @@ export function ComposerShell({ onMessageSent }: ComposerShellProps) {
       <form
         className={`composer${busy ? ' composer--busy' : ''}${dictation.listening ? ' composer--dictating' : ''}`}
         onSubmit={onSubmit}
-        aria-busy={busy || preparing || dictation.listening || undefined}
+        aria-busy={busy || preparing || uploading || dictation.listening || undefined}
       >
         <div className="composer__left" data-composer-slot="left">
           <ComposerAttachMenu
-            disabled={busy || preparing || dictation.listening}
-            onPickFile={(f) => void onPickFile(f)}
+            disabled={busy || preparing || uploading || dictation.listening}
+            onPickFile={(f, source) => void onPickFile(f, source)}
           />
         </div>
 
@@ -319,7 +434,7 @@ export function ComposerShell({ onMessageSent }: ComposerShellProps) {
               ? 'Ti ascolto…'
               : busy
                 ? 'Puoi scrivere il prossimo messaggio…'
-                : image
+                : image || pdf
                   ? 'Aggiungi una didascalia (opzionale)…'
                   : 'Messaggio a LAIfe…'
           }
@@ -333,17 +448,17 @@ export function ComposerShell({ onMessageSent }: ComposerShellProps) {
           {showMic ? (
             <ComposerMicrophoneButton
               listening={dictation.listening}
-              disabled={busy || preparing}
+              disabled={busy || preparing || uploading}
               onClick={onMicClick}
             />
           ) : (
             <button
               type="submit"
-              className={`composer__send${busy ? ' composer__send--busy' : ''}`}
+              className={`composer__send${busy || uploading ? ' composer__send--busy' : ''}`}
               disabled={!canSend}
-              aria-label={busy || preparing ? statusLabel : 'Invia messaggio'}
+              aria-label={busy || preparing || uploading ? statusLabel : 'Invia messaggio'}
             >
-              {busy || preparing ? (
+              {busy || preparing || uploading ? (
                 <span className="composer__send-pulse" aria-hidden="true" />
               ) : (
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">

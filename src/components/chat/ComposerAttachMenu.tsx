@@ -3,17 +3,18 @@ import './ComposerAttachMenu.css'
 
 interface ComposerAttachMenuProps {
   disabled?: boolean
-  onPickFile: (file: File, source: 'photos' | 'camera') => void
+  onPickFile: (file: File, source: 'photos' | 'camera' | 'document') => void
 }
 
 /**
- * "+" menu with real actions only: Photos + Camera (#272).
+ * "+" menu: Photos + Camera (#272) + File/Documento (#275).
  */
 export function ComposerAttachMenu({ disabled = false, onPickFile }: ComposerAttachMenuProps) {
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
   const photosRef = useRef<HTMLInputElement>(null)
   const cameraRef = useRef<HTMLInputElement>(null)
+  const documentRef = useRef<HTMLInputElement>(null)
   const menuId = useId()
 
   useEffect(() => {
@@ -57,6 +58,13 @@ export function ComposerAttachMenu({ disabled = false, onPickFile }: ComposerAtt
     if (file) onPickFile(file, 'camera')
   }
 
+  const onDocumentChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    closeAndFocusTrigger()
+    if (file) onPickFile(file, 'document')
+  }
+
   return (
     <div className="composer-attach" ref={rootRef}>
       <button
@@ -97,6 +105,14 @@ export function ComposerAttachMenu({ disabled = false, onPickFile }: ComposerAtt
           >
             Fotocamera
           </button>
+          <button
+            type="button"
+            className="composer-attach__item"
+            role="menuitem"
+            onClick={() => documentRef.current?.click()}
+          >
+            File / Documento
+          </button>
         </div>
       ) : null}
 
@@ -118,6 +134,15 @@ export function ComposerAttachMenu({ disabled = false, onPickFile }: ComposerAtt
         tabIndex={-1}
         aria-hidden="true"
         onChange={onCameraChange}
+      />
+      <input
+        ref={documentRef}
+        type="file"
+        accept="application/pdf,.pdf"
+        className="composer-attach__file"
+        tabIndex={-1}
+        aria-hidden="true"
+        onChange={onDocumentChange}
       />
     </div>
   )

@@ -193,6 +193,55 @@
   background: color-mix(in srgb, var(--surface-2) 50%, transparent);
 }
 
+.bubble__attachment-file {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  max-width: min(100%, 18rem);
+  min-width: 0;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border));
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--surface-2) 70%, transparent);
+  box-sizing: border-box;
+}
+
+.bubble__attachment-file-icon {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.1rem;
+  height: 2.1rem;
+  padding: 0 0.3rem;
+  border-radius: calc(var(--radius-sm) - 2px);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent);
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.bubble__attachment-file-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.08rem;
+  min-width: 0;
+}
+
+.bubble__attachment-file-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.88rem;
+  font-weight: 650;
+}
+
+.bubble__attachment-file-size {
+  font-size: 0.76rem;
+  opacity: 0.78;
+}
+
 .bubble--actions-open .message-actions {
   opacity: 1;
   transform: translateY(0);
