@@ -39,7 +39,8 @@ function MessageListComponent({ messages, isThinking, isStreaming }: MessageList
               (message.role === 'assistant' &&
                 message.kind !== 'error' &&
                 !isThisStreaming) ||
-              (message.role === 'user' && Boolean(message.content))
+              (message.role === 'user' &&
+                (Boolean(message.content) || Boolean(message.attachments?.length)))
             }
             canRegenerate={canRegenerate}
             onRegenerate={onRegenerate}

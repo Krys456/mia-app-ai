@@ -32,12 +32,30 @@ export interface V2DebugInfo {
 export interface ChatMessage {
   id: string
   role: MessageRole
+  /** Visible caption / body text. Never a data URL. */
   content: string
   createdAt: number
+  /** Optional image attachments (#272). Max 1 image in MVP. */
+  attachments?: ChatAttachment[]
   /** When set, render as an error notice rather than a normal assistant reply. */
   kind?: 'error'
   /** Legacy V2 debug payload (unused on Core path; kept for typed message compat). */
   v2Debug?: V2DebugInfo
+}
+
+/** Session-scoped image attachment on a chat message (#272). */
+export type SupportedImageMime = 'image/jpeg' | 'image/png' | 'image/webp'
+
+export interface ChatAttachment {
+  id: string
+  kind: 'image'
+  mimeType: SupportedImageMime
+  /** Compressed data URL for Core / regenerate / follow-up. */
+  dataUrl: string
+  /** Optional blob: or data: preview for UI. */
+  previewUrl?: string
+  width?: number
+  height?: number
 }
 
 /** Soft style bias for the Dynamic Behavior Model (not a fixed persona). */

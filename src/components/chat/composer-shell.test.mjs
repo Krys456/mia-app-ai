@@ -1,5 +1,5 @@
 /**
- * #271 Composer shell wiring / regression guards
+ * #271 / #272 Composer shell wiring / regression guards
  * Run: node src/components/chat/composer-shell.test.mjs
  */
 
@@ -12,6 +12,7 @@ const read = (rel) => fs.readFileSync(path.join(root, rel), 'utf8')
 
 const shell = read('src/components/chat/ComposerShell.tsx')
 const shellCss = read('src/components/chat/ComposerShell.css')
+const attachMenu = read('src/components/chat/ComposerAttachMenu.tsx')
 const draftHook = read('src/components/chat/useComposerDraft.ts')
 const types = read('src/components/chat/composerTypes.ts')
 const chatContainer = read('src/components/chat/ChatContainer.tsx')
@@ -27,7 +28,7 @@ const app = read('src/App.tsx')
 // A–E send behavior preserved in shell
 assert.match(shell, /e\.key === 'Enter' && !e\.shiftKey/)
 assert.match(shell, /sendMessage\(/)
-assert.match(shell, /composerDraftHasText\(draft\) && !busy/)
+assert.match(shell, /composerDraftCanSend\(draft\) && !busy/)
 assert.match(shell, /Puoi scrivere il prossimo messaggio/)
 assert.match(shell, /Messaggio per LAIfe/)
 assert.match(shell, /aria-live="polite"/)
@@ -37,12 +38,12 @@ assert.match(shellCss, /max-height:\s*8rem/)
 assert.match(shellCss, /max-width:\s*100%/)
 assert.match(shellCss, /safe-bottom|safe-area/)
 
-// F / send success clears; reject preserves
-assert.match(shell, /const accepted = sendMessage\(text\)/)
+// F / send success clears; reject preserves (#272 restores text + attachment)
+assert.match(shell, /const accepted = sendMessage\(text,\s*wireAttachments\)/)
 assert.match(shell, /if \(!accepted\)/)
-assert.match(shell, /restoreText\(text\)/)
+assert.match(shell, /restore\(snapshot\)/)
 assert.match(shell, /clear\(\)/)
-assert.match(chatContext, /sendMessage: \(content: string\) => boolean/)
+assert.match(chatContext, /sendMessage: \(content: string, attachments\?: ChatAttachment\[\]\) => boolean/)
 assert.match(chatContext, /return false/)
 assert.match(chatContext, /return true/)
 
@@ -61,23 +62,32 @@ assert.doesNotMatch(shell, /regenerateAssistant/)
 assert.match(shell, /scrollHeight/)
 assert.match(shell, /TEXTAREA_MAX_HEIGHT_PX/)
 
-// K no fake controls in the rendered tree / default wiring
-assert.doesNotMatch(shell, /getUserMedia|type=\"file\"|SpeechRecognition|MediaRecorder/)
+// K #272: Photos + Camera only — no Files / Instant / mic / getUserMedia UI
+assert.match(attachMenu, /Foto/)
+assert.match(attachMenu, /Fotocamera/)
+assert.match(attachMenu, /capture="environment"/)
+assert.match(attachMenu, /aria-haspopup="menu"/)
+assert.match(attachMenu, /aria-expanded=\{open\}/)
+assert.doesNotMatch(attachMenu, /Coming soon|Files|PDF|DOCX|getUserMedia|SpeechRecognition|MediaRecorder|\bInstant\b|\bmicrophone\b/)
+assert.doesNotMatch(shell, /getUserMedia|SpeechRecognition|MediaRecorder/)
 assert.doesNotMatch(shell, /\bInstant\b|\bmicrophone\b|Coming soon/)
 assert.match(chatContainer, /<ComposerShell onMessageSent=\{onUserMessage\} \/>/)
 assert.doesNotMatch(chatContainer, /leftSlot|traySlot|secondarySlot|rightSlot/)
-assert.doesNotMatch(shellCss, /\.composer__mic|\.composer__plus|\.composer__instant/)
+assert.doesNotMatch(shellCss, /\.composer__mic|\.composer__instant/)
 
-// Slots exist as optional props but empty by default
-assert.match(shell, /traySlot\?:/)
-assert.match(shell, /leftSlot\?:/)
-assert.match(shell, /\{traySlot \?/)
-assert.match(shell, /\{leftSlot \?/)
+// Built-in tray / left attach slots
+assert.match(shell, /data-composer-slot="tray"/)
+assert.match(shell, /data-composer-slot="left"/)
+assert.match(shell, /ComposerAttachMenu/)
+assert.match(shell, /composer-preview/)
 
 // Draft model — local hook, no persistence imports
 assert.match(types, /attachments: ComposerAttachment\[\]/)
+assert.match(types, /composerDraftCanSend/)
 assert.match(draftHook, /useComposerDraft/)
-assert.doesNotMatch(draftHook, /from ['\"].*ChatContext|localStorage|laife\.settings/)
+assert.match(draftHook, /setImageAttachment/)
+assert.match(draftHook, /revokeComposerAttachment/)
+assert.doesNotMatch(draftHook, /from ['"].*ChatContext|localStorage|laife\.settings/)
 
 // L mobile width
 assert.match(shellCss, /\.composer-dock[\s\S]*max-width:\s*100%/)
@@ -87,6 +97,7 @@ assert.match(shellCss, /\.composer \{[\s\S]*max-width:\s*var\(--content-max\)/)
 assert.match(autoScroll, /STABLE/)
 assert.match(autoScroll, /never mutate scrollTop for content growth|no growth-driven follow/i)
 assert.doesNotMatch(shell, /scrollIntoView|scrollTo\(|scrollTop\s*=/)
+assert.doesNotMatch(autoScroll, /attachment|dataUrl|image/)
 
 // N #269
 assert.doesNotMatch(header, /Gestisci Memoria|V2 Experimental|v2Experimental/)
@@ -107,5 +118,6 @@ assert.equal(createCount, 1, 'exactly one responses.create call site in api/chat
 // No InputBar.css leftover dependency
 assert.equal(fs.existsSync(path.join(root, 'src/components/chat/InputBar.css')), false)
 assert.match(read('src/components/chat/InputBar.tsx'), /ComposerShell as InputBar/)
+assert.match(shell, /export type ComposerShellProps/)
 
-console.log('ok: #271 composer shell wiring / regression guards')
+console.log('ok: #271/#272 composer shell wiring / regression guards')

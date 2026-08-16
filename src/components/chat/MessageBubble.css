@@ -170,6 +170,29 @@
   max-width: 100%;
 }
 
+.bubble__attachments {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin: 0 0 0.55rem;
+  max-width: 100%;
+}
+
+.bubble__attachments:last-child {
+  margin-bottom: 0;
+}
+
+.bubble__attachment-img {
+  display: block;
+  width: 100%;
+  max-width: min(100%, 18rem);
+  max-height: 14rem;
+  height: auto;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--surface-2) 50%, transparent);
+}
+
 .bubble--actions-open .message-actions {
   opacity: 1;
   transform: translateY(0);

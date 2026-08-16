@@ -41,7 +41,13 @@ async function loadTypes() {
 }
 
 const mod = await loadTypes()
-const { EMPTY_COMPOSER_DRAFT, createEmptyComposerDraft, composerDraftHasText } = mod
+const {
+  EMPTY_COMPOSER_DRAFT,
+  createEmptyComposerDraft,
+  composerDraftHasText,
+  composerDraftCanSend,
+  MAX_COMPOSER_ATTACHMENTS,
+} = mod
 
 assert.deepEqual(EMPTY_COMPOSER_DRAFT, { text: '', attachments: [] })
 assert.deepEqual(createEmptyComposerDraft(), { text: '', attachments: [] })
@@ -50,9 +56,20 @@ assert.equal(composerDraftHasText({ text: '   ', attachments: [] }), false)
 assert.equal(composerDraftHasText({ text: 'ciao', attachments: [] }), true)
 assert.equal(composerDraftHasText({ text: '  ciao  ', attachments: [] }), true)
 
-// Attachments array exists but stays empty in #271 contract
+assert.equal(composerDraftCanSend({ text: '', attachments: [] }), false)
+assert.equal(composerDraftCanSend({ text: 'ciao', attachments: [] }), true)
+assert.equal(
+  composerDraftCanSend({
+    text: '',
+    attachments: [{ id: '1', kind: 'image', mimeType: 'image/jpeg', dataUrl: 'data:image/jpeg;base64,aa', previewUrl: 'blob:x' }],
+  }),
+  true,
+)
+assert.equal(MAX_COMPOSER_ATTACHMENTS, 1)
+
+// Attachments array exists; MVP max 1
 const empty = createEmptyComposerDraft()
 assert.ok(Array.isArray(empty.attachments))
 assert.equal(empty.attachments.length, 0)
 
-console.log('ok: #271 composer draft model')
+console.log('ok: #271/#272 composer draft model')

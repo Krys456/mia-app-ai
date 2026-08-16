@@ -1,30 +1,31 @@
 import {
+  useCallback,
   useEffect,
   useRef,
   useState,
   type FormEvent,
   type KeyboardEvent,
-  type ReactNode,
 } from 'react'
 import { useChat } from '../../context/ChatContext'
-import { composerDraftHasText } from './composerTypes'
+import {
+  ImageValidationError,
+  prepareImageAttachment,
+  summarizeImageForLog,
+} from '../../lib/imageAttachment'
+import type { ChatAttachment } from '../../types'
+import { ComposerAttachMenu } from './ComposerAttachMenu'
+import {
+  composerDraftCanSend,
+  type ComposerAttachment,
+} from './composerTypes'
 import { useComposerDraft } from './useComposerDraft'
 import './ComposerShell.css'
 
 /** Mirror previous InputBar autosize cap (8rem ≈ 128px). */
 const TEXTAREA_MAX_HEIGHT_PX = 128
 
-export interface ComposerShellProps {
-  /** Called after a message is successfully accepted by ChatContext. */
-  onMessageSent?: () => void
-  /**
-   * Future extension slots — omit or leave undefined in #271.
-   * Empty slots are not rendered (no reserved chrome).
-   */
-  traySlot?: ReactNode
-  leftSlot?: ReactNode
-  rightSlot?: ReactNode
-  secondarySlot?: ReactNode
+function uid(): string {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`
 }
 
 function useShowKeyboardHint() {
@@ -41,30 +42,39 @@ function useShowKeyboardHint() {
   return show
 }
 
+export type ComposerShellProps = {
+  onMessageSent?: () => void
+}
+
 /**
- * Extensible composer shell (#271).
- * Visible UI remains text + send — no attachment / voice / depth chrome yet.
+ * Extensible composer shell (#271 + #272 image MVP).
+ * Tray / attach live in built-in slots (data-composer-slot) — no empty chrome.
  */
-export function ComposerShell({
-  onMessageSent,
-  traySlot,
-  leftSlot,
-  rightSlot,
-  secondarySlot,
-}: ComposerShellProps) {
+export function ComposerShell({ onMessageSent }: ComposerShellProps) {
   const { sendMessage, messages, isThinking, isStreaming } = useChat()
-  const { draft, setText, clear, restoreText } = useComposerDraft()
+  const {
+    draft,
+    setText,
+    setImageAttachment,
+    removeAttachment,
+    clear,
+    restore,
+  } = useComposerDraft()
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const prevMessageCountRef = useRef(messages.length)
+  const [attachError, setAttachError] = useState<string | null>(null)
+  const [preparing, setPreparing] = useState(false)
   const busy = isThinking || isStreaming
-  const canSend = composerDraftHasText(draft) && !busy
+  const canSend = composerDraftCanSend(draft) && !busy && !preparing
   const showKeyboardHint = useShowKeyboardHint()
+  const image = draft.attachments[0]
 
   // New Chat clears messages → clear draft. Navigation / regenerate keep draft.
   useEffect(() => {
     const prev = prevMessageCountRef.current
     if (messages.length === 0 && prev > 0) {
       clear()
+      setAttachError(null)
     }
     prevMessageCountRef.current = messages.length
   }, [messages.length, clear])
@@ -76,18 +86,71 @@ export function ComposerShell({
     el.style.height = `${Math.min(el.scrollHeight, TEXTAREA_MAX_HEIGHT_PX)}px`
   }, [draft.text])
 
-  const submit = () => {
-    const text = draft.text.trim()
-    if (!text || busy) return
+  const onPickFile = useCallback(
+    async (file: File) => {
+      setAttachError(null)
+      setPreparing(true)
+      try {
+        const prepared = await prepareImageAttachment(file)
+        const attachment: ComposerAttachment = {
+          id: uid(),
+          kind: 'image',
+          mimeType: prepared.mimeType,
+          dataUrl: prepared.dataUrl,
+          previewUrl: prepared.previewUrl,
+          width: prepared.width,
+          height: prepared.height,
+          previewIsObjectUrl: prepared.previewIsObjectUrl,
+          name: file.name,
+        }
+        console.info('[composer] image prepared', summarizeImageForLog(prepared))
+        setImageAttachment(attachment)
+      } catch (error) {
+        const message =
+          error instanceof ImageValidationError
+            ? error.message
+            : 'Impossibile allegare l’immagine.'
+        setAttachError(message)
+        console.warn(
+          '[composer] image rejected',
+          error instanceof ImageValidationError ? error.code : 'unknown',
+        )
+      } finally {
+        setPreparing(false)
+      }
+    },
+    [setImageAttachment],
+  )
 
-    // Optimistic clear only after ChatContext accepts the turn.
-    const accepted = sendMessage(text)
+  const submit = () => {
+    if (busy || preparing) return
+    const text = draft.text.trim()
+    const attachments = draft.attachments
+    if (!text && attachments.length === 0) return
+
+    const snapshot = {
+      text: draft.text,
+      attachments: [...attachments],
+    }
+
+    // Thread preview uses dataUrl so blob: URLs can be revoked on clear.
+    const wireAttachments: ChatAttachment[] = attachments.map((att) => ({
+      id: att.id,
+      kind: 'image' as const,
+      mimeType: att.mimeType,
+      dataUrl: att.dataUrl,
+      previewUrl: att.dataUrl,
+      width: att.width,
+      height: att.height,
+    }))
+
+    const accepted = sendMessage(text, wireAttachments)
     if (!accepted) {
-      // Race / busy gate — keep user text for retry.
-      restoreText(text)
+      restore(snapshot)
       return
     }
     clear()
+    setAttachError(null)
     onMessageSent?.()
   }
 
@@ -107,7 +170,40 @@ export function ComposerShell({
     ? 'LAIfe sta pensando'
     : isStreaming
       ? 'LAIfe sta rispondendo'
-      : undefined
+      : preparing
+        ? 'Preparazione immagine…'
+        : undefined
+
+  const tray =
+    image || attachError ? (
+      <div className="composer-tray-inner">
+        {image ? (
+          <div className="composer-preview">
+            <img
+              src={image.previewUrl || image.dataUrl}
+              alt=""
+              className="composer-preview__img"
+            />
+            <button
+              type="button"
+              className="composer-preview__remove"
+              aria-label="Rimuovi immagine"
+              onClick={() => {
+                removeAttachment(image.id)
+                setAttachError(null)
+              }}
+            >
+              ×
+            </button>
+          </div>
+        ) : null}
+        {attachError ? (
+          <p className="composer-attach-error" role="alert">
+            {attachError}
+          </p>
+        ) : null}
+      </div>
+    ) : null
 
   return (
     <div className="composer-dock">
@@ -115,22 +211,20 @@ export function ComposerShell({
         {statusLabel ?? ''}
       </div>
 
-      {traySlot ? (
+      {tray ? (
         <div className="composer-tray" data-composer-slot="tray">
-          {traySlot}
+          {tray}
         </div>
       ) : null}
 
       <form
         className={`composer${busy ? ' composer--busy' : ''}`}
         onSubmit={onSubmit}
-        aria-busy={busy || undefined}
+        aria-busy={busy || preparing || undefined}
       >
-        {leftSlot ? (
-          <div className="composer__left" data-composer-slot="left">
-            {leftSlot}
-          </div>
-        ) : null}
+        <div className="composer__left" data-composer-slot="left">
+          <ComposerAttachMenu disabled={busy || preparing} onPickFile={(f) => void onPickFile(f)} />
+        </div>
 
         <label className="sr-only" htmlFor="laife-input">
           Messaggio per LAIfe
@@ -144,28 +238,25 @@ export function ComposerShell({
           onChange={(e) => setText(e.target.value)}
           onKeyDown={onKeyDown}
           placeholder={
-            busy ? 'Puoi scrivere il prossimo messaggio…' : 'Messaggio a LAIfe…'
+            busy
+              ? 'Puoi scrivere il prossimo messaggio…'
+              : image
+                ? 'Aggiungi una didascalia (opzionale)…'
+                : 'Messaggio a LAIfe…'
           }
-          /* Keep drafting available while LAIfe responds — send stays gated. */
           enterKeyHint="send"
           autoComplete="off"
           autoCorrect="on"
           spellCheck
         />
 
-        {rightSlot ? (
-          <div className="composer__right" data-composer-slot="right">
-            {rightSlot}
-          </div>
-        ) : null}
-
         <button
           type="submit"
           className={`composer__send${busy ? ' composer__send--busy' : ''}`}
           disabled={!canSend}
-          aria-label={busy ? statusLabel : 'Invia messaggio'}
+          aria-label={busy || preparing ? statusLabel : 'Invia messaggio'}
         >
-          {busy ? (
+          {busy || preparing ? (
             <span className="composer__send-pulse" aria-hidden="true" />
           ) : (
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -180,12 +271,6 @@ export function ComposerShell({
           )}
         </button>
       </form>
-
-      {secondarySlot ? (
-        <div className="composer-secondary" data-composer-slot="secondary">
-          {secondarySlot}
-        </div>
-      ) : null}
 
       {showKeyboardHint ? (
         <p className="composer__hint">Invio per mandare · Shift+Invio per andare a capo</p>

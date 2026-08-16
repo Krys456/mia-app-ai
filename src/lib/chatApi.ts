@@ -9,9 +9,17 @@ import type { V2DebugInfo } from '../types'
 
 export type ChatApiRole = 'user' | 'assistant' | 'system'
 
+export interface ChatApiImageAttachment {
+  type: 'image'
+  mimeType: 'image/jpeg' | 'image/png' | 'image/webp' | string
+  dataUrl: string
+}
+
 export interface ChatApiMessage {
   role: ChatApiRole
   content: string
+  /** Optional image attachments (#272). Max 1 in MVP. */
+  attachments?: ChatApiImageAttachment[]
 }
 
 export type { LearningSignals }
