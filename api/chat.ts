@@ -184,6 +184,32 @@ function resolveChatModel(env: NodeJS.ProcessEnv = process.env): string {
   return normalized || 'gpt-4o'
 }
 
+/**
+ * TEMPORARY Preview-only /api/chat stage timing (#268 diagnostic).
+ * Logs metadata only — never prompt text, message contents, or secrets.
+ * Remove after the 60s timeout root cause is confirmed.
+ */
+function isPreviewChatTimingDiag(): boolean {
+  return process.env.VERCEL_ENV === 'preview'
+}
+
+function logChatTimingStage(
+  stage: string,
+  startedAtMs: number,
+  fields: Record<string, unknown> = {},
+): void {
+  if (!isPreviewChatTimingDiag()) return
+  console.log(
+    JSON.stringify({
+      tag: '[api/chat][timing]',
+      stage,
+      elapsedMs: Date.now() - startedAtMs,
+      vercelEnv: process.env.VERCEL_ENV || null,
+      ...fields,
+    }),
+  )
+}
+
 async function runMemoryIfEnabled(
   userMessage: string,
   assistantMessage: string,
@@ -229,6 +255,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return sendJson(res, 405, { error: 'Method not allowed' })
   }
 
+  const handlerStartedAtMs = Date.now()
+  let timingModel: string | null = null
+  let timingMessageCount = 0
+  let timingInstructionLength: number | null = null
+  let timingMemoryPackPresent: boolean | null = null
+
+  const timingFields = (): Record<string, unknown> => ({
+    model: timingModel,
+    messageCount: timingMessageCount,
+    instructionLength: timingInstructionLength,
+    memoryPackPresent: timingMemoryPackPresent,
+  })
+
+  logChatTimingStage('handler_start', handlerStartedAtMs, timingFields())
+
   const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) {
     return sendJson(res, 500, {
@@ -246,6 +287,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const messages = sanitizeMessages(body.messages).filter(
     (msg) => msg.role === 'user' || msg.role === 'assistant',
   )
+  timingMessageCount = messages.length
+  logChatTimingStage('after_sanitize_messages', handlerStartedAtMs, timingFields())
+
   if (messages.length === 0) {
     return sendJson(res, 400, { error: 'messages must be a non-empty array' })
   }
@@ -260,10 +304,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // Soft auth for memory ownership only — never blocks chat generation.
   const memoryOwnerUserId = await resolveChatMemoryOwnerUserId(req)
+  logChatTimingStage('after_auth', handlerStartedAtMs, {
+    ...timingFields(),
+    memoryOwnerPresent: Boolean(memoryOwnerUserId),
+  })
 
   try {
     const lastUserMessage = [...messages].reverse().find((msg) => msg.role === 'user')
     const model = resolveChatModel(process.env)
+    timingModel = model
 
     // Memory-control gate (forget-all + specific forget) before Overview / Recall /
     // Extraction / responses.create. Works even when Memory is OFF. Zero model calls
@@ -274,6 +323,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         userMessage: lastUserMessage.content,
         userId: memoryOwnerUserId,
         messages,
+      })
+      logChatTimingStage('after_memory_control', handlerStartedAtMs, {
+        ...timingFields(),
+        memoryControlHandled: forget.handled,
       })
       if (forget.handled) {
         const payload: Record<string, unknown> = {
@@ -301,8 +354,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             ? { pendingAutomation: body.pendingAutomation }
             : {}),
         }
-        return sendJson(res, 200, payload)
+        logChatTimingStage('before_send_json', handlerStartedAtMs, {
+          ...timingFields(),
+          earlyExit: 'memory_control',
+        })
+        const out = sendJson(res, 200, payload)
+        logChatTimingStage('handler_complete', handlerStartedAtMs, {
+          ...timingFields(),
+          earlyExit: 'memory_control',
+        })
+        return out
       }
+    } else {
+      logChatTimingStage('after_memory_control', handlerStartedAtMs, {
+        ...timingFields(),
+        memoryControlHandled: false,
+        skipped: true,
+      })
     }
 
     // Memory Overview (PR3): explicit "what do you remember about me?" inspection.
@@ -317,6 +385,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const overview = await tryHandleMemoryOverview({
         userMessage: lastUserMessage.content,
         userId: memoryOwnerUserId,
+      })
+      logChatTimingStage('after_overview', handlerStartedAtMs, {
+        ...timingFields(),
+        overviewHandled: overview.handled,
+        overviewSkippedModel: Boolean(overview.skippedModel),
+        overviewPackPresent: Boolean(overview.pack),
       })
       if (overview.handled && overview.skippedModel) {
         const payload: Record<string, unknown> = {
@@ -343,17 +417,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             ? { pendingAutomation: body.pendingAutomation }
             : {}),
         }
-        return sendJson(res, 200, payload)
+        logChatTimingStage('before_send_json', handlerStartedAtMs, {
+          ...timingFields(),
+          earlyExit: 'overview_skip_model',
+        })
+        const out = sendJson(res, 200, payload)
+        logChatTimingStage('handler_complete', handlerStartedAtMs, {
+          ...timingFields(),
+          earlyExit: 'overview_skip_model',
+        })
+        return out
       }
       if (overview.handled && overview.pack) {
         overviewHandled = true
         overviewPack = overview.pack
       }
+    } else {
+      logChatTimingStage('after_overview', handlerStartedAtMs, {
+        ...timingFields(),
+        overviewHandled: false,
+        skipped: true,
+      })
     }
 
     // Recall V1: small owner-scoped pack before the single responses.create.
     // Soft-fail inside loadCoreMemoryPack — never brain-api@local.
     // Skipped when Overview already supplied a pack (Overview is not Recall V1).
+    logChatTimingStage('before_load_memory_pack', handlerStartedAtMs, {
+      ...timingFields(),
+      overviewHandled,
+      memoryEnabled,
+    })
     const memoryPack = overviewHandled
       ? overviewPack
       : memoryEnabled && lastUserMessage?.content
@@ -363,27 +457,72 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             memoryEnabled: true,
           })
         : ''
+    timingMemoryPackPresent = Boolean(memoryPack)
+    logChatTimingStage('after_load_memory_pack', handlerStartedAtMs, {
+      ...timingFields(),
+      memoryPackLength: typeof memoryPack === 'string' ? memoryPack.length : 0,
+    })
 
+    logChatTimingStage('before_build_instructions', handlerStartedAtMs, timingFields())
     const instructions = appendMemoryPackToInstructions(buildInstructions(body, messages), memoryPack)
+    timingInstructionLength = instructions.length
+    logChatTimingStage('after_build_instructions', handlerStartedAtMs, timingFields())
+
     const OpenAI = (await import('openai')).default
     const client = new OpenAI({ apiKey })
 
-    const response = await client.responses.create(
-      buildCoreResponsesCreateParams({
-        model,
-        instructions,
-        maxOutputTokens: modality === 'voice' ? 700 : 4096,
-        input: messages.map((msg) => ({
-          type: 'message' as const,
-          role: msg.role,
-          content: msg.content,
-        })),
-      }),
-    )
+    logChatTimingStage('before_responses_create', handlerStartedAtMs, {
+      ...timingFields(),
+      maxOutputTokens: modality === 'voice' ? 700 : 4096,
+    })
+    let response
+    try {
+      response = await client.responses.create(
+        buildCoreResponsesCreateParams({
+          model,
+          instructions,
+          maxOutputTokens: modality === 'voice' ? 700 : 4096,
+          input: messages.map((msg) => ({
+            type: 'message' as const,
+            role: msg.role,
+            content: msg.content,
+          })),
+        }),
+      )
+      logChatTimingStage('after_responses_create', handlerStartedAtMs, {
+        ...timingFields(),
+        responsesCreateOk: true,
+        outputTextLength: typeof response.output_text === 'string' ? response.output_text.length : 0,
+      })
+    } catch (createError) {
+      logChatTimingStage('responses_create_error', handlerStartedAtMs, {
+        ...timingFields(),
+        responsesCreateOk: false,
+        errorName: createError instanceof Error ? createError.name : 'unknown',
+        errorStatus:
+          createError && typeof createError === 'object' && 'status' in createError
+            ? (createError as { status?: unknown }).status ?? null
+            : null,
+        errorCode:
+          createError && typeof createError === 'object' && 'code' in createError
+            ? (createError as { code?: unknown }).code ?? null
+            : null,
+      })
+      throw createError
+    }
 
     const content = response.output_text?.trim() || ''
     if (!content) {
-      return sendJson(res, 502, { error: 'Empty response from OpenAI' })
+      logChatTimingStage('before_send_json', handlerStartedAtMs, {
+        ...timingFields(),
+        earlyExit: 'empty_openai_response',
+      })
+      const out = sendJson(res, 502, { error: 'Empty response from OpenAI' })
+      logChatTimingStage('handler_complete', handlerStartedAtMs, {
+        ...timingFields(),
+        earlyExit: 'empty_openai_response',
+      })
+      return out
     }
 
     let memoryEvent: 'saved' | 'updated' | null = null
@@ -395,6 +534,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       (typeof lastUserMessage?.content === 'string' &&
         isPersonalMemoryProbe(lastUserMessage.content))
 
+    logChatTimingStage('before_memory_pipeline', handlerStartedAtMs, {
+      ...timingFields(),
+      skipExtractionForInspection,
+      willRunMemoryPipeline: Boolean(
+        lastUserMessage?.content && !skipExtractionForInspection && memoryEnabled && memoryOwnerUserId,
+      ),
+    })
     if (lastUserMessage?.content && !skipExtractionForInspection) {
       const write = await runMemoryIfEnabled(
         lastUserMessage.content,
@@ -404,6 +550,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       )
       memoryEvent = write.event
     }
+    logChatTimingStage('after_memory_pipeline', handlerStartedAtMs, {
+      ...timingFields(),
+      memoryEvent,
+    })
 
     const payload: Record<string, unknown> = {
       content,
@@ -431,8 +581,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         : {}),
     }
 
-    return sendJson(res, 200, payload)
+    logChatTimingStage('before_send_json', handlerStartedAtMs, timingFields())
+    const out = sendJson(res, 200, payload)
+    logChatTimingStage('handler_complete', handlerStartedAtMs, timingFields())
+    return out
   } catch (error) {
+    logChatTimingStage('handler_error', handlerStartedAtMs, {
+      ...timingFields(),
+      errorName: error instanceof Error ? error.name : 'unknown',
+    })
     console.error(error)
 
     try {
