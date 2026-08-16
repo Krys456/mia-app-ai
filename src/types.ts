@@ -41,6 +41,14 @@ export interface ChatMessage {
   kind?: 'error'
   /** Legacy V2 debug payload (unused on Core path; kept for typed message compat). */
   v2Debug?: V2DebugInfo
+  /**
+   * Ephemeral Memory feedback for THIS assistant completion (#281).
+   * Session-scoped with the message — not a DB/chat persistence field.
+   */
+  memoryEvent?: {
+    type: 'created' | 'updated' | 'removed'
+    displayText?: string
+  }
 }
 
 /** Session-scoped image attachment on a chat message (#272). */

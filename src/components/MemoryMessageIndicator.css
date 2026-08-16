@@ -1,0 +1,72 @@
+.memory-message-indicator {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  margin: 0 0 0.45rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: color-mix(in srgb, var(--text) 78%, transparent);
+  font-size: 0.78rem;
+  font-weight: 500;
+  line-height: 1.35;
+  pointer-events: none;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.memory-message-indicator__live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.memory-message-indicator__row {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  max-width: 100%;
+}
+
+.memory-message-indicator__icon {
+  flex-shrink: 0;
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+
+.memory-message-indicator__body {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.memory-message-indicator__label {
+  font-weight: 550;
+  color: color-mix(in srgb, var(--text) 88%, transparent);
+}
+
+.memory-message-indicator__detail {
+  max-width: 100%;
+  color: color-mix(in srgb, var(--text) 62%, transparent);
+  font-size: 0.74rem;
+  font-weight: 450;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+@media (max-width: 420px) {
+  .memory-message-indicator {
+    font-size: 0.74rem;
+    margin-bottom: 0.4rem;
+  }
+}

@@ -9,6 +9,7 @@ import {
 } from 'react'
 import type { ChatMessage } from '../../types'
 import { documentBadgeFor, formatDocumentSize, truncateFilename } from '../../lib/documentAttachment'
+import { MemoryMessageIndicator } from '../MemoryMessageIndicator'
 import { MessageActions } from './MessageActions'
 import { StreamingRenderer } from './StreamingRenderer'
 import { TypingAnimation } from './TypingAnimation'
@@ -119,6 +120,9 @@ function MessageBubbleComponent({
             </span>
             <span className="bubble__label">{isError ? 'Errore' : 'LAIfe'}</span>
           </div>
+          {!isError && !isEmptyStream && message.memoryEvent ? (
+            <MemoryMessageIndicator event={message.memoryEvent} />
+          ) : null}
           <div
             className={`bubble__body${isEmptyStream ? ' bubble__body--typing' : ''}${isError ? ' bubble__body--error' : ''}`}
           >
