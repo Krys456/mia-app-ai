@@ -91,6 +91,7 @@ function MessageBubbleComponent({
   return (
     <article
       ref={rootRef}
+      data-message-id={message.id}
       className={`bubble bubble--${message.role}${isError ? ' bubble--error' : ''}${actionsPinned ? ' bubble--actions-open' : ''}`}
       aria-label={message.role === 'user' ? 'Tu' : isError ? 'Errore' : 'LAIfe'}
       role={isError ? 'alert' : undefined}

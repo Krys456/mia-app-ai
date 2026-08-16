@@ -1,7 +1,8 @@
 .scroll-bottom-btn {
   position: absolute;
-  right: var(--page-gutter);
-  bottom: 0.85rem;
+  left: 50%;
+  /* Sit just above the composer dock; safe-area aware, not device-specific. */
+  bottom: max(0.85rem, env(safe-area-inset-bottom, 0px));
   z-index: 40;
   display: inline-flex;
   align-items: center;
@@ -20,7 +21,7 @@
   -webkit-tap-highlight-color: transparent;
   opacity: 0;
   visibility: hidden;
-  transform: translateY(8px) scale(0.94);
+  transform: translateX(-50%) translateY(8px) scale(0.94);
   box-shadow: var(--shadow-card);
   backdrop-filter: blur(14px) saturate(1.2);
   -webkit-backdrop-filter: blur(14px) saturate(1.2);
@@ -33,10 +34,25 @@
     background var(--duration) var(--ease-out);
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .scroll-bottom-btn {
+    transition: none;
+    transform: translateX(-50%);
+  }
+
+  .scroll-bottom-btn--visible {
+    transform: translateX(-50%);
+  }
+
+  .scroll-bottom-btn--visible:active {
+    transform: translateX(-50%);
+  }
+}
+
 .scroll-bottom-btn--visible {
   opacity: 1;
   visibility: visible;
-  transform: translateY(0) scale(1);
+  transform: translateX(-50%) translateY(0) scale(1);
   pointer-events: auto;
 }
 
@@ -46,7 +62,7 @@
 }
 
 .scroll-bottom-btn--visible:active {
-  transform: scale(0.96);
+  transform: translateX(-50%) scale(0.96);
 }
 
 .scroll-bottom-btn:focus-visible {

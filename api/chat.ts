@@ -21,7 +21,7 @@ import { buildCoreLanguageAppendix } from '../lib/server/language-awareness.js'
 
 export const config = {
   runtime: 'nodejs',
-  maxDuration: 60,
+  maxDuration: 120,
 }
 
 type ChatRole = 'user' | 'assistant' | 'system'

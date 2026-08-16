@@ -14,19 +14,49 @@ import './ChatContainer.css'
  */
 export function ChatContainer() {
   const { messages, isThinking, isStreaming } = useChat()
-  const { scrollerRef, showButton, scrollToBottom, onUserMessage } =
+  const { scrollerRef, showButton, scrollToBottom, onUserMessage, onAssistantStart } =
     useAutoScroll(isStreaming)
   const wasHomeRef = useRef(true)
+  const lastPinnedAssistantIdRef = useRef<string | null>(null)
 
   const isHome = messages.length === 0 && !isThinking && !isStreaming
 
-  // After leaving the empty hero, the viewport mounts — enter FOLLOWING for the new turn.
+  // After leaving the empty hero, the viewport mounts — show the new user turn.
   useEffect(() => {
     if (wasHomeRef.current && !isHome) {
       onUserMessage()
     }
     wasHomeRef.current = isHome
   }, [isHome, onUserMessage])
+
+  // When a new assistant bubble starts, pin once to its beginning — never follow growth.
+  useEffect(() => {
+    if (!isStreaming) {
+      lastPinnedAssistantIdRef.current = null
+      return
+    }
+    const last = messages[messages.length - 1]
+    if (!last || last.role !== 'assistant') return
+    if (lastPinnedAssistantIdRef.current === last.id) return
+
+    let cancelled = false
+    const pin = () => {
+      if (cancelled) return
+      const el = Array.from(document.querySelectorAll('[data-message-id]')).find(
+        (node) => node.getAttribute('data-message-id') === last.id,
+      ) as HTMLElement | undefined
+      if (!el) {
+        requestAnimationFrame(pin)
+        return
+      }
+      lastPinnedAssistantIdRef.current = last.id
+      onAssistantStart(last.id, el)
+    }
+    requestAnimationFrame(pin)
+    return () => {
+      cancelled = true
+    }
+  }, [isStreaming, messages, onAssistantStart])
 
   return (
     <div className={`chat-container${isHome ? ' chat-container--home' : ''}`}>

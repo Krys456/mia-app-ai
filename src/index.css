@@ -120,6 +120,11 @@ body,
   overflow-x: hidden;
 }
 
+html {
+  /* Prevent any child from expanding the layout viewport horizontally. */
+  overflow-x: clip;
+}
+
 body {
   min-width: 320px;
   overscroll-behavior-y: none;
@@ -215,15 +220,25 @@ select {
   .chat-container__viewport {
     width: 100%;
     max-width: 100%;
+    min-width: 0;
   }
 
   .app-header__inner,
   .message-list,
-  .input-bar {
+  .input-bar,
+  .input-bar-dock {
     width: 100%;
     max-width: 100%;
+    min-width: 0;
     margin-left: 0;
     margin-right: 0;
+  }
+
+  .bubble,
+  .bubble__body,
+  .md-body {
+    max-width: 100%;
+    min-width: 0;
   }
 }
 
