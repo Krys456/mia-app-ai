@@ -14,11 +14,13 @@ import {
 } from '../../lib/imageAttachment'
 import type { ChatAttachment } from '../../types'
 import { ComposerAttachMenu } from './ComposerAttachMenu'
+import { ComposerMicrophoneButton } from './ComposerMicrophoneButton'
 import {
   composerDraftCanSend,
   type ComposerAttachment,
 } from './composerTypes'
 import { useComposerDraft } from './useComposerDraft'
+import { useSpeechDictation } from './useSpeechDictation'
 import './ComposerShell.css'
 
 /** Mirror previous InputBar autosize cap (8rem ≈ 128px). */
@@ -42,16 +44,35 @@ function useShowKeyboardHint() {
   return show
 }
 
+/** Chat view hidden/inert (Settings / Memory / Vision) → release mic. */
+function useChatViewSuspended(): boolean {
+  const [suspended, setSuspended] = useState(false)
+
+  useEffect(() => {
+    const el = document.querySelector('.app-view--chat')
+    if (!el) return
+    const sync = () => {
+      setSuspended(el.hasAttribute('inert') || el.hasAttribute('hidden'))
+    }
+    sync()
+    const mo = new MutationObserver(sync)
+    mo.observe(el, { attributes: true, attributeFilter: ['inert', 'hidden'] })
+    return () => mo.disconnect()
+  }, [])
+
+  return suspended
+}
+
 export type ComposerShellProps = {
   onMessageSent?: () => void
 }
 
 /**
- * Extensible composer shell (#271 + #272 image MVP).
+ * Extensible composer shell (#271 + #272 image + #273 dictation).
  * Tray / attach live in built-in slots (data-composer-slot) — no empty chrome.
  */
 export function ComposerShell({ onMessageSent }: ComposerShellProps) {
-  const { sendMessage, messages, isThinking, isStreaming } = useChat()
+  const { sendMessage, messages, isThinking, isStreaming, settingsOpen } = useChat()
   const {
     draft,
     setText,
@@ -61,20 +82,43 @@ export function ComposerShell({ onMessageSent }: ComposerShellProps) {
     restore,
   } = useComposerDraft()
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const draftTextRef = useRef(draft.text)
+  draftTextRef.current = draft.text
   const prevMessageCountRef = useRef(messages.length)
   const [attachError, setAttachError] = useState<string | null>(null)
   const [preparing, setPreparing] = useState(false)
   const busy = isThinking || isStreaming
   const canSend = composerDraftCanSend(draft) && !busy && !preparing
   const showKeyboardHint = useShowKeyboardHint()
+  const chatSuspended = useChatViewSuspended()
   const image = draft.attachments[0]
 
-  // New Chat clears messages → clear draft. Navigation / regenerate keep draft.
+  const focusInput = useCallback(() => {
+    requestAnimationFrame(() => {
+      inputRef.current?.focus()
+    })
+  }, [])
+
+  const dictation = useSpeechDictation({
+    getText: () => draftTextRef.current,
+    setText,
+    messages,
+    suspended: chatSuspended || settingsOpen,
+    onTranscriptCommitted: focusInput,
+  })
+  const dictationAbortRef = useRef(dictation.abort)
+  const dictationClearErrorRef = useRef(dictation.clearError)
+  dictationAbortRef.current = dictation.abort
+  dictationClearErrorRef.current = dictation.clearError
+
+  // New Chat clears messages → abort dictation + clear draft.
   useEffect(() => {
     const prev = prevMessageCountRef.current
     if (messages.length === 0 && prev > 0) {
+      dictationAbortRef.current({ restore: false })
       clear()
       setAttachError(null)
+      dictationClearErrorRef.current()
     }
     prevMessageCountRef.current = messages.length
   }, [messages.length, clear])
@@ -123,7 +167,7 @@ export function ComposerShell({ onMessageSent }: ComposerShellProps) {
   )
 
   const submit = () => {
-    if (busy || preparing) return
+    if (busy || preparing || dictation.listening) return
     const text = draft.text.trim()
     const attachments = draft.attachments
     if (!text && attachments.length === 0) return
@@ -151,6 +195,7 @@ export function ComposerShell({ onMessageSent }: ComposerShellProps) {
     }
     clear()
     setAttachError(null)
+    dictation.clearError()
     onMessageSent?.()
   }
 
@@ -166,16 +211,40 @@ export function ComposerShell({ onMessageSent }: ComposerShellProps) {
     }
   }
 
+  const onTextChange = (value: string) => {
+    if (dictation.listening) {
+      dictation.onUserTyping()
+    }
+    setText(value)
+    if (dictation.error) dictation.clearError()
+  }
+
+  const onMicClick = () => {
+    if (dictation.listening) {
+      dictation.stop()
+      return
+    }
+    dictation.clearError()
+    dictation.start()
+  }
+
+  // Right action: Send wins when sendable; Mic only on fully empty supported draft;
+  // while listening always show Stop (even if a final briefly lands before onend).
+  const showMic =
+    dictation.supported &&
+    (dictation.listening || (!composerDraftCanSend(draft) && !busy && !preparing))
   const statusLabel = isThinking
     ? 'LAIfe sta pensando'
     : isStreaming
       ? 'LAIfe sta rispondendo'
       : preparing
         ? 'Preparazione immagine…'
-        : undefined
+        : dictation.listening
+          ? 'Dettatura attiva'
+          : dictation.statusAnnouncement || undefined
 
   const tray =
-    image || attachError ? (
+    image || attachError || dictation.error ? (
       <div className="composer-tray-inner">
         {image ? (
           <div className="composer-preview">
@@ -202,6 +271,11 @@ export function ComposerShell({ onMessageSent }: ComposerShellProps) {
             {attachError}
           </p>
         ) : null}
+        {dictation.error ? (
+          <p className="composer-attach-error" role="alert">
+            {dictation.error}
+          </p>
+        ) : null}
       </div>
     ) : null
 
@@ -218,12 +292,15 @@ export function ComposerShell({ onMessageSent }: ComposerShellProps) {
       ) : null}
 
       <form
-        className={`composer${busy ? ' composer--busy' : ''}`}
+        className={`composer${busy ? ' composer--busy' : ''}${dictation.listening ? ' composer--dictating' : ''}`}
         onSubmit={onSubmit}
-        aria-busy={busy || preparing || undefined}
+        aria-busy={busy || preparing || dictation.listening || undefined}
       >
         <div className="composer__left" data-composer-slot="left">
-          <ComposerAttachMenu disabled={busy || preparing} onPickFile={(f) => void onPickFile(f)} />
+          <ComposerAttachMenu
+            disabled={busy || preparing || dictation.listening}
+            onPickFile={(f) => void onPickFile(f)}
+          />
         </div>
 
         <label className="sr-only" htmlFor="laife-input">
@@ -235,14 +312,16 @@ export function ComposerShell({ onMessageSent }: ComposerShellProps) {
           className="composer__input"
           rows={1}
           value={draft.text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => onTextChange(e.target.value)}
           onKeyDown={onKeyDown}
           placeholder={
-            busy
-              ? 'Puoi scrivere il prossimo messaggio…'
-              : image
-                ? 'Aggiungi una didascalia (opzionale)…'
-                : 'Messaggio a LAIfe…'
+            dictation.listening
+              ? 'Ti ascolto…'
+              : busy
+                ? 'Puoi scrivere il prossimo messaggio…'
+                : image
+                  ? 'Aggiungi una didascalia (opzionale)…'
+                  : 'Messaggio a LAIfe…'
           }
           enterKeyHint="send"
           autoComplete="off"
@@ -250,26 +329,36 @@ export function ComposerShell({ onMessageSent }: ComposerShellProps) {
           spellCheck
         />
 
-        <button
-          type="submit"
-          className={`composer__send${busy ? ' composer__send--busy' : ''}`}
-          disabled={!canSend}
-          aria-label={busy || preparing ? statusLabel : 'Invia messaggio'}
-        >
-          {busy || preparing ? (
-            <span className="composer__send-pulse" aria-hidden="true" />
+        <div className="composer__right" data-composer-slot="right">
+          {showMic ? (
+            <ComposerMicrophoneButton
+              listening={dictation.listening}
+              disabled={busy || preparing}
+              onClick={onMicClick}
+            />
           ) : (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path
-                d="M5 12h14M13 6l6 6-6 6"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
+            <button
+              type="submit"
+              className={`composer__send${busy ? ' composer__send--busy' : ''}`}
+              disabled={!canSend}
+              aria-label={busy || preparing ? statusLabel : 'Invia messaggio'}
+            >
+              {busy || preparing ? (
+                <span className="composer__send-pulse" aria-hidden="true" />
+              ) : (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path
+                    d="M5 12h14M13 6l6 6-6 6"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              )}
+            </button>
           )}
-        </button>
+        </div>
       </form>
 
       {showKeyboardHint ? (

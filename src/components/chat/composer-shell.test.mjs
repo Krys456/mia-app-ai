@@ -62,18 +62,21 @@ assert.doesNotMatch(shell, /regenerateAssistant/)
 assert.match(shell, /scrollHeight/)
 assert.match(shell, /TEXTAREA_MAX_HEIGHT_PX/)
 
-// K #272: Photos + Camera only — no Files / Instant / mic / getUserMedia UI
+// K #272/#273: Photos + Camera; dictation via Web Speech only — no Files / Instant / MediaRecorder
 assert.match(attachMenu, /Foto/)
 assert.match(attachMenu, /Fotocamera/)
 assert.match(attachMenu, /capture="environment"/)
 assert.match(attachMenu, /aria-haspopup="menu"/)
 assert.match(attachMenu, /aria-expanded=\{open\}/)
-assert.doesNotMatch(attachMenu, /Coming soon|Files|PDF|DOCX|getUserMedia|SpeechRecognition|MediaRecorder|\bInstant\b|\bmicrophone\b/)
-assert.doesNotMatch(shell, /getUserMedia|SpeechRecognition|MediaRecorder/)
-assert.doesNotMatch(shell, /\bInstant\b|\bmicrophone\b|Coming soon/)
+assert.doesNotMatch(attachMenu, /Coming soon|Files|PDF|DOCX|getUserMedia|SpeechRecognition|MediaRecorder|\bInstant\b/)
+assert.doesNotMatch(shell, /getUserMedia|MediaRecorder/)
+assert.doesNotMatch(shell, /\bInstant\b|Coming soon/)
+assert.match(shell, /ComposerMicrophoneButton|useSpeechDictation/)
+assert.match(shell, /data-composer-slot="right"/)
 assert.match(chatContainer, /<ComposerShell onMessageSent=\{onUserMessage\} \/>/)
 assert.doesNotMatch(chatContainer, /leftSlot|traySlot|secondarySlot|rightSlot/)
-assert.doesNotMatch(shellCss, /\.composer__mic|\.composer__instant/)
+assert.doesNotMatch(shellCss, /\.composer__instant/)
+assert.equal(fs.existsSync(path.join(root, 'src/components/chat/ComposerMicrophoneButton.tsx')), true)
 
 // Built-in tray / left attach slots
 assert.match(shell, /data-composer-slot="tray"/)
