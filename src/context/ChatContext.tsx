@@ -201,7 +201,7 @@ type Action =
   | { type: 'UPDATE_APPEARANCE'; payload: Partial<AppearanceSettings> }
   | { type: 'UPDATE_DEVELOPER'; payload: Partial<DeveloperSettings> }
   | { type: 'SEND_USER'; content: string; attachments?: ChatAttachment[] }
-  | { type: 'ASSISTANT_START'; id: string }
+  | { type: 'ASSISTANT_START'; id: string; memoryEvent?: MemoryFeedbackEvent | null }
   | { type: 'ASSISTANT_PROGRESS'; id: string; content: string }
   | {
       type: 'ASSISTANT_FINISH'
@@ -311,11 +311,19 @@ function reducer(state: AppState, action: Action): AppState {
       }
     }
     case 'ASSISTANT_START': {
+      const startEvent =
+        action.memoryEvent &&
+        (action.memoryEvent.type === 'created' ||
+          action.memoryEvent.type === 'updated' ||
+          action.memoryEvent.type === 'removed')
+          ? action.memoryEvent
+          : null
       const assistantMsg: ChatMessage = {
         id: action.id,
         role: 'assistant',
         content: '',
         createdAt: Date.now(),
+        ...(startEvent ? { memoryEvent: startEvent } : {}),
       }
       return {
         ...state,
@@ -329,6 +337,7 @@ function reducer(state: AppState, action: Action): AppState {
       const messages = state.messages.map((msg) => {
         if (msg.id !== action.id) return msg
         changed = true
+        // Preserve memoryEvent across progressive reveal updates.
         return { ...msg, content: action.content }
       })
       if (!changed) return state
@@ -655,7 +664,12 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           }
 
           const assistantId = uid()
-          dispatch({ type: 'ASSISTANT_START', id: assistantId })
+          dispatch({
+            type: 'ASSISTANT_START',
+            id: assistantId,
+            // Attach before reveal so progressive PROGRESS updates cannot orphan the event.
+            memoryEvent: memoryEvent ?? null,
+          })
 
           await revealReplyText(
             reply,

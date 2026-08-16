@@ -120,7 +120,7 @@ function MessageBubbleComponent({
             </span>
             <span className="bubble__label">{isError ? 'Errore' : 'LAIfe'}</span>
           </div>
-          {!isError && !isEmptyStream && message.memoryEvent ? (
+          {!isError && message.memoryEvent ? (
             <MemoryMessageIndicator event={message.memoryEvent} />
           ) : null}
           <div
