@@ -15,8 +15,11 @@
 .bubble--user {
   align-self: stretch;
   width: 100%;
+  max-width: 100%;
   display: flex;
-  justify-content: flex-end;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0;
 }
 
 /* —— Assistant: flat into the page, no card chrome —— */
@@ -132,11 +135,16 @@
   max-width: 100%;
 }
 
+.bubble--user .message-actions {
+  width: 100%;
+  max-width: min(100%, 34rem);
+}
+
 /* —— User: compact, right-aligned, clearly different —— */
 .bubble__user-row {
   max-width: min(100%, 34rem);
   width: fit-content;
-  margin-left: auto;
+  margin-left: 0;
 }
 
 .bubble--user .bubble__body {
@@ -154,9 +162,12 @@
 .bubble--user .bubble__body p {
   margin: 0;
   line-height: 1.55;
-  font-size: 0.98rem;
+  font-size: calc(0.98rem * var(--chat-font-scale, 1));
+  font-family: var(--font-sans);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+  word-break: break-word;
+  max-width: 100%;
 }
 
 .bubble--actions-open .message-actions {

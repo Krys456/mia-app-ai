@@ -8,11 +8,15 @@ import {
 import { copyText } from '../../lib/clipboard'
 import './MessageActions.css'
 
+export type MessageActionsVariant = 'assistant' | 'user'
+
 interface MessageActionsProps {
   messageId: string
   content: string
-  canRegenerate: boolean
-  onRegenerate: () => void
+  /** Assistant: copy + feedback + regenerate. User: copy only. */
+  variant?: MessageActionsVariant
+  canRegenerate?: boolean
+  onRegenerate?: () => void
   /** Force visible (keyboard / long-press). */
   forceVisible?: boolean
   /** Fired after any toolbar action (helps dismiss touch pin). */
@@ -22,23 +26,26 @@ interface MessageActionsProps {
 function MessageActionsComponent({
   messageId,
   content,
-  canRegenerate,
+  variant = 'assistant',
+  canRegenerate = false,
   onRegenerate,
   forceVisible = false,
   onAction,
 }: MessageActionsProps) {
+  const isUser = variant === 'user'
   const [copied, setCopied] = useState(false)
   const [feedback, setFeedback] = useState<MessageFeedbackValue | null>(() =>
-    getMessageFeedback(messageId),
+    isUser ? null : getMessageFeedback(messageId),
   )
   const copiedTimerRef = useRef<number | null>(null)
 
   useEffect(() => {
+    if (isUser) return
     setFeedback(getMessageFeedback(messageId))
     return subscribeMessageFeedback((id, value) => {
       if (id === messageId) setFeedback(value)
     })
-  }, [messageId])
+  }, [messageId, isUser])
 
   useEffect(
     () => () => {
@@ -69,35 +76,39 @@ function MessageActionsComponent({
 
   return (
     <div
-      className={`message-actions${forceVisible ? ' message-actions--visible' : ''}`}
+      className={`message-actions${isUser ? ' message-actions--user' : ''}${forceVisible ? ' message-actions--visible' : ''}`}
       role="toolbar"
-      aria-label="Azioni messaggio"
+      aria-label={isUser ? 'Azioni messaggio utente' : 'Azioni messaggio'}
     >
-      <button
-        type="button"
-        className={`message-actions__btn${feedback === 'up' ? ' message-actions__btn--active' : ''}`}
-        onClick={() => onFeedback('up')}
-        aria-label="Mi è stata utile"
-        aria-pressed={feedback === 'up'}
-        title="Mi è stata utile"
-      >
-        <span aria-hidden="true">👍</span>
-        <span className="message-actions__label">Mi è stata utile</span>
-      </button>
+      {!isUser ? (
+        <>
+          <button
+            type="button"
+            className={`message-actions__btn${feedback === 'up' ? ' message-actions__btn--active' : ''}`}
+            onClick={() => onFeedback('up')}
+            aria-label="Mi è stata utile"
+            aria-pressed={feedback === 'up'}
+            title="Mi è stata utile"
+          >
+            <span aria-hidden="true">👍</span>
+            <span className="message-actions__label">Mi è stata utile</span>
+          </button>
 
-      <button
-        type="button"
-        className={`message-actions__btn${feedback === 'down' ? ' message-actions__btn--active' : ''}`}
-        onClick={() => onFeedback('down')}
-        aria-label="Può migliorare"
-        aria-pressed={feedback === 'down'}
-        title="Può migliorare"
-      >
-        <span aria-hidden="true">👎</span>
-        <span className="message-actions__label">Può migliorare</span>
-      </button>
+          <button
+            type="button"
+            className={`message-actions__btn${feedback === 'down' ? ' message-actions__btn--active' : ''}`}
+            onClick={() => onFeedback('down')}
+            aria-label="Può migliorare"
+            aria-pressed={feedback === 'down'}
+            title="Può migliorare"
+          >
+            <span aria-hidden="true">👎</span>
+            <span className="message-actions__label">Può migliorare</span>
+          </button>
 
-      <span className="message-actions__sep" aria-hidden="true" />
+          <span className="message-actions__sep" aria-hidden="true" />
+        </>
+      ) : null}
 
       <button
         type="button"
@@ -110,17 +121,19 @@ function MessageActionsComponent({
         <span className="message-actions__label">{copied ? 'Copiato' : 'Copia'}</span>
       </button>
 
-      <button
-        type="button"
-        className="message-actions__btn"
-        onClick={onRegenerate}
-        disabled={!canRegenerate}
-        aria-label="Rigenera"
-        title="Rigenera"
-      >
-        <IconRefresh />
-        <span className="message-actions__label">Rigenera</span>
-      </button>
+      {!isUser ? (
+        <button
+          type="button"
+          className="message-actions__btn"
+          onClick={() => onRegenerate?.()}
+          disabled={!canRegenerate}
+          aria-label="Rigenera"
+          title="Rigenera"
+        >
+          <IconRefresh />
+          <span className="message-actions__label">Rigenera</span>
+        </button>
+      ) : null}
     </div>
   )
 }

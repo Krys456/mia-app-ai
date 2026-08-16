@@ -3,11 +3,13 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useReducer,
   useRef,
   type ReactNode,
 } from 'react'
+import { applyAppearanceToDocument, normalizeAppearance } from '../lib/appearance'
 import { requestChatCompletion, type ChatApiMessage } from '../lib/chatApi'
 import {
   finalizeConversationLearning,
@@ -43,11 +45,13 @@ import { revealReplyText } from '../lib/revealText'
 import { getOrCreateUserId } from '../lib/userId'
 import type { ThemeDefinition } from '../lib/themes'
 import {
+  DEFAULT_APPEARANCE_SETTINGS,
   DEFAULT_DEVELOPER_SETTINGS,
   DEFAULT_PERSONALIZATION,
   DEFAULT_THEME_SETTINGS,
   isPersonalityMode,
   migrateLegacyTone,
+  type AppearanceSettings,
   type AppSettings,
   type ChatMessage,
   type DeveloperSettings,
@@ -128,19 +132,23 @@ function normalizeDeveloper(
   }
 }
 
+function defaultAppSettings(): AppSettings {
+  return {
+    personalization: { ...DEFAULT_PERSONALIZATION },
+    theme: { ...DEFAULT_THEME_SETTINGS, customThemes: [] },
+    appearance: { ...DEFAULT_APPEARANCE_SETTINGS },
+    developer: { ...DEFAULT_DEVELOPER_SETTINGS },
+  }
+}
+
 function loadSettings(): AppSettings {
   try {
     const raw = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem('laife.settings.v1')
-    if (!raw) {
-      return {
-        personalization: { ...DEFAULT_PERSONALIZATION },
-        theme: { ...DEFAULT_THEME_SETTINGS, customThemes: [] },
-        developer: { ...DEFAULT_DEVELOPER_SETTINGS },
-      }
-    }
+    if (!raw) return defaultAppSettings()
     const parsed = JSON.parse(raw) as Partial<AppSettings> & {
       theme?: Partial<ThemeSettings>
       personalization?: Partial<PersonalizationSettings> & { tone?: unknown }
+      appearance?: Partial<AppearanceSettings>
       developer?: Partial<DeveloperSettings>
     }
     return {
@@ -149,14 +157,12 @@ function loadSettings(): AppSettings {
         activeThemeId: parsed.theme?.activeThemeId ?? DEFAULT_THEME_SETTINGS.activeThemeId,
         customThemes: sanitizeCustomThemes(parsed.theme?.customThemes),
       },
+      // Old laife.settings.v2 blobs without appearance → safe defaults.
+      appearance: normalizeAppearance(parsed.appearance),
       developer: normalizeDeveloper(parsed.developer),
     }
   } catch {
-    return {
-      personalization: { ...DEFAULT_PERSONALIZATION },
-      theme: { ...DEFAULT_THEME_SETTINGS, customThemes: [] },
-      developer: { ...DEFAULT_DEVELOPER_SETTINGS },
-    }
+    return defaultAppSettings()
   }
 }
 
@@ -189,6 +195,7 @@ type Action =
   | { type: 'TOGGLE_SETTINGS' }
   | { type: 'UPDATE_PERSONALIZATION'; payload: Partial<PersonalizationSettings> }
   | { type: 'UPDATE_THEME'; payload: Partial<ThemeSettings> }
+  | { type: 'UPDATE_APPEARANCE'; payload: Partial<AppearanceSettings> }
   | { type: 'UPDATE_DEVELOPER'; payload: Partial<DeveloperSettings> }
   | { type: 'SEND_USER'; content: string }
   | { type: 'ASSISTANT_START'; id: string }
@@ -253,6 +260,17 @@ function reducer(state: AppState, action: Action): AppState {
           ...action.payload,
           customThemes: action.payload.customThemes ?? state.settings.theme.customThemes,
         },
+      }
+      saveSettings(next)
+      return { ...state, settings: next }
+    }
+    case 'UPDATE_APPEARANCE': {
+      const next: AppSettings = {
+        ...state.settings,
+        appearance: normalizeAppearance({
+          ...state.settings.appearance,
+          ...action.payload,
+        }),
       }
       saveSettings(next)
       return { ...state, settings: next }
@@ -385,6 +403,7 @@ interface ChatContextValue {
   clearMemoryNotice: () => void
   updatePersonalization: (patch: Partial<PersonalizationSettings>) => void
   updateTheme: (patch: Partial<ThemeSettings>) => void
+  updateAppearance: (patch: Partial<AppearanceSettings>) => void
   updateDeveloper: (patch: Partial<DeveloperSettings>) => void
   sendMessage: (content: string) => void
   /** Re-run the completion for an assistant message (drops that reply and regenerates). */
@@ -449,9 +468,17 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'UPDATE_THEME', payload })
   }, [])
 
+  const updateAppearance = useCallback((payload: Partial<AppearanceSettings>) => {
+    dispatch({ type: 'UPDATE_APPEARANCE', payload })
+  }, [])
+
   const updateDeveloper = useCallback((payload: Partial<DeveloperSettings>) => {
     dispatch({ type: 'UPDATE_DEVELOPER', payload })
   }, [])
+
+  useEffect(() => {
+    applyAppearanceToDocument(state.settings.appearance)
+  }, [state.settings.appearance])
 
   const runAssistantCompletion = useCallback(
     (
@@ -695,6 +722,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       clearMemoryNotice,
       updatePersonalization,
       updateTheme,
+      updateAppearance,
       updateDeveloper,
       sendMessage,
       regenerateAssistant,
@@ -713,6 +741,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       clearMemoryNotice,
       updatePersonalization,
       updateTheme,
+      updateAppearance,
       updateDeveloper,
       sendMessage,
       regenerateAssistant,

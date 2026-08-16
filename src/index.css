@@ -88,6 +88,9 @@
   --safe-left: env(safe-area-inset-left, 0px);
 
   --font-sans: 'Outfit', ui-sans-serif, system-ui, sans-serif;
+  /* UI-only chat reading scale (#270). Applied to message bodies / markdown. */
+  --chat-font-scale: 1;
+  --md-block-gap: 0.92em;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --duration: 220ms;
   --duration-press: 160ms;

@@ -80,6 +80,18 @@ export interface ThemeSettings {
   customThemes: ThemeDefinition[]
 }
 
+/**
+ * UI-only reading preferences (#270).
+ * Never sent to /api/chat and never stored as Memory.
+ */
+export type AppearanceFontSize = 'small' | 'default' | 'large'
+export type AppearanceFontFamily = 'outfit' | 'system'
+
+export interface AppearanceSettings {
+  fontSize: AppearanceFontSize
+  fontFamily: AppearanceFontFamily
+}
+
 /** Developer-only preferences (device-local). Kept for settings migration compat. */
 export interface DeveloperSettings {
   /**
@@ -92,6 +104,7 @@ export interface DeveloperSettings {
 export interface AppSettings {
   personalization: PersonalizationSettings
   theme: ThemeSettings
+  appearance: AppearanceSettings
   developer: DeveloperSettings
 }
 
@@ -109,6 +122,11 @@ export const DEFAULT_THEME_SETTINGS: ThemeSettings = {
   customThemes: [],
 }
 
+export const DEFAULT_APPEARANCE_SETTINGS: AppearanceSettings = {
+  fontSize: 'default',
+  fontFamily: 'outfit',
+}
+
 export const DEFAULT_DEVELOPER_SETTINGS: DeveloperSettings = {
   v2Experimental: false,
 }
@@ -118,6 +136,14 @@ export function isPersonalityMode(value: unknown): value is PersonalityMode {
     typeof value === 'string' &&
     (PERSONALITY_MODES as readonly string[]).includes(value)
   )
+}
+
+export function isAppearanceFontSize(value: unknown): value is AppearanceFontSize {
+  return value === 'small' || value === 'default' || value === 'large'
+}
+
+export function isAppearanceFontFamily(value: unknown): value is AppearanceFontFamily {
+  return value === 'outfit' || value === 'system'
 }
 
 /** Map legacy tone values (pre-personality) onto the new modes. */
