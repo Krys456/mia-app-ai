@@ -15,6 +15,7 @@ import {
   loadCoreMemoryPack,
 } from '../lib/server/core-memory-recall.js'
 import { applyCors, sendCorsPreflight, sendJson } from '../lib/server/http.js'
+import { buildCoreContinuityAppendix } from '../lib/server/conversation-continuity.js'
 import { LAIFE_BASE_SYSTEM_PROMPT } from '../lib/server/laife-base-system-prompt.js'
 import { buildCoreLanguageAppendix } from '../lib/server/language-awareness.js'
 
@@ -164,6 +165,13 @@ function buildInstructions(body: ChatApiRequestBody, messages: ChatApiMessage[] 
   })
   if (languageAppendix) {
     parts.push(languageAppendix)
+  }
+
+  // Ephemeral CONTINUITY appendix (#263) — after LANGUAGE, before Memory pack.
+  // No resolver / second LLM / DB; model reasons from thread + this contract.
+  const continuityAppendix = buildCoreContinuityAppendix()
+  if (continuityAppendix) {
+    parts.push(continuityAppendix)
   }
 
   return parts.join('\n\n')

@@ -59,5 +59,16 @@ const langAppendix = buildCoreLanguageAppendix({
 assert.ok(langAppendix.includes('response language: en'))
 assert.ok(langAppendix.includes('overrides base-prompt language inertia'))
 
+// #263 continuity appendix — after language, separate from base.
+import {
+  CONVERSATION_CONTINUITY_CONTRACT,
+  buildCoreContinuityAppendix,
+} from '../lib/server/conversation-continuity.js'
+const continuityAppendix = buildCoreContinuityAppendix()
+assert.equal(continuityAppendix, CONVERSATION_CONTINUITY_CONTRACT)
+assert.ok(continuityAppendix.includes('CURRENT THREAD REFERENT > DURABLE MEMORY BACKGROUND'))
+assert.ok(!LAIFE_BASE_SYSTEM_PROMPT.includes('CURRENT THREAD REFERENT > DURABLE MEMORY'))
+
 console.log('ok: compact V2 companion prompt present (%d chars)', LAIFE_BASE_SYSTEM_PROMPT.length)
 console.log('ok: #262 language appendix wired (%d chars)', langAppendix.length)
+console.log('ok: #263 continuity appendix wired (%d chars)', continuityAppendix.length)
