@@ -55,25 +55,10 @@ function createMockScroller({
 } = {}) {
   /** @type {Record<string, Set<Function>>} */
   const listeners = {}
-  const classSet = new Set()
   const el = {
     clientHeight,
     scrollHeight,
     scrollTop,
-    classList: {
-      add(name) {
-        classSet.add(name)
-      },
-      remove(name) {
-        classSet.delete(name)
-      },
-      contains(name) {
-        return classSet.has(name)
-      },
-    },
-    querySelector() {
-      return null
-    },
     addEventListener(type, fn) {
       if (!listeners[type]) listeners[type] = new Set()
       listeners[type].add(fn)
@@ -109,6 +94,10 @@ globalThis.cancelAnimationFrame =
 
 function settleBottom(el) {
   el.scrollTop = Math.max(0, el.scrollHeight - el.clientHeight)
+}
+
+function distanceFromBottom(el) {
+  return el.scrollHeight - el.scrollTop - el.clientHeight
 }
 
 // —— TEST A: at bottom, reveal growth follows ——
@@ -176,9 +165,7 @@ function settleBottom(el) {
   c.scrollToBottom()
   // Drain ease frames (or reduced-motion jump).
   for (let i = 0; i < 80; i++) {
-    if (distanceOk(el)) break
-    // Manually advance pin by mutating — scrollToBottom uses rAF; call until near.
-    // For mock without rAF pin completing, force settle via repeated apply simulation:
+    if (distanceFromBottom(el) <= 2) break
     const rem = el.scrollHeight - el.scrollTop - el.clientHeight
     if (rem > 2) el.scrollTop += Math.max(10, rem * 0.18)
     else break
@@ -192,17 +179,15 @@ function settleBottom(el) {
   c.detach()
 }
 
-function distanceOk(el) {
-  return el.scrollHeight - el.scrollTop - el.clientHeight <= 2
-}
-
 // —— TEST E: manual return to bottom resumes FOLLOWING while streaming ——
+// Pause starts away from near zone so hasLeftNearZone is true.
 {
   const el = createMockScroller({ scrollHeight: 900, clientHeight: 400, scrollTop: 100 })
   const c = new AutoScrollController()
   c.attach(el)
   c.setStreaming(true)
   c.pauseByUser()
+  assert.equal(c.getHasLeftNearZone(), true, 'E pause away from bottom marks left zone')
   settleBottom(el)
   el.dispatch('scroll', {})
   assert.equal(c.getState(), 'FOLLOWING', 'E manual bottom resumes FOLLOWING')
@@ -255,9 +240,8 @@ function distanceOk(el) {
   c.detach()
 }
 
-// —— DIAG K: upward touch while still within NEAR_BOTTOM, then scroll event ——
-// Documents current auto-resume: pause is cleared because `near` is still true.
-// This matches the Android “swipe up but reveal keeps following” Preview failure.
+// —— TEST K: upward touch while still within NEAR_BOTTOM, then scroll event ——
+// Must STAY paused — same gesture must not auto-resume FOLLOWING.
 {
   const el = createMockScroller({ scrollHeight: 500, clientHeight: 400, scrollTop: 100 })
   settleBottom(el)
@@ -271,20 +255,70 @@ function distanceOk(el) {
   el.dispatch('touchstart', { touches: [{ clientY: 300 }] })
   el.dispatch('touchmove', { touches: [{ clientY: 320 }] }) // finger down → content up
   assert.equal(c.getState(), 'PAUSED_BY_USER', 'K touch upward pauses')
+  assert.equal(c.getHasLeftNearZone(), false, 'K still in near zone')
 
   // Same gesture / layout fires scroll while still near bottom.
   el.dispatch('scroll', {})
   assert.equal(
     c.getState(),
-    'FOLLOWING',
-    'K DIAG: near-bottom scroll after pause auto-resumes FOLLOWING (eager resume)',
+    'PAUSED_BY_USER',
+    'K same-gesture near scroll does NOT auto-resume FOLLOWING',
   )
 
-  const topBefore = el.scrollTop
+  const frozen = el.scrollTop
   el.grow(100)
   c.tickOnce()
-  assert.ok(el.scrollTop > topBefore, 'K after eager resume, growth writes scrollTop again')
+  c.tickOnce()
+  assert.equal(el.scrollTop, frozen, 'K reveal growth does not move scrollTop while paused')
+  assert.equal(c.getHasUnseenGrowth(), true, 'K unseen growth flagged')
   c.detach()
+}
+
+// —— TEST L: pause near → leave near zone → return to bottom → resume ——
+{
+  const el = createMockScroller({ scrollHeight: 800, clientHeight: 400, scrollTop: 100 })
+  settleBottom(el)
+  const c = new AutoScrollController()
+  c.attach(el)
+  c.setStreaming(true)
+
+  el.scrollTop = el.scrollHeight - el.clientHeight - 20
+  el.dispatch('touchstart', { touches: [{ clientY: 300 }] })
+  el.dispatch('touchmove', { touches: [{ clientY: 330 }] })
+  assert.equal(c.getState(), 'PAUSED_BY_USER', 'L paused near')
+  el.dispatch('scroll', {})
+  assert.equal(c.getState(), 'PAUSED_BY_USER', 'L still paused while near')
+
+  // Meaningfully leave near zone.
+  el.scrollTop = 80
+  el.dispatch('scroll', {})
+  assert.equal(c.getHasLeftNearZone(), true, 'L marked left near zone')
+  assert.equal(c.getState(), 'PAUSED_BY_USER', 'L stays paused while away')
+
+  // User scrolls back to bottom.
+  settleBottom(el)
+  el.dispatch('scroll', {})
+  assert.equal(c.getState(), 'FOLLOWING', 'L manual return after leave resumes FOLLOWING')
+  c.detach()
+}
+
+// —— Diagnostics must be gone ——
+{
+  const src = fs.readFileSync(controllerPath, 'utf8')
+  assert.ok(!src.includes('[chat-scroll][trace]'), 'no scroll trace tag')
+  assert.ok(!src.includes('isChatScrollTraceEnabled'), 'no trace gate')
+  const viewportCss = fs.readFileSync('src/components/chat/ChatContainer.css', 'utf8')
+  assert.ok(!viewportCss.includes('diag-no-anchor'), 'no temp overflow-anchor diag')
+  const listCss = fs.readFileSync('src/components/chat/MessageList.css', 'utf8')
+  assert.ok(!listCss.includes('diag-no-anchor'), 'no message-list diag anchor')
+}
+
+// —— Scroll-to-bottom button is centered ——
+{
+  const btnCss = fs.readFileSync('src/components/chat/ScrollToBottomButton.css', 'utf8')
+  assert.match(btnCss, /left:\s*50%/, 'button horizontally centered')
+  assert.match(btnCss, /translateX\(-50%\)/, 'button translateX center')
+  assert.ok(!/^\s*right:/m.test(btnCss.replace(/safe-area-inset-right/g, '')), 'not right-anchored')
 }
 
 console.log('ok: #268 AutoScrollController tests passed')
