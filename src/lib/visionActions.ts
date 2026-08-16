@@ -1,5 +1,6 @@
 /**
  * Client Vision Lens actions (#274) — localized shortcuts into SAME Core.
+ * Sticky resolution mirrors lib/server/vision-task-shortcuts.js (kept in sync by tests).
  */
 
 import {
@@ -9,8 +10,9 @@ import {
 } from './dictationLanguage'
 
 export type VisionAction = 'analyze' | 'read' | 'explain'
+export type VisionLang = DictationLangCode
 
-const PROMPTS: Record<DictationLangCode, { read: string; explain: string }> = {
+const PROMPTS: Record<VisionLang, { read: string; explain: string }> = {
   it: {
     read: 'Leggi e trascrivi il testo visibile nell’immagine.',
     explain: 'Spiega ciò che è mostrato nell’immagine.',
@@ -35,13 +37,12 @@ const PROMPTS: Record<DictationLangCode, { read: string; explain: string }> = {
 
 export function listVisionTaskShortcutTexts(): string[] {
   const out: string[] = []
-  for (const code of Object.keys(PROMPTS) as DictationLangCode[]) {
+  for (const code of Object.keys(PROMPTS) as VisionLang[]) {
     out.push(PROMPTS[code].read, PROMPTS[code].explain)
   }
   return out
 }
 
-/** Mirror of server `isVisionTaskShortcut` for client tests. */
 export function isVisionTaskShortcut(text: unknown): boolean {
   if (typeof text !== 'string') return false
   const t = text.trim()
@@ -49,24 +50,42 @@ export function isVisionTaskShortcut(text: unknown): boolean {
   return listVisionTaskShortcutTexts().includes(t)
 }
 
+/**
+ * Prefer established conversation language over navigator/default EN.
+ * Navigator is used ONLY when the thread has no user/assistant text yet.
+ */
 export function resolveVisionActionLang(input: {
   messages?: Array<{ role?: string; content?: string }>
   navigatorLanguage?: string | null
-}): DictationLangCode {
-  return (
-    deriveDictationLangFromMessages(input.messages) ||
-    localeToDictationLang(input.navigatorLanguage) ||
-    'en'
+}): VisionLang {
+  const list = Array.isArray(input.messages) ? input.messages : []
+  const fromUsers = deriveDictationLangFromMessages(list)
+  if (fromUsers) return fromUsers
+
+  // Secondary: treat recent assistant turns as language evidence for Vision captions.
+  const assistantAsUser = list
+    .filter((m) => m?.role === 'assistant' && typeof m.content === 'string' && m.content.trim())
+    .map((m) => ({ role: 'user' as const, content: String(m.content) }))
+  const fromAssistant = deriveDictationLangFromMessages(assistantAsUser)
+  if (fromAssistant) return fromAssistant
+
+  const hasThreadText = list.some(
+    (m) =>
+      (m?.role === 'user' || m?.role === 'assistant') &&
+      typeof m.content === 'string' &&
+      m.content.trim().length > 0,
   )
+  if (!hasThreadText) {
+    return localeToDictationLang(input.navigatorLanguage) || 'en'
+  }
+
+  // Thread exists but lexical sticky unclear — still avoid flipping to navigator EN.
+  // Fall back to navigator only as last resort (may match user's device language).
+  return localeToDictationLang(input.navigatorLanguage) || 'en'
 }
 
-/**
- * Caption for sendMessage. Analyze → empty (image-only sticky path).
- */
-export function captionForVisionAction(
-  action: VisionAction,
-  lang: DictationLangCode,
-): string {
+/** Caption for sendMessage. Analyze → empty (image-only sticky path). */
+export function captionForVisionAction(action: VisionAction, lang: VisionLang): string {
   if (action === 'analyze') return ''
   return PROMPTS[lang][action]
 }

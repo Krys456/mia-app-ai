@@ -11,6 +11,11 @@ import {
   resolveVisionActionLang,
   type VisionAction,
 } from '../lib/visionActions'
+import {
+  captureVideoFrameToJpegBlob,
+  isVideoFrameReady,
+  summarizeCaptureForLog,
+} from '../lib/visionCameraCapture'
 import type { ChatAttachment } from '../types'
 import './Vision.css'
 
@@ -48,11 +53,15 @@ export function Vision({ onBack, onHandoffToChat }: VisionProps) {
   const [cameraError, setCameraError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [status, setStatus] = useState<string | null>(null)
+  const [videoReady, setVideoReady] = useState(false)
+  /** Bumps when a new MediaStream is acquired so the attach effect re-runs. */
+  const [cameraSession, setCameraSession] = useState(0)
 
   const stopCameraTracks = useCallback(() => {
     streamRef.current?.getTracks().forEach((track) => track.stop())
     streamRef.current = null
     if (videoRef.current) videoRef.current.srcObject = null
+    setVideoReady(false)
   }, [])
 
   const revokePreview = useCallback(() => {
@@ -72,6 +81,40 @@ export function Vision({ onBack, onHandoffToChat }: VisionProps) {
       }
     }
   }, [])
+
+  // Attach stream AFTER the <video> mounts (phase === 'camera').
+  // Starting getUserMedia before mount left videoRef null → black captures.
+  useEffect(() => {
+    if (phase !== 'camera') return
+    const video = videoRef.current
+    const stream = streamRef.current
+    if (!video || !stream) return
+
+    let cancelled = false
+    const syncReady = () => {
+      if (cancelled) return
+      setVideoReady(isVideoFrameReady(video, stream).ready)
+    }
+
+    if (video.srcObject !== stream) {
+      video.srcObject = stream
+    }
+    void video.play().then(syncReady).catch(() => {
+      /* play can reject if paused mid-transition */
+    })
+
+    video.addEventListener('loadedmetadata', syncReady)
+    video.addEventListener('canplay', syncReady)
+    video.addEventListener('playing', syncReady)
+    syncReady()
+
+    return () => {
+      cancelled = true
+      video.removeEventListener('loadedmetadata', syncReady)
+      video.removeEventListener('canplay', syncReady)
+      video.removeEventListener('playing', syncReady)
+    }
+  }, [phase, cameraSession])
 
   const setPreparedAttachment = useCallback(
     (next: ChatAttachment, previewUrl: string) => {
@@ -93,6 +136,9 @@ export function Vision({ onBack, onHandoffToChat }: VisionProps) {
       try {
         const prepared = await prepareImageAttachment(file)
         console.info('[vision] image prepared', summarizeImageForLog(prepared))
+        if (!(prepared.width > 0 && prepared.height > 0)) {
+          throw new ImageValidationError('unreadable')
+        }
         const att: ChatAttachment = {
           id: uid(),
           kind: 'image',
@@ -102,7 +148,6 @@ export function Vision({ onBack, onHandoffToChat }: VisionProps) {
           width: prepared.width,
           height: prepared.height,
         }
-        // prepareImageAttachment already created a blob preview URL — take ownership.
         setPreparedAttachment(att, prepared.previewUrl)
         setStatus(null)
       } catch (err) {
@@ -125,6 +170,7 @@ export function Vision({ onBack, onHandoffToChat }: VisionProps) {
     setCameraError(null)
     setError(null)
     setStatus(null)
+    setVideoReady(false)
 
     if (!navigator.mediaDevices?.getUserMedia) {
       setCameraError(
@@ -140,10 +186,8 @@ export function Vision({ onBack, onHandoffToChat }: VisionProps) {
         audio: false,
       })
       streamRef.current = stream
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream
-        await videoRef.current.play()
-      }
+      // Mount video first; effect attaches stream + waits for a real frame.
+      setCameraSession((n) => n + 1)
       setPhase('camera')
       setStatus('Fotocamera attiva')
     } catch {
@@ -157,32 +201,40 @@ export function Vision({ onBack, onHandoffToChat }: VisionProps) {
   const capturePhoto = async () => {
     const video = videoRef.current
     const canvas = canvasRef.current
+    const stream = streamRef.current
     if (!video || !canvas || phase !== 'camera') return
 
-    const width = video.videoWidth || 1280
-    const height = video.videoHeight || 720
-    canvas.width = width
-    canvas.height = height
-    const ctx = canvas.getContext('2d')
-    if (!ctx) {
-      setError('Acquisizione foto non riuscita.')
+    const readiness = isVideoFrameReady(video, stream)
+    if (!readiness.ready) {
+      setError('Attendi che l’anteprima della fotocamera sia pronta, poi scatta di nuovo.')
+      console.warn('[vision] capture blocked', summarizeCaptureForLog(readiness))
       return
     }
 
-    ctx.drawImage(video, 0, 0, width, height)
-    const blob = await new Promise<Blob | null>((resolve) =>
-      canvas.toBlob((result) => resolve(result), 'image/jpeg', 0.92),
-    )
-    // Stop live camera after capture (no background camera).
-    stopCameraTracks()
+    try {
+      // Keep stream alive until drawImage + toBlob complete.
+      const { blob, width, height } = await captureVideoFrameToJpegBlob(video, canvas, stream)
+      console.info(
+        '[vision] frame captured',
+        summarizeCaptureForLog({
+          videoWidth: width,
+          videoHeight: height,
+          readyState: video.readyState,
+          blobSize: blob.size,
+          blobType: blob.type,
+        }),
+      )
 
-    if (!blob) {
-      setError('Acquisizione foto non riuscita.')
-      setPhase(attachment ? 'ready' : 'empty')
-      return
+      stopCameraTracks()
+      await prepareFromFile(blobToImageFile(blob, `capture-${Date.now()}.jpg`))
+    } catch (err) {
+      console.warn(
+        '[vision] capture failed',
+        err instanceof Error ? err.message.slice(0, 80) : 'unknown',
+      )
+      setError('Acquisizione foto non riuscita. Riprova o scegli una foto dalla galleria.')
+      // Do not stop stream on failed capture — user can retry.
     }
-
-    await prepareFromFile(blobToImageFile(blob, `capture-${Date.now()}.jpg`))
   }
 
   const onUploadChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -215,7 +267,6 @@ export function Vision({ onBack, onHandoffToChat }: VisionProps) {
     })
     const caption = captionForVisionAction(action, lang)
 
-    // Stop camera before handoff.
     stopCameraTracks()
 
     setPhase('sending')
@@ -228,7 +279,6 @@ export function Vision({ onBack, onHandoffToChat }: VisionProps) {
           : 'Spiegazione…',
     )
 
-    // Thread uses dataUrl for preview so we can revoke the blob URL.
     const wire: ChatAttachment = {
       id: attachment.id,
       kind: 'image',
@@ -254,6 +304,7 @@ export function Vision({ onBack, onHandoffToChat }: VisionProps) {
 
   const previewSrc = attachment?.previewUrl || attachment?.dataUrl || null
   const busy = phase === 'sending'
+  const canCapture = phase === 'camera' && videoReady && !busy
 
   return (
     <main className="laife-vision">
@@ -265,7 +316,7 @@ export function Vision({ onBack, onHandoffToChat }: VisionProps) {
         </p>
 
         <div className="sr-only" aria-live="polite" aria-atomic="true">
-          {status ?? ''}
+          {status ?? (phase === 'camera' && !videoReady ? 'Preparazione anteprima fotocamera…' : '')}
         </div>
 
         {phase === 'camera' ? (
@@ -276,15 +327,20 @@ export function Vision({ onBack, onHandoffToChat }: VisionProps) {
                 className="laife-vision__video"
                 playsInline
                 muted
+                autoPlay
                 aria-label="Anteprima fotocamera live"
               />
+              {!videoReady ? (
+                <p className="laife-vision__frame-hint">Preparazione anteprima…</p>
+              ) : null}
             </div>
             <div className="laife-vision__actions">
               <button
                 type="button"
                 className="laife-vision__primary"
                 onClick={() => void capturePhoto()}
-                disabled={busy}
+                disabled={!canCapture}
+                aria-disabled={!canCapture}
               >
                 Scatta foto
               </button>

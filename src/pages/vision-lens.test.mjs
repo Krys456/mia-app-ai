@@ -119,6 +119,24 @@ assert.match(vision, /revokeObjectURL|revokePreview/)
 // X no base64 console of dataUrl
 assert.doesNotMatch(vision, /console\.(log|info|warn|error)\([^)]*dataUrl/)
 assert.match(vision, /summarizeImageForLog/)
+assert.match(vision, /summarizeCaptureForLog/)
+
+// #274 follow-up: language sticky + camera frame gate
+assert.match(vision, /resolveVisionActionLang/)
+assert.match(vision, /videoReady/)
+assert.match(vision, /isVideoFrameReady/)
+assert.match(vision, /captureVideoFrameToJpegBlob/)
+assert.match(vision, /setCameraSession/)
+assert.match(vision, /prepared\.width > 0 && prepared\.height > 0/)
+assert.equal(client.resolveVisionActionLang({
+  messages: [
+    { role: 'user', content: 'Ciao, parliamo in italiano per favore.' },
+    { role: 'assistant', content: 'Certo!' },
+  ],
+  navigatorLanguage: 'en-US',
+}), 'it')
+assert.equal(client.captionForVisionAction('read', 'it'), VISION_TASK_PROMPTS.it.read)
+assert.equal(client.captionForVisionAction('analyze', 'it'), '')
 
 // Y / Z stubs deleted
 assert.equal(fs.existsSync(path.join(root, 'api/vision.ts')), false)

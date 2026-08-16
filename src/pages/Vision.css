@@ -61,6 +61,17 @@
   background: #0a0a0a;
 }
 
+.laife-vision__frame-hint {
+  position: absolute;
+  inset: auto 0 0.75rem;
+  margin: 0;
+  text-align: center;
+  color: #f5f5f5;
+  font-size: 0.82rem;
+  font-weight: 600;
+  pointer-events: none;
+}
+
 .laife-vision__video,
 .laife-vision__preview {
   display: block;
