@@ -58,12 +58,18 @@ export interface ChatImageAttachment {
   height?: number
 }
 
-/** Session-scoped PDF attachment (#275) — metadata + OpenAI fileId only (no bytes). */
+/** Supported document MIME union (#275 PDF + #276 TXT/DOCX). */
+export type SupportedDocumentMime =
+  | 'application/pdf'
+  | 'text/plain'
+  | 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+
+/** Session-scoped document attachment — metadata + OpenAI fileId only (no bytes). */
 export interface ChatFileAttachment {
   id: string
   kind: 'file'
   name: string
-  mimeType: 'application/pdf'
+  mimeType: SupportedDocumentMime
   size: number
   fileId: string
   expiresAt?: number

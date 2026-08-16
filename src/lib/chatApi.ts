@@ -19,7 +19,11 @@ export interface ChatApiFileAttachment {
   type: 'file'
   fileId: string
   name: string
-  mimeType: 'application/pdf'
+  mimeType:
+    | 'application/pdf'
+    | 'text/plain'
+    | 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    | string
   size: number
 }
 

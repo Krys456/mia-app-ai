@@ -465,7 +465,7 @@ function toApiMessages(messages: ChatMessage[]): ChatApiMessage[] {
             type: 'file' as const,
             fileId: a.fileId,
             name: a.name,
-            mimeType: 'application/pdf' as const,
+            mimeType: a.mimeType,
             size: a.size,
           })),
         }
@@ -735,7 +735,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
                         type: 'file' as const,
                         fileId: a.fileId,
                         name: a.name,
-                        mimeType: 'application/pdf' as const,
+                        mimeType: a.mimeType,
                         size: a.size,
                       },
                 ),

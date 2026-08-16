@@ -13,13 +13,14 @@ import {
   summarizeImageForLog,
 } from '../../lib/imageAttachment'
 import {
-  PdfValidationError,
-  assertValidPdfFile,
-  formatPdfSize,
-  summarizePdfForLog,
+  DocumentValidationError,
+  assertValidDocumentFile,
+  documentBadgeFor,
+  formatDocumentSize,
+  summarizeDocumentForLog,
   truncateFilename,
-} from '../../lib/pdfAttachment'
-import { PdfUploadError, uploadPdfAttachment } from '../../lib/pdfUpload'
+} from '../../lib/documentAttachment'
+import { DocumentUploadError, uploadDocumentAttachment } from '../../lib/documentUpload'
 import type { ChatAttachment } from '../../types'
 import { ComposerAttachMenu } from './ComposerAttachMenu'
 import { ComposerMicrophoneButton } from './ComposerMicrophoneButton'
@@ -102,7 +103,8 @@ export function ComposerShell({ onMessageSent }: ComposerShellProps) {
   const chatSuspended = useChatViewSuspended()
   const attachment = draft.attachments[0]
   const image = attachment?.kind === 'image' ? attachment : null
-  const pdf = attachment?.kind === 'file' ? attachment : null
+  const document = attachment?.kind === 'file' ? attachment : null
+  const documentBadge = document ? documentBadgeFor(document.mimeType, document.name) : null
 
   const focusInput = useCallback(() => {
     requestAnimationFrame(() => {
@@ -147,16 +149,16 @@ export function ComposerShell({ onMessageSent }: ComposerShellProps) {
       setPreparing(true)
       try {
         if (source === 'document') {
-          const validated = await assertValidPdfFile(file)
+          const validated = await assertValidDocumentFile(file)
           const next: ComposerFileAttachment = {
             id: uid(),
             kind: 'file',
             name: validated.name,
-            mimeType: 'application/pdf',
+            mimeType: validated.mimeType,
             size: validated.size,
             localFile: file,
           }
-          console.info('[composer] pdf prepared', summarizePdfForLog(next))
+          console.info('[composer] document prepared', summarizeDocumentForLog(next))
           setAttachment(next)
         } else {
           const prepared = await prepareImageAttachment(file)
@@ -176,15 +178,15 @@ export function ComposerShell({ onMessageSent }: ComposerShellProps) {
         }
       } catch (error) {
         const message =
-          error instanceof ImageValidationError || error instanceof PdfValidationError
+          error instanceof ImageValidationError || error instanceof DocumentValidationError
             ? error.message
             : source === 'document'
-              ? 'Impossibile allegare il PDF.'
+              ? 'Impossibile allegare il documento.'
               : 'Impossibile allegare l’immagine.'
         setAttachError(message)
         console.warn(
           '[composer] attachment rejected',
-          error instanceof ImageValidationError || error instanceof PdfValidationError
+          error instanceof ImageValidationError || error instanceof DocumentValidationError
             ? error.code
             : 'unknown',
         )
@@ -210,33 +212,36 @@ export function ComposerShell({ onMessageSent }: ComposerShellProps) {
 
     try {
       if (attachments[0]?.kind === 'file') {
-        const pdfAtt = attachments[0]
+        const fileAtt = attachments[0]
         setUploading(true)
         setAttachError(null)
 
-        let fileId = pdfAtt.fileId
-        let expiresAt = pdfAtt.expiresAt
-        let name = pdfAtt.name
-        let size = pdfAtt.size
+        let fileId = fileAtt.fileId
+        let expiresAt = fileAtt.expiresAt
+        let name = fileAtt.name
+        let size = fileAtt.size
+        let mimeType = fileAtt.mimeType
 
         if (!fileId) {
-          if (!pdfAtt.localFile) {
-            setAttachError('PDF non disponibile. Selezionalo di nuovo.')
+          if (!fileAtt.localFile) {
+            setAttachError('Documento non disponibile. Selezionalo di nuovo.')
             restore(snapshot)
             return
           }
-          const uploaded = await uploadPdfAttachment(pdfAtt.localFile)
+          const uploaded = await uploadDocumentAttachment(fileAtt.localFile)
           fileId = uploaded.fileId
           expiresAt = uploaded.expiresAt ?? undefined
           name = uploaded.filename
           size = uploaded.size
+          mimeType = uploaded.mimeType
           // Keep fileId on draft so a chat failure can retry without re-upload.
           const withId: ComposerFileAttachment = {
-            ...pdfAtt,
+            ...fileAtt,
             fileId,
             expiresAt,
             name,
             size,
+            mimeType,
           }
           restore({ text: snapshot.text, attachments: [withId] })
           snapshot.attachments = [withId]
@@ -244,10 +249,10 @@ export function ComposerShell({ onMessageSent }: ComposerShellProps) {
 
         wireAttachments = [
           {
-            id: pdfAtt.id,
+            id: fileAtt.id,
             kind: 'file',
             name,
-            mimeType: 'application/pdf',
+            mimeType,
             size,
             fileId,
             ...(expiresAt ? { expiresAt } : {}),
@@ -269,9 +274,9 @@ export function ComposerShell({ onMessageSent }: ComposerShellProps) {
       }
     } catch (error) {
       const message =
-        error instanceof PdfUploadError || error instanceof PdfValidationError
+        error instanceof DocumentUploadError || error instanceof DocumentValidationError
           ? error.message
-          : 'Caricamento PDF non riuscito. Riprova.'
+          : 'Caricamento documento non riuscito. Riprova.'
       setAttachError(message)
       restore(snapshot)
       return
@@ -327,17 +332,17 @@ export function ComposerShell({ onMessageSent }: ComposerShellProps) {
     : isStreaming
       ? 'LAIfe sta rispondendo'
       : uploading
-        ? 'Caricamento PDF…'
+        ? 'Caricamento documento…'
         : preparing
-          ? pdf
-            ? 'Preparazione PDF…'
+          ? document
+            ? 'Preparazione documento…'
             : 'Preparazione immagine…'
           : dictation.listening
             ? 'Dettatura attiva'
             : dictation.statusAnnouncement || undefined
 
   const tray =
-    image || pdf || attachError || dictation.error ? (
+    image || document || attachError || dictation.error ? (
       <div className="composer-tray-inner">
         {image ? (
           <div className="composer-preview">
@@ -359,21 +364,21 @@ export function ComposerShell({ onMessageSent }: ComposerShellProps) {
             </button>
           </div>
         ) : null}
-        {pdf ? (
-          <div className="composer-file-chip" aria-label={`PDF ${pdf.name}`}>
+        {document && documentBadge ? (
+          <div className="composer-file-chip" aria-label={`${documentBadge} ${document.name}`}>
             <span className="composer-file-chip__icon" aria-hidden="true">
-              PDF
+              {documentBadge}
             </span>
             <span className="composer-file-chip__meta">
-              <span className="composer-file-chip__name">{truncateFilename(pdf.name)}</span>
-              <span className="composer-file-chip__size">{formatPdfSize(pdf.size)}</span>
+              <span className="composer-file-chip__name">{truncateFilename(document.name)}</span>
+              <span className="composer-file-chip__size">{formatDocumentSize(document.size)}</span>
             </span>
             <button
               type="button"
               className="composer-file-chip__remove"
-              aria-label="Rimuovi PDF"
+              aria-label="Rimuovi documento"
               onClick={() => {
-                removeAttachment(pdf.id)
+                removeAttachment(document.id)
                 setAttachError(null)
               }}
             >
@@ -434,7 +439,7 @@ export function ComposerShell({ onMessageSent }: ComposerShellProps) {
               ? 'Ti ascolto…'
               : busy
                 ? 'Puoi scrivere il prossimo messaggio…'
-                : image || pdf
+                : image || document
                   ? 'Aggiungi una didascalia (opzionale)…'
                   : 'Messaggio a LAIfe…'
           }
