@@ -153,6 +153,7 @@
   line-height: 1.5;
   font-size: 0.95rem;
   color: var(--text);
+  white-space: pre-line;
 }
 
 .bubble--assistant .message-actions {

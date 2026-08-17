@@ -6,8 +6,9 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { buildCoreResponsesCreateParams } from '../lib/server/core-responses-params.js'
-import { applyCors, sendCorsPreflight, sendJson } from '../lib/server/http.js'
+import { applyCors, sendCorsPreflight, sendJson, SAFE_UPSTREAM_ERROR } from '../lib/server/http.js'
 import { requirePaidApiAccess } from '../lib/server/paid-api-guard.js'
+import { safeErrorSnippet } from '../lib/server/safe-log.js'
 import {
   buildSelectionInput,
   buildSelectionInstructions,
@@ -63,7 +64,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) {
     return sendJson(res, 500, {
-      error: 'Server misconfigured: OPENAI_API_KEY is not set',
+      error: SAFE_UPSTREAM_ERROR,
+      code: 'misconfigured',
     }, req)
   }
 
@@ -71,12 +73,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     body = parseBody(req)
   } catch {
-    return sendJson(res, 400, { error: 'Invalid JSON body', code: 'invalid_body' })
+    return sendJson(res, 400, { error: 'Invalid JSON body', code: 'invalid_body' }, req)
   }
 
   const sanitized = sanitizeSelectionRequest(body)
   if (!sanitized.ok) {
-    return sendJson(res, 400, { error: sanitized.error, code: sanitized.code })
+    return sendJson(res, 400, { error: sanitized.error, code: sanitized.code }, req)
   }
 
   const model = resolveChatModel(process.env)
@@ -86,7 +88,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return sendJson(res, 503, {
       error: 'Live web search is not available for the current model.',
       code: 'web_search_unavailable',
-    })
+    }, req)
   }
 
   const instructions = buildSelectionInstructions({
@@ -129,7 +131,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return sendJson(res, 502, {
         error: 'Non riesco a verificare questa informazione online in questo momento.',
         code: 'web_search_failed',
-      })
+      }, req)
     }
 
     if (!result) {
@@ -138,7 +140,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           ? 'Non riesco a verificare questa informazione online in questo momento.'
           : 'Empty response from OpenAI',
         code: isSearch ? 'web_search_empty' : 'empty_result',
-      })
+      }, req)
     }
 
     if (isSearch && !responseUsedWebSearch(response)) {
@@ -146,7 +148,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return sendJson(res, 502, {
         error: 'Non riesco a verificare questa informazione online in questo momento.',
         code: 'web_search_missing',
-      })
+      }, req)
     }
 
     return sendJson(res, 200, {
@@ -155,10 +157,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       runtime: 'selection',
       model,
       ...(citations.length ? { citations } : {}),
-    })
+    }, req)
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error)
-    console.error('[api/selection] failed:', errMsg.slice(0, 240))
+    console.error('[api/selection] failed:', safeErrorSnippet(error))
     try {
       const OpenAI = (await import('openai')).default
       if (error instanceof OpenAI.APIError) {
@@ -166,24 +167,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           typeof error.status === 'number' && error.status >= 400 && error.status < 600
             ? error.status
             : 502
-        return sendJson(res, status, {
-          error: isSearch
-            ? 'Non riesco a verificare questa informazione online in questo momento.'
-            : error.message,
-          code: isSearch ? 'web_search_error' : error.code,
-          type: error.type,
-        })
+        return sendJson(
+          res,
+          status,
+          {
+            error: isSearch
+              ? 'Non riesco a verificare questa informazione online in questo momento.'
+              : SAFE_UPSTREAM_ERROR,
+            code: isSearch
+              ? 'web_search_error'
+              : 'upstream_ai_error',
+          },
+          req)
       }
     } catch {
       // fall through
     }
-    return sendJson(res, 500, {
-      error: isSearch
-        ? 'Non riesco a verificare questa informazione online in questo momento.'
-        : error instanceof Error
-          ? error.message
-          : String(error),
-      ...(isSearch ? { code: 'web_search_error' } : {}),
-    })
+    return sendJson(
+      res,
+      500,
+      {
+        error: isSearch
+          ? 'Non riesco a verificare questa informazione online in questo momento.'
+          : SAFE_UPSTREAM_ERROR,
+        code: isSearch ? 'web_search_error' : 'upstream_ai_error',
+      },
+      req)
   }
 }

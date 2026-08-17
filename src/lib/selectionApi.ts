@@ -5,6 +5,7 @@
 
 import type { WebCitation } from '../types'
 import { resolveChatAuthForRequest } from './chatAuth'
+import { parseApiErrorResponse, withErrorReference } from './apiError'
 
 export type SelectionOperation = 'define' | 'explain' | 'search'
 
@@ -28,12 +29,20 @@ export interface SelectionApiSuccess {
 export class SelectionApiError extends Error {
   readonly status: number
   readonly code?: string
+  readonly requestId?: string
+  readonly retryAfter?: number
 
-  constructor(message: string, status: number, code?: string) {
+  constructor(
+    message: string,
+    status: number,
+    opts?: { code?: string; requestId?: string; retryAfter?: number },
+  ) {
     super(message)
     this.name = 'SelectionApiError'
     this.status = status
-    this.code = code
+    this.code = opts?.code
+    this.requestId = opts?.requestId
+    this.retryAfter = opts?.retryAfter
   }
 }
 
@@ -90,7 +99,7 @@ export async function requestSelectionInsight(
     throw new SelectionApiError(
       'Sessione non pronta. Ricarica la pagina e riprova.',
       401,
-      'unauthorized',
+      { code: 'unauthorized' },
     )
   }
 
@@ -121,26 +130,40 @@ export async function requestSelectionInsight(
     throw new SelectionApiError(raw || 'Selection request failed', 0)
   }
 
-  let data: Partial<SelectionApiSuccess> & { error?: string; code?: string } = {}
+  let data: Partial<SelectionApiSuccess> & {
+    error?: string
+    code?: string
+    requestId?: string
+    retryAfter?: number
+  } = {}
   try {
     const rawText = await response.text()
     if (rawText.trim()) {
       data = JSON.parse(rawText) as typeof data
     }
   } catch {
+    const headerId = response.headers.get('X-Request-Id')?.trim() || undefined
     throw new SelectionApiError(
-      `Selection API returned invalid JSON (${response.status})`,
+      withErrorReference(
+        `Selection API returned invalid JSON (${response.status})`,
+        headerId,
+      ),
       response.status,
+      { requestId: headerId },
     )
   }
 
   if (!response.ok) {
-    throw new SelectionApiError(
-      (typeof data.error === 'string' && data.error.trim()) ||
-        `Selection API failed (${response.status})`,
-      response.status,
-      typeof data.code === 'string' ? data.code : undefined,
+    const parsed = parseApiErrorResponse(
+      response,
+      data,
+      `Selection API failed (${response.status})`,
     )
+    throw new SelectionApiError(withErrorReference(parsed.message, parsed.requestId), parsed.status, {
+      code: parsed.code,
+      requestId: parsed.requestId,
+      retryAfter: parsed.retryAfter,
+    })
   }
 
   const result = typeof data.result === 'string' ? data.result.trim() : ''

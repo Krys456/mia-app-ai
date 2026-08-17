@@ -10,6 +10,7 @@ import {
   type SupportedDocumentMime,
 } from './documentAttachment'
 import { resolveChatAuthForRequest } from './chatAuth'
+import { parseApiErrorResponse, withErrorReference } from './apiError'
 
 export interface UploadedDocumentMeta {
   fileId: string
@@ -22,12 +23,19 @@ export interface UploadedDocumentMeta {
 export class DocumentUploadError extends Error {
   readonly code: string
   readonly status: number
+  readonly requestId?: string
 
-  constructor(message: string, code = 'upload_failed', status = 0) {
+  constructor(
+    message: string,
+    code = 'upload_failed',
+    status = 0,
+    opts?: { requestId?: string },
+  ) {
     super(message)
     this.name = 'DocumentUploadError'
     this.code = code
     this.status = status
+    this.requestId = opts?.requestId
   }
 }
 
@@ -85,10 +93,12 @@ export async function uploadDocumentAttachment(
       signal: init?.signal,
     })
   } catch (error) {
-    console.warn(
-      '[files] upload network error',
-      error instanceof Error ? error.message.slice(0, 80) : 'unknown',
-    )
+    if (import.meta.env.DEV) {
+      console.warn(
+        '[files] upload network error',
+        error instanceof Error ? error.name : 'unknown',
+      )
+    }
     throw new DocumentUploadError(
       'Invio del documento non riuscito. Controlla la connessione e riprova.',
       'network',
@@ -105,17 +115,28 @@ export async function uploadDocumentAttachment(
   }
 
   if (!response.ok) {
-    const code = typeof data.code === 'string' ? data.code : 'upload_failed'
-    const msg =
-      typeof data.error === 'string' && data.error.trim()
-        ? data.error.trim()
-        : mapUploadStatus(response.status, code)
-    console.warn(
-      '[files] upload rejected',
-      summarizeDocumentForLog({ ...validated, fileId: '' }),
-      code,
+    const parsed = parseApiErrorResponse(
+      response,
+      {
+        error: typeof data.error === 'string' ? data.error : undefined,
+        code: typeof data.code === 'string' ? data.code : undefined,
+        requestId: typeof data.requestId === 'string' ? data.requestId : undefined,
+      },
+      mapUploadStatus(response.status, typeof data.code === 'string' ? data.code : 'upload_failed'),
     )
-    throw new DocumentUploadError(msg, code, response.status)
+    if (import.meta.env.DEV) {
+      console.warn(
+        '[files] upload rejected',
+        summarizeDocumentForLog({ ...validated, fileId: '' }),
+        parsed.code,
+      )
+    }
+    throw new DocumentUploadError(
+      withErrorReference(parsed.message, parsed.requestId),
+      parsed.code || 'upload_failed',
+      parsed.status,
+      { requestId: parsed.requestId },
+    )
   }
 
   const fileId = typeof data.fileId === 'string' ? data.fileId.trim() : ''

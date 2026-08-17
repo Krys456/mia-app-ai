@@ -1,0 +1,81 @@
+.app-error-boundary {
+  min-height: 100dvh;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  box-sizing: border-box;
+  background:
+    radial-gradient(120% 80% at 10% 0%, color-mix(in srgb, var(--accent, #8a6a3c) 18%, transparent), transparent 55%),
+    linear-gradient(165deg, var(--bg, #f3eee4) 0%, color-mix(in srgb, var(--bg, #f3eee4) 88%, #d9cfc0) 100%);
+  color: var(--text, #1c1915);
+}
+
+.app-error-boundary__inner {
+  width: min(26rem, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.app-error-boundary__brand {
+  margin: 0;
+  font-family: var(--font-display, Georgia, 'Times New Roman', serif);
+  font-size: clamp(1.75rem, 5vw, 2.25rem);
+  letter-spacing: 0.02em;
+  line-height: 1.1;
+}
+
+.app-error-boundary__title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.app-error-boundary__copy {
+  margin: 0;
+  color: var(--text-muted, #5c564c);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.app-error-boundary__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  margin-top: 0.35rem;
+}
+
+.app-error-boundary__reload {
+  appearance: none;
+  border: 1px solid color-mix(in srgb, var(--text, #1c1915) 22%, transparent);
+  background: color-mix(in srgb, var(--text, #1c1915) 92%, transparent);
+  color: var(--bg, #f3eee4);
+  border-radius: 0.45rem;
+  padding: 0.55rem 1rem;
+  font: inherit;
+  font-size: 0.92rem;
+  cursor: pointer;
+}
+
+.app-error-boundary__support {
+  color: var(--text, #1c1915);
+  font-size: 0.9rem;
+  text-underline-offset: 0.15em;
+}
+
+.app-error-boundary__meta {
+  margin: 0.5rem 0 0;
+  font-size: 0.78rem;
+  color: var(--text-muted, #5c564c);
+}
+
+[data-theme='the-way-sumi'] .app-error-boundary,
+[data-theme='sumi'] .app-error-boundary {
+  background:
+    radial-gradient(120% 80% at 90% 10%, color-mix(in srgb, var(--accent, #c4b49a) 14%, transparent), transparent 50%),
+    linear-gradient(165deg, var(--bg, #12110f) 0%, color-mix(in srgb, var(--bg, #12110f) 90%, #2a2620) 100%);
+}

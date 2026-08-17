@@ -4,6 +4,8 @@ import {
   buildBetaContactLine,
   resolvePrivacyContactEmail,
 } from '../lib/privacyCopy'
+import { getClientBuildId } from '../lib/buildInfo'
+import { buildBetaSupportMailto, isPrivacyContactConfigured } from '../lib/betaSupport'
 import './PrivacyData.css'
 
 interface PrivacyDataProps {
@@ -12,10 +14,14 @@ interface PrivacyDataProps {
 
 /**
  * #298B — Lightweight Privacy & Data disclosure (closed beta).
+ * #298C — Beta build + mailto support.
  * AppView surface — no router.
  */
 export function PrivacyData({ onBack }: PrivacyDataProps) {
   const contact = resolvePrivacyContactEmail()
+  const buildId = getClientBuildId()
+  const mailto = buildBetaSupportMailto({ surface: 'privacy-data' })
+  const contactConfigured = isPrivacyContactConfigured(contact)
 
   return (
     <main className="privacy-data" aria-labelledby="privacy-data-title">
@@ -73,16 +79,34 @@ export function PrivacyData({ onBack }: PrivacyDataProps) {
           <p>{PRIVACY_DISCLOSURE.processors}</p>
         </section>
 
+        <section className="privacy-data__section" aria-labelledby="privacy-beta-title">
+          <h2 id="privacy-beta-title" className="privacy-data__heading">
+            Beta
+          </h2>
+          <p>Beta build: {buildId}</p>
+          <p className="privacy-data__meta" role="note">
+            When something fails, an error reference (Riferimento) may appear. You can include it
+            when contacting support — it helps diagnose the issue without sharing chat or Memory
+            content.
+          </p>
+        </section>
+
         <section className="privacy-data__section" aria-labelledby="privacy-contact-title">
           <h2 id="privacy-contact-title" className="privacy-data__heading">
             Contact
           </h2>
           <p>{buildBetaContactLine(contact)}</p>
-          {contact.startsWith('[') ? (
+          {contactConfigured && mailto ? (
+            <p>
+              <a className="privacy-data__support-link" href={mailto}>
+                Segnala un problema
+              </a>
+            </p>
+          ) : (
             <p className="privacy-data__meta" role="note">
               Configure <code>VITE_PRIVACY_CONTACT_EMAIL</code> for this beta deployment.
             </p>
-          ) : null}
+          )}
         </section>
       </div>
     </main>

@@ -43,7 +43,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) {
     return sendJson(res, 500, {
-      error: 'Server misconfigured: OPENAI_API_KEY is not set',
+      error: 'Impossibile caricare il file. Riprova tra poco.',
+      code: 'misconfigured',
     }, req)
   }
 
@@ -62,18 +63,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return sendJson(res, 413, {
         error: 'File troppo grande per questo formato.',
         code: 'too_large',
-      })
+      }, req)
     }
     if (code === 'invalid_content_type') {
       return sendJson(res, 400, {
         error: 'Richiesta non valida. Usa multipart/form-data.',
         code: 'invalid_content_type',
-      })
+      }, req)
     }
     return sendJson(res, 400, {
       error: 'Impossibile leggere il file. Riprova.',
       code: code === 'empty' ? 'empty' : 'upload_failed',
-    })
+    }, req)
   }
 
   const validated = validateDocumentBuffer(parsed.buffer, parsed.filename, parsed.mimeType)
@@ -90,7 +91,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return sendJson(res, validated.code === 'too_large' ? 413 : 400, {
       error: validated.error,
       code: validated.code,
-    })
+    }, req)
   }
 
   // JS validators return a runtime success object; narrow for TS.
@@ -124,7 +125,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       size: uploaded.size,
       expiresAt: uploaded.expiresAt,
       mimeType: uploaded.mimeType,
-    })
+    }, req)
   } catch (error) {
     const mapped = mapOpenAiFileError(error, documentMeta.mimeType)
     console.warn(
@@ -136,6 +137,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         mimeType: documentMeta.mimeType,
       }),
     )
-    return sendJson(res, 400, { error: mapped.error, code: mapped.code })
+    return sendJson(res, 400, { error: mapped.error, code: mapped.code }, req)
   }
 }

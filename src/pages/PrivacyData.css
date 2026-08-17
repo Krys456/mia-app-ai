@@ -75,6 +75,12 @@
   word-break: break-all;
 }
 
+.privacy-data__support-link {
+  color: var(--text);
+  font-size: 0.92rem;
+  text-underline-offset: 0.15em;
+}
+
 [data-theme='the-way-washi'] .privacy-data__warn {
   border-left-color: color-mix(in srgb, var(--accent) 55%, var(--danger, #b42318));
 }

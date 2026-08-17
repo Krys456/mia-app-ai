@@ -4,8 +4,9 @@
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { applyCors, sendCorsPreflight, sendJson } from '../lib/server/http.js'
+import { applyCors, finalizeBinaryResponse, sendCorsPreflight, sendJson } from '../lib/server/http.js'
 import { requirePaidApiAccess } from '../lib/server/paid-api-guard.js'
+import { safeErrorSnippet } from '../lib/server/safe-log.js'
 import {
   TTS_CONTENT_TYPE,
   TTS_MODEL,
@@ -48,7 +49,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) {
     return sendJson(res, 500, {
-      error: 'Server misconfigured: OPENAI_API_KEY is not set',
+      error: 'Riproduzione vocale non riuscita.',
       code: 'misconfigured',
     }, req)
   }
@@ -57,12 +58,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     body = parseBody(req)
   } catch {
-    return sendJson(res, 400, { error: 'Invalid JSON body', code: 'invalid_body' })
+    return sendJson(res, 400, { error: 'Invalid JSON body', code: 'invalid_body' }, req)
   }
 
   const sanitized = sanitizeTtsRequest(body)
   if (!sanitized.ok) {
-    return sendJson(res, 400, { error: sanitized.error, code: sanitized.code })
+    return sendJson(res, 400, { error: sanitized.error, code: sanitized.code }, req)
   }
 
   try {
@@ -76,17 +77,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     })
     const bytes = Buffer.from(await speech.arrayBuffer())
     if (!bytes.length) {
-      return sendJson(res, 502, { error: 'Empty audio response', code: 'empty_audio' })
+      return sendJson(res, 502, { error: 'Empty audio response', code: 'empty_audio' }, req)
     }
 
     res.statusCode = 200
     res.setHeader('Content-Type', TTS_CONTENT_TYPE)
     res.setHeader('Cache-Control', 'no-store')
     res.setHeader('X-Content-Type-Options', 'nosniff')
+    finalizeBinaryResponse(res, req, { status: 200, code: 'tts_ok', route: '/api/tts' })
     res.end(bytes)
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error)
-    console.error('[api/tts] failed:', errMsg.slice(0, 240))
+    console.error('[api/tts] failed:', safeErrorSnippet(error))
     try {
       const OpenAI = (await import('openai')).default
       if (error instanceof OpenAI.APIError) {
@@ -94,18 +95,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           typeof error.status === 'number' && error.status >= 400 && error.status < 600
             ? error.status
             : 502
-        return sendJson(res, status, {
-          error: 'Riproduzione vocale non riuscita.',
-          code: 'tts_failed',
-          type: error.type,
-        })
+        return sendJson(
+          res,
+          status,
+          {
+            error: 'Riproduzione vocale non riuscita.',
+            code: 'tts_failed',
+          },
+          req)
       }
     } catch {
       // fall through
     }
-    return sendJson(res, 500, {
-      error: 'Riproduzione vocale non riuscita.',
-      code: 'tts_failed',
-    })
+    return sendJson(
+      res,
+      500,
+      {
+        error: 'Riproduzione vocale non riuscita.',
+        code: 'tts_failed',
+      },
+      req)
   }
 }

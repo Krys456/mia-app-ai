@@ -10,6 +10,7 @@ import {
   type MemoryFeedbackEvent,
 } from './memoryFeedback'
 import type { V2DebugInfo, WebCitation } from '../types'
+import { parseApiErrorResponse, withErrorReference } from './apiError'
 
 export type { MemoryFeedbackEvent } from './memoryFeedback'
 
@@ -126,15 +127,28 @@ export interface ChatApiGeneratedImage {
 
 export interface ChatApiErrorBody {
   error?: string
+  code?: string
+  requestId?: string
+  retryAfter?: number
 }
 
 export class ChatApiError extends Error {
   readonly status: number
+  readonly code?: string
+  readonly requestId?: string
+  readonly retryAfter?: number
 
-  constructor(message: string, status: number) {
+  constructor(
+    message: string,
+    status: number,
+    opts?: { code?: string; requestId?: string; retryAfter?: number },
+  ) {
     super(message)
     this.name = 'ChatApiError'
     this.status = status
+    this.code = opts?.code
+    this.requestId = opts?.requestId
+    this.retryAfter = opts?.retryAfter
   }
 }
 
@@ -219,7 +233,9 @@ export async function requestChatCompletion(
       signal: init?.signal,
     })
   } catch (error) {
-    console.error('[chatApi] fetch threw', error)
+    if (import.meta.env.DEV) {
+      console.error('[chatApi] fetch threw', error instanceof Error ? error.name : 'unknown')
+    }
     throw new ChatApiError(describeFetchFailure(error, endpoint), 0)
   }
 
@@ -231,15 +247,24 @@ export async function requestChatCompletion(
       data = JSON.parse(rawText) as Partial<ChatApiSuccess> & ChatApiErrorBody
     }
   } catch {
+    const headerId = response.headers.get('X-Request-Id')?.trim() || undefined
     if (!response.ok) {
       throw new ChatApiError(
-        `Chat API request failed (${response.status}) — non-JSON body`,
+        withErrorReference(
+          `Chat API request failed (${response.status}) — non-JSON body`,
+          headerId,
+        ),
         response.status,
+        { requestId: headerId },
       )
     }
     throw new ChatApiError(
-      'Chat API returned invalid JSON (expected { content: string })',
+      withErrorReference(
+        'Chat API returned invalid JSON (expected { content: string })',
+        headerId,
+      ),
       response.status,
+      { requestId: headerId },
     )
   }
 
@@ -253,12 +278,16 @@ export async function requestChatCompletion(
       'message' in (data.error as object)
         ? String((data.error as { message?: unknown }).message || '')
         : ''
-    throw new ChatApiError(
-      (typeof data.error === 'string' && data.error.trim()) ||
-        nested ||
-        `Chat API request failed (${response.status})`,
-      response.status,
+    const parsed = parseApiErrorResponse(
+      response,
+      data,
+      nested || `Chat API request failed (${response.status})`,
     )
+    throw new ChatApiError(withErrorReference(parsed.message, parsed.requestId), parsed.status, {
+      code: parsed.code,
+      requestId: parsed.requestId,
+      retryAfter: parsed.retryAfter,
+    })
   }
 
   const content = typeof data.content === 'string' ? data.content.trim() : ''
