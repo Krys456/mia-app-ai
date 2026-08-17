@@ -7,7 +7,8 @@ export type VoiceModeButtonProps = {
 }
 
 /**
- * Distinct Voice Mode entry — not the #273 dictation microphone.
+ * Compact Voice Mode entry — waveform icon, not the #273 dictation microphone.
+ * Accessible label distinguishes "Modalità vocale" from "Dettatura".
  */
 export function VoiceModeButton({
   active = false,
@@ -22,34 +23,19 @@ export function VoiceModeButton({
       aria-pressed={active}
       disabled={disabled}
       onClick={onClick}
-      title="Modalità vocale"
+      title="Avvia modalità vocale"
     >
       <span className="voice-mode-btn__glyph" aria-hidden="true">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+        {/* Sound-wave / conversation-wave — deliberately not a microphone */}
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
           <path
-            d="M4 10v2a8 8 0 0 0 16 0v-2"
+            d="M4.5 10v4M8 7.5v9M12 4.5v15M16 7.5v9M19.5 10v4"
             stroke="currentColor"
-            strokeWidth="1.8"
+            strokeWidth="1.9"
             strokeLinecap="round"
-          />
-          <path
-            d="M12 18v3M8.5 21h7"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-          />
-          <rect
-            x="9"
-            y="3"
-            width="6"
-            height="10"
-            rx="3"
-            stroke="currentColor"
-            strokeWidth="1.8"
           />
         </svg>
       </span>
-      <span className="voice-mode-btn__text">Voce</span>
     </button>
   )
 }

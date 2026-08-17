@@ -498,7 +498,7 @@ export function ComposerShell({ onMessageSent }: ComposerShellProps) {
           onKeyDown={onKeyDown}
           placeholder={
             voice.active
-              ? 'Modalità vocale attiva…'
+              ? ''
               : dictation.listening
                 ? 'Ti ascolto…'
                 : busy
