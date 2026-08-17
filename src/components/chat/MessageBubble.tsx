@@ -7,7 +7,7 @@ import {
   type KeyboardEvent,
   type PointerEvent,
 } from 'react'
-import type { ChatMessage } from '../../types'
+import type { ChatFileAttachment, ChatImageAttachment, ChatMessage } from '../../types'
 import { documentBadgeFor, formatDocumentSize, truncateFilename } from '../../lib/documentAttachment'
 import { MemoryMessageIndicator } from '../MemoryMessageIndicator'
 import { MessageActions } from './MessageActions'
@@ -26,6 +26,30 @@ interface MessageBubbleProps {
 
 const LONG_PRESS_MS = 480
 
+function openImagePreview(src: string) {
+  try {
+    window.open(src, '_blank', 'noopener,noreferrer')
+  } catch {
+    /* ignore */
+  }
+}
+
+function downloadImage(att: ChatImageAttachment) {
+  try {
+    const a = document.createElement('a')
+    a.href = att.dataUrl
+    const ext =
+      att.mimeType === 'image/jpeg' ? 'jpg' : att.mimeType === 'image/webp' ? 'webp' : 'png'
+    a.download = `laife-${att.source || 'image'}-${att.id.slice(0, 8)}.${ext}`
+    a.rel = 'noopener'
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+  } catch {
+    /* ignore */
+  }
+}
+
 function MessageBubbleComponent({
   message,
   isStreaming = false,
@@ -35,7 +59,15 @@ function MessageBubbleComponent({
 }: MessageBubbleProps) {
   const isAssistant = message.role === 'assistant'
   const isError = isAssistant && message.kind === 'error'
-  const isEmptyStream = isAssistant && !message.content && isStreaming && !isError
+  const imageAttachments = (message.attachments ?? []).filter(
+    (a): a is ChatImageAttachment => a.kind === 'image',
+  )
+  const fileAttachments = (message.attachments ?? []).filter(
+    (a): a is ChatFileAttachment => a.kind === 'file',
+  )
+  const hasImages = imageAttachments.length > 0
+  const isEmptyStream =
+    isAssistant && !message.content && !hasImages && isStreaming && !isError
   const [actionsPinned, setActionsPinned] = useState(false)
   const longPressTimer = useRef<number | null>(null)
   const rootRef = useRef<HTMLElement>(null)
@@ -92,8 +124,11 @@ function MessageBubbleComponent({
     showActions &&
     !isStreaming &&
     !isError &&
-    (isAssistant ? Boolean(message.content) : Boolean(message.content.trim()))
-  // User image-only: no Copy toolbar (nothing safe to copy). Assistant unchanged.
+    (isAssistant
+      ? Boolean(message.content?.trim()) || hasImages
+      : Boolean(message.content.trim()))
+  // User image-only: no Copy toolbar (nothing safe to copy). Assistant unchanged for text;
+  // image-only assistant still gets regenerate via actions when enabled.
 
   return (
     <article
@@ -133,34 +168,61 @@ function MessageBubbleComponent({
                 Qualcosa è andato storto. {message.content}
               </p>
             ) : (
-              <StreamingRenderer content={message.content} isStreaming={isStreaming} />
+              <>
+                {hasImages ? (
+                  <div className="bubble__attachments bubble__attachments--assistant">
+                    {imageAttachments.map((att) => (
+                      <div key={att.id} className="bubble__attachment-figure">
+                        <button
+                          type="button"
+                          className="bubble__attachment-open"
+                          onClick={() => openImagePreview(att.previewUrl || att.dataUrl)}
+                          aria-label="Apri immagine"
+                        >
+                          <img
+                            src={att.previewUrl || att.dataUrl}
+                            alt=""
+                            className="bubble__attachment-img"
+                          />
+                        </button>
+                        <button
+                          type="button"
+                          className="bubble__attachment-download"
+                          onClick={() => downloadImage(att)}
+                        >
+                          Salva
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+                {message.content ? (
+                  <StreamingRenderer content={message.content} isStreaming={isStreaming} />
+                ) : null}
+              </>
             )}
           </div>
         </>
       ) : (
         <div className="bubble__user-row">
           <div className="bubble__body">
-            {message.attachments?.some((a) => a.kind === 'image') ? (
+            {hasImages ? (
               <div className="bubble__attachments">
-                {message.attachments
-                  .filter((a) => a.kind === 'image')
-                  .map((att) => (
-                    <img
-                      key={att.id}
-                      src={att.previewUrl || att.dataUrl}
-                      alt=""
-                      className="bubble__attachment-img"
-                    />
-                  ))}
+                {imageAttachments.map((att) => (
+                  <img
+                    key={att.id}
+                    src={att.previewUrl || att.dataUrl}
+                    alt=""
+                    className="bubble__attachment-img"
+                  />
+                ))}
               </div>
             ) : null}
-            {message.attachments?.some((a) => a.kind === 'file') ? (
+            {fileAttachments.length ? (
               <div className="bubble__attachments">
-                {message.attachments
-                  .filter((a) => a.kind === 'file')
-                  .map((att) => {
-                    const badge = documentBadgeFor(att.mimeType, att.name)
-                    return (
+                {fileAttachments.map((att) => {
+                  const badge = documentBadgeFor(att.mimeType, att.name)
+                  return (
                     <div key={att.id} className="bubble__attachment-file" aria-label={`${badge} ${att.name}`}>
                       <span className="bubble__attachment-file-icon" aria-hidden="true">
                         {badge}
@@ -174,8 +236,8 @@ function MessageBubbleComponent({
                         </span>
                       </span>
                     </div>
-                    )
-                  })}
+                  )
+                })}
               </div>
             ) : null}
             {message.content ? <p>{message.content}</p> : null}

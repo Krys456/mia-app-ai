@@ -64,6 +64,12 @@ export interface ChatImageAttachment {
   previewUrl?: string
   width?: number
   height?: number
+  /**
+   * #289 session-only provenance.
+   * `generated` / `edited` = trusted server tool result (assistant replay).
+   * `uploaded` = user-provided (default when omitted).
+   */
+  source?: 'generated' | 'edited' | 'uploaded'
 }
 
 /** Supported document MIME union (#275 PDF + #276 TXT/DOCX). */

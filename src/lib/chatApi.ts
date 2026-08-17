@@ -19,6 +19,9 @@ export interface ChatApiImageAttachment {
   type: 'image'
   mimeType: 'image/jpeg' | 'image/png' | 'image/webp' | string
   dataUrl: string
+  /** #289 — assistant replay requires generated|edited. */
+  source?: 'generated' | 'edited' | 'uploaded'
+  id?: string
 }
 
 export interface ChatApiFileAttachment {
@@ -79,6 +82,11 @@ export interface ChatApiRequest {
 
 export interface ChatApiSuccess {
   content: string
+  /**
+   * #289 session-only generated/edited images from the hosted image_generation tool.
+   * Only present when the server parsed a real tool result — never client-spoofed.
+   */
+  images?: ChatApiGeneratedImage[]
   /** Conversational core for this response (`core` = single-prompt path). */
   runtime?: 'core' | 'v1' | 'v2'
   memoriesSaved?: number
@@ -98,6 +106,17 @@ export interface ChatApiSuccess {
   conversationPreferenceProfile?: Record<string, unknown> | null
   /** Developer debug — present when the server returns a V2 debug snapshot. */
   v2Debug?: V2DebugInfo | null
+}
+
+/** Server-authored image artifact from /api/chat (#289). */
+export interface ChatApiGeneratedImage {
+  id: string
+  mimeType: string
+  dataUrl: string
+  source: 'generated' | 'edited'
+  providerCallId?: string
+  width?: number
+  height?: number
 }
 
 export interface ChatApiErrorBody {
@@ -236,8 +255,9 @@ export async function requestChatCompletion(
     )
   }
 
-  const content = data.content?.trim()
-  if (!content) {
+  const content = typeof data.content === 'string' ? data.content.trim() : ''
+  const images = sanitizeChatApiImages(data.images)
+  if (!content && images.length === 0) {
     throw new ChatApiError('Chat API returned an empty reply', response.status)
   }
 
@@ -247,6 +267,7 @@ export async function requestChatCompletion(
 
   return {
     content,
+    ...(images.length ? { images } : {}),
     runtime:
       data.runtime === 'core'
         ? 'core'
@@ -274,6 +295,41 @@ export async function requestChatCompletion(
     ),
     v2Debug,
   }
+}
+
+/**
+ * Accept only well-formed server image payloads (max 1). Never trust client-shaped spoofs
+ * beyond structural validation of the JSON response field.
+ * @param {unknown} raw
+ * @returns {ChatApiGeneratedImage[]}
+ */
+function sanitizeChatApiImages(raw: unknown): ChatApiGeneratedImage[] {
+  if (!Array.isArray(raw) || raw.length === 0) return []
+  const out: ChatApiGeneratedImage[] = []
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue
+    const img = item as Record<string, unknown>
+    const dataUrl = typeof img.dataUrl === 'string' ? img.dataUrl.trim() : ''
+    const mimeType = typeof img.mimeType === 'string' ? img.mimeType.trim().toLowerCase() : ''
+    const source = img.source === 'edited' ? 'edited' : img.source === 'generated' ? 'generated' : null
+    if (!source) continue
+    if (!/^data:image\/(jpeg|png|webp);base64,/i.test(dataUrl)) continue
+    if (mimeType !== 'image/jpeg' && mimeType !== 'image/png' && mimeType !== 'image/webp') continue
+    const id =
+      typeof img.id === 'string' && img.id.trim()
+        ? img.id.trim().slice(0, 120)
+        : `gen-${out.length + 1}`
+    /** @type {ChatApiGeneratedImage} */
+    const entry: ChatApiGeneratedImage = { id, mimeType, dataUrl, source }
+    if (typeof img.providerCallId === 'string' && img.providerCallId.trim()) {
+      entry.providerCallId = img.providerCallId.trim().slice(0, 120)
+    }
+    if (typeof img.width === 'number' && Number.isFinite(img.width)) entry.width = img.width
+    if (typeof img.height === 'number' && Number.isFinite(img.height)) entry.height = img.height
+    out.push(entry)
+    if (out.length >= 1) break
+  }
+  return out
 }
 
 /**

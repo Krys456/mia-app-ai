@@ -35,6 +35,14 @@ import {
 } from '../lib/server/chat-image-input.js'
 import { summarizePdfForLog } from '../lib/server/chat-pdf-files.js'
 import { isVisionTaskShortcut } from '../lib/server/vision-task-shortcuts.js'
+import {
+  buildImageGenerationAppendix,
+  buildImageGenerationTools,
+  contentClaimsImageWithoutPayload,
+  modelSupportsImageGenerationTool,
+  parseImageGenerationCalls,
+  toChatApiImages,
+} from '../lib/server/image-generation.js'
 
 export const config = {
   runtime: 'nodejs',
@@ -239,6 +247,12 @@ function buildInstructions(body: ChatApiRequestBody, messages: ChatApiMessage[] 
   }
 
   return parts.join('\n\n')
+}
+
+function appendImageGenerationGuidance(instructions: string, model: string): string {
+  if (!modelSupportsImageGenerationTool(model)) return instructions
+  const appendix = buildImageGenerationAppendix()
+  return appendix ? `${instructions}\n\n${appendix}` : instructions
 }
 
 function resolveChatModel(env: NodeJS.ProcessEnv = process.env): string {
@@ -514,22 +528,51 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           })
         : ''
 
-    const instructions = appendMemoryPackToInstructions(buildInstructions(body, messages), memoryPack)
+    const instructions = appendImageGenerationGuidance(
+      appendMemoryPackToInstructions(buildInstructions(body, messages), memoryPack),
+      model,
+    )
     const OpenAI = (await import('openai')).default
     const client = new OpenAI({ apiKey })
 
+    const imageTools = buildImageGenerationTools(model)
     const response = await client.responses.create(
       buildCoreResponsesCreateParams({
         model,
         instructions,
         maxOutputTokens: modality === 'voice' ? 700 : 4096,
         input: mapMessagesToResponsesInput(messages),
+        ...(imageTools.length ? { tools: imageTools } : {}),
       }),
     )
 
-    const content = response.output_text?.trim() || ''
-    if (!content) {
+    const parsedImages = parseImageGenerationCalls(response)
+    const images = toChatApiImages(parsedImages.images)
+    let content = response.output_text?.trim() || ''
+
+    if (!content && images.length === 0) {
+      if (parsedImages.safetyRefused) {
+        return sendJson(res, 200, {
+          content: 'Non posso creare o modificare questa immagine.',
+          runtime: 'core',
+          model,
+          memoryEvent: null,
+        })
+      }
+      if (parsedImages.technicalFailure) {
+        return sendJson(res, 502, {
+          error: 'Image generation failed',
+          code: 'image_generation_failed',
+        })
+      }
       return sendJson(res, 502, { error: 'Empty response from OpenAI' })
+    }
+
+    // Never fabricate success: replace false "I created an image" claims when no payload.
+    if (contentClaimsImageWithoutPayload(content, images.length)) {
+      content = parsedImages.safetyRefused
+        ? 'Non posso creare o modificare questa immagine.'
+        : 'Non ho un’immagine da mostrare per questa richiesta.'
     }
 
     let memoryEvent: MemoryFeedbackEvent = null
@@ -539,11 +582,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Image-only / PDF-only turns (empty caption) skip durable extraction.
     // Vision Lens Read/Explain shortcuts are ephemeral task instructions — not user facts.
     // Forget early-return already forces memoryEvent: null (assistant reply is authoritative).
+    // Transient image-edit captions are still subject to existing Memory rules (no bytes stored).
     const skipExtractionForInspection =
       overviewHandled ||
       !lastUserCaption ||
       isPersonalMemoryProbe(lastUserCaption) ||
-      isVisionTaskShortcut(lastUserCaption)
+      isVisionTaskShortcut(lastUserCaption) ||
+      images.length > 0
 
     if (lastUserCaption && !skipExtractionForInspection) {
       const write = await runMemoryIfEnabled(
@@ -560,6 +605,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       runtime: 'core',
       model,
       memoryEvent,
+      ...(images.length ? { images } : {}),
       ...(overviewHandled ? { memoryControl: 'overview' } : {}),
       // Echo session fields the client already sent — no cognitive engines.
       ...(body.learningSignals != null ? { learningSignals: body.learningSignals } : {}),

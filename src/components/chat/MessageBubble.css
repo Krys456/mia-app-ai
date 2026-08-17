@@ -193,6 +193,49 @@
   background: color-mix(in srgb, var(--surface-2) 50%, transparent);
 }
 
+.bubble__attachments--assistant {
+  margin-bottom: 0.65rem;
+}
+
+.bubble__attachment-figure {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+  max-width: min(100%, 18rem);
+}
+
+.bubble__attachment-open {
+  display: block;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  cursor: zoom-in;
+  max-width: 100%;
+}
+
+.bubble__attachment-open .bubble__attachment-img {
+  max-width: 100%;
+}
+
+.bubble__attachment-download {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: color-mix(in srgb, var(--text) 62%, transparent);
+  font: inherit;
+  font-size: 0.78rem;
+  padding: 0.1rem 0.15rem;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 0.12em;
+}
+
+.bubble__attachment-download:hover {
+  color: var(--text);
+}
+
 .bubble__attachment-file {
   display: flex;
   align-items: center;
