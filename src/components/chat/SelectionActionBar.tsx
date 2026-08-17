@@ -11,6 +11,7 @@ interface SelectionActionBarProps {
   snapshot: MessageSelectionSnapshot
   onDefine: () => void
   onExplain: () => void
+  onSearch: () => void
   onDismiss: () => void
 }
 
@@ -50,6 +51,7 @@ function SelectionActionBarComponent({
   snapshot,
   onDefine,
   onExplain,
+  onSearch,
   onDismiss,
 }: SelectionActionBarProps) {
   const [composerInsetPx, setComposerInsetPx] = useState(readComposerInsetPx)
@@ -122,6 +124,14 @@ function SelectionActionBarComponent({
         onClick={onExplain}
       >
         Spiega
+      </button>
+      <button
+        type="button"
+        className="selection-action-bar__btn"
+        onPointerDown={preserveSelection}
+        onClick={onSearch}
+      >
+        Cerca
       </button>
       <button
         type="button"

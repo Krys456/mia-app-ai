@@ -60,6 +60,7 @@ import {
   type PersonalizationSettings,
   type ThemeSettings,
   type V2DebugInfo,
+  type WebCitation,
 } from '../types'
 import { MAX_RECENT_IMAGE_TURNS } from '../lib/imageAttachment'
 import { MAX_RECENT_FILE_TURNS } from '../lib/pdfAttachment'
@@ -209,6 +210,7 @@ type Action =
       content: string
       attachments?: ChatAttachment[]
       memoryEvent?: MemoryFeedbackEvent | null
+      citations?: WebCitation[]
       v2Debug?: V2DebugInfo | null
     }
   | { type: 'ASSISTANT_FAIL'; error: string }
@@ -359,9 +361,11 @@ function reducer(state: AppState, action: Action): AppState {
           content: action.content,
           ...(action.v2Debug ? { v2Debug: action.v2Debug } : {}),
           ...(action.attachments?.length ? { attachments: action.attachments } : {}),
+          ...(action.citations?.length ? { citations: action.citations } : {}),
         }
         if (memoryEvent) next.memoryEvent = memoryEvent
         else delete next.memoryEvent
+        if (!action.citations?.length) delete next.citations
         return next
       })
       return {
@@ -588,6 +592,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           const {
             content: reply,
             images: replyImages,
+            citations: replyCitations,
             memoryEvent,
             learningSignals,
             welcomeSession,
@@ -742,6 +747,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             id: assistantId,
             content: reply || '',
             ...(assistantAttachments.length ? { attachments: assistantAttachments } : {}),
+            ...(replyCitations?.length ? { citations: replyCitations } : {}),
             memoryEvent: memoryEvent ?? null,
           })
         } catch (error) {

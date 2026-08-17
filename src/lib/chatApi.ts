@@ -9,7 +9,7 @@ import {
   parseMemoryFeedbackEvent,
   type MemoryFeedbackEvent,
 } from './memoryFeedback'
-import type { V2DebugInfo } from '../types'
+import type { V2DebugInfo, WebCitation } from '../types'
 
 export type { MemoryFeedbackEvent } from './memoryFeedback'
 
@@ -88,6 +88,8 @@ export interface ChatApiSuccess {
    * Only present when the server parsed a real tool result — never client-spoofed.
    */
   images?: ChatApiGeneratedImage[]
+  /** #291 optional normalized citations from url_citation annotations. */
+  citations?: WebCitation[]
   /** Conversational core for this response (`core` = single-prompt path). */
   runtime?: 'core' | 'v1' | 'v2'
   memoriesSaved?: number
@@ -260,6 +262,7 @@ export async function requestChatCompletion(
 
   const content = typeof data.content === 'string' ? data.content.trim() : ''
   const images = sanitizeChatApiImages(data.images)
+  const citations = sanitizeChatApiCitations(data.citations)
   if (!content && images.length === 0) {
     throw new ChatApiError('Chat API returned an empty reply', response.status)
   }
@@ -271,6 +274,7 @@ export async function requestChatCompletion(
   return {
     content,
     ...(images.length ? { images } : {}),
+    ...(citations.length ? { citations } : {}),
     runtime:
       data.runtime === 'core'
         ? 'core'
@@ -298,6 +302,52 @@ export async function requestChatCompletion(
     ),
     v2Debug,
   }
+}
+
+/**
+ * Accept only well-formed http(s) citations (max 5). Never invent from free text.
+ */
+function sanitizeChatApiCitations(raw: unknown): WebCitation[] {
+  if (!Array.isArray(raw) || raw.length === 0) return []
+  const out: WebCitation[] = []
+  const seen = new Set<string>()
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue
+    const row = item as Record<string, unknown>
+    const urlRaw = typeof row.url === 'string' ? row.url.trim() : ''
+    if (!urlRaw) continue
+    let url: string
+    try {
+      const parsed = new URL(urlRaw)
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') continue
+      url = parsed.toString()
+    } catch {
+      continue
+    }
+    const key = url.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    const title =
+      typeof row.title === 'string' && row.title.trim()
+        ? row.title.replace(/\s+/g, ' ').trim().slice(0, 160)
+        : (() => {
+            try {
+              return new URL(url).hostname
+            } catch {
+              return 'Fonte'
+            }
+          })()
+    const citation: WebCitation = { title, url }
+    if (typeof row.startIndex === 'number' && Number.isFinite(row.startIndex)) {
+      citation.startIndex = row.startIndex
+    }
+    if (typeof row.endIndex === 'number' && Number.isFinite(row.endIndex)) {
+      citation.endIndex = row.endIndex
+    }
+    out.push(citation)
+    if (out.length >= 5) break
+  }
+  return out
 }
 
 /**

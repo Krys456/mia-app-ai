@@ -1,9 +1,11 @@
 /**
- * Client helper for #290 ephemeral selection Define / Explain.
+ * Client helper for #290/#291 ephemeral selection Define / Explain / Search.
  * Calls /api/selection — never OpenAI directly. Never writes chat history.
  */
 
-export type SelectionOperation = 'define' | 'explain'
+import type { WebCitation } from '../types'
+
+export type SelectionOperation = 'define' | 'explain' | 'search'
 
 export interface SelectionApiRequest {
   operation: SelectionOperation
@@ -19,6 +21,7 @@ export interface SelectionApiSuccess {
   operation?: SelectionOperation
   runtime?: 'selection'
   model?: string
+  citations?: WebCitation[]
 }
 
 export class SelectionApiError extends Error {
@@ -37,6 +40,42 @@ function resolveSelectionEndpoint(): string {
   const base = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim() ?? ''
   if (!base) return '/api/selection'
   return `${base.replace(/\/$/, '')}/api/selection`
+}
+
+function sanitizeCitations(raw: unknown): WebCitation[] {
+  if (!Array.isArray(raw) || raw.length === 0) return []
+  const out: WebCitation[] = []
+  const seen = new Set<string>()
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue
+    const row = item as Record<string, unknown>
+    const urlRaw = typeof row.url === 'string' ? row.url.trim() : ''
+    if (!urlRaw) continue
+    let url: string
+    try {
+      const parsed = new URL(urlRaw)
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') continue
+      url = parsed.toString()
+    } catch {
+      continue
+    }
+    const key = url.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    const title =
+      typeof row.title === 'string' && row.title.trim()
+        ? row.title.replace(/\s+/g, ' ').trim().slice(0, 160)
+        : (() => {
+            try {
+              return new URL(url).hostname
+            } catch {
+              return 'Fonte'
+            }
+          })()
+    out.push({ title, url })
+    if (out.length >= 5) break
+  }
+  return out
 }
 
 export async function requestSelectionInsight(
@@ -97,11 +136,17 @@ export async function requestSelectionInsight(
     throw new SelectionApiError('Selection API returned an empty result', response.status)
   }
 
+  const citations = sanitizeCitations(data.citations)
+  const operation =
+    data.operation === 'define' || data.operation === 'explain' || data.operation === 'search'
+      ? data.operation
+      : payload.operation
+
   return {
     result,
-    operation:
-      data.operation === 'define' || data.operation === 'explain' ? data.operation : payload.operation,
+    operation,
     runtime: data.runtime === 'selection' ? 'selection' : undefined,
     model: typeof data.model === 'string' ? data.model : undefined,
+    ...(citations.length ? { citations } : {}),
   }
 }

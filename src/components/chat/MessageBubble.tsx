@@ -12,6 +12,7 @@ import { documentBadgeFor, formatDocumentSize, truncateFilename } from '../../li
 import { MemoryMessageIndicator } from '../MemoryMessageIndicator'
 import { MessageActions } from './MessageActions'
 import { StreamingRenderer } from './StreamingRenderer'
+import { CitationSources } from './CitationSources'
 import { TypingAnimation } from './TypingAnimation'
 import './MessageBubble.css'
 
@@ -214,6 +215,9 @@ function MessageBubbleComponent({
                 ) : null}
                 {message.content ? (
                   <StreamingRenderer content={message.content} isStreaming={isStreaming} />
+                ) : null}
+                {!isStreaming && message.citations?.length ? (
+                  <CitationSources citations={message.citations} />
                 ) : null}
               </>
             )}

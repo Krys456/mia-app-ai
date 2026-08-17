@@ -64,6 +64,7 @@ export interface SelectionInsightState {
   loading: boolean
   result: string | null
   error: string | null
+  citations?: import('../../types').WebCitation[]
 }
 
 function nodeToElement(node: Node | null): Element | null {
@@ -307,6 +308,7 @@ export function useMessageSelection() {
         loading: true,
         result: null,
         error: null,
+        citations: undefined,
       })
       // Hide floating bar while sheet shows.
       clearSettleTimer()
@@ -338,6 +340,7 @@ export function useMessageSelection() {
           loading: false,
           result: data.result,
           error: null,
+          ...(data.citations?.length ? { citations: data.citations } : {}),
         })
       } catch (error) {
         if (controller.signal.aborted) return
@@ -367,6 +370,7 @@ export function useMessageSelection() {
     hasActiveSelection,
     runDefine: () => void runOperation('define', false),
     runExplain: () => void runOperation('explain', false),
+    runSearch: () => void runOperation('search', false),
     retryInsight: () => {
       if (!insight) return
       void runOperation(insight.operation, true)

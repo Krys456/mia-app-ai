@@ -1,6 +1,7 @@
 import { memo, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import type { SelectionInsightState } from './useMessageSelection'
+import { CitationSources } from './CitationSources'
 import './SelectionInsightSheet.css'
 
 interface SelectionInsightSheetProps {
@@ -66,7 +67,9 @@ function SelectionInsightSheetComponent({
       ? 'Definizione'
       : insight.operation === 'explain'
         ? 'Spiegazione'
-        : 'Insight'
+        : insight.operation === 'search'
+          ? 'Cerca'
+          : 'Insight'
 
   useEffect(() => {
     // Focus close after load settles — do not steal focus during native selection.
@@ -127,7 +130,12 @@ function SelectionInsightSheetComponent({
               ) : null}
             </div>
           ) : (
-            <p className="selection-insight__result">{insight.result}</p>
+            <>
+              <p className="selection-insight__result">{insight.result}</p>
+              {insight.citations?.length ? (
+                <CitationSources citations={insight.citations} compact />
+              ) : null}
+            </>
           )}
         </div>
       </div>

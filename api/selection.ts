@@ -1,21 +1,29 @@
 /**
- * #290 /api/selection — ephemeral Define / Explain lookup.
- * Specialized GPT-5.6 call. No chat history, Memory, tools, or sticky LANGUAGE mutation.
+ * #290 / #291 /api/selection — ephemeral Define / Explain / Search lookup.
+ * Specialized GPT-5.6 call. No chat history, Memory, or sticky LANGUAGE mutation.
+ * Define/Explain: no tools. Search: hosted web_search required.
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { buildCoreResponsesCreateParams } from '../lib/server/core-responses-params.js'
 import { applyCors, sendCorsPreflight, sendJson } from '../lib/server/http.js'
 import {
-  SELECTION_MAX_OUTPUT_TOKENS,
   buildSelectionInput,
   buildSelectionInstructions,
   sanitizeSelectionRequest,
+  selectionMaxOutputTokens,
 } from '../lib/server/selection-insight.js'
+import {
+  buildWebSearchTools,
+  extractUrlCitations,
+  modelSupportsWebSearchTool,
+  responseUsedWebSearch,
+} from '../lib/server/web-search.js'
 
 export const config = {
   runtime: 'nodejs',
-  maxDuration: 30,
+  // Live probe ~7–8s; bump from 30 → 60 for hosted web_search headroom on Search.
+  maxDuration: 60,
 }
 
 function parseBody(req: VercelRequest): Record<string, unknown> {
@@ -67,6 +75,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const model = resolveChatModel(process.env)
+  const isSearch = sanitized.operation === 'search'
+
+  if (isSearch && !modelSupportsWebSearchTool(model)) {
+    return sendJson(res, 503, {
+      error: 'Live web search is not available for the current model.',
+      code: 'web_search_unavailable',
+    })
+  }
+
   const instructions = buildSelectionInstructions({
     operation: sanitized.operation,
     selectedText: sanitized.selectedText,
@@ -79,6 +96,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     sourceText: sanitized.sourceText,
   })
 
+  const webTools = isSearch ? buildWebSearchTools(model) : []
+
   try {
     const OpenAI = (await import('openai')).default
     const client = new OpenAI({ apiKey })
@@ -86,17 +105,42 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       buildCoreResponsesCreateParams({
         model,
         instructions,
-        maxOutputTokens: SELECTION_MAX_OUTPUT_TOKENS,
+        maxOutputTokens: selectionMaxOutputTokens(sanitized.operation),
         input,
-        // No tools — especially no image_generation / web_search on this path.
+        ...(webTools.length
+          ? {
+              tools: webTools,
+              // Explicit Cerca tap — search is required (no fake model-only "Cerca").
+              toolChoice: { type: 'web_search' },
+            }
+          : {}),
       }),
     )
 
     const result = response.output_text?.trim() || ''
+    const citations = isSearch ? extractUrlCitations(response) : []
+
+    if (isSearch && !responseUsedWebSearch(response) && !result) {
+      return sendJson(res, 502, {
+        error: 'Non riesco a verificare questa informazione online in questo momento.',
+        code: 'web_search_failed',
+      })
+    }
+
     if (!result) {
       return sendJson(res, 502, {
-        error: 'Empty response from OpenAI',
-        code: 'empty_result',
+        error: isSearch
+          ? 'Non riesco a verificare questa informazione online in questo momento.'
+          : 'Empty response from OpenAI',
+        code: isSearch ? 'web_search_empty' : 'empty_result',
+      })
+    }
+
+    if (isSearch && !responseUsedWebSearch(response)) {
+      // Honesty: never label a parametric answer as a successful Cerca.
+      return sendJson(res, 502, {
+        error: 'Non riesco a verificare questa informazione online in questo momento.',
+        code: 'web_search_missing',
       })
     }
 
@@ -105,6 +149,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       operation: sanitized.operation,
       runtime: 'selection',
       model,
+      ...(citations.length ? { citations } : {}),
     })
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error)
@@ -117,8 +162,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             ? error.status
             : 502
         return sendJson(res, status, {
-          error: error.message,
-          code: error.code,
+          error: isSearch
+            ? 'Non riesco a verificare questa informazione online in questo momento.'
+            : error.message,
+          code: isSearch ? 'web_search_error' : error.code,
           type: error.type,
         })
       }
@@ -126,7 +173,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // fall through
     }
     return sendJson(res, 500, {
-      error: error instanceof Error ? error.message : String(error),
+      error: isSearch
+        ? 'Non riesco a verificare questa informazione online in questo momento.'
+        : error instanceof Error
+          ? error.message
+          : String(error),
+      ...(isSearch ? { code: 'web_search_error' } : {}),
     })
   }
 }
