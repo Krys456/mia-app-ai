@@ -19,6 +19,7 @@ import { buildCoreContinuityAppendix } from '../lib/server/conversation-continui
 import { buildCoreExpressionAppendix } from '../lib/server/conversation-expression.js'
 import { buildCoreProactiveIntelligenceAppendix } from '../lib/server/proactive-conversation.js'
 import { buildCoreConversationalUnderstandingAppendix } from '../lib/server/conversational-understanding.js'
+import { buildCoreAdaptiveResponseReasoningAppendix } from '../lib/server/adaptive-response-reasoning.js'
 import { LAIFE_BASE_SYSTEM_PROMPT } from '../lib/server/laife-base-system-prompt.js'
 import { buildCoreLanguageAppendix } from '../lib/server/language-awareness.js'
 import { buildReferenceContextAppendix } from '../lib/server/core-reference-context.js'
@@ -199,7 +200,7 @@ function buildInstructions(body: ChatApiRequestBody, messages: ChatApiMessage[] 
     parts.push(continuityAppendix)
   }
 
-  // Ephemeral CONVERSATIONAL UNDERSTANDING appendix (#286) — after CONTINUITY, before Reference.
+  // Ephemeral CONVERSATIONAL UNDERSTANDING appendix (#286) — after CONTINUITY, before Adaptive Reasoning.
   // Model-led multi-part / ambiguity / distant context / corrections / thread>Memory.
   // No classifiers, no new state, no LANGUAGE changes, no second LLM.
   const understandingAppendix = buildCoreConversationalUnderstandingAppendix()
@@ -207,8 +208,15 @@ function buildInstructions(body: ChatApiRequestBody, messages: ChatApiMessage[] 
     parts.push(understandingAppendix)
   }
 
+  // Ephemeral ADAPTIVE REASONING / RESPONSE QUALITY appendix (#288) — after Understanding, before Reference.
+  // Model-led evidence-updating / repair discipline; no attempt DB, no hypothesis engine, no CoT dump.
+  const adaptiveReasoningAppendix = buildCoreAdaptiveResponseReasoningAppendix()
+  if (adaptiveReasoningAppendix) {
+    parts.push(adaptiveReasoningAppendix)
+  }
+
   // Temporary Reference Context (#279) — ordered-option + artifact evidence hints.
-  // After CONTINUITY / Understanding, before Working State. Request-scoped only; keep attachments
+  // After Understanding / Adaptive Reasoning, before Working State. Request-scoped only; keep attachments
   // so evidenceAvailable reflects multimodal caps honestly. No persistence / second LLM.
   const referenceContextAppendix = buildReferenceContextAppendix(messages)
   if (referenceContextAppendix) {
