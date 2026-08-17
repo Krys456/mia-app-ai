@@ -93,9 +93,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  /* Idle placeholder: take most of the remaining viewport without fixed overflow. */
+  /* Idle placeholder fills remaining viewport (no fixed height that overflows). */
   flex: 1 1 auto;
-  min-height: min(52dvh, 28rem);
+  min-height: 12rem;
 }
 
 .laife-vision__frame-hint {
