@@ -10,14 +10,14 @@
   padding: 0.15rem;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--bg) 70%, transparent);
+  background: color-mix(in srgb, var(--bg) 72%, transparent);
   gap: 0.15rem;
 }
 
 .memory-toggle__opt {
   margin: 0;
   min-width: 2.75rem;
-  min-height: 2.1rem;
+  min-height: max(2.1rem, var(--touch-min));
   padding: 0.35rem 0.65rem;
   border: 0;
   border-radius: calc(var(--radius-sm) - 2px);
@@ -36,11 +36,23 @@
 
 .memory-toggle__opt--active {
   color: var(--text);
-  background: color-mix(in srgb, var(--accent) 16%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
+[data-theme='the-way-washi'] .memory-toggle__opt--active,
+[data-theme='the-way-sumi'] .memory-toggle__opt--active {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 32%, transparent);
 }
 
 .memory-toggle__opt:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .memory-toggle__opt {
+    transition: none;
+  }
 }

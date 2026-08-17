@@ -233,7 +233,8 @@ export function MemoryManage({ onBack }: MemoryManageProps) {
 
       <div className="memory-manage__body scroll-surface">
         <p className="memory-manage__lead">
-          Fatti che ShinkAIdo ricorda per te. Tocca una card per i dettagli.
+          Fatti che ShinkAIdo ricorda per te. Puoi rivedere, modificare o eliminare ogni
+          memoria.
         </p>
 
         <label className="memory-manage__search">
@@ -259,9 +260,9 @@ export function MemoryManage({ onBack }: MemoryManageProps) {
             aria-busy="true"
             aria-label="Caricamento memorie"
           >
-            <div className="memory-manage__skeleton-card" />
-            <div className="memory-manage__skeleton-card" />
-            <div className="memory-manage__skeleton-card" />
+            <div className="memory-manage__skeleton-row" />
+            <div className="memory-manage__skeleton-row" />
+            <div className="memory-manage__skeleton-row" />
           </div>
         ) : filtered.length === 0 ? (
           <p className="memory-manage__empty">
@@ -270,17 +271,17 @@ export function MemoryManage({ onBack }: MemoryManageProps) {
               : 'Nessuna memoria ancora. Quando è ON, ShinkAIdo impara in automatico.'}
           </p>
         ) : (
-          <ul className="memory-manage__grid">
+          <ul className="memory-manage__list">
             {filtered.map((item) => (
               <li key={item.id}>
                 <button
                   type="button"
-                  className="memory-card"
+                  className="memory-row"
                   onClick={() => openCard(item)}
                 >
-                  <span className="memory-card__category">{memoryCategoryLabel(item.category)}</span>
-                  <span className="memory-card__title">{item.title}</span>
-                  <span className="memory-card__preview">{previewText(item.content)}</span>
+                  <span className="memory-row__title">{item.title}</span>
+                  <span className="memory-row__preview">{previewText(item.content)}</span>
+                  <span className="memory-row__meta">{memoryCategoryLabel(item.category)}</span>
                 </button>
               </li>
             ))}
