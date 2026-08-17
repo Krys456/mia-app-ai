@@ -5,9 +5,10 @@ import {
   updateMemory,
 } from '../../lib/server/brain-memory.js'
 import { memoryOwnerScope, requireMemoryApiUser } from '../../lib/server/memory-api-auth.js'
-import { applyCors, errorMessage, parseJsonBody, sendCorsPreflight, sendJson } from '../../lib/server/http.js'
+import { applyCors, parseJsonBody, sendCorsPreflight, sendJson, SAFE_MEMORY_ERROR } from '../../lib/server/http.js'
 import { MEMORY_FIELD_LIMITS } from '../../lib/server/memory-field-limits.js'
 import { consumeRateLimit } from '../../lib/server/rate-limit.js'
+import { safeErrorSnippet } from '../../lib/server/safe-log.js'
 
 export const config = {
   runtime: 'nodejs',
@@ -39,8 +40,7 @@ async function enforceMemoryRateLimit(
         code: 'rate_limit_unavailable',
         retryAfter: limited.retryAfter,
       },
-      req,
-    )
+      req)
     return false
   }
   if (!limited.success) {
@@ -55,8 +55,7 @@ async function enforceMemoryRateLimit(
         code: 'rate_limit_exceeded',
         retryAfter: limited.retryAfter,
       },
-      req,
-    )
+      req)
     return false
   }
   return true
@@ -122,8 +121,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               category: `category must be at most ${MEMORY_FIELD_LIMITS.category} characters`,
             },
           },
-          req,
-        )
+          req)
       }
       if (!title) {
         return sendJson(res, 400, { error: 'Title is required' }, req)
@@ -138,8 +136,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               title: `title must be at most ${MEMORY_FIELD_LIMITS.title} characters`,
             },
           },
-          req,
-        )
+          req)
       }
       if (content.length > MEMORY_FIELD_LIMITS.content) {
         return sendJson(
@@ -151,8 +148,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               content: `content must be at most ${MEMORY_FIELD_LIMITS.content} characters`,
             },
           },
-          req,
-        )
+          req)
       }
 
       // Ignore forged body.userId — scope is JWT-only.
@@ -174,7 +170,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.setHeader('Allow', 'GET, PUT, DELETE, OPTIONS')
     return sendJson(res, 405, { error: 'Method not allowed' }, req)
   } catch (error) {
-    console.error('[api/memories/[id]]', error)
-    return sendJson(res, 500, { error: errorMessage(error) }, req)
+    console.error('[api/memories/[id]]', safeErrorSnippet(error))
+    return sendJson(res, 500, { error: SAFE_MEMORY_ERROR, code: 'memory_error' }, req)
   }
 }

@@ -1,14 +1,25 @@
 import type { MemoryDraft, MemoryItem } from './memory'
 import { getSupabase, isSupabaseConfigured } from './supabase'
 import { getOrCreateUserId } from './userId'
+import { parseApiErrorResponse, withErrorReference } from './apiError'
 
 export class MemoryApiError extends Error {
   readonly status: number
+  readonly code?: string
+  readonly requestId?: string
+  readonly retryAfter?: number
 
-  constructor(message: string, status: number) {
+  constructor(
+    message: string,
+    status: number,
+    opts?: { code?: string; requestId?: string; retryAfter?: number },
+  ) {
     super(message)
     this.name = 'MemoryApiError'
     this.status = status
+    this.code = opts?.code
+    this.requestId = opts?.requestId
+    this.retryAfter = opts?.retryAfter
   }
 }
 
@@ -63,17 +74,34 @@ async function authHeaders(json = false): Promise<HeadersInit> {
 }
 
 async function parseJson<T>(response: Response): Promise<T> {
-  let data: T & { error?: string; success?: boolean }
+  let data: T & {
+    error?: string
+    success?: boolean
+    code?: string
+    requestId?: string
+    retryAfter?: number
+  }
   try {
-    data = (await response.json()) as T & { error?: string; success?: boolean }
+    data = (await response.json()) as typeof data
   } catch {
-    throw new MemoryApiError('Invalid JSON from memory API', response.status)
+    const headerId = response.headers.get('X-Request-Id')?.trim() || undefined
+    throw new MemoryApiError(
+      withErrorReference('Invalid JSON from memory API', headerId),
+      response.status,
+      { requestId: headerId },
+    )
   }
   if (!response.ok) {
-    throw new MemoryApiError(
-      data.error?.trim() || `Memory API failed (${response.status})`,
-      response.status,
+    const parsed = parseApiErrorResponse(
+      response,
+      data,
+      `Memory API failed (${response.status})`,
     )
+    throw new MemoryApiError(withErrorReference(parsed.message, parsed.requestId), parsed.status, {
+      code: parsed.code || 'memory_error',
+      requestId: parsed.requestId,
+      retryAfter: parsed.retryAfter,
+    })
   }
   return data
 }

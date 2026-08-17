@@ -3,16 +3,25 @@
  */
 
 import { resolveChatAuthForRequest } from './chatAuth'
+import { parseApiErrorResponse, withErrorReference } from './apiError'
 
 export class TtsApiError extends Error {
   readonly status: number
   readonly code?: string
+  readonly requestId?: string
+  readonly retryAfter?: number
 
-  constructor(message: string, status: number, code?: string) {
+  constructor(
+    message: string,
+    status: number,
+    opts?: { code?: string; requestId?: string; retryAfter?: number },
+  ) {
     super(message)
     this.name = 'TtsApiError'
     this.status = status
-    this.code = code
+    this.code = opts?.code
+    this.requestId = opts?.requestId
+    this.retryAfter = opts?.retryAfter
   }
 }
 
@@ -36,7 +45,7 @@ export async function requestSpeechAudio(
     throw new TtsApiError(
       'Sessione non pronta. Ricarica la pagina e riprova.',
       401,
-      'unauthorized',
+      { code: 'unauthorized' },
     )
   }
 
@@ -63,23 +72,34 @@ export async function requestSpeechAudio(
 
   const contentType = (response.headers.get('content-type') || '').toLowerCase()
   if (!response.ok) {
-    let message = `TTS failed (${response.status})`
-    let code: string | undefined
+    let data: { error?: string; code?: string; requestId?: string; retryAfter?: number } = {}
     if (contentType.includes('application/json')) {
       try {
-        const data = (await response.json()) as { error?: string; code?: string }
-        if (typeof data.error === 'string' && data.error.trim()) message = data.error.trim()
-        if (typeof data.code === 'string') code = data.code
+        data = (await response.json()) as typeof data
       } catch {
         /* ignore */
       }
     }
-    throw new TtsApiError(message, response.status, code)
+    const parsed = parseApiErrorResponse(
+      response,
+      data,
+      `TTS failed (${response.status})`,
+    )
+    throw new TtsApiError(withErrorReference(parsed.message, parsed.requestId), parsed.status, {
+      code: parsed.code,
+      requestId: parsed.requestId,
+      retryAfter: parsed.retryAfter,
+    })
   }
 
   const blob = await response.blob()
   if (!blob.size) {
-    throw new TtsApiError('Empty audio response', response.status, 'empty_audio')
+    const headerId = response.headers.get('X-Request-Id')?.trim() || undefined
+    throw new TtsApiError(
+      withErrorReference('Empty audio response', headerId),
+      response.status,
+      { code: 'empty_audio', requestId: headerId },
+    )
   }
   return blob
 }

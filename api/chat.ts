@@ -16,7 +16,8 @@ import {
   isPersonalMemoryProbe,
   loadCoreMemoryPack,
 } from '../lib/server/core-memory-recall.js'
-import { applyCors, sendCorsPreflight, sendJson } from '../lib/server/http.js'
+import { applyCors, sendCorsPreflight, sendJson, SAFE_UPSTREAM_ERROR, SAFE_INTERNAL_ERROR } from '../lib/server/http.js'
+import { safeErrorSnippet } from '../lib/server/safe-log.js'
 import { buildCoreContinuityAppendix } from '../lib/server/conversation-continuity.js'
 import { buildCoreExpressionAppendix } from '../lib/server/conversation-expression.js'
 import { buildCoreProactiveIntelligenceAppendix } from '../lib/server/proactive-conversation.js'
@@ -357,7 +358,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) {
     return sendJson(res, 500, {
-      error: 'Server misconfigured: OPENAI_API_KEY is not set',
+      error: SAFE_INTERNAL_ERROR,
+      code: 'misconfigured',
     }, req)
   }
 
@@ -386,13 +388,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           : null,
       }),
     )
-    return sendJson(res, 400, { error: sanitized.error, code: sanitized.code })
+    return sendJson(res, 400, { error: sanitized.error, code: sanitized.code }, req)
   }
   const messages = sanitized.messages.filter(
     (msg) => msg.role === 'user' || msg.role === 'assistant',
   )
   if (messages.length === 0) {
-    return sendJson(res, 400, { error: 'messages must be a non-empty array' })
+    return sendJson(res, 400, { error: 'messages must be a non-empty array' }, req)
   }
 
   const memoryEnabled = body.memoryEnabled !== false
@@ -437,7 +439,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         error:
           'Questo modello non supporta le immagini. Invia solo testo, oppure configura un modello con vision (es. GPT-5.6 Sol / GPT-4o).',
         code: 'image_unsupported_model',
-      })
+      }, req)
     }
 
     if (lastUserHasFile && !modelSupportsFileInput(model)) {
@@ -452,7 +454,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         error:
           'Questo modello non supporta i documenti allegati. Invia solo testo, oppure configura un modello compatibile (es. GPT-5.6 Sol / GPT-4o).',
         code: 'file_unsupported_model',
-      })
+      }, req)
     }
 
     if (lastUserHasAttachment) {
@@ -514,7 +516,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             ? { pendingAutomation: body.pendingAutomation }
             : {}),
         }
-        return sendJson(res, 200, payload)
+        return sendJson(res, 200, payload, req)
       }
     }
 
@@ -556,7 +558,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             ? { pendingAutomation: body.pendingAutomation }
             : {}),
         }
-        return sendJson(res, 200, payload)
+        return sendJson(res, 200, payload, req)
       }
       if (overview.handled && overview.pack) {
         overviewHandled = true
@@ -616,15 +618,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           runtime: 'core',
           model,
           memoryEvent: null,
-        })
+        }, req)
       }
       if (parsedImages.technicalFailure) {
         return sendJson(res, 502, {
           error: 'Image generation failed',
           code: 'image_generation_failed',
-        })
+        }, req)
       }
-      return sendJson(res, 502, { error: 'Empty response from OpenAI' })
+      return sendJson(res, 502, { error: 'Empty response from OpenAI', code: 'upstream_ai_error' }, req)
     }
 
     // Never fabricate success: replace false "I created an image" claims when no payload.
@@ -687,11 +689,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         : {}),
     }
 
-    return sendJson(res, 200, payload)
+    return sendJson(res, 200, payload, req)
   } catch (error) {
-    // Never log request payloads / data URLs — message + code only.
-    const errMsg = error instanceof Error ? error.message : String(error)
-    console.error('[api/chat] completion failed:', errMsg.slice(0, 240))
+    // #298C — never log payloads; never return raw provider messages to clients.
+    console.error('[api/chat] completion failed:', safeErrorSnippet(error))
 
     try {
       const OpenAI = (await import('openai')).default
@@ -700,22 +701,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           typeof error.status === 'number' && error.status >= 400 && error.status < 600
             ? error.status
             : 502
+        const errMsg = error instanceof Error ? error.message : String(error)
         const visionRejected =
           /image|vision|multimodal|unsupported.*media|invalid.*image/i.test(errMsg)
-        return sendJson(res, status, {
-          error: visionRejected
-            ? 'Il modello non ha accettato l’immagine. Riprova con un JPEG/PNG/WebP più piccolo, oppure invia solo testo.'
-            : error.message,
-          code: visionRejected ? 'image_model_rejected' : error.code,
-          type: error.type,
-        })
+        return sendJson(
+          res,
+          status,
+          {
+            error: visionRejected
+              ? 'Il modello non ha accettato l’immagine. Riprova con un JPEG/PNG/WebP più piccolo, oppure invia solo testo.'
+              : SAFE_UPSTREAM_ERROR,
+            code: visionRejected
+              ? 'image_model_rejected'
+              : 'upstream_ai_error',
+          },
+          req)
       }
     } catch {
       // Fall through
     }
 
-    return sendJson(res, 500, {
-      error: error instanceof Error ? error.message : String(error),
-    })
+    return sendJson(
+      res,
+      500,
+      {
+        error: SAFE_INTERNAL_ERROR,
+        code: 'internal_error',
+      },
+      req)
   }
 }

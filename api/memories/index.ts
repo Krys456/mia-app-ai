@@ -5,9 +5,10 @@ import {
   upsertMemory,
 } from '../../lib/server/brain-memory.js'
 import { memoryOwnerScope, requireMemoryApiUser } from '../../lib/server/memory-api-auth.js'
-import { errorMessage, parseJsonBody, sendCorsPreflight, sendJson, applyCors } from '../../lib/server/http.js'
+import { parseJsonBody, sendCorsPreflight, sendJson, applyCors, SAFE_MEMORY_ERROR } from '../../lib/server/http.js'
 import { MEMORY_FIELD_LIMITS } from '../../lib/server/memory-field-limits.js'
 import { consumeRateLimit } from '../../lib/server/rate-limit.js'
+import { safeErrorSnippet } from '../../lib/server/safe-log.js'
 
 export const config = {
   runtime: 'nodejs',
@@ -104,8 +105,7 @@ async function enforceMemoryRateLimit(
         code: 'rate_limit_unavailable',
         retryAfter: limited.retryAfter,
       },
-      req,
-    )
+      req)
     return false
   }
   if (!limited.success) {
@@ -121,8 +121,7 @@ async function enforceMemoryRateLimit(
         code: 'rate_limit_exceeded',
         retryAfter: limited.retryAfter,
       },
-      req,
-    )
+      req)
     return false
   }
   return true
@@ -230,11 +229,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     })
     return sendJson(res, 201, { success: true }, req)
   } catch (error) {
-    console.error('[api/memories]', error)
+    console.error('[api/memories]', safeErrorSnippet(error))
     if (res.headersSent) return undefined
     return sendJson(res, 500, {
       success: false,
-      error: errorMessage(error),
+      error: SAFE_MEMORY_ERROR,
+      code: 'memory_error',
     }, req)
   }
 }
