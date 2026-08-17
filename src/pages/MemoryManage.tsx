@@ -233,8 +233,9 @@ export function MemoryManage({ onBack }: MemoryManageProps) {
 
       <div className="memory-manage__body scroll-surface">
         <p className="memory-manage__lead">
-          Fatti che ShinkAIdo ricorda per te. Puoi rivedere, modificare o eliminare ogni
-          memoria.
+          Facts ShinkAIdo stores for you. Review, edit, or delete any memory. Memory OFF stops
+          automatic learning and everyday recall but does not erase these rows — use delete or
+          Delete all. New Chat clears only the on-screen conversation.
         </p>
 
         <label className="memory-manage__search">
@@ -268,7 +269,7 @@ export function MemoryManage({ onBack }: MemoryManageProps) {
           <p className="memory-manage__empty">
             {query.trim()
               ? 'Nessun risultato.'
-              : 'Nessuna memoria ancora. Quando è ON, ShinkAIdo impara in automatico.'}
+              : 'No memories yet. When Memory is ON, ShinkAIdo may save useful long-term facts.'}
           </p>
         ) : (
           <ul className="memory-manage__list">

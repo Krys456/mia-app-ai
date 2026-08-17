@@ -2,6 +2,11 @@ import { useEffect, useId, useRef } from 'react'
 import { useChat } from '../context/ChatContext'
 import { useTheme } from '../context/ThemeContext'
 import { isMemoryManageUiEnabled } from '../lib/memoryManageUi'
+import {
+  MEMORY_SETTINGS_COPY,
+  PRIVACY_DISCLOSURE,
+  buildBetaContactLine,
+} from '../lib/privacyCopy'
 import type { AppearanceFontFamily, AppearanceFontSize, PersonalizationSettings } from '../types'
 import { ThemeSettings } from './ThemeSettings'
 import './SettingsDrawer.css'
@@ -12,9 +17,10 @@ const FOCUSABLE =
 
 interface SettingsDrawerProps {
   onOpenMemory?: () => void
+  onOpenPrivacy?: () => void
 }
 
-export function SettingsDrawer({ onOpenMemory }: SettingsDrawerProps) {
+export function SettingsDrawer({ onOpenMemory, onOpenPrivacy }: SettingsDrawerProps) {
   const {
     settingsOpen,
     closeSettings,
@@ -234,8 +240,13 @@ export function SettingsDrawer({ onOpenMemory }: SettingsDrawerProps) {
             </div>
 
             <p className="settings-note settings-note--tight">
-              Se attiva, ShinkAIdo impara in automatico fatti utili a lungo termine. Nessun pulsante in
-              chat: tutto avviene in background.
+              {p.memoryEnabled !== false ? MEMORY_SETTINGS_COPY.on : MEMORY_SETTINGS_COPY.off}
+            </p>
+
+            <p className="settings-note settings-note--tight">{MEMORY_SETTINGS_COPY.delete}</p>
+
+            <p className="settings-note settings-note--tight settings-note--warn" role="note">
+              {PRIVACY_DISCLOSURE.sensitiveWarning}
             </p>
 
             {isMemoryManageUiEnabled() ? (
@@ -249,12 +260,41 @@ export function SettingsDrawer({ onOpenMemory }: SettingsDrawerProps) {
               >
                 Gestisci Memoria
               </button>
-            ) : (
-              <p className="settings-note settings-note--tight">
-                Gestione memorie temporaneamente nascosta in Production (Phase 0). Tornerà con la
-                memoria autenticata per utente (Phase 1A).
-              </p>
-            )}
+            ) : null}
+          </section>
+
+          <div className="settings-divider" role="separator" />
+
+          <section className="settings-privacy" aria-labelledby="privacy-settings-title">
+            <h3 id="privacy-settings-title" className="settings-section-title">
+              Privacy &amp; Data
+            </h3>
+            <p className="settings-note settings-note--tight">
+              How chat, Memory, AI processing, and this device session work in the closed beta.
+            </p>
+            <button
+              type="button"
+              className="settings-link-btn"
+              onClick={() => {
+                closeSettings()
+                onOpenPrivacy?.()
+              }}
+            >
+              Privacy information
+            </button>
+            {isMemoryManageUiEnabled() ? (
+              <button
+                type="button"
+                className="settings-link-btn"
+                onClick={() => {
+                  closeSettings()
+                  onOpenMemory?.()
+                }}
+              >
+                Review or delete Memory
+              </button>
+            ) : null}
+            <p className="settings-note settings-note--tight">{buildBetaContactLine()}</p>
           </section>
 
           <div className="settings-divider" role="separator" />
@@ -331,8 +371,8 @@ export function SettingsDrawer({ onOpenMemory }: SettingsDrawerProps) {
           </section>
 
           <p className="settings-note">
-            Tema e preferenze assistente si salvano su questo dispositivo. La memoria si può
-            spegnere in qualsiasi momento; se è OFF, ShinkAIdo non legge né scrive memorie in chat.
+            Tema e preferenze assistente si salvano su questo dispositivo. Memory OFF stops automatic
+            learning and everyday recall; stored memories remain until you delete them.
           </p>
         </div>
       </aside>

@@ -1,0 +1,90 @@
+.privacy-data {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  max-width: 100%;
+}
+
+.privacy-data__body {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: var(--space-page-y) var(--page-gutter) calc(2rem + var(--safe-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  box-sizing: border-box;
+}
+
+.privacy-data__lead {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  max-width: 36rem;
+}
+
+.privacy-data__section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  max-width: 36rem;
+}
+
+.privacy-data__heading {
+  margin: 0;
+  font-size: 0.74rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.privacy-data__section p {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: var(--text);
+}
+
+.privacy-data__warn {
+  color: var(--text);
+  border-left: 2px solid color-mix(in srgb, var(--danger, #b42318) 70%, var(--accent));
+  padding-left: 0.75rem;
+}
+
+.privacy-data__meta {
+  font-size: 0.78rem !important;
+  color: var(--text-muted) !important;
+}
+
+.privacy-data__meta code {
+  font-size: 0.85em;
+  word-break: break-all;
+}
+
+[data-theme='the-way-washi'] .privacy-data__warn {
+  border-left-color: color-mix(in srgb, var(--accent) 55%, var(--danger, #b42318));
+}
+
+[data-theme='the-way-sumi'] .privacy-data__warn {
+  border-left-color: color-mix(in srgb, var(--accent) 45%, var(--danger, #f97066));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .privacy-data * {
+    transition: none !important;
+  }
+}
