@@ -8,7 +8,9 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { buildCoreResponsesCreateParams } from '../lib/server/core-responses-params.js'
-import { resolveChatMemoryOwnerUserId } from '../lib/server/chat-memory-auth.js'
+import { requirePaidApiAccess } from '../lib/server/paid-api-guard.js'
+import { ensureAuthUserRow } from '../lib/server/brain-memory.js'
+import { getServiceSupabase } from '../lib/server/supabase.js'
 import {
   appendMemoryPackToInstructions,
   isPersonalMemoryProbe,
@@ -337,29 +339,33 @@ async function runMemoryIfEnabled(
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  applyCors(res)
+  applyCors(res, req)
 
   if (req.method === 'OPTIONS') {
-    return sendCorsPreflight(res)
+    return sendCorsPreflight(res, req)
   }
 
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST, OPTIONS')
-    return sendJson(res, 405, { error: 'Method not allowed' })
+    return sendJson(res, 405, { error: 'Method not allowed' }, req)
   }
+
+  // #298A — auth + durable rate limit BEFORE OpenAI / body work.
+  const access = await requirePaidApiAccess(req, res, { bucket: 'chat' })
+  if (!access) return undefined
 
   const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) {
     return sendJson(res, 500, {
       error: 'Server misconfigured: OPENAI_API_KEY is not set',
-    })
+    }, req)
   }
 
   let body: ChatApiRequestBody
   try {
     body = parseBody(req)
   } catch {
-    return sendJson(res, 400, { error: 'Invalid JSON body' })
+    return sendJson(res, 400, { error: 'Invalid JSON body' }, req)
   }
 
   const sanitized = sanitizeMultimodalMessages(body.messages)
@@ -397,8 +403,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ? 'text'
         : undefined
 
-  // Soft auth for memory ownership only — never blocks chat generation.
-  const memoryOwnerUserId = await resolveChatMemoryOwnerUserId(req)
+  // #298A — memory ownership is the verified JWT user (never client userId).
+  let memoryOwnerUserId: string | null = null
+  try {
+    const supabase = await getServiceSupabase()
+    memoryOwnerUserId = await ensureAuthUserRow(supabase, access.userId)
+  } catch (error) {
+    console.warn(
+      '[api/chat] ensureAuthUserRow failed:',
+      error instanceof Error ? error.message.slice(0, 180) : String(error).slice(0, 180),
+    )
+    memoryOwnerUserId = access.userId
+  }
 
   try {
     const lastUserMessage = [...messages].reverse().find((msg) => msg.role === 'user')

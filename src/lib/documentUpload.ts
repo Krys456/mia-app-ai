@@ -65,12 +65,15 @@ export async function uploadDocumentAttachment(
   const headers: Record<string, string> = {
     Accept: 'application/json',
   }
-  try {
-    const auth = await resolveChatAuthForRequest({ memoryEnabled: false })
-    if (auth.authorization) headers.Authorization = auth.authorization
-  } catch {
-    /* upload does not require memory auth */
+  const auth = await resolveChatAuthForRequest()
+  if (!auth.authorization) {
+    throw new DocumentUploadError(
+      'Sessione non pronta. Ricarica la pagina e riprova.',
+      'unauthorized',
+      401,
+    )
   }
+  headers.Authorization = auth.authorization
 
   let response: Response
   try {
