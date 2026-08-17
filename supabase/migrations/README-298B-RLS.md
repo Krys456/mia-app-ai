@@ -4,6 +4,13 @@ Migration file:
 
 `supabase/migrations/20260817210000_rls_owner_policies_298b.sql`
 
+## What this migration does
+
+1. `ALTER TABLE … ENABLE ROW LEVEL SECURITY` on all five tables  
+   (idempotent if already enabled in live; required for fresh repo-only rebuilds)
+2. Creates 18 owner-scoped `*_own` policies for `authenticated`
+3. Does **not** DISABLE or FORCE RLS
+
 ## Live prerequisites (already verified)
 
 - RLS ENABLED on `users`, `memories`, `conversations`, `messages`, `settings`

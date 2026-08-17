@@ -5,10 +5,15 @@
 --   messages, and settings.
 --   Zero policies existed (deny-by-default for non-service-role clients).
 --
+-- Earlier repository schema migrations do NOT enable RLS. This migration
+-- therefore explicitly ENABLE ROW LEVEL SECURITY on all five tables so a
+-- fresh environment reconstructed from repo migrations is self-contained.
+-- ENABLE is idempotent when RLS is already on (no live behavior change).
+--
 -- This migration:
+--   - ENABLES RLS on all five tables (safe if already enabled)
 --   - Does NOT disable RLS
---   - Does NOT run ALTER TABLE ... ENABLE ROW LEVEL SECURITY
---     (already true in live; avoid redundant / noisy production DDL)
+--   - Does NOT FORCE ROW LEVEL SECURITY
 --   - Adds owner-scoped policies for authenticated (incl. anonymous) users
 --   - Uses DROP POLICY IF EXISTS only for #298B-named policies, then CREATE
 --
@@ -17,6 +22,15 @@
 -- access with the anon/authenticated key.
 --
 -- DO NOT apply automatically. Manual review + apply required.
+
+-- ---------------------------------------------------------------------------
+-- Ensure RLS is enabled (idempotent; required for fresh repo-only rebuilds)
+-- ---------------------------------------------------------------------------
+ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.memories ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.conversations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.settings ENABLE ROW LEVEL SECURITY;
 
 -- ---------------------------------------------------------------------------
 -- public.memories
@@ -104,6 +118,11 @@ CREATE POLICY conversations_delete_own
 
 -- ---------------------------------------------------------------------------
 -- public.messages (unused by app — defensive)
+-- Owner check is user_id = auth.uid() only. FK allows conversation_id to
+-- reference any existing conversation; a PostgREST client could insert a
+-- message into another user's conversation while keeping its own user_id.
+-- Deferred: table unused by the app; conversation-ownership WITH CHECK can
+-- be added when conversations/messages are activated.
 -- ---------------------------------------------------------------------------
 DROP POLICY IF EXISTS messages_select_own ON public.messages;
 CREATE POLICY messages_select_own
