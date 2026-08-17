@@ -61,6 +61,7 @@ export function useVoiceMode(): UseVoiceModeApi {
   const [needsManualPlay, setNeedsManualPlay] = useState(false)
 
   const sessionRef = useRef<VoiceListenSession | null>(null)
+  const listenGenRef = useRef(0)
   const sendLockRef = useRef(false)
   const turnIdRef = useRef(0)
   const pendingSpeakRef = useRef<{
@@ -96,6 +97,7 @@ export function useVoiceMode(): UseVoiceModeApi {
   }, [])
 
   const clearListenSession = useCallback(() => {
+    listenGenRef.current += 1
     sessionRef.current?.dispose()
     sessionRef.current = null
   }, [])
@@ -210,6 +212,7 @@ export function useVoiceMode(): UseVoiceModeApi {
     // Discard — never send a partial/interim transcript.
     sendLockRef.current = false
     pendingSpeakRef.current = null
+    listenGenRef.current += 1
     sessionRef.current?.abort()
     sessionRef.current = null
     setInterimText('')
@@ -236,10 +239,18 @@ export function useVoiceMode(): UseVoiceModeApi {
       navigatorLanguage: typeof navigator !== 'undefined' ? navigator.language : undefined,
     })
 
+    const listenGen = ++listenGenRef.current
     const session = startVoiceListening(lang, {
-      onStart: () => setPhase('listening'),
-      onInterim: (text) => setInterimText(text),
+      onStart: () => {
+        if (listenGenRef.current !== listenGen) return
+        setPhase('listening')
+      },
+      onInterim: (text) => {
+        if (listenGenRef.current !== listenGen) return
+        setInterimText(text)
+      },
       onFinal: (text) => {
+        if (listenGenRef.current !== listenGen) return
         sessionRef.current = null
         setInterimText('')
         const finalText = text.replace(/\s+/g, ' ').trim()
@@ -267,6 +278,7 @@ export function useVoiceMode(): UseVoiceModeApi {
         }
       },
       onError: (code) => {
+        if (listenGenRef.current !== listenGen) return
         if (code === 'aborted') return
         const msg =
           friendlySpeechError(code) ||

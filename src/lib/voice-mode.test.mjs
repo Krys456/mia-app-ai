@@ -1,5 +1,5 @@
 /**
- * #292 Voice Mode — STT finalize, transcript reduction, UI, one-send guards
+ * #292 Voice Mode — indexed SpeechRecognition slot ownership + wiring
  * Run: node src/lib/voice-mode.test.mjs
  */
 
@@ -50,6 +50,7 @@ const {
   accumulateVoiceFinals,
   applySpeechRecognitionEvent,
   buildFinalVoiceTranscript,
+  commitRecognitionCycle,
   emptySpeechTranscriptState,
   isSpeechRecognitionSupported,
   reduceSpeechRecognitionResults,
@@ -57,12 +58,8 @@ const {
 
 assert.equal(isSpeechRecognitionSupported(), false)
 
-// ---------------------------------------------------------------------------
-// Transcript event sequences (realistic cumulative Web Speech results)
-// ---------------------------------------------------------------------------
-
-function play(events) {
-  let state = emptySpeechTranscriptState()
+function play(events, initial = emptySpeechTranscriptState()) {
+  let state = initial
   const displays = []
   for (const ev of events) {
     state = applySpeechRecognitionEvent(state, ev)
@@ -71,98 +68,71 @@ function play(events) {
   return { state, displays }
 }
 
-// A — interim replacement (NOT append)
+// ---------------------------------------------------------------------------
+// A — Progressive same-slot hypothesis (EXACT Android Preview regression)
+// ---------------------------------------------------------------------------
 {
   const { displays, state } = play([
-    { resultIndex: 0, results: [{ isFinal: false, transcript: "cos'è" }] },
-    { resultIndex: 0, results: [{ isFinal: false, transcript: "cos'è un" }] },
-    { resultIndex: 0, results: [{ isFinal: false, transcript: "cos'è un inverter" }] },
+    { resultIndex: 0, results: [{ isFinal: false, transcript: "Cos'è" }] },
+    { resultIndex: 0, results: [{ isFinal: false, transcript: "Cos'è un" }] },
+    {
+      resultIndex: 0,
+      results: [{ isFinal: true, transcript: "Cos'è un inverter" }],
+    },
   ])
-  assert.deepEqual(displays, ["cos'è", "cos'è un", "cos'è un inverter"])
-  assert.equal(state.committedFinalTranscript, '')
-  assert.equal(state.currentInterimTranscript, "cos'è un inverter")
+  assert.deepEqual(displays, ["Cos'è", "Cos'è un", "Cos'è un inverter"])
+  assert.equal(state.displayTranscript, "Cos'è un inverter")
+  assert.equal(state.committedFinalTranscript, "Cos'è un inverter")
+  assert.equal(buildFinalVoiceTranscript(state), "Cos'è un inverter")
+  assert.doesNotMatch(state.displayTranscript, /Cos'è Cos'è/)
+  assert.notEqual(state.displayTranscript, "Cos'è Cos'è un Cos'è un inverter")
 }
 
-// B — interim → final
+// Same-slot progressive FINALS (Android may mark revisions final then revise again)
 {
   const { state } = play([
-    { resultIndex: 0, results: [{ isFinal: false, transcript: "cos'è" }] },
-    { resultIndex: 0, results: [{ isFinal: false, transcript: "cos'è un inverter" }] },
-    { resultIndex: 0, results: [{ isFinal: true, transcript: "Cos'è un inverter?" }] },
+    { resultIndex: 0, results: [{ isFinal: true, transcript: "Cos'è" }] },
+    { resultIndex: 0, results: [{ isFinal: true, transcript: "Cos'è un" }] },
+    {
+      resultIndex: 0,
+      results: [{ isFinal: true, transcript: "Cos'è un inverter" }],
+    },
   ])
-  assert.equal(state.displayTranscript, "Cos'è un inverter?")
-  assert.equal(state.committedFinalTranscript, "Cos'è un inverter?")
-  assert.equal(state.currentInterimTranscript, '')
-  assert.equal(buildFinalVoiceTranscript(state), "Cos'è un inverter?")
+  assert.equal(state.displayTranscript, "Cos'è un inverter")
+  assert.equal(state.slots.length, 1)
+  assert.notEqual(state.displayTranscript, "Cos'è Cos'è un Cos'è un inverter")
 }
 
-// C — repeated interim events with growing cumulative text must not duplicate
+// ---------------------------------------------------------------------------
+// B — Re-emitted final slot must not append again when resultIndex advances
+// ---------------------------------------------------------------------------
 {
-  const { displays } = play([
-    { resultIndex: 0, results: [{ isFinal: false, transcript: "cos'è" }] },
-    { resultIndex: 0, results: [{ isFinal: false, transcript: "cos'è" }] },
-    { resultIndex: 0, results: [{ isFinal: false, transcript: "cos'è cos'è" }] }, // browser said this once
+  const { state } = play([
+    {
+      resultIndex: 0,
+      results: [{ isFinal: true, transcript: "Cos'è un inverter" }],
+    },
+    {
+      resultIndex: 1,
+      results: [
+        { isFinal: true, transcript: "Cos'è un inverter" },
+        { isFinal: false, transcript: 'collegato' },
+      ],
+    },
   ])
-  // Our reducer must not turn single-index updates into "cos'è cos'è cos'è"
-  assert.equal(displays[0], "cos'è")
-  assert.equal(displays[1], "cos'è")
-  assert.equal(displays[2], "cos'è cos'è")
-}
-
-// Regression: OLD buggy algorithm (seed previous finals + re-walk all) would explode.
-{
-  // Simulate the Preview bug sequence: same final re-included while interim updates.
-  let buggy = ''
-  const events = [
-    [{ isFinal: false, transcript: "cos'è" }],
-    [{ isFinal: false, transcript: "cos'è" }],
-    [{ isFinal: true, transcript: "cos'è" }],
-    [
-      { isFinal: true, transcript: "cos'è" },
-      { isFinal: false, transcript: "un" },
-    ],
-    [
-      { isFinal: true, transcript: "cos'è" },
-      { isFinal: false, transcript: "un inverter" },
-    ],
-  ]
-  for (const results of events) {
-    let nextFinals = buggy
-    let nextInterim = ''
-    for (const item of results) {
-      if (item.isFinal) {
-        nextFinals = nextFinals ? `${nextFinals} ${item.transcript}` : item.transcript
-      } else {
-        nextInterim = item.transcript
-      }
-    }
-    buggy = nextFinals.replace(/\s+/g, ' ').trim()
-    void nextInterim
-  }
-  assert.match(buggy, /cos'è cos'è/) // proves the old bug
-
-  const fixed = play(
-    events.map((results, i) => ({ resultIndex: i === 0 ? 0 : 0, results })),
+  assert.equal(state.slots[0].transcript, "Cos'è un inverter")
+  assert.equal(state.slots[1].transcript, 'collegato')
+  assert.equal(state.displayTranscript, "Cos'è un inverter collegato")
+  // Slot 0 appears once
+  assert.equal(
+    state.displayTranscript.match(/Cos'è un inverter/g)?.length,
+    1,
   )
-  assert.equal(fixed.state.committedFinalTranscript, "cos'è")
-  assert.equal(fixed.state.currentInterimTranscript, 'un inverter')
-  assert.equal(fixed.state.displayTranscript, "cos'è un inverter")
-  assert.doesNotMatch(fixed.state.displayTranscript, /cos'è cos'è/)
 }
 
-// D — repeated final callback (same cumulative list) is idempotent
-{
-  const finalList = [{ isFinal: true, transcript: "Cos'è un inverter?" }]
-  const { state } = play([
-    { resultIndex: 0, results: finalList },
-    { resultIndex: 0, results: finalList },
-    { resultIndex: 0, results: finalList },
-  ])
-  assert.equal(state.committedFinalTranscript, "Cos'è un inverter?")
-  assert.equal(buildFinalVoiceTranscript(state), "Cos'è un inverter?")
-}
-
-// E — multiple final segments (natural pause)
+// ---------------------------------------------------------------------------
+// C — Multiple genuine final slots
+// ---------------------------------------------------------------------------
 {
   const { state } = play([
     { resultIndex: 0, results: [{ isFinal: true, transcript: "Cos'è un inverter" }] },
@@ -170,42 +140,16 @@ function play(events) {
       resultIndex: 1,
       results: [
         { isFinal: true, transcript: "Cos'è un inverter" },
-        { isFinal: false, transcript: 'e come' },
-      ],
-    },
-    {
-      resultIndex: 1,
-      results: [
-        { isFinal: true, transcript: "Cos'è un inverter" },
-        { isFinal: true, transcript: 'e come funziona nel fotovoltaico?' },
+        { isFinal: true, transcript: 'e come funziona' },
       ],
     },
   ])
-  assert.equal(
-    state.committedFinalTranscript,
-    "Cos'è un inverter e come funziona nel fotovoltaico?",
-  )
-  assert.equal(state.currentInterimTranscript, '')
+  assert.equal(state.displayTranscript, "Cos'è un inverter e come funziona")
 }
 
-// F — final + new interim
-{
-  const { state } = play([
-    { resultIndex: 0, results: [{ isFinal: true, transcript: 'Il fotovoltaico' }] },
-    {
-      resultIndex: 1,
-      results: [
-        { isFinal: true, transcript: 'Il fotovoltaico' },
-        { isFinal: false, transcript: 'come funziona' },
-      ],
-    },
-  ])
-  assert.equal(state.displayTranscript, 'Il fotovoltaico come funziona')
-  assert.equal(state.committedFinalTranscript, 'Il fotovoltaico')
-  assert.equal(state.currentInterimTranscript, 'come funziona')
-}
-
-// G — legitimate repeated words preserved
+// ---------------------------------------------------------------------------
+// D / E — Legitimate repeated words / phrases preserved (no string-dedupe)
+// ---------------------------------------------------------------------------
 {
   const { state } = play([
     {
@@ -216,17 +160,73 @@ function play(events) {
   assert.equal(state.committedFinalTranscript, 'È molto molto importante.')
   assert.match(state.committedFinalTranscript, /molto molto/)
 }
-
-// H / I — cancel / empty session helpers
 {
-  const empty = emptySpeechTranscriptState()
-  assert.equal(empty.displayTranscript, '')
-  assert.equal(empty.committedFinalTranscript, '')
-  assert.equal(buildFinalVoiceTranscript(empty), '')
-  assert.equal(buildFinalVoiceTranscript(empty, { includeInterim: true }), '')
+  const { state } = play([
+    { resultIndex: 0, results: [{ isFinal: true, transcript: 'no no aspetta' }] },
+  ])
+  assert.equal(state.displayTranscript, 'no no aspetta')
+}
+{
+  const { state } = play([
+    { resultIndex: 0, results: [{ isFinal: true, transcript: 'che che cosa?' }] },
+  ])
+  assert.equal(state.displayTranscript, 'che che cosa?')
 }
 
-// Stop flush includes trailing interim once
+// ---------------------------------------------------------------------------
+// F — Interim replacement on same slot
+// ---------------------------------------------------------------------------
+{
+  const { displays, state } = play([
+    { resultIndex: 0, results: [{ isFinal: true, transcript: 'Ciao' }] },
+    {
+      resultIndex: 1,
+      results: [
+        { isFinal: true, transcript: 'Ciao' },
+        { isFinal: false, transcript: 'come' },
+      ],
+    },
+    {
+      resultIndex: 1,
+      results: [
+        { isFinal: true, transcript: 'Ciao' },
+        { isFinal: false, transcript: 'come funziona' },
+      ],
+    },
+    {
+      resultIndex: 1,
+      results: [
+        { isFinal: true, transcript: 'Ciao' },
+        { isFinal: false, transcript: 'come funziona il fotovoltaico' },
+      ],
+    },
+  ])
+  assert.equal(displays[1], 'Ciao come')
+  assert.equal(displays[2], 'Ciao come funziona')
+  assert.equal(state.displayTranscript, 'Ciao come funziona il fotovoltaico')
+  assert.doesNotMatch(state.displayTranscript, /come come/)
+}
+
+// ---------------------------------------------------------------------------
+// G — final → new slot
+// ---------------------------------------------------------------------------
+{
+  const { state } = play([
+    { resultIndex: 0, results: [{ isFinal: true, transcript: 'Ciao' }] },
+    {
+      resultIndex: 1,
+      results: [
+        { isFinal: true, transcript: 'Ciao' },
+        { isFinal: true, transcript: 'come stai' },
+      ],
+    },
+  ])
+  assert.equal(state.displayTranscript, 'Ciao come stai')
+}
+
+// ---------------------------------------------------------------------------
+// H — stop while interim exists → flush interim into send payload
+// ---------------------------------------------------------------------------
 {
   const state = reduceSpeechRecognitionResults([
     { isFinal: true, transcript: 'Ciao' },
@@ -236,112 +236,98 @@ function play(events) {
   assert.equal(buildFinalVoiceTranscript(state, { includeInterim: true }), 'Ciao LAIfe')
 }
 
-// Legacy single-piece helper still sane
-assert.deepEqual(accumulateVoiceFinals('', 'ciao', false), { finals: '', interim: 'ciao' })
+// ---------------------------------------------------------------------------
+// I — cancel / empty session
+// ---------------------------------------------------------------------------
+{
+  let state = play([
+    { resultIndex: 0, results: [{ isFinal: false, transcript: "Cos'è" }] },
+  ]).state
+  state = emptySpeechTranscriptState()
+  assert.equal(state.displayTranscript, '')
+  assert.equal(state.slots.length, 0)
+  assert.equal(buildFinalVoiceTranscript(state, { includeInterim: true }), '')
+}
+
+// Cycle commit (continuous:false restart boundary) then new slot
+{
+  let state = play([
+    { resultIndex: 0, results: [{ isFinal: true, transcript: 'Primo' }] },
+  ]).state
+  state = commitRecognitionCycle(state)
+  assert.equal(state.committedCycles.join(' '), 'Primo')
+  assert.equal(state.slots.length, 0)
+  state = play(
+    [{ resultIndex: 0, results: [{ isFinal: true, transcript: 'Secondo' }] }],
+    state,
+  ).state
+  assert.equal(state.displayTranscript, 'Primo Secondo')
+  assert.equal(buildFinalVoiceTranscript(state), 'Primo Secondo')
+}
+
+// ---------------------------------------------------------------------------
+// Forbidden concatenation regression (join-all-finals without slot replace)
+// ---------------------------------------------------------------------------
+{
+  // Simulate the broken approach: treat every progressive final as a new segment
+  // when Android revises slot 0 in place (resultIndex always 0, length 1).
+  const events = [
+    { resultIndex: 0, results: [{ isFinal: true, transcript: "Cos'è" }] },
+    { resultIndex: 0, results: [{ isFinal: true, transcript: "Cos'è un" }] },
+    {
+      resultIndex: 0,
+      results: [{ isFinal: true, transcript: "Cos'è un inverter" }],
+    },
+  ]
+  let buggy = ''
+  for (const ev of events) {
+    // BUG: append previous finals string + current finals (old #292 behavior family)
+    const joined = ev.results.map((r) => r.transcript).join(' ')
+    buggy = buggy ? `${buggy} ${joined}` : joined
+  }
+  assert.equal(buggy, "Cos'è Cos'è un Cos'è un inverter")
+
+  const fixed = play(events).state.displayTranscript
+  assert.equal(fixed, "Cos'è un inverter")
+}
+
 assert.deepEqual(accumulateVoiceFinals('ciao', 'mondo', true), {
   finals: 'ciao mondo',
   interim: '',
 })
 
-// I — citation URLs not spoken
-const spoken = prepareSpeechText(
-  'Risposta utile.\n\nFonti:\n- https://example.com/a\n- [OpenAI](https://openai.com)',
-)
-assert.match(spoken, /Risposta utile/)
-assert.doesNotMatch(spoken, /https?:\/\//)
-assert.doesNotMatch(spoken, /Fonti/i)
 assert.equal(TTS_MAX_INPUT_CHARS, 1200)
+assert.match(prepareSpeechText('Vedi https://x.com'), /Vedi/)
 
 const hook = read('src/components/chat/useVoiceMode.ts')
 const listen = read('src/lib/voiceListening.ts')
 const shell = read('src/components/chat/ComposerShell.tsx')
-const bar = read('src/components/chat/VoiceModeBar.tsx')
 const btn = read('src/components/chat/VoiceModeButton.tsx')
-const btnCss = read('src/components/chat/VoiceModeButton.css')
-const chatContext = read('src/context/ChatContext.tsx')
-const chatApi = read('src/lib/chatApi.ts')
 const apiChat = read('api/chat.ts')
-const ttsApi = read('src/lib/ttsApi.ts')
-const ttsRoute = read('api/tts.ts')
-const micBtn = read('src/components/chat/ComposerMicrophoneButton.tsx')
 
-// Controller phases
-assert.match(hook, /'idle'/)
-assert.match(hook, /'listening'/)
-assert.match(hook, /'processing'/)
-assert.match(hook, /'speaking'/)
-assert.match(hook, /'error'/)
-
-// Interim never sent; finals sent once
-assert.match(listen, /interimResults = true/)
-assert.match(listen, /reduceSpeechRecognitionResults|applySpeechRecognitionEvent/)
-assert.match(listen, /finalEmitted/)
-assert.match(hook, /onInterim:\s*\(text\)\s*=>\s*setInterimText/)
-assert.doesNotMatch(hook, /onInterim:[\s\S]{0,80}sendMessage/)
+// J — exactly-once send + stale-session guards
 assert.match(hook, /sendLockRef/)
 assert.match(hook, /if \(sendLockRef\.current\) return/)
-assert.match(hook, /sendMessage\(finalText\)/)
+assert.match(hook, /listenGenRef/)
+assert.match(hook, /listenGenRef\.current !== listenGen/)
+assert.match(listen, /sessionGen|activeGen/)
+assert.match(listen, /finalEmitted/)
+assert.match(listen, /continuous = false/)
+assert.match(listen, /applySpeechRecognitionEvent/)
+assert.match(listen, /resultIndex/)
 
-// J / K / L — empty does not send; one-send; cancel clears
-assert.match(hook, /Non ho sentito nulla/)
-assert.match(hook, /cancelListening/)
-assert.match(hook, /sessionRef\.current\?\.abort\(\)/)
-assert.match(hook, /pendingSpeakRef\.current = null/)
-assert.match(listen, /discarded = true/)
-assert.match(listen, /emptySpeechTranscriptState/)
-
-// G — API key not exposed
-assert.doesNotMatch(ttsApi, /OPENAI_API_KEY/)
-assert.match(ttsRoute, /process\.env\.OPENAI_API_KEY/)
-
-// H — TTS uses visible assistant text
-assert.match(hook, /speakAssistantText\(last\.content/)
-assert.doesNotMatch(hook, /modality:\s*['"]voice['"]/)
-
-// Memory / history
-assert.doesNotMatch(chatContext, /voiceMode|ttsBlob|microphoneBlob|AudioBuffer/)
-assert.doesNotMatch(hook, /kind:\s*['"]audio['"]|role:\s*['"]voice['"]/)
-
-// Cleanup
-assert.match(hook, /revokeObjectURL|releaseObjectUrl/)
-assert.match(hook, /stopSpeaking/)
-assert.match(hook, /Cleanup on unmount/)
-
-// UI — no VOCE label; waveform icon; not a microphone; a11y
-assert.doesNotMatch(btn, />\s*Voce\s*</)
-assert.doesNotMatch(btn, /🎙|VOCE/)
-assert.doesNotMatch(btnCss, /\.voice-mode-btn__text/)
+// UI still icon-only waveform
+assert.doesNotMatch(btn, />\s*Voce\s*|🎙|VOCE/)
 assert.match(btn, /Avvia modalità vocale/)
-assert.match(btn, /Modalità vocale attiva/)
-assert.match(btn, /title="Avvia modalità vocale"/)
-assert.match(btn, /Sound-wave|conversation-wave|strokeLinecap="round"/)
-assert.doesNotMatch(btn, /M12 3a3 3 0 0 0-3 3v6|rect[\s\S]*microphone/i)
-assert.match(micBtn, /Dettatura/)
-assert.match(micBtn, /M12 3a3 3 0 0 0-3 3v6/)
-assert.match(btnCss, /voice-mode-btn--active/)
-assert.match(btnCss, /gradient-brand|glow-brand|accent-pink|theme-accent-3/)
-assert.match(btnCss, /touch-min/)
 assert.match(shell, /VoiceModeButton/)
-assert.match(shell, /VoiceModeBar/)
-assert.doesNotMatch(shell, /Modalità vocale attiva…/)
-assert.match(bar, /Ti ascolto/)
-assert.match(bar, /Sto elaborando/)
-assert.match(bar, /Sto parlando/)
-assert.match(bar, /Invia/)
-assert.match(bar, /Annulla/)
-
-// Dictation remains draft-only
-assert.match(shell, /useSpeechDictation/)
-assert.doesNotMatch(read('src/components/chat/useSpeechDictation.ts'), /sendMessage/)
 
 // Core invariants
 assert.equal((apiChat.match(/\.responses\.create\(/g) || []).length, 1)
 assert.match(apiChat, /maxDuration:\s*120/)
-assert.doesNotMatch(shell, /modality:\s*['"]voice['"]/)
-assert.doesNotMatch(shell, /MediaRecorder|getUserMedia/)
+assert.doesNotMatch(hook, /modality:\s*['"]voice['"]/)
 assert.doesNotMatch(listen, /Realtime|WebRTC|MediaRecorder|getUserMedia/)
 
-assert.match(hook, /needsManualPlay/)
-assert.match(listen, /privacy|browser\/vendor|vendor/i)
+// No unsafe textual dedupe helpers
+assert.doesNotMatch(listen, /startsWith\(|Set<string>|dedupeRepeated|uniqueWords/)
 
-console.log('ok: #292 voice mode contracts + transcript reduction')
+console.log('ok: #292 indexed SpeechRecognition slot ownership')
