@@ -19,30 +19,46 @@ function hostnameOf(url: string): string {
 function CitationSourcesComponent({ citations, compact = false }: CitationSourcesProps) {
   if (!citations.length) return null
 
+  const count = citations.length
+  const list = (
+    <ol className="citation-sources__list">
+      {citations.map((citation) => {
+        const host = hostnameOf(citation.url)
+        return (
+          <li key={citation.url} className="citation-sources__item">
+            <a
+              className="citation-sources__link"
+              href={citation.url}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <span className="citation-sources__title">{citation.title}</span>
+              {host ? <span className="citation-sources__host">{host}</span> : null}
+            </a>
+          </li>
+        )
+      })}
+    </ol>
+  )
+
   return (
     <aside
       className={`citation-sources${compact ? ' citation-sources--compact' : ''}`}
-      aria-label="Fonti"
+      aria-label={`Fonti · ${count}`}
     >
-      <h3 className="citation-sources__heading">Fonti</h3>
-      <ol className="citation-sources__list">
-        {citations.map((citation) => {
-          const host = hostnameOf(citation.url)
-          return (
-            <li key={citation.url} className="citation-sources__item">
-              <a
-                className="citation-sources__link"
-                href={citation.url}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <span className="citation-sources__title">{citation.title}</span>
-                {host ? <span className="citation-sources__host">{host}</span> : null}
-              </a>
-            </li>
-          )
-        })}
-      </ol>
+      {/*
+        Chat: collapsed “Fonti · N” disclosure.
+        Selection sheet (compact): open by default for immediate trust.
+      */}
+      <details className="citation-sources__details" open={compact || undefined}>
+        <summary className="citation-sources__summary">
+          <span className="citation-sources__summary-label">Fonti</span>
+          <span className="citation-sources__summary-count" aria-hidden="true">
+            · {count}
+          </span>
+        </summary>
+        {list}
+      </details>
     </aside>
   )
 }

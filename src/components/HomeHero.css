@@ -52,7 +52,7 @@
 }
 
 .home-hero__mark {
-  /* ~12% larger than prior Preview — fire trail must read at hero scale */
+  /* Hero Ensō scale — continuity into first chat turn */
   width: 5.75rem;
   height: 5.75rem;
   padding: 0.45rem;
@@ -78,13 +78,19 @@
 }
 
 .home-hero__lead {
-  margin: 0.35rem 0 0;
+  margin: 0.4rem 0 0;
   max-width: 20rem;
   color: var(--text-muted);
   font-size: 0.98rem;
-  line-height: 1.55;
+  line-height: 1.58;
   letter-spacing: 0.01em;
   animation: hero-rise 720ms var(--ease-out) 80ms both;
+}
+
+/* Align empty-state reading rhythm with chat typography */
+[data-theme='the-way-washi'] .home-hero__lead,
+[data-theme='the-way-sumi'] .home-hero__lead {
+  color: color-mix(in srgb, var(--text-muted) 92%, transparent);
 }
 
 @media (max-width: 480px) {

@@ -190,58 +190,55 @@
   margin: 0 auto;
   box-sizing: border-box;
   padding: 0.5rem;
-  background: color-mix(in srgb, var(--surface-solid) 86%, transparent);
-  border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border));
+  background: color-mix(in srgb, var(--surface-solid) 88%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 16%, var(--border));
   border-radius: var(--radius-xl);
-  backdrop-filter: blur(16px) saturate(1.2);
-  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  backdrop-filter: blur(14px) saturate(1.12);
+  -webkit-backdrop-filter: blur(14px) saturate(1.12);
   box-shadow: var(--shadow-dock), var(--glow-brand);
   transition: border-color var(--duration) var(--ease-out), box-shadow var(--duration) var(--ease-out);
 }
 
 .composer:focus-within {
-  border-color: color-mix(in srgb, var(--accent) 42%, transparent);
-  box-shadow: var(--shadow-dock), 0 0 0 1px color-mix(in srgb, var(--accent) 12%, transparent),
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+  box-shadow: var(--shadow-dock), 0 0 0 1px color-mix(in srgb, var(--accent) 10%, transparent),
     var(--glow-brand);
 }
 
-/* The Way — restrained composer surfaces (geometry unchanged) */
+/* The Way — calm floating writing surface (geometry / padding unchanged) */
 [data-theme='the-way-washi'] .composer {
-  background: color-mix(in srgb, var(--surface-solid) 94%, #fff8ee);
-  border-color: color-mix(in srgb, var(--accent) 22%, var(--border));
-  backdrop-filter: blur(10px) saturate(1.05);
-  -webkit-backdrop-filter: blur(10px) saturate(1.05);
+  background: color-mix(in srgb, var(--surface-solid) 96%, #fff8ee);
+  border-color: color-mix(in srgb, var(--accent) 20%, var(--border));
+  backdrop-filter: blur(8px) saturate(1.02);
+  -webkit-backdrop-filter: blur(8px) saturate(1.02);
   box-shadow:
     0 1px 2px rgba(28, 25, 22, 0.04),
-    0 8px 24px rgba(28, 25, 22, 0.06),
-    0 0 0 1px color-mix(in srgb, var(--accent) 4%, transparent);
+    0 8px 22px rgba(28, 25, 22, 0.06);
 }
 
 [data-theme='the-way-washi'] .composer:focus-within {
-  border-color: color-mix(in srgb, var(--accent) 38%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 44%, transparent);
   box-shadow:
     0 1px 2px rgba(28, 25, 22, 0.04),
-    0 8px 28px rgba(28, 25, 22, 0.07),
-    0 0 0 1px color-mix(in srgb, var(--accent) 10%, transparent);
+    0 8px 24px rgba(28, 25, 22, 0.07),
+    0 0 0 1px color-mix(in srgb, var(--accent) 12%, transparent);
 }
 
 [data-theme='the-way-sumi'] .composer {
-  background: color-mix(in srgb, var(--surface-solid) 92%, #0c0a09);
-  border-color: color-mix(in srgb, var(--accent) 28%, var(--border));
-  backdrop-filter: blur(10px) saturate(1.05);
-  -webkit-backdrop-filter: blur(10px) saturate(1.05);
+  background: color-mix(in srgb, var(--surface-solid) 94%, #0c0a09);
+  border-color: color-mix(in srgb, var(--text) 12%, transparent);
+  backdrop-filter: blur(8px) saturate(1.02);
+  -webkit-backdrop-filter: blur(8px) saturate(1.02);
   box-shadow:
     0 0 0 1px color-mix(in srgb, var(--text) 4%, transparent),
-    0 10px 28px rgba(0, 0, 0, 0.38),
-    0 0 18px color-mix(in srgb, var(--accent) 10%, transparent);
+    0 10px 26px rgba(0, 0, 0, 0.36);
 }
 
 [data-theme='the-way-sumi'] .composer:focus-within {
-  border-color: color-mix(in srgb, var(--accent) 42%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
   box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--accent) 14%, transparent),
-    0 10px 28px rgba(0, 0, 0, 0.4),
-    0 0 22px color-mix(in srgb, var(--accent) 14%, transparent);
+    0 0 0 1px color-mix(in srgb, var(--accent) 16%, transparent),
+    0 10px 26px rgba(0, 0, 0, 0.38);
 }
 
 .composer__input {
@@ -288,6 +285,18 @@
   box-shadow: var(--glow-brand);
   transition: transform var(--duration-press) var(--ease-out), opacity var(--duration-press) var(--ease-out),
     filter var(--duration-press) var(--ease-out);
+}
+
+/* Primary action stays clear; The Way drops neon send glow */
+[data-theme='the-way-washi'] .composer__send,
+[data-theme='the-way-sumi'] .composer__send {
+  background: var(--accent);
+  box-shadow: none;
+}
+
+[data-theme='the-way-washi'] .composer__send--busy:disabled,
+[data-theme='the-way-sumi'] .composer__send--busy:disabled {
+  box-shadow: none;
 }
 
 .composer__send:hover:not(:disabled) {

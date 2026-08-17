@@ -410,10 +410,10 @@ export function applyThemeToDocument(theme: ThemeDefinition) {
     )
     root.style.setProperty('--glow-cyan', `0 0 14px ${rgba(accent, 0.14)}`)
     root.style.setProperty('--glow-pink', `0 0 14px ${rgba(accentTertiary, 0.1)}`)
-    root.style.setProperty('--glow-brand', `0 0 16px ${rgba(accent, 0.12)}`)
+    root.style.setProperty('--glow-brand', `0 0 12px ${rgba(accent, 0.08)}`)
     root.style.setProperty(
       '--bubble-user-bg',
-      `linear-gradient(135deg, ${rgba(accent, 0.12)}, ${rgba(accentSecondary, 0.08)})`,
+      `linear-gradient(135deg, ${rgba(accent, 0.09)}, ${rgba(accentSecondary, 0.05)})`,
     )
     root.style.setProperty('--atmosphere-1', rgba(accent, colorScheme === 'light' ? 0.05 : 0.09))
     root.style.setProperty('--atmosphere-2', rgba(accentQuaternary, colorScheme === 'light' ? 0.04 : 0.07))
