@@ -1,4 +1,5 @@
-import { memo, useEffect, useRef } from 'react'
+import { memo, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
+import { createPortal } from 'react-dom'
 import type { SelectionInsightState } from './useMessageSelection'
 import './SelectionInsightSheet.css'
 
@@ -8,12 +9,58 @@ interface SelectionInsightSheetProps {
   onRetry?: () => void
 }
 
+/**
+ * Measure the live composer dock so the sheet clears it on mobile.
+ * Falls back to --composer-h when the dock is missing.
+ */
+function useComposerDockInsetPx(): number {
+  const [inset, setInset] = useState(0)
+
+  useLayoutEffect(() => {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return
+
+    const read = () => {
+      const dock = document.querySelector('.composer-dock') as HTMLElement | null
+      if (dock) {
+        const h = Math.ceil(dock.getBoundingClientRect().height)
+        // Gap above the dock so the sheet never kisses the composer edge.
+        setInset(Math.max(h + 8, 0))
+        return
+      }
+      const raw = getComputedStyle(document.documentElement)
+        .getPropertyValue('--composer-h')
+        .trim()
+      const parsed = Number.parseFloat(raw)
+      const fallback = Number.isFinite(parsed) && parsed > 0 ? parsed : 5.75 * 16
+      setInset(Math.ceil(fallback + 8))
+    }
+
+    read()
+    const dock = document.querySelector('.composer-dock')
+    const ro =
+      typeof ResizeObserver !== 'undefined' && dock
+        ? new ResizeObserver(() => read())
+        : null
+    if (dock && ro) ro.observe(dock)
+    window.addEventListener('resize', read)
+    window.visualViewport?.addEventListener('resize', read)
+    return () => {
+      ro?.disconnect()
+      window.removeEventListener('resize', read)
+      window.visualViewport?.removeEventListener('resize', read)
+    }
+  }, [])
+
+  return inset
+}
+
 function SelectionInsightSheetComponent({
   insight,
   onDismiss,
   onRetry,
 }: SelectionInsightSheetProps) {
   const closeRef = useRef<HTMLButtonElement>(null)
+  const composerInsetPx = useComposerDockInsetPx()
   const label =
     insight.operation === 'define'
       ? 'Definizione'
@@ -28,8 +75,20 @@ function SelectionInsightSheetComponent({
     }
   }, [insight.loading, insight.result, insight.error])
 
-  return (
-    <div className="selection-insight" role="dialog" aria-modal="true" aria-label={label}>
+  if (typeof document === 'undefined') return null
+
+  const overlay = (
+    <div
+      className="selection-insight"
+      role="dialog"
+      aria-modal="true"
+      aria-label={label}
+      style={
+        {
+          ['--selection-composer-inset' as string]: `${composerInsetPx}px`,
+        } as CSSProperties
+      }
+    >
       <button
         type="button"
         className="selection-insight__backdrop"
@@ -74,6 +133,10 @@ function SelectionInsightSheetComponent({
       </div>
     </div>
   )
+
+  // Portal to body so fixed positioning escapes .app-view transform containing block
+  // and paints above the sticky composer dock.
+  return createPortal(overlay, document.body)
 }
 
 export const SelectionInsightSheet = memo(SelectionInsightSheetComponent)

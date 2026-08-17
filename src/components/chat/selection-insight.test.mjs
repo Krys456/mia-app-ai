@@ -70,16 +70,25 @@ assert.match(hook, /Escape/)
 assert.match(hook, /runOperation/)
 assert.match(bar, /onDefine|onExplain/)
 
-// Mobile sheet must sit above sticky composer (z-index 90) and clear composer height
+// Mobile sheet must sit above sticky composer (z-index 90) and clear live composer height
 const sheetCss = read('src/components/chat/SelectionInsightSheet.css')
+const sheetTsx = read('src/components/chat/SelectionInsightSheet.tsx')
 const composerCss = read('src/components/chat/ComposerShell.css')
 assert.match(composerCss, /\.composer-dock[\s\S]*z-index:\s*90/)
-assert.match(sheetCss, /z-index:\s*110/)
-assert.match(sheetCss, /--composer-h/)
-assert.match(sheetCss, /safe-bottom|safe-area-inset-bottom/)
-assert.match(sheetCss, /padding-bottom:\s*calc\(var\(--composer-h/)
+assert.match(sheetCss, /z-index:\s*150/)
+assert.match(sheetCss, /--selection-composer-inset/)
+assert.match(sheetCss, /safe-area-inset-bottom/)
+assert.match(
+  sheetCss,
+  /padding-bottom:\s*var\(\s*--selection-composer-inset,\s*calc\(var\(--composer-h/,
+)
 assert.match(sheetCss, /selection-insight__body[\s\S]*overflow-y:\s*auto/)
 assert.match(sheetCss, /max-height:\s*min\(62dvh/)
 assert.match(sheetCss, /flex-shrink:\s*0/)
+assert.match(sheetTsx, /createPortal/)
+assert.match(sheetTsx, /document\.body/)
+assert.match(sheetTsx, /composer-dock/)
+assert.match(sheetTsx, /ResizeObserver/)
+assert.match(sheetTsx, /--selection-composer-inset/)
 
 console.log('ok: #290 selection client wiring')

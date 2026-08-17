@@ -1,14 +1,21 @@
 .selection-insight {
   position: fixed;
   inset: 0;
-  /* Above sticky .composer-dock (z-index: 90) and MessageActions. */
-  z-index: 110;
+  /* Body portal: above Header (100–102) and sticky .composer-dock (90). */
+  z-index: 150;
   display: flex;
   align-items: flex-end;
   justify-content: center;
   pointer-events: none;
-  /* Keep sheet clear of the fixed/sticky composer + home-indicator. */
-  padding-bottom: calc(var(--composer-h, 5.75rem) + 0.5rem + var(--safe-bottom, 0px));
+  /*
+   * Mobile: lift the sheet above the live composer dock.
+   * --selection-composer-inset is measured from .composer-dock (includes its
+   * safe-area padding). Fallback adds --composer-h + safe-area when unmeasured.
+   */
+  padding-bottom: var(
+    --selection-composer-inset,
+    calc(var(--composer-h, 5.75rem) + env(safe-area-inset-bottom, 0px))
+  );
   box-sizing: border-box;
 }
 
@@ -129,7 +136,7 @@
 @media (min-width: 768px) {
   .selection-insight {
     align-items: center;
-    /* Desktop: centered card — composer offset not needed for readability. */
+    /* Desktop: centered card — do not reserve composer band. */
     padding-bottom: 0;
   }
 
