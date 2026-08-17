@@ -79,8 +79,18 @@ assert.match(memoryCss, /\[data-theme='the-way-sumi'\]/)
 assert.match(memoryCss, /--danger/)
 assert.doesNotMatch(memoryCss, /memory-manage__grid/)
 assert.doesNotMatch(memoryCss, /backdrop-filter/)
-assert.match(memoryGate, /import\.meta\.env\.PROD\s*!==\s*true/)
+assert.match(memoryGate, /VITE_MEMORY_MANAGE_UI/)
+assert.doesNotMatch(memoryGate, /PROD\s*!==\s*true/)
 assert.match(memoryApi, /listMemories|\/api\/memories/)
+
+// —— #298B Privacy surface ——
+const privacyTsx = read('src/pages/PrivacyData.tsx')
+const privacyCopy = read('src/lib/privacyCopy.ts')
+assert.match(privacyTsx, /Privacy & Data/)
+assert.match(privacyCopy, /OpenAI/)
+assert.match(settingsTsx, /Privacy/)
+assert.match(appTsx, /PrivacyData/)
+assert.match(appTsx, /'privacy'/)
 
 // —— Vision state machine + geometry freezes ——
 assert.match(visionTsx, /'empty'\s*\|\s*'camera'\s*\|\s*'ready'\s*\|\s*'sending'/)

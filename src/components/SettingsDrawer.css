@@ -259,7 +259,22 @@
   margin-top: 0;
 }
 
-.settings-memory {
+.settings-note--warn {
+  border-left: 2px solid color-mix(in srgb, var(--danger, #b42318) 65%, var(--accent));
+  padding-left: 0.65rem;
+  color: var(--text);
+}
+
+[data-theme='the-way-washi'] .settings-note--warn {
+  border-left-color: color-mix(in srgb, var(--accent) 50%, var(--danger, #b42318));
+}
+
+[data-theme='the-way-sumi'] .settings-note--warn {
+  border-left-color: color-mix(in srgb, var(--accent) 40%, var(--danger, #f97066));
+}
+
+.settings-memory,
+.settings-privacy {
   display: flex;
   flex-direction: column;
   gap: 0.7rem;
