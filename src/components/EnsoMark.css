@@ -15,10 +15,13 @@
 }
 
 .enso-mark__fire-ambient,
-.enso-mark__fire-glow,
-.enso-mark__fire-secondary,
-.enso-mark__fire,
-.enso-mark__ember {
+.enso-mark__flame-outer,
+.enso-mark__flame-trail,
+.enso-mark__flame-body,
+.enso-mark__flame-bright,
+.enso-mark__flame-shell,
+.enso-mark__flame-core,
+.enso-mark__tongue {
   pointer-events: none;
 }
 
