@@ -5,26 +5,26 @@
 }
 
 .brand-logo--full {
-  width: min(100%, 19rem);
+  width: min(100%, 17rem);
   height: auto;
-  filter: drop-shadow(0 0 22px color-mix(in srgb, var(--accent) 38%, transparent))
-    drop-shadow(0 0 48px color-mix(in srgb, var(--accent-pink) 24%, transparent));
+  filter: drop-shadow(0 0 18px color-mix(in srgb, var(--accent) 18%, transparent));
 }
 
 .brand-logo--mark {
-  width: 2.55rem;
-  height: 2.55rem;
+  width: 2.4rem;
+  height: 2.4rem;
   border-radius: var(--radius-sm);
-  object-fit: cover;
-  background: var(--bg);
-  box-shadow: 0 0 16px color-mix(in srgb, var(--accent) 30%, transparent),
-    0 0 28px color-mix(in srgb, var(--accent-pink) 18%, transparent);
+  object-fit: contain;
+  background: color-mix(in srgb, var(--surface-solid) 88%, transparent);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 14%, transparent);
   flex-shrink: 0;
+  padding: 0.15rem;
+  box-sizing: border-box;
 }
 
 @media (min-width: 768px) {
   .brand-logo--mark {
-    width: 2.25rem;
-    height: 2.25rem;
+    width: 2.15rem;
+    height: 2.15rem;
   }
 }

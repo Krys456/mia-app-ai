@@ -1,0 +1,71 @@
+.brand-wordmark {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.08rem;
+  min-width: 0;
+}
+
+.brand-wordmark__name {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1.1;
+  color: var(--strong-text, var(--text));
+}
+
+.brand-wordmark__visual {
+  display: inline;
+}
+
+.brand-wordmark__plain {
+  color: var(--strong-text, var(--text));
+}
+
+.brand-wordmark__ai {
+  color: var(--brand-ai, var(--accent));
+  font-weight: 700;
+}
+
+.brand-wordmark__tag {
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+  text-transform: none;
+  color: var(--text-muted);
+  white-space: nowrap;
+  max-width: 14rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.brand-wordmark--sm .brand-wordmark__name {
+  font-size: 1.05rem;
+}
+
+.brand-wordmark--md .brand-wordmark__name {
+  font-size: 1.18rem;
+}
+
+.brand-wordmark--lg .brand-wordmark__name {
+  font-size: clamp(1.65rem, 5vw, 2.1rem);
+  letter-spacing: 0.01em;
+}
+
+.brand-wordmark--lg .brand-wordmark__tag {
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  margin-top: 0.2rem;
+  white-space: normal;
+  max-width: 18rem;
+}
+
+@media (max-width: 380px) {
+  .brand-wordmark--md .brand-wordmark__tag {
+    display: none;
+  }
+}
+
+@media (min-width: 768px) {
+  .brand-wordmark--md .brand-wordmark__name {
+    font-size: 1.12rem;
+  }
+}

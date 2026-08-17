@@ -59,7 +59,7 @@ function MessageListComponent({
       {isThinking ? (
         <article
           className="bubble bubble--assistant bubble--thinking"
-          aria-label="LAIfe sta pensando"
+          aria-label="ShinkAIdo sta pensando"
         >
           <div className="bubble__meta">
             <span
@@ -68,7 +68,7 @@ function MessageListComponent({
             >
               <span className="bubble__avatar-mark">L</span>
             </span>
-            <span className="bubble__label">LAIfe</span>
+            <span className="bubble__label">ShinkAIdo</span>
           </div>
           <div className="bubble__body bubble__body--typing">
             <TypingAnimation label="Sta pensando…" />

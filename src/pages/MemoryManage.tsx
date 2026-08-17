@@ -233,7 +233,7 @@ export function MemoryManage({ onBack }: MemoryManageProps) {
 
       <div className="memory-manage__body scroll-surface">
         <p className="memory-manage__lead">
-          Fatti che LAIfe ricorda per te. Tocca una card per i dettagli.
+          Fatti che ShinkAIdo ricorda per te. Tocca una card per i dettagli.
         </p>
 
         <label className="memory-manage__search">
@@ -267,7 +267,7 @@ export function MemoryManage({ onBack }: MemoryManageProps) {
           <p className="memory-manage__empty">
             {query.trim()
               ? 'Nessun risultato.'
-              : 'Nessuna memoria ancora. Quando è ON, LAIfe impara in automatico.'}
+              : 'Nessuna memoria ancora. Quando è ON, ShinkAIdo impara in automatico.'}
           </p>
         ) : (
           <ul className="memory-manage__grid">

@@ -41,9 +41,27 @@
   transform: translateY(clamp(-1.25rem, -2.5vh, -0.35rem));
 }
 
-.home-hero__logo {
-  width: min(100%, 18.5rem);
+.home-hero__mark {
+  width: 4.25rem;
+  height: 4.25rem;
+  padding: 0.35rem;
+  border-radius: calc(var(--radius-md) + 2px);
   animation: hero-rise 640ms var(--ease-out) both;
+}
+
+.home-hero__logo {
+  width: min(100%, 16rem);
+  animation: hero-rise 640ms var(--ease-out) both;
+}
+
+.home-hero__wordmark {
+  align-items: center;
+  text-align: center;
+  animation: hero-rise 680ms var(--ease-out) 40ms both;
+}
+
+.home-hero__wordmark .brand-wordmark__tag {
+  text-align: center;
 }
 
 .home-hero__lead {
@@ -120,7 +138,9 @@
 
 @media (prefers-reduced-motion: reduce) {
   .home-hero,
+  .home-hero__mark,
   .home-hero__logo,
+  .home-hero__wordmark,
   .home-hero__lead,
   .home-hero__glow {
     animation: none;

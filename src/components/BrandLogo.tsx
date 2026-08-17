@@ -1,3 +1,4 @@
+import { BRAND } from '../lib/brand'
 import './BrandLogo.css'
 
 type BrandLogoProps = {
@@ -11,11 +12,11 @@ export function BrandLogo({
   className = '',
   priority = false,
 }: BrandLogoProps) {
-  const src = variant === 'mark' ? '/laife-mark.png' : '/laife-logo.png'
+  const src = variant === 'mark' ? BRAND.markSrc : BRAND.fullSrc
   const alt =
     variant === 'mark'
-      ? 'LAIfe'
-      : 'LAIfe — Your AI, Your Life.'
+      ? BRAND.accessibleProductName
+      : `${BRAND.accessibleProductName} — ${BRAND.tagline}`
 
   return (
     <img

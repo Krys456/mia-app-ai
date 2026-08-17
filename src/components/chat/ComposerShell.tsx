@@ -359,9 +359,9 @@ export function ComposerShell({ onMessageSent }: ComposerShellProps) {
     voice.supported &&
     (voice.active || (!dictation.listening && !busy && !preparing && !uploading))
   const statusLabel = isThinking
-    ? 'LAIfe sta pensando'
+    ? 'ShinkAIdo sta pensando'
     : isStreaming
-      ? 'LAIfe sta rispondendo'
+      ? 'ShinkAIdo sta rispondendo'
       : uploading
         ? 'Caricamento documento…'
         : preparing
@@ -486,7 +486,7 @@ export function ComposerShell({ onMessageSent }: ComposerShellProps) {
         </div>
 
         <label className="sr-only" htmlFor="laife-input">
-          Messaggio per LAIfe
+          Messaggio per ShinkAIdo
         </label>
         <textarea
           ref={inputRef}
@@ -505,7 +505,7 @@ export function ComposerShell({ onMessageSent }: ComposerShellProps) {
                   ? 'Puoi scrivere il prossimo messaggio…'
                   : image || document
                     ? 'Aggiungi una didascalia (opzionale)…'
-                    : 'Messaggio a LAIfe…'
+                    : 'Messaggio a ShinkAIdo…'
           }
           enterKeyHint="send"
           autoComplete="off"

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 120" fill="none" role="img" aria-label="ShinkAIdo  The Way to Your True Self.">
+  <circle cx="48" cy="60" r="28" stroke="#1C1916" stroke-width="3" stroke-linecap="round" stroke-dasharray="140 36" transform="rotate(-28 48 60)"/>
+  <circle cx="62" cy="46" r="7" fill="#C23B2A"/>
+  <text x="96" y="72" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif" font-size="42" font-weight="600" letter-spacing="0.5">
+    <tspan fill="#1C1916">Shink</tspan><tspan fill="#C23B2A" font-weight="700">AI</tspan><tspan fill="#1C1916">do</tspan>
+  </text>
+</svg>

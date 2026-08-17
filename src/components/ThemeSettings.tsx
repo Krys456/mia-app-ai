@@ -3,11 +3,14 @@ import {
   cloneColors,
   isValidHex,
   normalizeHex,
+  OFFICIAL_THEME_ID,
   THEME_COLOR_FIELDS,
+  isTheWayThemeId,
   type ThemeColors,
   type ThemeDefinition,
 } from '../lib/themes'
 import { useTheme } from '../context/ThemeContext'
+import { BRAND } from '../lib/brand'
 import './ThemeSettings.css'
 
 function ThemeSwatch({ colors }: { colors: ThemeColors }) {
@@ -279,8 +282,9 @@ export function ThemeSettings({ active = true }: { active?: boolean }) {
       <div className="theme-settings__intro">
         <h3 id="theme-settings-title">Theme</h3>
         <p>
-          Default is the official <strong>LAIfe Theme</strong>. Choose a built-in look or create your
-          own palette.
+          Official {BRAND.accessibleProductName} look is{' '}
+          <strong>The Way — Washi</strong> (with Sumi for dark). Classic and custom palettes remain
+          available.
         </p>
       </div>
 
@@ -288,24 +292,42 @@ export function ThemeSettings({ active = true }: { active?: boolean }) {
         <button type="button" className="theme-btn theme-btn--primary" onClick={openCreator}>
           Create custom theme
         </button>
-        {activeTheme.id !== 'laife' ? (
+        {activeTheme.id !== OFFICIAL_THEME_ID ? (
           <button type="button" className="theme-btn theme-btn--ghost" onClick={resetToOfficial}>
-            Reset to LAIfe
+            Reset to The Way — Washi
           </button>
         ) : null}
       </div>
 
       <div className="theme-section">
-        <h4 className="theme-section__title">Built-in themes</h4>
+        <h4 className="theme-section__title">The Way</h4>
         <div className="theme-list">
-          {builtinThemes.map((theme) => (
-            <ThemeCard
-              key={theme.id}
-              theme={theme}
-              active={activeTheme.id === theme.id}
-              onSelect={() => setActiveTheme(theme.id)}
-            />
-          ))}
+          {builtinThemes
+            .filter((theme) => isTheWayThemeId(theme.id))
+            .map((theme) => (
+              <ThemeCard
+                key={theme.id}
+                theme={theme}
+                active={activeTheme.id === theme.id}
+                onSelect={() => setActiveTheme(theme.id)}
+              />
+            ))}
+        </div>
+      </div>
+
+      <div className="theme-section">
+        <h4 className="theme-section__title">Classic</h4>
+        <div className="theme-list">
+          {builtinThemes
+            .filter((theme) => !isTheWayThemeId(theme.id))
+            .map((theme) => (
+              <ThemeCard
+                key={theme.id}
+                theme={theme}
+                active={activeTheme.id === theme.id}
+                onSelect={() => setActiveTheme(theme.id)}
+              />
+            ))}
         </div>
       </div>
 

@@ -1,4 +1,6 @@
 import { BrandLogo } from './BrandLogo'
+import { BrandWordmark } from './BrandWordmark'
+import { BRAND } from '../lib/brand'
 import { useChat } from '../context/ChatContext'
 import type { AppView } from '../types'
 import './Header.css'
@@ -67,14 +69,11 @@ export function Header({ onNavigate }: HeaderProps) {
           type="button"
           className="header-btn header-btn--brand"
           onClick={goHomeChat}
-          aria-label="LAIfe — nuova chat"
-          title="LAIfe"
+          aria-label={`${BRAND.accessibleProductName} — nuova chat`}
+          title={BRAND.accessibleProductName}
         >
           <BrandLogo variant="mark" />
-          <span className="brand-wordmark">
-            <span className="brand-wordmark__name">LAIfe</span>
-            <span className="brand-wordmark__tag">Your AI, Your Life.</span>
-          </span>
+          <BrandWordmark showTagline emphasizeAi size="md" />
         </button>
 
         <div className="app-header__actions">

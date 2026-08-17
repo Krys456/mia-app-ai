@@ -12,6 +12,7 @@ import {
   BUILTIN_THEMES,
   createBlankCustomTheme,
   createCustomThemeId,
+  OFFICIAL_THEME_ID,
   resolveTheme,
   type ThemeColors,
   type ThemeDefinition,
@@ -96,7 +97,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       const customThemes = themeSettings.customThemes.filter((t) => t.id !== themeId)
       const activeThemeId =
         themeSettings.activeThemeId === themeId
-          ? 'laife'
+          ? OFFICIAL_THEME_ID
           : themeSettings.activeThemeId
       updateTheme({ customThemes, activeThemeId })
     },
@@ -117,7 +118,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, [activeTheme])
 
   const resetToOfficial = useCallback(() => {
-    updateTheme({ activeThemeId: 'laife' })
+    updateTheme({ activeThemeId: OFFICIAL_THEME_ID })
   }, [updateTheme])
 
   const value = useMemo<ThemeContextValue>(
