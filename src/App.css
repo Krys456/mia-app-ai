@@ -25,6 +25,17 @@
   animation: app-view-enter var(--duration-enter) var(--ease-out) both;
 }
 
+/* Chat stays mounted for scroll/composer state, but must leave the layout
+   when another AppView is active — never stack under Vision/Memory/Privacy. */
+.app-view--chat[hidden] {
+  display: none !important;
+}
+
+.app-view--vision {
+  min-height: 0;
+  overflow: hidden;
+}
+
 @keyframes app-view-enter {
   from {
     opacity: 0;

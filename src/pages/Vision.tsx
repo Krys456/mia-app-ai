@@ -305,22 +305,35 @@ export function Vision({ onBack, onHandoffToChat }: VisionProps) {
   const previewSrc = attachment?.previewUrl || attachment?.dataUrl || null
   const busy = phase === 'sending'
   const canCapture = phase === 'camera' && videoReady && !busy
+  const immersive = phase === 'camera' || Boolean(previewSrc)
+  const showIdleStart = phase === 'empty' || (phase !== 'camera' && !previewSrc)
 
   return (
-    <main className="laife-vision">
+    <main className={`laife-vision${immersive ? ' laife-vision--immersive' : ' laife-vision--idle'}`}>
       <PageHeader title="Vision AI" onBack={onBack} />
 
       <div className="laife-vision__body scroll-surface">
-        <p className="laife-vision__lead">
-          Inquadra o scegli una foto. ShinkAIdo la analizza nella chat normale — stesso Core.
-        </p>
+        {!immersive ? (
+          <p className="laife-vision__lead">
+            Inquadra o scegli una foto. ShinkAIdo la analizza nella chat normale — stesso Core.
+          </p>
+        ) : null}
 
         <div className="sr-only" aria-live="polite" aria-atomic="true">
           {status ?? (phase === 'camera' && !videoReady ? 'Preparazione anteprima fotocamera…' : '')}
         </div>
 
-        {phase === 'camera' ? (
-          <section className="laife-vision__stage" aria-label="Fotocamera live">
+        <section
+          className="laife-vision__stage"
+          aria-label={
+            phase === 'camera'
+              ? 'Fotocamera live'
+              : previewSrc
+                ? 'Anteprima immagine'
+                : 'Avvio Vision'
+          }
+        >
+          {phase === 'camera' ? (
             <div className="laife-vision__frame laife-vision__frame--live">
               <video
                 ref={videoRef}
@@ -334,25 +347,9 @@ export function Vision({ onBack, onHandoffToChat }: VisionProps) {
                 <p className="laife-vision__frame-hint">Preparazione anteprima…</p>
               ) : null}
             </div>
-            <div className="laife-vision__actions">
-              <button
-                type="button"
-                className="laife-vision__primary"
-                onClick={() => void capturePhoto()}
-                disabled={!canCapture}
-                aria-disabled={!canCapture}
-              >
-                Scatta foto
-              </button>
-              <button type="button" className="laife-vision__ghost" onClick={cancelCamera} disabled={busy}>
-                Annulla
-              </button>
-            </div>
-          </section>
-        ) : null}
+          ) : null}
 
-        {phase !== 'camera' && previewSrc ? (
-          <section className="laife-vision__stage" aria-label="Anteprima immagine">
+          {phase !== 'camera' && previewSrc ? (
             <div className="laife-vision__frame">
               <img
                 src={previewSrc}
@@ -360,79 +357,128 @@ export function Vision({ onBack, onHandoffToChat }: VisionProps) {
                 className="laife-vision__preview"
               />
             </div>
-            <div className="laife-vision__actions" role="group" aria-label="Azioni Vision">
-              <button
-                type="button"
-                className="laife-vision__primary"
-                onClick={() => runAction('analyze')}
-                disabled={busy}
-              >
-                Analizza
-              </button>
-              <button
-                type="button"
-                className="laife-vision__ghost"
-                onClick={() => runAction('read')}
-                disabled={busy}
-              >
-                Leggi testo
-              </button>
-              <button
-                type="button"
-                className="laife-vision__ghost"
-                onClick={() => runAction('explain')}
-                disabled={busy}
-              >
-                Spiega
-              </button>
-              <button type="button" className="laife-vision__ghost" onClick={clearImage} disabled={busy}>
-                Rimuovi
-              </button>
-              <button
-                type="button"
-                className="laife-vision__ghost"
-                onClick={() => void startCamera()}
-                disabled={busy}
-              >
-                Scatta di nuovo
-              </button>
+          ) : null}
+
+          {showIdleStart ? (
+            <div
+              className="laife-vision__frame laife-vision__frame--placeholder"
+              aria-hidden="true"
+            >
+              <p className="laife-vision__frame-hint">
+                Apri la fotocamera o scegli una foto dalla galleria
+              </p>
             </div>
-          </section>
-        ) : null}
+          ) : null}
 
-        {phase === 'empty' || (phase !== 'camera' && !previewSrc) ? (
-          <section className="laife-vision__actions" aria-label="Avvio Vision">
-            <button
-              type="button"
-              className="laife-vision__primary"
-              onClick={() => void startCamera()}
-              disabled={busy}
-            >
-              Apri fotocamera
-            </button>
-            <button
-              type="button"
-              className="laife-vision__ghost"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={busy}
-            >
-              Scegli foto
-            </button>
-          </section>
-        ) : null}
+          <div className="laife-vision__dock">
+            {phase === 'camera' ? (
+              <div className="laife-vision__actions">
+                <button
+                  type="button"
+                  className="laife-vision__primary"
+                  onClick={() => void capturePhoto()}
+                  disabled={!canCapture}
+                  aria-disabled={!canCapture}
+                >
+                  Scatta foto
+                </button>
+                <button type="button" className="laife-vision__ghost" onClick={cancelCamera} disabled={busy}>
+                  Annulla
+                </button>
+              </div>
+            ) : null}
 
-        {phase === 'ready' || phase === 'sending' ? (
-          <div className="laife-vision__secondary">
-            <button
-              type="button"
-              className="laife-vision__ghost"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={busy}
-            >
-              Scegli foto
-            </button>
+            {phase !== 'camera' && previewSrc ? (
+              <div className="laife-vision__actions" role="group" aria-label="Azioni Vision">
+                <button
+                  type="button"
+                  className="laife-vision__primary"
+                  onClick={() => runAction('analyze')}
+                  disabled={busy}
+                >
+                  Analizza
+                </button>
+                <button
+                  type="button"
+                  className="laife-vision__ghost"
+                  onClick={() => runAction('read')}
+                  disabled={busy}
+                >
+                  Leggi testo
+                </button>
+                <button
+                  type="button"
+                  className="laife-vision__ghost"
+                  onClick={() => runAction('explain')}
+                  disabled={busy}
+                >
+                  Spiega
+                </button>
+                <button type="button" className="laife-vision__ghost" onClick={clearImage} disabled={busy}>
+                  Rimuovi
+                </button>
+                <button
+                  type="button"
+                  className="laife-vision__ghost"
+                  onClick={() => void startCamera()}
+                  disabled={busy}
+                >
+                  Scatta di nuovo
+                </button>
+              </div>
+            ) : null}
+
+            {showIdleStart ? (
+              <div className="laife-vision__actions" aria-label="Avvio Vision">
+                <button
+                  type="button"
+                  className="laife-vision__primary"
+                  onClick={() => void startCamera()}
+                  disabled={busy}
+                >
+                  Apri fotocamera
+                </button>
+                <button
+                  type="button"
+                  className="laife-vision__ghost"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={busy}
+                >
+                  Scegli foto
+                </button>
+              </div>
+            ) : null}
+
+            {phase === 'ready' || phase === 'sending' ? (
+              <div className="laife-vision__secondary">
+                <button
+                  type="button"
+                  className="laife-vision__ghost"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={busy}
+                >
+                  Scegli foto
+                </button>
+              </div>
+            ) : null}
+
+            {cameraError ? (
+              <p className="laife-vision__error" role="alert">
+                {cameraError}
+              </p>
+            ) : null}
+            {error ? (
+              <p className="laife-vision__error" role="alert">
+                {error}
+              </p>
+            ) : null}
+            {status && phase !== 'camera' ? (
+              <p className="laife-vision__status" aria-hidden="true">
+                {status}
+              </p>
+            ) : null}
           </div>
-        ) : null}
+        </section>
 
         <label className="sr-only" htmlFor={fileInputId}>
           Scegli foto dalla galleria
@@ -447,22 +493,6 @@ export function Vision({ onBack, onHandoffToChat }: VisionProps) {
         />
 
         <canvas ref={canvasRef} className="laife-vision__canvas" aria-hidden="true" />
-
-        {cameraError ? (
-          <p className="laife-vision__error" role="alert">
-            {cameraError}
-          </p>
-        ) : null}
-        {error ? (
-          <p className="laife-vision__error" role="alert">
-            {error}
-          </p>
-        ) : null}
-        {status && phase !== 'camera' ? (
-          <p className="laife-vision__status" aria-hidden="true">
-            {status}
-          </p>
-        ) : null}
       </div>
     </main>
   )
