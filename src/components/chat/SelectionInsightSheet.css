@@ -1,0 +1,153 @@
+.selection-insight {
+  position: fixed;
+  inset: 0;
+  /* Body portal: above Header (100–102) and sticky .composer-dock (90). */
+  z-index: 150;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  pointer-events: none;
+  /*
+   * Mobile: lift the sheet above the live composer dock.
+   * --selection-composer-inset is measured from .composer-dock (includes its
+   * safe-area padding). Fallback adds --composer-h + safe-area when unmeasured.
+   */
+  padding-bottom: var(
+    --selection-composer-inset,
+    calc(var(--composer-h, 5.75rem) + env(safe-area-inset-bottom, 0px))
+  );
+  box-sizing: border-box;
+}
+
+.selection-insight__backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: color-mix(in srgb, #000 28%, transparent);
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.selection-insight__sheet {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  width: min(100%, 34rem);
+  max-height: min(62dvh, 28rem);
+  margin: 0 0.75rem;
+  padding: 0.9rem 1rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
+  border-radius: calc(var(--radius-sm) + 4px);
+  background: var(--surface);
+  box-shadow: 0 -8px 32px color-mix(in srgb, #000 22%, transparent);
+  box-sizing: border-box;
+  overflow: hidden;
+  pointer-events: auto;
+}
+
+.selection-insight__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.65rem;
+  flex-shrink: 0;
+}
+
+.selection-insight__op {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--text) 58%, transparent);
+}
+
+.selection-insight__selected {
+  margin: 0.2rem 0 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--strong-text);
+  line-height: 1.35;
+}
+
+.selection-insight__close {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: color-mix(in srgb, var(--text) 70%, transparent);
+  font: inherit;
+  font-size: 0.85rem;
+  min-height: 2.25rem;
+  padding: 0.25rem 0.45rem;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.selection-insight__close:hover,
+.selection-insight__close:focus-visible {
+  color: var(--text);
+  outline: none;
+}
+
+.selection-insight__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  color: var(--text);
+  overscroll-behavior: contain;
+}
+
+.selection-insight__loading,
+.selection-insight__result,
+.selection-insight__error p {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.selection-insight__error {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.55rem;
+}
+
+.selection-insight__retry {
+  appearance: none;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  min-height: 2.25rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+@media (min-width: 768px) {
+  .selection-insight {
+    align-items: center;
+    /* Desktop: centered card — do not reserve composer band. */
+    padding-bottom: 0;
+  }
+
+  .selection-insight__sheet {
+    margin: 1rem;
+    max-height: min(56vh, 26rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .selection-insight__sheet {
+    box-shadow: none;
+  }
+}

@@ -10,9 +10,16 @@ interface MessageListProps {
   messages: ChatMessage[]
   isThinking: boolean
   isStreaming: boolean
+  /** #290 — native text selection active in assistant prose. */
+  selectionActive?: boolean
 }
 
-function MessageListComponent({ messages, isThinking, isStreaming }: MessageListProps) {
+function MessageListComponent({
+  messages,
+  isThinking,
+  isStreaming,
+  selectionActive = false,
+}: MessageListProps) {
   const { regenerateAssistant } = useChat()
   const last = messages[messages.length - 1]
   const streamingId =
@@ -35,6 +42,7 @@ function MessageListComponent({ messages, isThinking, isStreaming }: MessageList
             key={message.id}
             message={message}
             isStreaming={isThisStreaming}
+            selectionActive={selectionActive}
             showActions={
               (message.role === 'assistant' &&
                 message.kind !== 'error' &&

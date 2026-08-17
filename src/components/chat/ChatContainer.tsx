@@ -4,7 +4,10 @@ import { HomeHero } from '../HomeHero'
 import { ComposerShell } from './ComposerShell'
 import { MessageList } from './MessageList'
 import { ScrollToBottomButton } from './ScrollToBottomButton'
+import { SelectionActionBar } from './SelectionActionBar'
+import { SelectionInsightSheet } from './SelectionInsightSheet'
 import { useAutoScroll } from './useAutoScroll'
+import { useMessageSelection } from './useMessageSelection'
 import './ChatContainer.css'
 
 /**
@@ -18,6 +21,16 @@ export function ChatContainer() {
     useAutoScroll(isStreaming)
   const wasHomeRef = useRef(true)
   const lastPinnedAssistantIdRef = useRef<string | null>(null)
+  const {
+    snapshot,
+    insight,
+    hasActiveSelection,
+    runDefine,
+    runExplain,
+    retryInsight,
+    dismissAll,
+    clearSelectionUi,
+  } = useMessageSelection()
 
   const isHome = messages.length === 0 && !isThinking && !isStreaming
 
@@ -75,6 +88,7 @@ export function ChatContainer() {
               messages={messages}
               isThinking={isThinking}
               isStreaming={isStreaming}
+              selectionActive={hasActiveSelection}
             />
           </div>
 
@@ -83,6 +97,23 @@ export function ChatContainer() {
       )}
 
       <ComposerShell onMessageSent={onUserMessage} />
+
+      {snapshot && !insight ? (
+        <SelectionActionBar
+          snapshot={snapshot}
+          onDefine={runDefine}
+          onExplain={runExplain}
+          onDismiss={clearSelectionUi}
+        />
+      ) : null}
+
+      {insight ? (
+        <SelectionInsightSheet
+          insight={insight}
+          onDismiss={dismissAll}
+          onRetry={insight.error ? retryInsight : undefined}
+        />
+      ) : null}
     </div>
   )
 }

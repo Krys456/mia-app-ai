@@ -9,6 +9,10 @@
       "includeFiles": "lib/server/**",
       "maxDuration": 120
     },
+    "api/selection.ts": {
+      "includeFiles": "lib/server/**",
+      "maxDuration": 30
+    },
     "api/files.ts": {
       "includeFiles": "lib/server/**",
       "maxDuration": 60

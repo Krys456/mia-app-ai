@@ -22,6 +22,11 @@ interface MessageBubbleProps {
   showActions?: boolean
   canRegenerate?: boolean
   onRegenerate?: (messageId: string) => void
+  /**
+   * #290 — when true, a native text selection is active in message prose.
+   * Suppresses whole-message long-press action pinning to avoid overlay conflicts.
+   */
+  selectionActive?: boolean
 }
 
 const LONG_PRESS_MS = 480
@@ -56,6 +61,7 @@ function MessageBubbleComponent({
   showActions = false,
   canRegenerate = false,
   onRegenerate,
+  selectionActive = false,
 }: MessageBubbleProps) {
   const isAssistant = message.role === 'assistant'
   const isError = isAssistant && message.kind === 'error'
@@ -105,6 +111,14 @@ function MessageBubbleComponent({
     if (!showActions || isStreaming || isError) return
     if (!message.content && !message.attachments?.length) return
     if (event.pointerType === 'mouse') return
+    // #290: native text selection takes precedence over whole-message long-press pin.
+    if (selectionActive) return
+    try {
+      const sel = window.getSelection()
+      if (sel && !sel.isCollapsed && sel.toString().trim()) return
+    } catch {
+      /* ignore */
+    }
     clearLongPress()
     longPressTimer.current = window.setTimeout(() => {
       setActionsPinned(true)
@@ -134,6 +148,8 @@ function MessageBubbleComponent({
     <article
       ref={rootRef}
       data-message-id={message.id}
+      data-role={message.role}
+      data-plain-text={isAssistant && !isError ? message.content : undefined}
       className={`bubble bubble--${message.role}${isError ? ' bubble--error' : ''}${actionsPinned ? ' bubble--actions-open' : ''}`}
       aria-label={message.role === 'user' ? 'Tu' : isError ? 'Errore' : 'LAIfe'}
       role={isError ? 'alert' : undefined}
