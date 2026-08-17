@@ -1,5 +1,10 @@
-import { memo } from 'react'
+import { memo, useLayoutEffect, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { createPortal } from 'react-dom'
 import type { MessageSelectionSnapshot } from './useMessageSelection'
+import {
+  computeActionBarPlacement,
+  isCoarsePointerMobile,
+} from './selectionToolbarLayout'
 import './SelectionActionBar.css'
 
 interface SelectionActionBarProps {
@@ -9,8 +14,36 @@ interface SelectionActionBarProps {
   onDismiss: () => void
 }
 
-function clamp(n: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, n))
+function readComposerInsetPx(): number {
+  if (typeof document === 'undefined') return 92
+  const dock = document.querySelector('.composer-dock') as HTMLElement | null
+  if (dock) {
+    return Math.ceil(dock.getBoundingClientRect().height) + 8
+  }
+  const raw = getComputedStyle(document.documentElement)
+    .getPropertyValue('--composer-h')
+    .trim()
+  const parsed = Number.parseFloat(raw)
+  const fallback = Number.isFinite(parsed) && parsed > 0 ? parsed : 5.75 * 16
+  return Math.ceil(fallback + 8)
+}
+
+function readViewportBox() {
+  const vv = typeof window !== 'undefined' ? window.visualViewport : null
+  if (vv) {
+    return {
+      width: vv.width,
+      height: vv.height,
+      offsetTop: vv.offsetTop,
+      offsetLeft: vv.offsetLeft,
+    }
+  }
+  return {
+    width: typeof window !== 'undefined' ? window.innerWidth : 360,
+    height: typeof window !== 'undefined' ? window.innerHeight : 640,
+    offsetTop: 0,
+    offsetLeft: 0,
+  }
 }
 
 function SelectionActionBarComponent({
@@ -19,32 +52,81 @@ function SelectionActionBarComponent({
   onExplain,
   onDismiss,
 }: SelectionActionBarProps) {
-  const { anchorRect } = snapshot
-  const vw = typeof window !== 'undefined' ? window.innerWidth : 360
-  const barWidth = Math.min(280, vw - 24)
-  const left = clamp(anchorRect.left + anchorRect.width / 2 - barWidth / 2, 12, vw - barWidth - 12)
-  // Prefer above selection; if too high, place below.
-  const placeBelow = anchorRect.top < 72
-  const top = placeBelow
-    ? Math.min(anchorRect.bottom + 8, (typeof window !== 'undefined' ? window.innerHeight : 640) - 64)
-    : Math.max(8, anchorRect.top - 52)
+  const [composerInsetPx, setComposerInsetPx] = useState(readComposerInsetPx)
+  const [viewport, setViewport] = useState(readViewportBox)
 
-  return (
+  useLayoutEffect(() => {
+    const sync = () => {
+      setComposerInsetPx(readComposerInsetPx())
+      setViewport(readViewportBox())
+    }
+    sync()
+    const dock = document.querySelector('.composer-dock')
+    const ro =
+      typeof ResizeObserver !== 'undefined' && dock
+        ? new ResizeObserver(() => sync())
+        : null
+    if (dock && ro) ro.observe(dock)
+    window.addEventListener('resize', sync)
+    window.visualViewport?.addEventListener('resize', sync)
+    window.visualViewport?.addEventListener('scroll', sync)
+    return () => {
+      ro?.disconnect()
+      window.removeEventListener('resize', sync)
+      window.visualViewport?.removeEventListener('resize', sync)
+      window.visualViewport?.removeEventListener('scroll', sync)
+    }
+  }, [snapshot.anchorRect.top, snapshot.anchorRect.bottom, snapshot.anchorRect.left])
+
+  if (typeof document === 'undefined') return null
+
+  const placement = computeActionBarPlacement({
+    anchor: snapshot.anchorRect,
+    viewport,
+    composerInsetPx,
+    isMobile: isCoarsePointerMobile(),
+  })
+
+  // Preserve the native Selection when tapping toolbar controls.
+  // preventDefault on pointerdown stops focus/selection transfer without
+  // rewriting the Range.
+  const preserveSelection = (event: ReactPointerEvent) => {
+    event.preventDefault()
+  }
+
+  const overlay = (
     <div
       className="selection-action-bar"
       role="toolbar"
       aria-label="Azioni sul testo selezionato"
-      style={{ top, left, width: barWidth }}
+      data-placement={placement.placement}
+      style={{
+        top: placement.top,
+        left: placement.left,
+        width: placement.width,
+      }}
+      onPointerDown={preserveSelection}
     >
-      <button type="button" className="selection-action-bar__btn" onClick={onDefine}>
+      <button
+        type="button"
+        className="selection-action-bar__btn"
+        onPointerDown={preserveSelection}
+        onClick={onDefine}
+      >
         Definisci
       </button>
-      <button type="button" className="selection-action-bar__btn" onClick={onExplain}>
+      <button
+        type="button"
+        className="selection-action-bar__btn"
+        onPointerDown={preserveSelection}
+        onClick={onExplain}
+      >
         Spiega
       </button>
       <button
         type="button"
         className="selection-action-bar__btn selection-action-bar__btn--ghost"
+        onPointerDown={preserveSelection}
         onClick={onDismiss}
         aria-label="Chiudi"
       >
@@ -52,6 +134,10 @@ function SelectionActionBarComponent({
       </button>
     </div>
   )
+
+  // Portal to body so fixed positioning escapes .app-view transform trapping
+  // (same architecture as SelectionInsightSheet).
+  return createPortal(overlay, document.body)
 }
 
 export const SelectionActionBar = memo(SelectionActionBarComponent)

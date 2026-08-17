@@ -12,6 +12,8 @@ const read = (rel) => fs.readFileSync(path.join(root, rel), 'utf8')
 
 const hook = read('src/components/chat/useMessageSelection.ts')
 const bar = read('src/components/chat/SelectionActionBar.tsx')
+const barCss = read('src/components/chat/SelectionActionBar.css')
+const layout = read('src/components/chat/selectionToolbarLayout.ts')
 const sheet = read('src/components/chat/SelectionInsightSheet.tsx')
 const bubble = read('src/components/chat/MessageBubble.tsx')
 const list = read('src/components/chat/MessageList.tsx')
@@ -25,9 +27,36 @@ const apiChat = read('api/chat.ts')
 // Selection via native Selection API — no custom long-press for #290
 assert.match(hook, /selectionchange/)
 assert.match(hook, /getSelection\(/)
-assert.doesNotMatch(hook, /LONG_PRESS_MS|setTimeout\(\s*\(\)\s*=>/)
+assert.doesNotMatch(hook, /LONG_PRESS_MS/)
+assert.doesNotMatch(hook, /\.removeAllRanges\s*\(|\.addRange\s*\(|\.collapse\s*\(/)
+assert.doesNotMatch(hook, /scrollIntoView/)
 assert.match(bubble, /selectionActive/)
 assert.match(bubble, /native text selection takes precedence|getSelection\(/)
+
+// Same-message Range validation — BOTH endpoints → .bubble__body
+assert.match(hook, /resolveAssistantBubbleBody/)
+assert.match(hook, /range\.startContainer/)
+assert.match(hook, /range\.endContainer/)
+assert.match(hook, /startBody !== endBody/)
+assert.match(hook, /\.bubble__body/)
+assert.match(hook, /sameAssistantMessageId/)
+
+// Explicit exclusions (composer, chrome, toolbar, sheet, actions, images)
+assert.match(hook, /EXCLUDED_SELECTION_ANCESTOR/)
+assert.match(hook, /\.composer/)
+assert.match(hook, /\.message-actions/)
+assert.match(hook, /\.selection-action-bar/)
+assert.match(hook, /\.selection-insight/)
+assert.match(hook, /\.app-header/)
+assert.match(hook, /bubble__attachment/)
+
+// Mobile settle: hide while changing, commit after delay; desktop delay 0
+assert.match(hook, /MOBILE_SELECTION_SETTLE_MS/)
+assert.match(hook, /scheduleSelectionRefresh|clearSettleTimer/)
+assert.match(hook, /setSnapshot\(null\)/)
+assert.match(layout, /MOBILE_SELECTION_SETTLE_MS\s*=\s*220/)
+assert.match(layout, /DESKTOP_SELECTION_SETTLE_MS\s*=\s*0/)
+assert.match(layout, /MOBILE_HANDLE_SAFETY_PX\s*=\s*52/)
 
 // Assistant-only + data attributes
 assert.match(bubble, /data-role=\{message\.role\}/)
@@ -36,13 +65,28 @@ assert.match(hook, /data-role="assistant"/)
 assert.match(hook, /composer|contenteditable/)
 
 // Code blocks excluded from MVP selection toolbar path
-assert.match(hook, /code-block|pre, \.code-block/)
+assert.match(hook, /code-block|pre, \.code-block|\.code-block/)
 
 // Actions Definisci / Spiega — no "Search the web"
 assert.match(bar, /Definisci/)
 assert.match(bar, /Spiega/)
 assert.doesNotMatch(bar, /Search the web|Cerca sul web/i)
 assert.doesNotMatch(sheet, /Search the web|Cerca sul web/i)
+
+// Toolbar: portal overlay, preserve selection on pointerdown, safe placement
+assert.match(bar, /createPortal/)
+assert.match(bar, /document\.body/)
+assert.match(bar, /computeActionBarPlacement/)
+assert.match(bar, /preventDefault/)
+assert.match(bar, /composer-dock/)
+assert.match(barCss, /z-index:\s*140/)
+assert.match(barCss, /user-select:\s*none/)
+assert.match(layout, /computeActionBarPlacement/)
+assert.match(layout, /placement:\s*'below'\s*\|\s*'above'/)
+
+// Captured text for Define/Explain — snapshotRef / capturedText, not live DOM re-read on click
+assert.match(hook, /snapshotRef\.current|capturedText/)
+assert.match(hook, /selectedText: capturedText|selectedText: current\.selectedText/)
 
 // Ephemeral UI wired in ChatContainer — not ChatContext history
 assert.match(container, /useMessageSelection/)

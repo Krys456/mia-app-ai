@@ -1,6 +1,7 @@
 /**
  * #290 — detect native browser text selection inside assistant message prose.
  * Does NOT replace OS selection / long-press. Listens after Selection exists.
+ * Never rewrites the browser Range (no Selection mutation APIs).
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -8,15 +9,43 @@ import {
   requestSelectionInsight,
   type SelectionOperation,
 } from '../../lib/selectionApi'
+import {
+  DESKTOP_SELECTION_SETTLE_MS,
+  MOBILE_SELECTION_SETTLE_MS,
+  isCoarsePointerMobile,
+  sameAssistantMessageId,
+} from './selectionToolbarLayout'
 
 export const MAX_CLIENT_SELECTED_CHARS = 280
+
+/** Nodes/controls that must never author a LAIfe selection. */
+const EXCLUDED_SELECTION_ANCESTOR =
+  [
+    'textarea',
+    'input',
+    '[contenteditable="true"]',
+    '.composer',
+    '.composer-dock',
+    '.composer-shell',
+    '.composer-form',
+    '.message-actions',
+    '.selection-action-bar',
+    '.selection-insight',
+    '.app-header',
+    '.bubble__attachment-open',
+    '.bubble__attachment-download',
+    '.bubble__attachment-figure',
+    'pre',
+    '.code-block',
+    '.hljs',
+  ].join(', ')
 
 export interface MessageSelectionSnapshot {
   selectedText: string
   sourceMessageId: string
   sourceRole: 'assistant'
   sourcePlainText: string
-  /** Viewport rect for the first selection range — used to place the action bar. */
+  /** Viewport rect for the settled selection range — used to place the action bar. */
   anchorRect: {
     top: number
     left: number
@@ -37,45 +66,52 @@ export interface SelectionInsightState {
   error: string | null
 }
 
-function isEditableTarget(node: Node | null): boolean {
-  if (!node) return false
-  const el =
-    node.nodeType === Node.ELEMENT_NODE
-      ? (node as Element)
-      : node.parentElement
-  if (!el) return false
-  if (el.closest('textarea, input, [contenteditable="true"], .composer, .composer-shell')) {
-    return true
-  }
+function nodeToElement(node: Node | null): Element | null {
+  if (!node) return null
+  return node.nodeType === Node.ELEMENT_NODE
+    ? (node as Element)
+    : node.parentElement
+}
+
+function isExcludedSelectionNode(node: Node | null): boolean {
+  const el = nodeToElement(node)
+  if (!el) return true
+  return Boolean(el.closest(EXCLUDED_SELECTION_ANCESTOR))
+}
+
+/**
+ * Resolve a Range endpoint to the assistant `.bubble__body` that owns it.
+ * Returns null when the endpoint is outside a single assistant message body.
+ */
+function resolveAssistantBubbleBody(node: Node | null): HTMLElement | null {
+  if (!node || isExcludedSelectionNode(node)) return null
+  const el = nodeToElement(node)
+  if (!el) return null
+
+  const root = el.closest(
+    '[data-message-id][data-role="assistant"]',
+  ) as HTMLElement | null
+  if (!root) return null
+
+  const body = root.querySelector('.bubble__body') as HTMLElement | null
+  if (!body || !body.contains(el)) return null
+  // Endpoint must live in the prose body — not avatar/meta/actions/images.
+  if (isExcludedSelectionNode(el)) return null
+  return body
+}
+
+function rangeTouchesExcluded(range: Range): boolean {
+  if (isExcludedSelectionNode(range.commonAncestorContainer)) return true
+  if (isExcludedSelectionNode(range.startContainer)) return true
+  if (isExcludedSelectionNode(range.endContainer)) return true
   return false
 }
 
-function findAssistantMessageRoot(node: Node | null): HTMLElement | null {
-  if (!node) return null
-  const el =
-    node.nodeType === Node.ELEMENT_NODE
-      ? (node as Element)
-      : node.parentElement
-  if (!el) return null
-  const root = el.closest('[data-message-id][data-role="assistant"]') as HTMLElement | null
-  if (!root) return null
-  // Must be inside prose body — not avatar/meta/actions/images.
-  const body = root.querySelector('.bubble__body')
-  if (!body || !body.contains(el)) return null
-  // Prefer md-body / paragraph; allow body itself for streaming plain text.
-  return root
-}
-
-function rangeInCodeBlock(range: Range): boolean {
-  const node = range.commonAncestorContainer
-  const el =
-    node.nodeType === Node.ELEMENT_NODE
-      ? (node as Element)
-      : node.parentElement
-  if (!el) return false
-  return Boolean(el.closest('pre, .code-block, .hljs'))
-}
-
+/**
+ * A LAIfe selection is valid ONLY when BOTH Range endpoints belong to the
+ * SAME assistant message `.bubble__body`. Invalid → null (toolbar hidden).
+ * Does not mutate the native Selection.
+ */
 function readSelectionSnapshot(): MessageSelectionSnapshot | null {
   if (typeof window === 'undefined' || typeof document === 'undefined') return null
   const sel = window.getSelection()
@@ -85,16 +121,31 @@ function readSelectionSnapshot(): MessageSelectionSnapshot | null {
   if (!selectedText || selectedText.length > MAX_CLIENT_SELECTED_CHARS) return null
 
   const range = sel.getRangeAt(0)
-  if (isEditableTarget(range.commonAncestorContainer)) return null
-  if (rangeInCodeBlock(range)) return null
+  if (rangeTouchesExcluded(range)) return null
 
-  const startRoot = findAssistantMessageRoot(range.startContainer)
-  const endRoot = findAssistantMessageRoot(range.endContainer)
-  if (!startRoot || !endRoot || startRoot !== endRoot) return null
+  const startBody = resolveAssistantBubbleBody(range.startContainer)
+  const endBody = resolveAssistantBubbleBody(range.endContainer)
+  if (!startBody || !endBody || startBody !== endBody) return null
 
-  const sourceMessageId = startRoot.getAttribute('data-message-id') || ''
+  const messageRoot = startBody.closest(
+    '[data-message-id][data-role="assistant"]',
+  ) as HTMLElement | null
+  if (!messageRoot) return null
+
+  const sourceMessageId = messageRoot.getAttribute('data-message-id') || ''
   if (!sourceMessageId) return null
-  const sourcePlainText = (startRoot.getAttribute('data-plain-text') || '').trim()
+  // Defense in depth — message id must match for both endpoints (same body ⇒ same root).
+  const endRoot = endBody.closest('[data-message-id]') as HTMLElement | null
+  if (
+    !sameAssistantMessageId(
+      sourceMessageId,
+      endRoot?.getAttribute('data-message-id'),
+    )
+  ) {
+    return null
+  }
+
+  const sourcePlainText = (messageRoot.getAttribute('data-plain-text') || '').trim()
   const rect = range.getBoundingClientRect()
   if (!rect || (rect.width === 0 && rect.height === 0)) return null
 
@@ -124,17 +175,36 @@ function resolveReplyLanguage(): string {
   return 'it'
 }
 
+function settleDelayMs(): number {
+  return isCoarsePointerMobile()
+    ? MOBILE_SELECTION_SETTLE_MS
+    : DESKTOP_SELECTION_SETTLE_MS
+}
+
 export function useMessageSelection() {
   const [snapshot, setSnapshot] = useState<MessageSelectionSnapshot | null>(null)
   const [insight, setInsight] = useState<SelectionInsightState | null>(null)
   const abortRef = useRef<AbortController | null>(null)
   const inFlightRef = useRef(false)
   const snapshotRef = useRef<MessageSelectionSnapshot | null>(null)
+  const settleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const insightOpenRef = useRef(false)
   snapshotRef.current = snapshot
+  insightOpenRef.current = Boolean(
+    insight && (insight.loading || insight.result || insight.error),
+  )
+
+  const clearSettleTimer = useCallback(() => {
+    if (settleTimerRef.current != null) {
+      clearTimeout(settleTimerRef.current)
+      settleTimerRef.current = null
+    }
+  }, [])
 
   const clearSelectionUi = useCallback(() => {
+    clearSettleTimer()
     setSnapshot(null)
-  }, [])
+  }, [clearSettleTimer])
 
   const dismissInsight = useCallback(() => {
     abortRef.current?.abort()
@@ -148,24 +218,41 @@ export function useMessageSelection() {
     clearSelectionUi()
   }, [clearSelectionUi, dismissInsight])
 
-  const refreshFromNativeSelection = useCallback(() => {
-    // While an insight sheet is open, keep the selection metadata stable.
-    if (insight && (insight.loading || insight.result || insight.error)) return
+  const commitSettledSnapshot = useCallback(() => {
+    // While an insight sheet is open, keep selection metadata stable.
+    if (insightOpenRef.current) return
     const next = readSelectionSnapshot()
     setSnapshot(next)
-  }, [insight])
+  }, [])
+
+  const scheduleSelectionRefresh = useCallback(() => {
+    if (insightOpenRef.current) return
+
+    clearSettleTimer()
+
+    const delay = settleDelayMs()
+    if (delay <= 0) {
+      // Desktop: respond on the next frame — no mobile settle delay.
+      window.requestAnimationFrame(() => commitSettledSnapshot())
+      return
+    }
+
+    // Mobile: while handles are moving, hide LAIfe chrome immediately so it
+    // never competes with native selection UI. Do not touch the browser Range.
+    setSnapshot(null)
+    settleTimerRef.current = setTimeout(() => {
+      settleTimerRef.current = null
+      commitSettledSnapshot()
+    }, delay)
+  }, [clearSettleTimer, commitSettledSnapshot])
 
   useEffect(() => {
     const onSelectionChange = () => {
-      // Defer one frame so native selection UI settles (esp. mobile).
-      window.requestAnimationFrame(() => refreshFromNativeSelection())
+      scheduleSelectionRefresh()
     }
     const onScroll = () => {
       // Avoid orphaned floating bars — clear action bar on scroll; keep sheet if open.
-      if (insight?.loading || insight?.result || insight?.error) {
-        setSnapshot(null)
-        return
-      }
+      clearSettleTimer()
       setSnapshot(null)
     }
     document.addEventListener('selectionchange', onSelectionChange)
@@ -173,8 +260,9 @@ export function useMessageSelection() {
     return () => {
       document.removeEventListener('selectionchange', onSelectionChange)
       window.removeEventListener('scroll', onScroll, true)
+      clearSettleTimer()
     }
-  }, [insight, refreshFromNativeSelection])
+  }, [clearSettleTimer, scheduleSelectionRefresh])
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -188,6 +276,8 @@ export function useMessageSelection() {
 
   const runOperation = useCallback(
     async (operation: SelectionOperation, fromInsight = false) => {
+      // Capture text from the settled snapshot BEFORE any UI change can
+      // disturb the native Selection (toolbar must not become the Range).
       const current = fromInsight
         ? insight
           ? {
@@ -200,21 +290,26 @@ export function useMessageSelection() {
       if (!current?.selectedText || inFlightRef.current) return
       if (operation === 'explain' && !current.sourcePlainText.trim()) return
 
+      const capturedText = current.selectedText
+      const capturedMessageId = current.sourceMessageId
+      const capturedPlain = current.sourcePlainText
+
       inFlightRef.current = true
       abortRef.current?.abort()
       const controller = new AbortController()
       abortRef.current = controller
 
       setInsight({
-        selectedText: current.selectedText,
-        sourceMessageId: current.sourceMessageId,
-        sourcePlainText: current.sourcePlainText,
+        selectedText: capturedText,
+        sourceMessageId: capturedMessageId,
+        sourcePlainText: capturedPlain,
         operation,
         loading: true,
         result: null,
         error: null,
       })
       // Hide floating bar while sheet shows.
+      clearSettleTimer()
       setSnapshot(null)
 
       try {
@@ -222,11 +317,11 @@ export function useMessageSelection() {
         const data = await requestSelectionInsight(
           {
             operation,
-            selectedText: current.selectedText,
+            selectedText: capturedText,
             ...(operation === 'explain'
-              ? { sourceText: current.sourcePlainText }
-              : current.sourcePlainText
-                ? { sourceText: current.sourcePlainText }
+              ? { sourceText: capturedPlain }
+              : capturedPlain
+                ? { sourceText: capturedPlain }
                 : {}),
             replyLanguage,
             browserLocale: typeof navigator !== 'undefined' ? navigator.language : 'it',
@@ -236,9 +331,9 @@ export function useMessageSelection() {
         )
         if (controller.signal.aborted) return
         setInsight({
-          selectedText: current.selectedText,
-          sourceMessageId: current.sourceMessageId,
-          sourcePlainText: current.sourcePlainText,
+          selectedText: capturedText,
+          sourceMessageId: capturedMessageId,
+          sourcePlainText: capturedPlain,
           operation,
           loading: false,
           result: data.result,
@@ -248,9 +343,9 @@ export function useMessageSelection() {
         if (controller.signal.aborted) return
         const message = error instanceof Error ? error.message : String(error)
         setInsight({
-          selectedText: current.selectedText,
-          sourceMessageId: current.sourceMessageId,
-          sourcePlainText: current.sourcePlainText,
+          selectedText: capturedText,
+          sourceMessageId: capturedMessageId,
+          sourcePlainText: capturedPlain,
           operation,
           loading: false,
           result: null,
@@ -261,7 +356,7 @@ export function useMessageSelection() {
         inFlightRef.current = false
       }
     },
-    [insight],
+    [clearSettleTimer, insight],
   )
 
   const hasActiveSelection = Boolean(snapshot?.selectedText)
@@ -282,9 +377,13 @@ export function useMessageSelection() {
   }
 }
 
-/** Exported for unit tests — pure selection reader. */
+/** Exported for unit tests — pure selection reader / validators. */
 export const __selectionTestUtils = {
   readSelectionSnapshot,
-  findAssistantMessageRoot,
+  resolveAssistantBubbleBody,
+  isExcludedSelectionNode,
+  rangeTouchesExcluded,
   MAX_CLIENT_SELECTED_CHARS,
+  EXCLUDED_SELECTION_ANCESTOR,
+  settleDelayMs,
 }
