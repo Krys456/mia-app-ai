@@ -94,7 +94,7 @@ function AppShell() {
       ) : null}
 
       {view === 'vision' ? (
-        <div className="app-view" key="vision">
+        <div className="app-view app-view--vision" key="vision">
           <Vision onBack={backFromVision} onHandoffToChat={handoffVisionToChat} />
         </div>
       ) : null}

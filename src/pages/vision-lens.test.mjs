@@ -151,11 +151,16 @@ assert.match(coreParams, /effort:\s*['"]none['"]/)
 assert.doesNotMatch(autoScroll, /Vision|vision|dataUrl/)
 assert.doesNotMatch(vision, /modality:\s*['"]voice['"]/)
 
-// Mobile / a11y basics
+// Mobile / a11y / immersive Vision layout
 assert.match(visionCss, /safe-bottom|safe-area/)
 assert.match(visionCss, /max-width:\s*100%/)
 assert.match(visionCss, /prefers-reduced-motion/)
+assert.match(visionCss, /laife-vision--immersive/)
+assert.match(visionCss, /100dvh|dvh/)
+assert.match(vision, /laife-vision--immersive/)
 assert.match(vision, /aria-live="polite"/)
 assert.match(vision, /alt="Anteprima foto selezionata/)
+assert.match(app, /app-view--vision/)
+assert.match(read('src/App.css'), /\.app-view--chat\[hidden\]/)
 
 console.log('ok: #274 Vision Lens wiring / regression guards')
