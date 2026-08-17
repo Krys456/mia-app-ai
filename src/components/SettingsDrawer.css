@@ -125,7 +125,7 @@
 
 .settings-drawer__head h2 {
   margin: 0;
-  font-size: 1.45rem;
+  font-size: 1.2rem;
   font-weight: 600;
   letter-spacing: -0.015em;
   color: var(--text);
@@ -138,7 +138,7 @@
   width: max(var(--btn-icon), var(--touch-min));
   height: max(var(--btn-icon), var(--touch-min));
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--surface-2) 55%, transparent);
   color: var(--text-muted);
   cursor: pointer;

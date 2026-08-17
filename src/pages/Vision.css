@@ -101,6 +101,22 @@
   margin: 0 auto;
 }
 
+@media (max-width: 380px) {
+  .laife-vision__actions {
+    gap: 0.4rem;
+  }
+
+  .laife-vision__primary,
+  .laife-vision__ghost {
+    flex: 1 1 calc(50% - 0.4rem);
+    min-width: calc(50% - 0.4rem);
+  }
+
+  .laife-vision__primary {
+    flex: 1 1 100%;
+  }
+}
+
 .laife-vision__file,
 .laife-vision__canvas {
   position: absolute;

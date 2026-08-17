@@ -14,16 +14,16 @@
 }
 
 [data-theme='the-way-washi'] .voice-mode-bar {
-  background: color-mix(in srgb, var(--surface-solid) 97%, #fff8ee);
-  border-color: color-mix(in srgb, var(--accent) 14%, var(--border));
+  background: color-mix(in srgb, var(--surface-solid) 98%, #fff8ee);
+  border-color: color-mix(in srgb, var(--accent) 12%, var(--border));
   box-shadow:
     0 1px 2px rgba(28, 25, 22, 0.04),
     0 6px 16px rgba(28, 25, 22, 0.06);
 }
 
 [data-theme='the-way-sumi'] .voice-mode-bar {
-  background: color-mix(in srgb, var(--surface-solid) 95%, #0c0a09);
-  border-color: color-mix(in srgb, var(--text) 11%, transparent);
+  background: color-mix(in srgb, var(--surface-solid) 96%, #0c0a09);
+  border-color: color-mix(in srgb, var(--text) 12%, transparent);
   box-shadow:
     0 0 0 1px color-mix(in srgb, var(--text) 4%, transparent),
     0 8px 20px rgba(0, 0, 0, 0.32);
