@@ -10,7 +10,12 @@ import {
   type MemoryFeedbackEvent,
 } from './memoryFeedback'
 import type { V2DebugInfo, WebCitation } from '../types'
-import { parseApiErrorResponse, withErrorReference } from './apiError'
+import {
+  parseApiErrorResponse,
+  USER_NETWORK_ERROR,
+  USER_SESSION_FAILED,
+  withErrorReference,
+} from './apiError'
 
 export type { MemoryFeedbackEvent } from './memoryFeedback'
 
@@ -158,16 +163,13 @@ function resolveChatEndpoint(): string {
   return `${base.replace(/\/$/, '')}/api/chat`
 }
 
-function describeFetchFailure(error: unknown, endpoint: string): string {
+function describeFetchFailure(error: unknown): string {
   const raw = error instanceof Error ? error.message : String(error)
   // Browsers surface CORS / network / SSO redirects as the opaque "Failed to fetch".
   if (/failed to fetch|networkerror|load failed/i.test(raw)) {
-    return (
-      `Network error calling ${endpoint} (${raw}). ` +
-      `Check same-origin /api/chat, CORS, Vercel Deployment Protection, and that the function finished within maxDuration.`
-    )
+    return USER_NETWORK_ERROR
   }
-  return raw || 'Chat request failed'
+  return raw || USER_NETWORK_ERROR
 }
 
 /**
@@ -191,17 +193,14 @@ export async function requestChatCompletion(
     // #298A — paid /api/chat requires Bearer; do not call without a session token.
     const auth = await resolveChatAuthForRequest()
     if (!auth.authorization) {
-      throw new ChatApiError(
-        'Sessione non pronta. Ricarica la pagina e riprova.',
-        401,
-      )
+      throw new ChatApiError(USER_SESSION_FAILED, 401, { code: 'missing_token' })
     }
     headers.Authorization = auth.authorization
 
     response = await fetch(endpoint, {
       method: 'POST',
       headers,
-      // Needed for Vercel Deployment Protection cookies on preview/prod.
+      // Same-origin credentials for preview/prod cookies when protection is enabled.
       credentials: 'include',
       body: JSON.stringify({
         messages: payload.messages,
@@ -236,7 +235,7 @@ export async function requestChatCompletion(
     if (import.meta.env.DEV) {
       console.error('[chatApi] fetch threw', error instanceof Error ? error.name : 'unknown')
     }
-    throw new ChatApiError(describeFetchFailure(error, endpoint), 0)
+    throw new ChatApiError(describeFetchFailure(error), 0)
   }
 
   let data: Partial<ChatApiSuccess> & ChatApiErrorBody = {}

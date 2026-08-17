@@ -10,7 +10,12 @@ import {
   type SupportedDocumentMime,
 } from './documentAttachment'
 import { resolveChatAuthForRequest } from './chatAuth'
-import { parseApiErrorResponse, withErrorReference } from './apiError'
+import {
+  parseApiErrorResponse,
+  USER_NETWORK_ERROR,
+  USER_SESSION_FAILED,
+  withErrorReference,
+} from './apiError'
 
 export interface UploadedDocumentMeta {
   fileId: string
@@ -75,11 +80,7 @@ export async function uploadDocumentAttachment(
   }
   const auth = await resolveChatAuthForRequest()
   if (!auth.authorization) {
-    throw new DocumentUploadError(
-      'Sessione non pronta. Ricarica la pagina e riprova.',
-      'unauthorized',
-      401,
-    )
+    throw new DocumentUploadError(USER_SESSION_FAILED, 'missing_token', 401)
   }
   headers.Authorization = auth.authorization
 
@@ -99,11 +100,7 @@ export async function uploadDocumentAttachment(
         error instanceof Error ? error.name : 'unknown',
       )
     }
-    throw new DocumentUploadError(
-      'Invio del documento non riuscito. Controlla la connessione e riprova.',
-      'network',
-      0,
-    )
+    throw new DocumentUploadError(USER_NETWORK_ERROR, 'network', 0)
   }
 
   let data: Record<string, unknown> = {}

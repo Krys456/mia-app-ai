@@ -1,0 +1,4 @@
+# Closed beta — do not index.
+# Revisit and replace before public launch (#298D).
+User-agent: *
+Disallow: /

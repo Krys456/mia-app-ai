@@ -3,7 +3,12 @@
  */
 
 import { resolveChatAuthForRequest } from './chatAuth'
-import { parseApiErrorResponse, withErrorReference } from './apiError'
+import {
+  parseApiErrorResponse,
+  USER_NETWORK_ERROR,
+  USER_SESSION_FAILED,
+  withErrorReference,
+} from './apiError'
 
 export class TtsApiError extends Error {
   readonly status: number
@@ -42,11 +47,7 @@ export async function requestSpeechAudio(
 
   const auth = await resolveChatAuthForRequest()
   if (!auth.authorization) {
-    throw new TtsApiError(
-      'Sessione non pronta. Ricarica la pagina e riprova.',
-      401,
-      { code: 'unauthorized' },
-    )
+    throw new TtsApiError(USER_SESSION_FAILED, 401, { code: 'missing_token' })
   }
 
   let response: Response
@@ -67,7 +68,8 @@ export async function requestSpeechAudio(
     })
   } catch (error) {
     const raw = error instanceof Error ? error.message : String(error)
-    throw new TtsApiError(raw || 'TTS request failed', 0)
+    const network = /failed to fetch|networkerror|load failed/i.test(raw)
+    throw new TtsApiError(network ? USER_NETWORK_ERROR : raw || USER_NETWORK_ERROR, 0)
   }
 
   const contentType = (response.headers.get('content-type') || '').toLowerCase()

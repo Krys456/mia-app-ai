@@ -7,6 +7,7 @@ import {
   PRIVACY_DISCLOSURE,
   buildBetaContactLine,
 } from '../lib/privacyCopy'
+import { getClientBuildId } from '../lib/buildInfo'
 import type { AppearanceFontFamily, AppearanceFontSize, PersonalizationSettings } from '../types'
 import { ThemeSettings } from './ThemeSettings'
 import './SettingsDrawer.css'
@@ -152,9 +153,9 @@ export function SettingsDrawer({ onOpenMemory, onOpenPrivacy }: SettingsDrawerPr
               >
                 {(
                   [
-                    ['small', 'Small'],
-                    ['default', 'Default'],
-                    ['large', 'Large'],
+                    ['small', 'Piccolo'],
+                    ['default', 'Predefinito'],
+                    ['large', 'Grande'],
                   ] as const
                 ).map(([value, label]) => (
                   <button
@@ -182,7 +183,7 @@ export function SettingsDrawer({ onOpenMemory, onOpenPrivacy }: SettingsDrawerPr
                 {(
                   [
                     ['outfit', 'Outfit'],
-                    ['system', 'System'],
+                    ['system', 'Sistema'],
                   ] as const
                 ).map(([value, label]) => (
                   <button
@@ -267,10 +268,14 @@ export function SettingsDrawer({ onOpenMemory, onOpenPrivacy }: SettingsDrawerPr
 
           <section className="settings-privacy" aria-labelledby="privacy-settings-title">
             <h3 id="privacy-settings-title" className="settings-section-title">
-              Privacy &amp; Data
+              Privacy e dati
             </h3>
             <p className="settings-note settings-note--tight">
-              How chat, Memory, AI processing, and this device session work in the closed beta.
+              Come funzionano chat, Memoria, elaborazione AI e la sessione su questo dispositivo
+              nella Closed Beta.
+            </p>
+            <p className="settings-note settings-note--tight">
+              Closed Beta · Build beta: {getClientBuildId()}
             </p>
             <button
               type="button"
@@ -280,7 +285,7 @@ export function SettingsDrawer({ onOpenMemory, onOpenPrivacy }: SettingsDrawerPr
                 onOpenPrivacy?.()
               }}
             >
-              Privacy information
+              Informazioni su privacy e dati
             </button>
             {isMemoryManageUiEnabled() ? (
               <button
@@ -291,7 +296,7 @@ export function SettingsDrawer({ onOpenMemory, onOpenPrivacy }: SettingsDrawerPr
                   onOpenMemory?.()
                 }}
               >
-                Review or delete Memory
+                Rivedi o elimina la Memoria
               </button>
             ) : null}
             <p className="settings-note settings-note--tight">{buildBetaContactLine()}</p>
@@ -371,8 +376,9 @@ export function SettingsDrawer({ onOpenMemory, onOpenPrivacy }: SettingsDrawerPr
           </section>
 
           <p className="settings-note">
-            Tema e preferenze assistente si salvano su questo dispositivo. Memory OFF stops automatic
-            learning and everyday recall; stored memories remain until you delete them.
+            Tema e preferenze assistente si salvano su questo dispositivo. Memoria OFF interrompe
+            l’apprendimento automatico e il richiamo quotidiano; i ricordi salvati restano finché
+            non li elimini.
           </p>
         </div>
       </aside>

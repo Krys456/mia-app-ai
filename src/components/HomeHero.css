@@ -87,10 +87,26 @@
   animation: hero-rise 720ms var(--ease-out) 80ms both;
 }
 
+.home-hero__hint {
+  margin: 0.15rem 0 0;
+  max-width: 22rem;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  letter-spacing: 0.01em;
+  opacity: 0.92;
+  animation: hero-rise 760ms var(--ease-out) 100ms both;
+}
+
 /* Align empty-state reading rhythm with chat typography */
 [data-theme='the-way-washi'] .home-hero__lead,
 [data-theme='the-way-sumi'] .home-hero__lead {
   color: color-mix(in srgb, var(--text-muted) 92%, transparent);
+}
+
+[data-theme='the-way-washi'] .home-hero__hint,
+[data-theme='the-way-sumi'] .home-hero__hint {
+  color: color-mix(in srgb, var(--text-muted) 88%, transparent);
 }
 
 @media (max-width: 480px) {
@@ -106,6 +122,11 @@
   .home-hero__lead {
     font-size: 0.94rem;
     max-width: 18.5rem;
+  }
+
+  .home-hero__hint {
+    font-size: 0.78rem;
+    max-width: 19rem;
   }
 
   .home-hero__stage {
@@ -160,6 +181,7 @@
   .home-hero__logo,
   .home-hero__wordmark,
   .home-hero__lead,
+  .home-hero__hint,
   .home-hero__glow {
     animation: none;
   }

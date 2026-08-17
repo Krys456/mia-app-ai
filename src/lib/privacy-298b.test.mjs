@@ -1,6 +1,7 @@
 /**
  * #298B — Privacy UI + Memory Manage production gate contracts.
- * Run: node src/lib/privacy-298b.test.mjs
+ * #298D — Italian UI copy expectations.
+ * Run: ./node_modules/.bin/tsx src/lib/privacy-298b.test.mjs
  */
 
 import assert from 'node:assert/strict'
@@ -24,18 +25,18 @@ assert.equal(isMemoryManageUiEnabled(), true)
 assert.doesNotMatch(read('src/lib/memoryManageUi.ts'), /PROD\s*!==\s*true/)
 
 // Copy contracts — OFF does not claim deletion
-assert.match(MEMORY_SETTINGS_COPY.off, /stops automatic learning/i)
-assert.match(MEMORY_SETTINGS_COPY.off, /kept until you delete/i)
+assert.match(MEMORY_SETTINGS_COPY.off, /apprendimento automatico|richiamo/i)
+assert.match(MEMORY_SETTINGS_COPY.off, /restano|finché non li elimini/i)
 assert.doesNotMatch(MEMORY_SETTINGS_COPY.off, /deletes? existing/i)
-assert.match(MEMORY_SETTINGS_COPY.delete, /New Chat/i)
-assert.match(MEMORY_SETTINGS_COPY.on, /long-term facts/i)
+assert.match(MEMORY_SETTINGS_COPY.delete, /Nuova chat/i)
+assert.match(MEMORY_SETTINGS_COPY.on, /lungo termine|fatti utili/i)
 
 assert.match(PRIVACY_DISCLOSURE.aiProcessing, /OpenAI/)
-assert.match(PRIVACY_DISCLOSURE.files, /24 hours/)
+assert.match(PRIVACY_DISCLOSURE.files, /24 ore/)
 assert.match(PRIVACY_DISCLOSURE.webSearch, /Fonti/)
-assert.match(PRIVACY_DISCLOSURE.anonymousSession, /anonymous account/i)
-assert.match(PRIVACY_DISCLOSURE.sensitiveWarning, /passwords/i)
-assert.match(PRIVACY_DISCLOSURE.newChatVsMemory, /Account deletion is not available/i)
+assert.match(PRIVACY_DISCLOSURE.anonymousSession, /anonimo/i)
+assert.match(PRIVACY_DISCLOSURE.sensitiveWarning, /password/i)
+assert.match(PRIVACY_DISCLOSURE.newChatVsMemory, /eliminazione dell’account|Account/i)
 
 assert.equal(resolvePrivacyContactEmail({}), PRIVACY_CONTACT_PLACEHOLDER)
 assert.equal(
@@ -46,7 +47,7 @@ assert.match(buildBetaContactLine('beta@example.com'), /beta@example.com/)
 
 // Settings + App wiring
 const settings = read('src/components/SettingsDrawer.tsx')
-assert.match(settings, /Privacy &amp; Data|Privacy & Data/)
+assert.match(settings, /Privacy e dati/)
 assert.match(settings, /onOpenPrivacy/)
 assert.match(settings, /MEMORY_SETTINGS_COPY/)
 assert.match(settings, /sensitiveWarning/)
@@ -64,11 +65,12 @@ assert.match(types, /'privacy'/)
 const privacyPage = read('src/pages/PrivacyData.tsx')
 assert.match(privacyPage, /PRIVACY_DISCLOSURE/)
 assert.match(privacyPage, /role="note"/)
+assert.match(privacyPage, /Privacy e dati/)
 
 const memoryPage = read('src/pages/MemoryManage.tsx')
 assert.match(memoryPage, /deleteAllMemories/)
 assert.match(memoryPage, /Cancella tutto/)
-assert.match(memoryPage, /New Chat/)
+assert.match(memoryPage, /Nuova chat/)
 
 // Service-role Memory path unchanged
 const memoriesIndex = read('api/memories/index.ts')

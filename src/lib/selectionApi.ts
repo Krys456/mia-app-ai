@@ -5,7 +5,12 @@
 
 import type { WebCitation } from '../types'
 import { resolveChatAuthForRequest } from './chatAuth'
-import { parseApiErrorResponse, withErrorReference } from './apiError'
+import {
+  parseApiErrorResponse,
+  USER_NETWORK_ERROR,
+  USER_SESSION_FAILED,
+  withErrorReference,
+} from './apiError'
 
 export type SelectionOperation = 'define' | 'explain' | 'search'
 
@@ -96,11 +101,7 @@ export async function requestSelectionInsight(
 
   const auth = await resolveChatAuthForRequest()
   if (!auth.authorization) {
-    throw new SelectionApiError(
-      'Sessione non pronta. Ricarica la pagina e riprova.',
-      401,
-      { code: 'unauthorized' },
-    )
+    throw new SelectionApiError(USER_SESSION_FAILED, 401, { code: 'missing_token' })
   }
 
   let response: Response
@@ -127,7 +128,8 @@ export async function requestSelectionInsight(
     })
   } catch (error) {
     const raw = error instanceof Error ? error.message : String(error)
-    throw new SelectionApiError(raw || 'Selection request failed', 0)
+    const network = /failed to fetch|networkerror|load failed/i.test(raw)
+    throw new SelectionApiError(network ? USER_NETWORK_ERROR : raw || USER_NETWORK_ERROR, 0)
   }
 
   let data: Partial<SelectionApiSuccess> & {

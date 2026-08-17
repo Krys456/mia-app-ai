@@ -56,7 +56,9 @@ export function Header({ onNavigate }: HeaderProps) {
   const goHomeChat = () => {
     onNavigate('chat')
     if (messages.length > 0) {
-      const ok = window.confirm('Avviare una nuova chat? La conversazione corrente verrà chiusa.')
+      const ok = window.confirm(
+        'Avviare una nuova chat? La conversazione corrente verrà chiusa. La Memoria salvata non verrà cancellata.',
+      )
       if (!ok) return
     }
     newChat()
@@ -84,7 +86,7 @@ export function Header({ onNavigate }: HeaderProps) {
               onNavigate('chat')
               if (messages.length > 0) {
                 const ok = window.confirm(
-                  'Avviare una nuova chat? La conversazione corrente verrà chiusa.',
+                  'Avviare una nuova chat? La conversazione corrente verrà chiusa. La Memoria salvata non verrà cancellata.',
                 )
                 if (!ok) return
               }
