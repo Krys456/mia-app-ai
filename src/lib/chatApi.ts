@@ -174,14 +174,15 @@ export async function requestChatCompletion(
       ...(payload.userId ? { 'X-LAIfe-User-Id': payload.userId } : {}),
     }
 
-    // Soft auth for memory ownership: reuse anon session; recover when memory ON.
-    // Awaits the same app-wide single-flight bootstrap as useAuthBootstrap (no race).
-    const auth = await resolveChatAuthForRequest({
-      memoryEnabled: payload.memoryEnabled !== false,
-    })
-    if (auth.authorization) {
-      headers.Authorization = auth.authorization
+    // #298A — paid /api/chat requires Bearer; do not call without a session token.
+    const auth = await resolveChatAuthForRequest()
+    if (!auth.authorization) {
+      throw new ChatApiError(
+        'Sessione non pronta. Ricarica la pagina e riprova.',
+        401,
+      )
     }
+    headers.Authorization = auth.authorization
 
     response = await fetch(endpoint, {
       method: 'POST',

@@ -130,7 +130,7 @@ resetAuthBootstrapForTests()
   assert.equal(mock.signInCalls, 1)
 }
 
-// Auth bootstrap failure → no Bearer; chat path can continue without memory
+// Auth bootstrap failure → no Bearer; callers must not send paid requests
 {
   const mock = createClient({ session: null, signInError: 'Anonymous provider disabled' })
 
@@ -156,7 +156,7 @@ resetAuthBootstrapForTests()
   assert.equal(result.authorization, null)
 }
 
-// Memory OFF does not force anonymous sign-in
+// #298A — paid APIs always bootstrap (memoryEnabled ignored); missing session recovers
 {
   const mock = createClient({ session: null })
 
@@ -166,11 +166,11 @@ resetAuthBootstrapForTests()
     getClient: () => mock.client,
   })
 
-  assert.equal(mock.signInCalls, 0)
-  assert.equal(result.authorization, null)
+  assert.equal(mock.signInCalls, 1)
+  assert.equal(result.authorization, 'Bearer recovered-token')
 }
 
-// Memory OFF still attaches Bearer when session already exists
+// Existing session still attaches Bearer without new sign-in (memoryEnabled false)
 {
   const mock = createClient({
     session: {

@@ -16,10 +16,24 @@ export const config = {
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
-    applyCors(res)
+    applyCors(res, req)
 
     if (req.method === 'OPTIONS') {
-      return sendCorsPreflight(res)
+      return sendCorsPreflight(res, req)
+    }
+
+    // #298A — never a normal production beta endpoint (not obscurity-only).
+    if (process.env.VERCEL_ENV === 'production') {
+      return sendJson(
+        res,
+        404,
+        {
+          success: false,
+          error: 'Not found',
+          code: 'not_found',
+        },
+        req,
+      )
     }
 
     if (!assertMemoryAdminAccess(req, res)) {

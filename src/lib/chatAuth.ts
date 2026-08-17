@@ -1,11 +1,9 @@
 /**
- * Client chat → auth binding for Memory 2.0 Phase 1A.4.
+ * Client → server Bearer resolution for paid APIs (#298A).
  *
- * Resolves a Supabase Bearer token for /api/chat using the same browser client /
- * anonymous bootstrap as the rest of the app. Soft-fail: never blocks chat.
- *
- * Prefers the app-wide single-flight bootstrapLaifeAuth() so mount + chat share
- * one in-flight anonymous sign-in (no duplicate anon users on race).
+ * Always bootstraps / reuses the anonymous Supabase session so Authorization
+ * is present before chat, selection, TTS, and file upload. Soft client failure
+ * returns null — callers must not send the request without a token.
  */
 
 import {
@@ -20,7 +18,10 @@ export interface ChatAuthResolution {
 }
 
 export interface ResolveChatAuthOptions {
-  /** When true, briefly ensure/recover anonymous session before reading token. */
+  /**
+   * @deprecated #298A — paid APIs always require a session; ignored for bootstrap.
+   * Kept for call-site compatibility.
+   */
   memoryEnabled?: boolean
   isConfigured?: () => boolean
   getClient?: () => AuthSessionClient
@@ -33,17 +34,15 @@ function readToken(result: AuthBootstrapResult): string | null {
 }
 
 /**
- * Resolve Bearer auth for a chat request.
+ * Resolve Bearer auth for a paid API request.
  *
- * - Reuses existing anonymous session (no new anon user per message when session exists).
- * - When memoryEnabled, awaits shared bootstrap/recover if needed.
- * - When memoryEnabled is false, attaches Bearer only if a session already exists.
+ * - Reuses existing anonymous session when present.
+ * - Otherwise awaits shared bootstrapLaifeAuth() (mount + APIs share one flight).
+ * - Never invents a client user id; server verifies JWT.
  */
 export async function resolveChatAuthForRequest(
   options: ResolveChatAuthOptions = {},
 ): Promise<ChatAuthResolution> {
-  const memoryEnabled = options.memoryEnabled !== false
-
   let isConfigured: () => boolean
   try {
     isConfigured = options.isConfigured ?? (await import('./supabase')).isSupabaseConfigured
@@ -56,27 +55,6 @@ export async function resolveChatAuthForRequest(
   }
 
   try {
-    // Memory off: do not force anonymous sign-in; attach existing token only.
-    if (!memoryEnabled) {
-      const client =
-        options.getClient?.() ??
-        ((await import('./supabase')).getSupabase() as AuthSessionClient)
-      try {
-        if (typeof client.auth.initialize === 'function') {
-          await client.auth.initialize()
-        }
-        const { data, error } = await client.auth.getSession()
-        const token =
-          !error && typeof data.session?.access_token === 'string'
-            ? data.session.access_token.trim()
-            : ''
-        return { authorization: token ? `Bearer ${token}` : null }
-      } catch {
-        return { authorization: null }
-      }
-    }
-
-    // Memory on: await shared bootstrap (mount + chat join the same in-flight promise).
     const client =
       options.getClient?.() ??
       ((await import('./supabase')).getSupabase() as AuthSessionClient)
@@ -97,7 +75,6 @@ export async function resolveChatAuthForRequest(
     const boot = await runBootstrap()
     let token = readToken(boot)
 
-    // Same client re-read — covers bootstrap ready without token in the result object.
     if (!token) {
       try {
         if (typeof client.auth.initialize === 'function') {
@@ -108,7 +85,7 @@ export async function resolveChatAuthForRequest(
           token = data.session.access_token.trim() || null
         }
       } catch {
-        // soft
+        // soft — return null below
       }
     }
 

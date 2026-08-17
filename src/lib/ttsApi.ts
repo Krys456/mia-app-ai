@@ -2,6 +2,8 @@
  * Client helper for #292 /api/tts — never calls OpenAI directly.
  */
 
+import { resolveChatAuthForRequest } from './chatAuth'
+
 export class TtsApiError extends Error {
   readonly status: number
   readonly code?: string
@@ -28,6 +30,16 @@ export async function requestSpeechAudio(
   init?: { signal?: AbortSignal; voice?: string },
 ): Promise<Blob> {
   const endpoint = resolveTtsEndpoint()
+
+  const auth = await resolveChatAuthForRequest()
+  if (!auth.authorization) {
+    throw new TtsApiError(
+      'Sessione non pronta. Ricarica la pagina e riprova.',
+      401,
+      'unauthorized',
+    )
+  }
+
   let response: Response
   try {
     response = await fetch(endpoint, {
@@ -35,6 +47,7 @@ export async function requestSpeechAudio(
       headers: {
         'Content-Type': 'application/json',
         Accept: 'audio/mpeg, application/json',
+        Authorization: auth.authorization,
       },
       credentials: 'include',
       body: JSON.stringify({

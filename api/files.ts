@@ -5,6 +5,7 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { applyCors, sendCorsPreflight, sendJson } from '../lib/server/http.js'
+import { requirePaidApiAccess } from '../lib/server/paid-api-guard.js'
 import { parseSingleMultipartFile } from '../lib/server/multipart-file.js'
 import {
   SERVER_DOCUMENT_EXPIRES_SECONDS,
@@ -24,22 +25,26 @@ export const config = {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  applyCors(res)
+  applyCors(res, req)
 
   if (req.method === 'OPTIONS') {
-    return sendCorsPreflight(res)
+    return sendCorsPreflight(res, req)
   }
 
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST, OPTIONS')
-    return sendJson(res, 405, { error: 'Method not allowed' })
+    return sendJson(res, 405, { error: 'Method not allowed' }, req)
   }
+
+  // #298A — auth + durable rate limit before OpenAI Files upload.
+  const access = await requirePaidApiAccess(req, res, { bucket: 'files' })
+  if (!access) return
 
   const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) {
     return sendJson(res, 500, {
       error: 'Server misconfigured: OPENAI_API_KEY is not set',
-    })
+    }, req)
   }
 
   let parsed: { buffer: Buffer; filename: string; mimeType: string }

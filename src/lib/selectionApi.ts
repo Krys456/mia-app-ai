@@ -4,6 +4,7 @@
  */
 
 import type { WebCitation } from '../types'
+import { resolveChatAuthForRequest } from './chatAuth'
 
 export type SelectionOperation = 'define' | 'explain' | 'search'
 
@@ -83,6 +84,16 @@ export async function requestSelectionInsight(
   init?: { signal?: AbortSignal },
 ): Promise<SelectionApiSuccess> {
   const endpoint = resolveSelectionEndpoint()
+
+  const auth = await resolveChatAuthForRequest()
+  if (!auth.authorization) {
+    throw new SelectionApiError(
+      'Sessione non pronta. Ricarica la pagina e riprova.',
+      401,
+      'unauthorized',
+    )
+  }
+
   let response: Response
   try {
     response = await fetch(endpoint, {
@@ -90,6 +101,7 @@ export async function requestSelectionInsight(
       headers: {
         'Content-Type': 'application/json',
         Accept: 'application/json',
+        Authorization: auth.authorization,
       },
       credentials: 'include',
       body: JSON.stringify({
