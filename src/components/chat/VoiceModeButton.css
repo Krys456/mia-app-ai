@@ -52,7 +52,7 @@
   justify-content: center;
 }
 
-/* Active Voice Mode — subtle blue → violet → pink brand accent */
+/* Active Voice Mode — brand accent (The Way drops neon glow via theme tokens) */
 .voice-mode-btn--active {
   color: var(--accent);
   border-color: color-mix(in srgb, var(--theme-accent-3, var(--accent-pink)) 40%, var(--accent));
@@ -60,9 +60,21 @@
   box-shadow: var(--glow-brand);
 }
 
+[data-theme='the-way-washi'] .voice-mode-btn--active,
+[data-theme='the-way-sumi'] .voice-mode-btn--active {
+  box-shadow: none;
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface-2));
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .voice-mode-btn--active {
     animation: voice-mode-btn-glow 1.8s var(--ease-out, ease) infinite;
+  }
+
+  [data-theme='the-way-washi'] .voice-mode-btn--active,
+  [data-theme='the-way-sumi'] .voice-mode-btn--active {
+    animation: none;
   }
 }
 

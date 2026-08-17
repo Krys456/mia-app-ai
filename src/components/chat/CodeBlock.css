@@ -8,6 +8,17 @@
   animation: code-block-in var(--duration) var(--ease-out) both;
 }
 
+/* The Way: modern technical contrast — not parchment */
+[data-theme='the-way-washi'] .code-block {
+  border-color: color-mix(in srgb, var(--border) 90%, transparent);
+  background: color-mix(in srgb, var(--code-bg) 92%, #f3eee6);
+}
+
+[data-theme='the-way-sumi'] .code-block {
+  border-color: color-mix(in srgb, var(--text) 10%, transparent);
+  background: color-mix(in srgb, var(--code-bg) 70%, #0a0908);
+}
+
 .code-block__bar {
   display: flex;
   align-items: center;

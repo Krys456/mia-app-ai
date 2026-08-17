@@ -11,9 +11,9 @@
   height: max(var(--btn-icon), var(--touch-min));
   margin: 0;
   padding: 0;
-  border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--border));
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border));
   border-radius: var(--radius-pill);
-  background: color-mix(in srgb, var(--surface-solid) 92%, transparent);
+  background: color-mix(in srgb, var(--surface-solid) 94%, transparent);
   color: var(--text);
   cursor: pointer;
   pointer-events: none;
@@ -23,8 +23,8 @@
   visibility: hidden;
   transform: translateX(-50%) translateY(8px) scale(0.94);
   box-shadow: var(--shadow-card);
-  backdrop-filter: blur(14px) saturate(1.2);
-  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  backdrop-filter: blur(10px) saturate(1.05);
+  -webkit-backdrop-filter: blur(10px) saturate(1.05);
   transition:
     opacity var(--duration) var(--ease-out),
     transform var(--duration) var(--ease-out),
@@ -32,6 +32,24 @@
     border-color var(--duration) var(--ease-out),
     box-shadow var(--duration) var(--ease-out),
     background var(--duration) var(--ease-out);
+}
+
+[data-theme='the-way-washi'] .scroll-bottom-btn {
+  background: color-mix(in srgb, var(--surface-solid) 96%, #fff8ee);
+  border-color: color-mix(in srgb, var(--accent) 16%, var(--border));
+  box-shadow:
+    0 1px 2px rgba(28, 25, 22, 0.05),
+    0 6px 16px rgba(28, 25, 22, 0.08);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+[data-theme='the-way-sumi'] .scroll-bottom-btn {
+  background: color-mix(in srgb, var(--surface-solid) 94%, #0c0a09);
+  border-color: color-mix(in srgb, var(--text) 12%, transparent);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -57,8 +75,13 @@
 }
 
 .scroll-bottom-btn:hover {
-  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
-  box-shadow: var(--shadow-card), var(--glow-cyan);
+  border-color: color-mix(in srgb, var(--accent) 36%, var(--border));
+  box-shadow: var(--shadow-card);
+}
+
+[data-theme='the-way-washi'] .scroll-bottom-btn:hover,
+[data-theme='the-way-sumi'] .scroll-bottom-btn:hover {
+  border-color: color-mix(in srgb, var(--accent) 32%, var(--border));
 }
 
 .scroll-bottom-btn--visible:active {

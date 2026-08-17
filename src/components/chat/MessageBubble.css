@@ -9,7 +9,7 @@
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
+  gap: 0.45rem;
 }
 
 .bubble--user {
@@ -26,13 +26,13 @@
 .bubble__meta {
   display: flex;
   align-items: center;
-  gap: 0.55rem;
+  gap: 0.5rem;
 }
 
 .bubble__avatar {
   flex-shrink: 0;
-  width: 1.65rem;
-  height: 1.65rem;
+  width: 1.5rem;
+  height: 1.5rem;
   border-radius: var(--radius-sm);
   display: inline-flex;
   align-items: center;
@@ -44,12 +44,19 @@
   box-shadow: var(--glow-brand);
 }
 
+/* The Way: quiet editorial meta — brand without neon */
+[data-theme='the-way-washi'] .bubble__avatar--assistant,
+[data-theme='the-way-sumi'] .bubble__avatar--assistant {
+  background: color-mix(in srgb, var(--accent) 78%, var(--text));
+  box-shadow: none;
+}
+
 .bubble__avatar--pulse {
   animation: bubble-avatar-pulse 1.6s infinite var(--ease-out);
 }
 
 .bubble__avatar-mark {
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.02em;
   color: var(--on-accent);
@@ -63,8 +70,8 @@
     transform: scale(1);
   }
   50% {
-    box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 18%, transparent);
-    transform: scale(1.04);
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 14%, transparent);
+    transform: scale(1.03);
   }
 }
 
@@ -75,8 +82,8 @@
 }
 
 .bubble__label {
-  font-size: 0.72rem;
-  letter-spacing: 0.14em;
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   font-weight: 600;
   color: var(--accent);
@@ -89,6 +96,16 @@
   .bubble__label {
     color: transparent;
   }
+}
+
+[data-theme='the-way-washi'] .bubble__label,
+[data-theme='the-way-sumi'] .bubble__label {
+  letter-spacing: 0.08em;
+  font-weight: 550;
+  color: color-mix(in srgb, var(--text) 52%, var(--accent));
+  background: none;
+  -webkit-background-clip: unset;
+  background-clip: unset;
 }
 
 .bubble--assistant .bubble__body {
@@ -140,7 +157,7 @@
   max-width: min(100%, 34rem);
 }
 
-/* —— User: compact, right-aligned, clearly different —— */
+/* —— User: compact, right-aligned, restrained surface —— */
 .bubble__user-row {
   max-width: min(100%, 34rem);
   width: fit-content;
@@ -150,13 +167,24 @@
 .bubble--user .bubble__body {
   width: fit-content;
   max-width: 100%;
-  padding: 0.75rem 1rem;
-  border-radius: var(--radius-lg);
+  padding: 0.7rem 0.95rem;
+  border-radius: var(--radius-md);
   border-bottom-right-radius: var(--radius-xs);
   background: var(--bubble-user-bg);
-  border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 16%, var(--border));
   color: var(--text);
-  box-shadow: 0 0 18px color-mix(in srgb, var(--accent) 12%, transparent);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--shadow-lift, rgba(0, 0, 0, 0.12)) 35%, transparent);
+}
+
+[data-theme='the-way-washi'] .bubble--user .bubble__body {
+  border-color: color-mix(in srgb, var(--accent) 14%, var(--border));
+  box-shadow: 0 1px 2px rgba(28, 25, 22, 0.04);
+}
+
+[data-theme='the-way-sumi'] .bubble--user .bubble__body {
+  background: color-mix(in srgb, var(--surface-2) 88%, var(--accent));
+  border-color: color-mix(in srgb, var(--text) 10%, transparent);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.22);
 }
 
 .bubble--user .bubble__body p {
@@ -173,8 +201,8 @@
 .bubble__attachments {
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
-  margin: 0 0 0.55rem;
+  gap: 0.5rem;
+  margin: 0 0 0.7rem;
   max-width: 100%;
 }
 
@@ -185,24 +213,36 @@
 .bubble__attachment-img {
   display: block;
   width: 100%;
-  max-width: min(100%, 18rem);
-  max-height: 14rem;
+  max-width: min(100%, 20rem);
+  max-height: 15rem;
   height: auto;
   object-fit: cover;
   border-radius: var(--radius-sm);
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
   background: color-mix(in srgb, var(--surface-2) 50%, transparent);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--shadow-lift, rgba(0, 0, 0, 0.12)) 40%, transparent);
+}
+
+[data-theme='the-way-washi'] .bubble__attachment-img {
+  border-color: color-mix(in srgb, var(--border) 90%, transparent);
+  box-shadow: 0 1px 3px rgba(28, 25, 22, 0.06);
+}
+
+[data-theme='the-way-sumi'] .bubble__attachment-img {
+  border-color: color-mix(in srgb, var(--text) 8%, transparent);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
 }
 
 .bubble__attachments--assistant {
-  margin-bottom: 0.65rem;
+  margin-bottom: 0.75rem;
 }
 
 .bubble__attachment-figure {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0.35rem;
-  max-width: min(100%, 18rem);
+  gap: 0.4rem;
+  max-width: min(100%, 20rem);
 }
 
 .bubble__attachment-open {
@@ -223,10 +263,10 @@
   appearance: none;
   border: 0;
   background: transparent;
-  color: color-mix(in srgb, var(--text) 62%, transparent);
+  color: color-mix(in srgb, var(--text) 58%, transparent);
   font: inherit;
   font-size: 0.78rem;
-  padding: 0.1rem 0.15rem;
+  padding: 0.15rem 0.2rem;
   cursor: pointer;
   text-decoration: underline;
   text-underline-offset: 0.12em;
@@ -236,6 +276,12 @@
   color: var(--text);
 }
 
+.bubble__attachment-download:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
 .bubble__attachment-file {
   display: flex;
   align-items: center;
@@ -243,7 +289,7 @@
   max-width: min(100%, 18rem);
   min-width: 0;
   padding: 0.55rem 0.65rem;
-  border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border));
+  border: 1px solid color-mix(in srgb, var(--accent) 14%, var(--border));
   border-radius: var(--radius-sm);
   background: color-mix(in srgb, var(--surface-2) 70%, transparent);
   box-sizing: border-box;
@@ -258,7 +304,7 @@
   height: 2.1rem;
   padding: 0 0.3rem;
   border-radius: calc(var(--radius-sm) - 2px);
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
   color: var(--accent);
   font-size: 0.65rem;
   font-weight: 800;
@@ -300,7 +346,7 @@
 @keyframes chat-rise-in {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(5px);
   }
   to {
     opacity: 1;
