@@ -105,8 +105,8 @@ export function SettingsDrawer({ onOpenMemory }: SettingsDrawerProps) {
       >
         <div className="settings-drawer__head">
           <div>
-            <p className="settings-kicker">Personalizzazione</p>
-            <h2 id={titleId}>Impostazioni</h2>
+            <p className="settings-kicker">ShinkAIdo</p>
+            <h2 id={titleId}>Impostazioni ShinkAIdo</h2>
           </div>
           <button
             type="button"

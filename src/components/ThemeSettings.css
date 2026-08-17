@@ -1,7 +1,7 @@
 .theme-settings {
   display: flex;
   flex-direction: column;
-  gap: 1.15rem;
+  gap: 1.05rem;
 }
 
 .theme-settings__intro h3,
@@ -17,7 +17,7 @@
 .theme-settings__intro p,
 .theme-creator__head p,
 .theme-empty {
-  margin: 0.35rem 0 0;
+  margin: 0.3rem 0 0;
   font-size: 0.8rem;
   line-height: 1.45;
   color: var(--text-muted);
@@ -33,18 +33,18 @@
 .theme-card__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 0.45rem;
 }
 
 .theme-section {
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
+  gap: 0.55rem;
 }
 
 .theme-section__title {
-  font-size: 0.78rem;
-  letter-spacing: 0.12em;
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-muted);
   font-weight: 600;
@@ -53,40 +53,49 @@
 .theme-list {
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
+  gap: 0.4rem;
 }
 
 .theme-card {
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--surface-solid) 78%, transparent);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--bg) 55%, var(--surface-solid));
   overflow: hidden;
-  transition: border-color var(--duration) var(--ease-out), box-shadow var(--duration) var(--ease-out);
+  transition: border-color var(--duration) var(--ease-out), box-shadow var(--duration) var(--ease-out),
+    background var(--duration) var(--ease-out);
 }
 
 .theme-card--active {
-  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
-  box-shadow: var(--glow-cyan);
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent);
+  background: color-mix(in srgb, var(--accent) 6%, var(--surface-solid));
+}
+
+[data-theme='the-way-washi'] .theme-card--active,
+[data-theme='the-way-sumi'] .theme-card--active {
+  border-color: color-mix(in srgb, var(--accent) 36%, var(--border));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
 .theme-card__select {
   display: flex;
   align-items: flex-start;
-  gap: 0.75rem;
+  gap: 0.7rem;
   width: 100%;
   margin: 0;
-  padding: 0.75rem;
+  padding: 0.65rem 0.7rem;
   border: 0;
   background: transparent;
   color: inherit;
   text-align: left;
   cursor: pointer;
+  min-height: var(--touch-min);
 }
 
 .theme-card__meta {
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
+  gap: 0.15rem;
   min-width: 0;
 }
 
@@ -94,14 +103,14 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.35rem;
-  font-size: 0.92rem;
+  gap: 0.3rem;
+  font-size: 0.9rem;
   font-weight: 600;
   color: var(--text);
 }
 
 .theme-card__desc {
-  font-size: 0.75rem;
+  font-size: 0.74rem;
   line-height: 1.4;
   color: var(--text-muted);
 }
@@ -109,37 +118,37 @@
 .theme-badge {
   display: inline-flex;
   align-items: center;
-  padding: 0.12rem 0.4rem;
-  border-radius: 0.4rem;
-  font-size: 0.62rem;
-  font-weight: 600;
+  padding: 0.1rem 0.35rem;
+  border-radius: 0.3rem;
+  font-size: 0.6rem;
+  font-weight: 650;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
-  border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+  color: color-mix(in srgb, var(--text) 55%, var(--accent));
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
 .theme-badge--active {
-  color: var(--accent-pink);
-  background: color-mix(in srgb, var(--accent-pink) 14%, transparent);
-  border-color: color-mix(in srgb, var(--accent-pink) 28%, transparent);
+  color: var(--text);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 32%, transparent);
 }
 
 .theme-card__actions {
-  padding: 0 0.75rem 0.7rem;
+  padding: 0 0.7rem 0.6rem;
 }
 
 .theme-swatch {
   display: grid;
   grid-template-columns: 1fr 1fr;
   grid-template-rows: 1fr 1fr;
-  width: 2.4rem;
-  height: 2.4rem;
-  border-radius: 0.65rem;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 0.45rem;
   overflow: hidden;
   flex-shrink: 0;
-  border: 1px solid var(--border);
+  border: 1px solid color-mix(in srgb, var(--border) 90%, transparent);
 }
 
 .theme-swatch span {
@@ -155,8 +164,9 @@
   font: inherit;
   font-weight: 550;
   cursor: pointer;
-  transition: transform var(--duration-press) var(--ease-out), opacity var(--duration-press) var(--ease-out), border-color var(--duration) var(--ease-out),
-    box-shadow var(--duration) var(--ease-out), background var(--duration) var(--ease-out);
+  transition: opacity var(--duration-press) var(--ease-out), border-color var(--duration) var(--ease-out),
+    box-shadow var(--duration) var(--ease-out), background var(--duration) var(--ease-out),
+    color var(--duration) var(--ease-out);
 }
 
 .theme-btn:focus-visible,
@@ -167,20 +177,26 @@
 
 .theme-btn {
   min-height: max(2.35rem, var(--touch-min));
-  padding: 0.55rem 0.9rem;
+  padding: 0.5rem 0.85rem;
   border: 1px solid var(--border);
 }
 
 .theme-btn--primary {
-  border: 0;
-  background: var(--gradient-brand);
-  color: var(--on-accent, #000);
-  box-shadow: var(--glow-brand);
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--text);
+  box-shadow: none;
 }
 
 .theme-btn--primary:hover:not(:disabled) {
-  transform: translateY(-1px);
-  filter: brightness(1.05);
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
+}
+
+[data-theme='the-way-washi'] .theme-btn--primary,
+[data-theme='the-way-sumi'] .theme-btn--primary {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--border));
 }
 
 .theme-btn--primary:disabled {
@@ -190,12 +206,12 @@
 }
 
 .theme-btn--ghost {
-  background: color-mix(in srgb, var(--surface-2) 70%, transparent);
+  background: color-mix(in srgb, var(--surface-2) 45%, transparent);
   color: var(--text);
 }
 
 .theme-btn--ghost:hover {
-  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 28%, var(--border));
 }
 
 .theme-mini-btn {
@@ -203,25 +219,31 @@
   min-height: var(--touch-min);
   padding: 0.35rem 0.65rem;
   border: 1px solid var(--border);
-  background: color-mix(in srgb, var(--surface-2) 65%, transparent);
+  background: color-mix(in srgb, var(--surface-2) 45%, transparent);
   color: var(--text-muted);
   font-size: 0.75rem;
 }
 
 .theme-mini-btn:hover {
   color: var(--text);
-  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 28%, var(--border));
+}
+
+.theme-mini-btn--danger {
+  color: var(--danger-text);
+  border-color: color-mix(in srgb, var(--danger-border) 80%, var(--border));
 }
 
 .theme-mini-btn--danger:hover {
   color: var(--danger-text);
   border-color: var(--danger-border);
+  background: var(--danger-soft, color-mix(in srgb, var(--danger) 10%, transparent));
 }
 
 .theme-creator {
   display: flex;
   flex-direction: column;
-  gap: 0.9rem;
+  gap: 0.85rem;
 }
 
 .theme-creator__head p {
@@ -271,8 +293,8 @@
 
 .theme-color-field__row input[type='text']:focus {
   outline: none;
-  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 42%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
 }
 
 .field__hint {
@@ -284,14 +306,22 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.75rem;
+  padding: 0.7rem;
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--surface-solid) 75%, transparent);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--bg) 50%, var(--surface-solid));
 }
 
 .theme-creator__gradient {
   flex: 1;
-  height: 0.85rem;
+  height: 0.75rem;
   border-radius: 999px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .theme-card,
+  .theme-btn,
+  .theme-mini-btn {
+    transition: none;
+  }
 }

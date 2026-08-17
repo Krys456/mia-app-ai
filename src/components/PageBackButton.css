@@ -4,10 +4,21 @@
   padding-inline: 0.55rem 0.75rem;
   min-width: max(var(--btn-icon), var(--touch-min));
   min-height: max(var(--btn-icon), var(--touch-min));
+  color: var(--text-muted);
+}
+
+.page-back-btn:hover {
+  color: var(--text);
+}
+
+[data-theme='the-way-washi'] .page-back-btn,
+[data-theme='the-way-sumi'] .page-back-btn {
+  border-color: color-mix(in srgb, var(--border) 90%, transparent);
+  background: color-mix(in srgb, var(--surface-2) 40%, transparent);
 }
 
 .page-back-btn__label {
-  font-size: 0.88rem;
+  font-size: 0.86rem;
   font-weight: 600;
   letter-spacing: 0.01em;
 }
