@@ -31,6 +31,9 @@ import {
 } from './composerTypes'
 import { useComposerDraft } from './useComposerDraft'
 import { useSpeechDictation } from './useSpeechDictation'
+import { useVoiceMode } from './useVoiceMode'
+import { VoiceModeBar } from './VoiceModeBar'
+import { VoiceModeButton } from './VoiceModeButton'
 import './ComposerShell.css'
 
 /** Mirror previous InputBar autosize cap (8rem ≈ 128px). */
@@ -101,6 +104,7 @@ export function ComposerShell({ onMessageSent }: ComposerShellProps) {
   const canSend = composerDraftCanSend(draft) && !busy && !preparing && !uploading
   const showKeyboardHint = useShowKeyboardHint()
   const chatSuspended = useChatViewSuspended()
+  const voice = useVoiceMode()
   const attachment = draft.attachments[0]
   const image = attachment?.kind === 'image' ? attachment : null
   const document = attachment?.kind === 'file' ? attachment : null
@@ -116,25 +120,36 @@ export function ComposerShell({ onMessageSent }: ComposerShellProps) {
     getText: () => draftTextRef.current,
     setText,
     messages,
-    suspended: chatSuspended || settingsOpen,
+    // Suspend dictation while Voice Mode owns the mic (#292 ≠ #273).
+    suspended: chatSuspended || settingsOpen || voice.active,
     onTranscriptCommitted: focusInput,
   })
   const dictationAbortRef = useRef(dictation.abort)
   const dictationClearErrorRef = useRef(dictation.clearError)
+  const voiceExitRef = useRef(voice.exit)
   dictationAbortRef.current = dictation.abort
   dictationClearErrorRef.current = dictation.clearError
+  voiceExitRef.current = voice.exit
 
-  // New Chat clears messages → abort dictation + clear draft.
+  // New Chat clears messages → abort dictation/voice + clear draft.
   useEffect(() => {
     const prev = prevMessageCountRef.current
     if (messages.length === 0 && prev > 0) {
       dictationAbortRef.current({ restore: false })
+      voiceExitRef.current()
       clear()
       setAttachError(null)
       dictationClearErrorRef.current()
     }
     prevMessageCountRef.current = messages.length
   }, [messages.length, clear])
+
+  // Suspend Voice Mode when chat view is hidden or Settings opens.
+  useEffect(() => {
+    if ((chatSuspended || settingsOpen) && voice.active) {
+      voiceExitRef.current()
+    }
+  }, [chatSuspended, settingsOpen, voice.active])
 
   useEffect(() => {
     const el = inputRef.current
@@ -198,7 +213,7 @@ export function ComposerShell({ onMessageSent }: ComposerShellProps) {
   )
 
   const submit = async () => {
-    if (busy || preparing || uploading || dictation.listening) return
+    if (busy || preparing || uploading || dictation.listening || voice.active) return
     const text = draft.text.trim()
     const attachments = draft.attachments
     if (!text && attachments.length === 0) return
@@ -316,6 +331,7 @@ export function ComposerShell({ onMessageSent }: ComposerShellProps) {
   }
 
   const onMicClick = () => {
+    if (voice.active) return
     if (dictation.listening) {
       dictation.stop()
       return
@@ -324,9 +340,24 @@ export function ComposerShell({ onMessageSent }: ComposerShellProps) {
     dictation.start()
   }
 
+  const onVoiceClick = () => {
+    if (voice.active) {
+      voice.exit()
+      return
+    }
+    dictation.abort({ restore: false })
+    dictation.clearError()
+    setAttachError(null)
+    voice.enter()
+  }
+
   const showMic =
+    !voice.active &&
     dictation.supported &&
     (dictation.listening || (!composerDraftCanSend(draft) && !busy && !preparing && !uploading))
+  const showVoiceEntry =
+    voice.supported &&
+    (voice.active || (!dictation.listening && !busy && !preparing && !uploading))
   const statusLabel = isThinking
     ? 'LAIfe sta pensando'
     : isStreaming
@@ -337,13 +368,35 @@ export function ComposerShell({ onMessageSent }: ComposerShellProps) {
           ? document
             ? 'Preparazione documento…'
             : 'Preparazione immagine…'
-          : dictation.listening
-            ? 'Dettatura attiva'
-            : dictation.statusAnnouncement || undefined
+          : voice.active
+            ? voice.phase === 'listening'
+              ? 'Modalità vocale: in ascolto'
+              : voice.phase === 'processing'
+                ? 'Modalità vocale: elaborazione'
+                : voice.phase === 'speaking'
+                  ? 'Modalità vocale: riproduzione'
+                  : 'Modalità vocale'
+            : dictation.listening
+              ? 'Dettatura attiva'
+              : dictation.statusAnnouncement || undefined
 
   const tray =
-    image || document || attachError || dictation.error ? (
+    voice.active || image || document || attachError || dictation.error ? (
       <div className="composer-tray-inner">
+        {voice.active ? (
+          <VoiceModeBar
+            phase={voice.phase}
+            interimText={voice.interimText}
+            error={voice.error}
+            needsManualPlay={voice.needsManualPlay}
+            onStopSend={voice.stopAndSend}
+            onCancel={voice.cancelListening}
+            onStopSpeaking={voice.stopSpeaking}
+            onListenAgain={voice.startListening}
+            onPlayPending={voice.playPending}
+            onExit={voice.exit}
+          />
+        ) : null}
         {image ? (
           <div className="composer-preview">
             <img
@@ -391,7 +444,7 @@ export function ComposerShell({ onMessageSent }: ComposerShellProps) {
             {attachError}
           </p>
         ) : null}
-        {dictation.error ? (
+        {dictation.error && !voice.active ? (
           <p className="composer-attach-error" role="alert">
             {dictation.error}
           </p>
@@ -412,15 +465,24 @@ export function ComposerShell({ onMessageSent }: ComposerShellProps) {
       ) : null}
 
       <form
-        className={`composer${busy ? ' composer--busy' : ''}${dictation.listening ? ' composer--dictating' : ''}`}
+        className={`composer${busy ? ' composer--busy' : ''}${dictation.listening ? ' composer--dictating' : ''}${voice.active ? ' composer--voice' : ''}`}
         onSubmit={onSubmit}
-        aria-busy={busy || preparing || uploading || dictation.listening || undefined}
+        aria-busy={
+          busy || preparing || uploading || dictation.listening || voice.active || undefined
+        }
       >
         <div className="composer__left" data-composer-slot="left">
           <ComposerAttachMenu
-            disabled={busy || preparing || uploading || dictation.listening}
+            disabled={busy || preparing || uploading || dictation.listening || voice.active}
             onPickFile={(f, source) => void onPickFile(f, source)}
           />
+          {showVoiceEntry ? (
+            <VoiceModeButton
+              active={voice.active}
+              disabled={busy || preparing || uploading || dictation.listening}
+              onClick={onVoiceClick}
+            />
+          ) : null}
         </div>
 
         <label className="sr-only" htmlFor="laife-input">
@@ -435,32 +497,36 @@ export function ComposerShell({ onMessageSent }: ComposerShellProps) {
           onChange={(e) => onTextChange(e.target.value)}
           onKeyDown={onKeyDown}
           placeholder={
-            dictation.listening
-              ? 'Ti ascolto…'
-              : busy
-                ? 'Puoi scrivere il prossimo messaggio…'
-                : image || document
-                  ? 'Aggiungi una didascalia (opzionale)…'
-                  : 'Messaggio a LAIfe…'
+            voice.active
+              ? 'Modalità vocale attiva…'
+              : dictation.listening
+                ? 'Ti ascolto…'
+                : busy
+                  ? 'Puoi scrivere il prossimo messaggio…'
+                  : image || document
+                    ? 'Aggiungi una didascalia (opzionale)…'
+                    : 'Messaggio a LAIfe…'
           }
           enterKeyHint="send"
           autoComplete="off"
           autoCorrect="on"
           spellCheck
+          disabled={voice.active || undefined}
+          readOnly={voice.active || undefined}
         />
 
         <div className="composer__right" data-composer-slot="right">
           {showMic ? (
             <ComposerMicrophoneButton
               listening={dictation.listening}
-              disabled={busy || preparing || uploading}
+              disabled={busy || preparing || uploading || voice.active}
               onClick={onMicClick}
             />
           ) : (
             <button
               type="submit"
               className={`composer__send${busy || uploading ? ' composer__send--busy' : ''}`}
-              disabled={!canSend}
+              disabled={!canSend || voice.active}
               aria-label={busy || preparing || uploading ? statusLabel : 'Invia messaggio'}
             >
               {busy || preparing || uploading ? (
@@ -481,7 +547,7 @@ export function ComposerShell({ onMessageSent }: ComposerShellProps) {
         </div>
       </form>
 
-      {showKeyboardHint ? (
+      {showKeyboardHint && !voice.active ? (
         <p className="composer__hint">Invio per mandare · Shift+Invio per andare a capo</p>
       ) : null}
     </div>
