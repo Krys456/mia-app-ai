@@ -13,9 +13,9 @@ export const BRAND = {
   /** Document / meta description. */
   metaDescription:
     'ShinkAIdo — The Way to Your True Self. A calm, capable AI companion for conversation, work, study, and discovery.',
-  /** Compact mark (header, favicon sizes). */
+  /** Compact mark (favicon / apple-touch; in-app uses EnsoMark). */
   markSrc: '/shinkaido-mark.svg',
-  /** Full lockup for empty state / hero. */
+  /** Full lockup asset (static fallback; in-app uses EnsoMark + BrandWordmark). */
   fullSrc: '/shinkaido-logo.svg',
   /** Favicon / apple-touch. */
   faviconSrc: '/shinkaido-mark.svg',

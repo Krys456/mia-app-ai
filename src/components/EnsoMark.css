@@ -1,0 +1,25 @@
+.enso-mark {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.enso-mark__ink {
+  transition: fill 180ms var(--ease-out, ease-out);
+}
+
+.enso-mark__sun {
+  /* Flat vermilion disc — not a glowing orb */
+  filter: none;
+}
+
+.enso-mark__fire-ambient {
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .enso-mark__ink {
+    transition: none;
+  }
+}

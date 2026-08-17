@@ -55,11 +55,11 @@ export const BUILTIN_THEMES: ThemeDefinition[] = [
     official: true,
     colorScheme: 'light',
     colors: {
-      bg: '#F6F1E8',
-      surface: '#FFFCF7',
-      surface2: '#EFE8DC',
+      bg: '#F5F0E6',
+      surface: '#FFFBF5',
+      surface2: '#EDE6DA',
       text: '#1C1916',
-      textMuted: '#6E675F',
+      textMuted: '#6B645C',
       accent: '#C23B2A',
       accentSecondary: '#9E2F22',
       accentTertiary: '#D45A4A',
@@ -73,11 +73,11 @@ export const BUILTIN_THEMES: ThemeDefinition[] = [
     builtin: true,
     colorScheme: 'dark',
     colors: {
-      bg: '#12100E',
-      surface: '#1C1916',
-      surface2: '#2A2521',
+      bg: '#100E0C',
+      surface: '#1A1613',
+      surface2: '#27221E',
       text: '#F5F0E8',
-      textMuted: '#A89F94',
+      textMuted: '#A3998E',
       accent: '#D94A3A',
       accentSecondary: '#C23B2A',
       accentTertiary: '#E07A6E',
@@ -415,9 +415,37 @@ export function applyThemeToDocument(theme: ThemeDefinition) {
       '--bubble-user-bg',
       `linear-gradient(135deg, ${rgba(accent, 0.12)}, ${rgba(accentSecondary, 0.08)})`,
     )
-    root.style.setProperty('--atmosphere-1', rgba(accent, colorScheme === 'light' ? 0.06 : 0.1))
-    root.style.setProperty('--atmosphere-2', rgba(accentQuaternary, colorScheme === 'light' ? 0.05 : 0.08))
-    root.style.setProperty('--atmosphere-3', rgba(accentTertiary, colorScheme === 'light' ? 0.04 : 0.07))
+    root.style.setProperty('--atmosphere-1', rgba(accent, colorScheme === 'light' ? 0.05 : 0.09))
+    root.style.setProperty('--atmosphere-2', rgba(accentQuaternary, colorScheme === 'light' ? 0.04 : 0.07))
+    root.style.setProperty('--atmosphere-3', rgba(accentTertiary, colorScheme === 'light' ? 0.03 : 0.06))
+    // Ensō ink parity: Washi = sumi black, Sumi = warm ivory. Same geometry.
+    if (theme.id === 'the-way-washi') {
+      root.style.setProperty('--enso-ink', '#141210')
+      root.style.setProperty('--enso-sun', accent)
+      root.style.setProperty('--enso-fire-ambient', rgba(accent, 0.12))
+      root.style.setProperty('--enso-container-bg', '#FFFAF3')
+      root.style.setProperty(
+        '--enso-container-shadow',
+        `0 1px 3px ${rgba('#1C1916', 0.06)}, 0 4px 14px ${rgba('#1C1916', 0.05)}, 0 0 18px ${rgba(accent, 0.08)}`,
+      )
+      root.style.setProperty(
+        '--the-way-page-atmosphere',
+        `radial-gradient(ellipse 80% 55% at 50% 28%, ${rgba(accent, 0.045)}, transparent 62%), radial-gradient(ellipse 70% 50% at 72% 78%, ${rgba(accentQuaternary, 0.04)}, transparent 55%)`,
+      )
+    } else {
+      root.style.setProperty('--enso-ink', '#F5F0E8')
+      root.style.setProperty('--enso-sun', accent)
+      root.style.setProperty('--enso-fire-ambient', rgba(accent, 0.22))
+      root.style.setProperty('--enso-container-bg', '#1A1613')
+      root.style.setProperty(
+        '--enso-container-shadow',
+        `0 0 0 1px ${rgba('#F5F0E8', 0.06)}, 0 2px 10px ${rgba('#000000', 0.35)}, 0 0 20px ${rgba(accent, 0.16)}`,
+      )
+      root.style.setProperty(
+        '--the-way-page-atmosphere',
+        `radial-gradient(ellipse 75% 50% at 48% 26%, ${rgba(accent, 0.08)}, transparent 60%), radial-gradient(ellipse 65% 45% at 70% 80%, ${rgba(accentQuaternary, 0.05)}, transparent 55%)`,
+      )
+    }
   } else {
     root.style.setProperty(
       '--gradient-brand',
@@ -440,11 +468,18 @@ export function applyThemeToDocument(theme: ThemeDefinition) {
     root.style.setProperty('--atmosphere-1', rgba(accent, colorScheme === 'light' ? 0.1 : 0.18))
     root.style.setProperty('--atmosphere-2', rgba(accentQuaternary, colorScheme === 'light' ? 0.08 : 0.15))
     root.style.setProperty('--atmosphere-3', rgba(accentTertiary, colorScheme === 'light' ? 0.06 : 0.11))
+    // Classic / custom themes: Ensō follows strong text so the mark stays readable.
+    root.style.setProperty('--enso-ink', colorScheme === 'light' ? '#141210' : '#F5F0E8')
+    root.style.setProperty('--enso-sun', accent)
+    root.style.setProperty('--enso-fire-ambient', rgba(accent, colorScheme === 'light' ? 0.1 : 0.18))
+    root.style.removeProperty('--enso-container-bg')
+    root.style.removeProperty('--enso-container-shadow')
+    root.style.removeProperty('--the-way-page-atmosphere')
   }
 
   root.style.setProperty('--scrim', colorScheme === 'light' ? 'rgba(20, 24, 32, 0.35)' : 'rgba(0, 0, 0, 0.55)')
   root.style.setProperty('--on-accent', colorScheme === 'light' ? '#ffffff' : '#000000')
-  root.style.setProperty('--strong-text', colorScheme === 'light' ? '#0a0a0a' : '#ffffff')
+  root.style.setProperty('--strong-text', colorScheme === 'light' ? (theWay ? text : '#0a0a0a') : (theWay ? text : '#ffffff'))
   root.style.setProperty('--code-bg', colorScheme === 'light' ? 'rgba(0, 0, 0, 0.06)' : 'rgba(255, 255, 255, 0.06)')
   root.style.setProperty('--shadow-lift', colorScheme === 'light' ? 'rgba(15, 23, 42, 0.12)' : 'rgba(0, 0, 0, 0.45)')
 

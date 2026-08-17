@@ -1,4 +1,5 @@
 import { BRAND } from '../lib/brand'
+import { EnsoMark } from './EnsoMark'
 import './BrandLogo.css'
 
 type BrandLogoProps = {
@@ -7,25 +8,27 @@ type BrandLogoProps = {
   priority?: boolean
 }
 
+/**
+ * ShinkAIdo brand mark. Renders the organic Ensō inline so Washi/Sumi ink
+ * swaps via --enso-ink without stale cached raster assets.
+ */
 export function BrandLogo({
   variant = 'full',
   className = '',
-  priority = false,
+  priority: _priority = false,
 }: BrandLogoProps) {
-  const src = variant === 'mark' ? BRAND.markSrc : BRAND.fullSrc
-  const alt =
+  const label =
     variant === 'mark'
       ? BRAND.accessibleProductName
       : `${BRAND.accessibleProductName} — ${BRAND.tagline}`
 
   return (
-    <img
+    <span
       className={`brand-logo brand-logo--${variant}${className ? ` ${className}` : ''}`}
-      src={src}
-      alt={alt}
-      decoding="async"
-      loading={priority ? 'eager' : 'lazy'}
-      draggable={false}
-    />
+      role="img"
+      aria-label={label}
+    >
+      <EnsoMark decorative className="brand-logo__enso" />
+    </span>
   )
 }

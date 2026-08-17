@@ -140,6 +140,13 @@ body {
   transition: background-color var(--duration) var(--ease-out), color var(--duration) var(--ease-out);
 }
 
+html[data-theme='the-way-washi'] body,
+html[data-theme='the-way-sumi'] body {
+  background:
+    var(--the-way-page-atmosphere, none),
+    var(--bg);
+}
+
 button,
 input,
 textarea,

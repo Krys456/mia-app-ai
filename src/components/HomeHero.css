@@ -27,6 +27,16 @@
   animation: glow-pulse 5.5s ease-in-out infinite;
 }
 
+[data-theme='the-way-washi'] .home-hero__glow,
+[data-theme='the-way-sumi'] .home-hero__glow {
+  background: var(--the-way-page-atmosphere, none);
+  filter: blur(22px);
+  inset: 8% 5% auto;
+  height: 62%;
+  opacity: 0.95;
+  animation: none;
+}
+
 .home-hero__stage {
   position: relative;
   z-index: 1;
@@ -34,7 +44,7 @@
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: 0.85rem;
+  gap: 0.95rem;
   max-width: 26rem;
   width: 100%;
   /* Slight optical lift so logo sits as the focal center above the composer */
@@ -42,9 +52,9 @@
 }
 
 .home-hero__mark {
-  width: 4.25rem;
-  height: 4.25rem;
-  padding: 0.35rem;
+  width: 5.1rem;
+  height: 5.1rem;
+  padding: 0.42rem;
   border-radius: calc(var(--radius-md) + 2px);
   animation: hero-rise 640ms var(--ease-out) both;
 }
@@ -57,15 +67,17 @@
 .home-hero__wordmark {
   align-items: center;
   text-align: center;
+  gap: 0.28rem;
   animation: hero-rise 680ms var(--ease-out) 40ms both;
 }
 
 .home-hero__wordmark .brand-wordmark__tag {
   text-align: center;
+  margin-top: 0.12rem;
 }
 
 .home-hero__lead {
-  margin: 0;
+  margin: 0.35rem 0 0;
   max-width: 20rem;
   color: var(--text-muted);
   font-size: 0.98rem;
@@ -75,6 +87,11 @@
 }
 
 @media (max-width: 480px) {
+  .home-hero__mark {
+    width: 4.6rem;
+    height: 4.6rem;
+  }
+
   .home-hero__logo {
     width: min(100%, 16.25rem);
   }
@@ -85,7 +102,7 @@
   }
 
   .home-hero__stage {
-    gap: 0.75rem;
+    gap: 0.8rem;
   }
 }
 
@@ -95,8 +112,14 @@
   }
 
   .home-hero__stage {
-    gap: 1rem;
+    gap: 1.1rem;
     transform: none;
+  }
+
+  .home-hero__mark {
+    width: 5.6rem;
+    height: 5.6rem;
+    padding: 0.48rem;
   }
 
   .home-hero__logo {
