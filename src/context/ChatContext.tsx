@@ -207,6 +207,7 @@ type Action =
       type: 'ASSISTANT_FINISH'
       id: string
       content: string
+      attachments?: ChatAttachment[]
       memoryEvent?: MemoryFeedbackEvent | null
       v2Debug?: V2DebugInfo | null
     }
@@ -357,6 +358,7 @@ function reducer(state: AppState, action: Action): AppState {
           ...msg,
           content: action.content,
           ...(action.v2Debug ? { v2Debug: action.v2Debug } : {}),
+          ...(action.attachments?.length ? { attachments: action.attachments } : {}),
         }
         if (memoryEvent) next.memoryEvent = memoryEvent
         else delete next.memoryEvent
@@ -430,6 +432,7 @@ function isAbortError(error: unknown): boolean {
 
 function toApiMessages(messages: ChatMessage[]): ChatApiMessage[] {
   // Preserve multimodal form for the most recent N image / file turns separately.
+  // Image turns include user uploads AND assistant generated/edited images (#289).
   let remainingImages = MAX_RECENT_IMAGE_TURNS
   let remainingFiles = MAX_RECENT_FILE_TURNS
   const reversed = [...messages]
@@ -437,7 +440,29 @@ function toApiMessages(messages: ChatMessage[]): ChatApiMessage[] {
     .filter((m) => m.kind !== 'error')
     .reverse()
     .map((m) => {
-      if (m.role !== 'user') {
+      if (m.role === 'assistant') {
+        const imageAtts = (m.attachments ?? []).filter(
+          (a): a is Extract<ChatAttachment, { kind: 'image' }> =>
+            a.kind === 'image' &&
+            Boolean(a.dataUrl) &&
+            Boolean(a.artifactProof) &&
+            (a.source === 'generated' || a.source === 'edited'),
+        )
+        if (imageAtts.length && remainingImages > 0) {
+          remainingImages -= 1
+          return {
+            role: 'assistant' as const,
+            content: m.content,
+            attachments: imageAtts.slice(0, 1).map((a) => ({
+              type: 'image' as const,
+              mimeType: a.mimeType,
+              dataUrl: a.dataUrl,
+              source: a.source as 'generated' | 'edited',
+              id: a.id,
+              artifactProof: a.artifactProof as string,
+            })),
+          }
+        }
         return { role: 'assistant' as const, content: m.content }
       }
       const imageAtts = (m.attachments ?? []).filter(
@@ -457,6 +482,8 @@ function toApiMessages(messages: ChatMessage[]): ChatApiMessage[] {
             type: 'image' as const,
             mimeType: a.mimeType,
             dataUrl: a.dataUrl,
+            ...(a.source ? { source: a.source } : {}),
+            ...(a.id ? { id: a.id } : {}),
           })),
         }
       }
@@ -560,6 +587,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           })
           const {
             content: reply,
+            images: replyImages,
             memoryEvent,
             learningSignals,
             welcomeSession,
@@ -590,6 +618,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           console.log('[ChatContext] completion ok', {
             generation,
             replyLen: reply?.length ?? 0,
+            imageCount: replyImages?.length ?? 0,
             memoryEvent: memoryEvent ?? null,
           })
 
@@ -664,6 +693,31 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           }
 
           const assistantId = uid()
+          const assistantAttachments: ChatAttachment[] = (replyImages ?? [])
+            .slice(0, 1)
+            .flatMap((img) => {
+              const mime =
+                img.mimeType === 'image/jpeg' ||
+                img.mimeType === 'image/png' ||
+                img.mimeType === 'image/webp'
+                  ? img.mimeType
+                  : null
+              if (!mime || !img.dataUrl || !img.artifactProof) return []
+              return [
+                {
+                  id: img.id || uid(),
+                  kind: 'image' as const,
+                  mimeType: mime,
+                  dataUrl: img.dataUrl,
+                  previewUrl: img.dataUrl,
+                  source: img.source,
+                  artifactProof: img.artifactProof,
+                  ...(typeof img.width === 'number' ? { width: img.width } : {}),
+                  ...(typeof img.height === 'number' ? { height: img.height } : {}),
+                },
+              ]
+            })
+
           dispatch({
             type: 'ASSISTANT_START',
             id: assistantId,
@@ -671,8 +725,9 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             memoryEvent: memoryEvent ?? null,
           })
 
+          const revealText = reply || (assistantAttachments.length ? '' : '')
           await revealReplyText(
-            reply,
+            revealText,
             (partial) => {
               if (generation !== generationRef.current) return
               dispatch({ type: 'ASSISTANT_PROGRESS', id: assistantId, content: partial })
@@ -685,7 +740,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           dispatch({
             type: 'ASSISTANT_FINISH',
             id: assistantId,
-            content: reply,
+            content: reply || '',
+            ...(assistantAttachments.length ? { attachments: assistantAttachments } : {}),
             memoryEvent: memoryEvent ?? null,
           })
         } catch (error) {
