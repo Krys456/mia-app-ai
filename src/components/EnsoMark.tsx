@@ -16,7 +16,7 @@ export type EnsoMarkProps = {
 /**
  * ShinkAIdo Ensō — organic sumi-e ink brush ring + vermilion sun.
  * Ink color follows --enso-ink (Washi black / Sumi ivory).
- * No fireball. Texture is path geometry (variable thickness + dry-brush streaks),
+ * Texture is path geometry (variable thickness + dry-brush streaks),
  * not heavy SVG filters. Compact omits micro-streaks for small-size clarity.
  */
 export function EnsoMark({

@@ -100,16 +100,18 @@ assert.match(enso, /enso-mark__sun/)
 assert.match(enso, /--enso-ink/)
 assert.match(enso, /size === 'compact'|EnsoMarkSize|compact/)
 assert.match(enso, /sumi-e|organic|brush/i)
-// Fireball must be fully removed
-assert.doesNotMatch(enso, /fireball|flame-core|flame-outer|ember|tongue|radialGradient|#FFFDF5|#FFC040/)
+// Prior fire-aesthetic layers must be fully removed (implementation remnants)
+assert.doesNotMatch(enso, /enso-mark__fire|flame-core|flame-outer|enso-mark__ember|enso-mark__tongue|radialGradient|#FFFDF5|#FFC040/)
 assert.doesNotMatch(enso, /stroke-dasharray/)
 assert.match(brandLogo, /size=\{ensoSize\}|size\?:|EnsoMarkSize/)
 assert.match(hero, /size="hero"/)
 
 // Static mark has no fire remnants
 const markSvg = read('public/shinkaido-mark.svg')
-assert.doesNotMatch(markSvg, /fireball|radialGradient|#FFC040|#FFE9A0/)
+assert.doesNotMatch(markSvg, /enso-mark__fire|radialGradient|#FFC040|#FFE9A0/)
 assert.match(markSvg, /#C23B2A/) // vermilion sun
+assert.match(markSvg, /fill="#141210"/) // washi black ink in static asset
+assert.equal((markSvg.match(/<circle/g) || []).length, 1) // sun only; no ember flecks in favicon
 
 const themesSrc = read('src/lib/themes.ts')
 assert.match(themesSrc, /--enso-ink/)
