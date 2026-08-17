@@ -27,6 +27,7 @@ export function ChatContainer() {
     hasActiveSelection,
     runDefine,
     runExplain,
+    runSearch,
     retryInsight,
     dismissAll,
     clearSelectionUi,
@@ -103,6 +104,7 @@ export function ChatContainer() {
           snapshot={snapshot}
           onDefine={runDefine}
           onExplain={runExplain}
+          onSearch={runSearch}
           onDismiss={clearSelectionUi}
         />
       ) : null}

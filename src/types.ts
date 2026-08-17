@@ -37,6 +37,11 @@ export interface ChatMessage {
   createdAt: number
   /** Optional attachments (#272 image / #275 PDF). Max 1; image XOR file. */
   attachments?: ChatAttachment[]
+  /**
+   * #291 optional normalized web citations for Fonti UI.
+   * Session-scoped with the message — not a DB field; never sent back as model input.
+   */
+  citations?: WebCitation[]
   /** When set, render as an error notice rather than a normal assistant reply. */
   kind?: 'error'
   /** Legacy V2 debug payload (unused on Core path; kept for typed message compat). */
@@ -49,6 +54,14 @@ export interface ChatMessage {
     type: 'created' | 'updated' | 'removed'
     displayText?: string
   }
+}
+
+/** #291 normalized citation from provider url_citation annotations. */
+export interface WebCitation {
+  title: string
+  url: string
+  startIndex?: number
+  endIndex?: number
 }
 
 /** Session-scoped image attachment on a chat message (#272). */

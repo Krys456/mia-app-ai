@@ -67,11 +67,12 @@ assert.match(hook, /composer|contenteditable/)
 // Code blocks excluded from MVP selection toolbar path
 assert.match(hook, /code-block|pre, \.code-block|\.code-block/)
 
-// Actions Definisci / Spiega — no "Search the web"
+// Actions Definisci / Spiega / Cerca — no "Search the web" English chrome
 assert.match(bar, /Definisci/)
 assert.match(bar, /Spiega/)
-assert.doesNotMatch(bar, /Search the web|Cerca sul web/i)
-assert.doesNotMatch(sheet, /Search the web|Cerca sul web/i)
+assert.match(bar, /Cerca/)
+assert.match(bar, /onSearch/)
+assert.doesNotMatch(bar, /Search the web/i)
 
 // Toolbar: portal overlay, preserve selection on pointerdown, safe placement
 assert.match(bar, /createPortal/)
@@ -84,14 +85,16 @@ assert.match(barCss, /user-select:\s*none/)
 assert.match(layout, /computeActionBarPlacement/)
 assert.match(layout, /placement:\s*'below'\s*\|\s*'above'/)
 
-// Captured text for Define/Explain — snapshotRef / capturedText, not live DOM re-read on click
+// Captured text for Define/Explain/Search — snapshotRef / capturedText, not live DOM re-read on click
 assert.match(hook, /snapshotRef\.current|capturedText/)
 assert.match(hook, /selectedText: capturedText|selectedText: current\.selectedText/)
+assert.match(hook, /runSearch|'search'/)
 
 // Ephemeral UI wired in ChatContainer — not ChatContext history
 assert.match(container, /useMessageSelection/)
 assert.match(container, /SelectionActionBar/)
 assert.match(container, /SelectionInsightSheet/)
+assert.match(container, /runSearch/)
 assert.doesNotMatch(chatCtx, /requestSelectionInsight|SelectionInsight|selectedText/)
 assert.doesNotMatch(selectionApi, /memoryEvent/)
 assert.match(apiSelection, /result/)
@@ -100,9 +103,12 @@ assert.doesNotMatch(apiSelection, /memoryEvent/)
 // API path separate from chat
 assert.match(selectionApi, /\/api\/selection/)
 assert.match(apiSelection, /buildCoreResponsesCreateParams/)
-assert.doesNotMatch(apiSelection, /tools:\s*\[|buildImageGenerationTools|type:\s*['"]web_search['"]/)
+assert.match(apiSelection, /web_search/)
+assert.match(apiSelection, /operation === 'search'/)
+assert.doesNotMatch(apiSelection, /buildImageGenerationTools/)
 assert.equal((apiChat.match(/\.responses\.create\s*\(/g) || []).length, 1)
 assert.match(apiChat, /maxDuration:\s*120/)
+assert.match(apiChat, /web_search|buildWebSearchTools/)
 
 // MessageList passes selectionActive
 assert.match(list, /selectionActive/)
@@ -112,7 +118,13 @@ assert.match(hook, /Escape/)
 
 // No prefetch — only on tap
 assert.match(hook, /runOperation/)
-assert.match(bar, /onDefine|onExplain/)
+assert.match(bar, /onDefine|onExplain|onSearch/)
+
+// Citation Fonti in sheet for search
+assert.match(sheet, /CitationSources|citations/)
+assert.match(bubble, /CitationSources|citations/)
+assert.match(read('src/components/chat/CitationSources.tsx'), /noopener noreferrer/)
+assert.match(read('src/components/chat/CitationSources.tsx'), /Fonti/)
 
 // Mobile sheet must sit above sticky composer (z-index 90) and clear live composer height
 const sheetCss = read('src/components/chat/SelectionInsightSheet.css')

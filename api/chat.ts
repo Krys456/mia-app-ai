@@ -44,6 +44,13 @@ import {
   toChatApiImages,
 } from '../lib/server/image-generation.js'
 import { sealChatApiImages } from '../lib/server/image-artifact-proof.js'
+import {
+  buildWebSearchAppendix,
+  buildWebSearchTools,
+  detectExplicitWebSearchIntent,
+  extractUrlCitations,
+  modelSupportsWebSearchTool,
+} from '../lib/server/web-search.js'
 
 export const config = {
   runtime: 'nodejs',
@@ -254,6 +261,31 @@ function appendImageGenerationGuidance(instructions: string, model: string): str
   if (!modelSupportsImageGenerationTool(model)) return instructions
   const appendix = buildImageGenerationAppendix()
   return appendix ? `${instructions}\n\n${appendix}` : instructions
+}
+
+function appendWebSearchGuidance(instructions: string, model: string): string {
+  if (!modelSupportsWebSearchTool(model)) return instructions
+  const appendix = buildWebSearchAppendix()
+  return appendix ? `${instructions}\n\n${appendix}` : instructions
+}
+
+/**
+ * Build hosted tool list + optional tool_choice for this turn.
+ * Narrow explicit search / no-search detector only — not a freshness classifier.
+ */
+function resolveHostedToolsForTurn(model: string, lastUserCaption: string) {
+  const intent = detectExplicitWebSearchIntent(lastUserCaption)
+  const omitWebSearch = intent === 'forbid'
+  const webTools = omitWebSearch ? [] : buildWebSearchTools(model)
+  const imageTools = buildImageGenerationTools(model)
+  const tools = [...webTools, ...imageTools]
+  /** @type {unknown | undefined} */
+  let toolChoice: unknown | undefined
+  if (intent === 'require' && webTools.length > 0) {
+    // Force hosted web_search for explicit "Cerca sul web…" style requests.
+    toolChoice = { type: 'web_search' }
+  }
+  return { tools, toolChoice, intent }
 }
 
 function resolveChatModel(env: NodeJS.ProcessEnv = process.env): string {
@@ -529,21 +561,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           })
         : ''
 
-    const instructions = appendImageGenerationGuidance(
-      appendMemoryPackToInstructions(buildInstructions(body, messages), memoryPack),
+    const instructions = appendWebSearchGuidance(
+      appendImageGenerationGuidance(
+        appendMemoryPackToInstructions(buildInstructions(body, messages), memoryPack),
+        model,
+      ),
       model,
     )
     const OpenAI = (await import('openai')).default
     const client = new OpenAI({ apiKey })
 
-    const imageTools = buildImageGenerationTools(model)
+    const { tools: hostedTools, toolChoice } = resolveHostedToolsForTurn(
+      model,
+      lastUserCaption || '',
+    )
     const response = await client.responses.create(
       buildCoreResponsesCreateParams({
         model,
         instructions,
         maxOutputTokens: modality === 'voice' ? 700 : 4096,
         input: mapMessagesToResponsesInput(messages),
-        ...(imageTools.length ? { tools: imageTools } : {}),
+        ...(hostedTools.length ? { tools: hostedTools } : {}),
+        ...(toolChoice != null ? { toolChoice } : {}),
       }),
     )
 
@@ -551,6 +590,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Seal with HMAC proof so later history replay cannot spoof assistant images
     // merely by setting source=generated (and allows >1.5MB generated payloads).
     const images = sealChatApiImages(toChatApiImages(parsedImages.images))
+    const citations = extractUrlCitations(response)
     let content = response.output_text?.trim() || ''
 
     if (!content && images.length === 0) {
@@ -609,6 +649,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       model,
       memoryEvent,
       ...(images.length ? { images } : {}),
+      ...(citations.length ? { citations } : {}),
       ...(overviewHandled ? { memoryControl: 'overview' } : {}),
       // Echo session fields the client already sent — no cognitive engines.
       ...(body.learningSignals != null ? { learningSignals: body.learningSignals } : {}),
