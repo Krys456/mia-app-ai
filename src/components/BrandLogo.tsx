@@ -6,7 +6,7 @@ type BrandLogoProps = {
   variant?: 'full' | 'mark'
   className?: string
   priority?: boolean
-  /** hero = full fire detail; compact = header-scale exaggeration. */
+  /** hero = richer brush texture; compact = header/favicon silhouette. */
   size?: EnsoMarkSize
 }
 
@@ -25,7 +25,7 @@ export function BrandLogo({
       ? BRAND.accessibleProductName
       : `${BRAND.accessibleProductName} — ${BRAND.tagline}`
 
-  // Header mark defaults to compact so fire identity survives downscaling.
+  // Header defaults to compact (clear silhouette); HomeHero passes size="hero".
   const ensoSize: EnsoMarkSize = size ?? (variant === 'mark' ? 'compact' : 'hero')
 
   return (

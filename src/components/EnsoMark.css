@@ -9,24 +9,21 @@
   transition: fill 180ms var(--ease-out, ease-out);
 }
 
+.enso-mark__streak,
+.enso-mark__fleck {
+  pointer-events: none;
+  transition: fill 180ms var(--ease-out, ease-out);
+}
+
 .enso-mark__sun {
-  /* Flat vermilion disc — not a glowing orb */
+  /* Flat vermilion accent — not a glowing orb */
   filter: none;
 }
 
-.enso-mark__fire-ambient,
-.enso-mark__flame-outer,
-.enso-mark__flame-trail,
-.enso-mark__flame-body,
-.enso-mark__flame-bright,
-.enso-mark__flame-shell,
-.enso-mark__flame-core,
-.enso-mark__tongue {
-  pointer-events: none;
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .enso-mark__ink {
+  .enso-mark__ink,
+  .enso-mark__streak,
+  .enso-mark__fleck {
     transition: none;
   }
 }

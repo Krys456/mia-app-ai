@@ -15,7 +15,11 @@
   height: auto;
   aspect-ratio: 1;
   max-width: 5.5rem;
-  filter: drop-shadow(0 0 14px color-mix(in srgb, var(--accent) 12%, transparent));
+  filter: drop-shadow(0 1px 2px rgba(26, 22, 18, 0.1));
+}
+
+[data-theme='the-way-sumi'] .brand-logo--full {
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35));
 }
 
 .brand-logo--mark {
@@ -38,22 +42,20 @@
   }
 }
 
-/* The Way — Washi: warm ivory container, restrained vermilion ambient near fire */
+/* The Way — Washi: warm ivory container, soft paper depth only */
 [data-theme='the-way-washi'] .brand-logo--mark,
 [data-theme='the-way-washi'] .home-hero__mark.brand-logo--mark {
   background: var(--enso-container-bg, #fffaf3);
   box-shadow:
     0 1px 3px rgba(28, 25, 22, 0.06),
-    0 4px 14px rgba(28, 25, 22, 0.05),
-    0 0 18px color-mix(in srgb, var(--accent) 8%, transparent);
+    0 4px 14px rgba(28, 25, 22, 0.05);
 }
 
-/* The Way — Sumi: warm near-black container, soft fire glow */
+/* The Way — Sumi: warm near-black container, soft depth only */
 [data-theme='the-way-sumi'] .brand-logo--mark,
 [data-theme='the-way-sumi'] .home-hero__mark.brand-logo--mark {
   background: var(--enso-container-bg, #1a1613);
   box-shadow:
     0 0 0 1px color-mix(in srgb, var(--text) 6%, transparent),
-    0 2px 10px rgba(0, 0, 0, 0.35),
-    0 0 20px color-mix(in srgb, var(--accent) 16%, transparent);
+    0 2px 10px rgba(0, 0, 0, 0.35);
 }

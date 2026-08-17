@@ -96,25 +96,30 @@ assert.match(wordmark, /brand-wordmark__ai/)
 // Organic Ensō mark (visual refinement)
 const enso = read('src/components/EnsoMark.tsx')
 assert.match(enso, /enso-mark__ink/)
-assert.match(enso, /enso-mark__flame-core|enso-mark__fire/)
 assert.match(enso, /enso-mark__sun/)
 assert.match(enso, /--enso-ink/)
-assert.match(enso, /radialGradient/)
-assert.match(enso, /linearGradient/)
-assert.match(enso, /size === 'compact'|EnsoMarkSize/)
-assert.match(enso, /#FFFDF5|#FFE9A0/) // white/yellow-hot core
-assert.doesNotMatch(enso, /stopColor=\{?[`'"]var\(--enso-ink/)
+assert.match(enso, /size === 'compact'|EnsoMarkSize|compact/)
+assert.match(enso, /sumi-e|organic|brush/i)
+// Fireball must be fully removed
+assert.doesNotMatch(enso, /fireball|flame-core|flame-outer|ember|tongue|radialGradient|#FFFDF5|#FFC040/)
 assert.doesNotMatch(enso, /stroke-dasharray/)
 assert.match(brandLogo, /size=\{ensoSize\}|size\?:|EnsoMarkSize/)
 assert.match(hero, /size="hero"/)
+
+// Static mark has no fire remnants
+const markSvg = read('public/shinkaido-mark.svg')
+assert.doesNotMatch(markSvg, /fireball|radialGradient|#FFC040|#FFE9A0/)
+assert.match(markSvg, /#C23B2A/) // vermilion sun
 
 const themesSrc = read('src/lib/themes.ts')
 assert.match(themesSrc, /--enso-ink/)
 assert.match(themesSrc, /'#141210'/)
 assert.match(themesSrc, /'#F5F0E8'/)
 assert.match(themesSrc, /--enso-sun/)
-assert.match(themesSrc, /--enso-fire-ambient/)
+assert.doesNotMatch(themesSrc, /setProperty\('--enso-fire-ambient'/)
+assert.match(themesSrc, /removeProperty\('--enso-fire-ambient'\)/)
 assert.match(themesSrc, /theme\.id === 'the-way-washi'/)
+assert.doesNotMatch(read('src/components/BrandLogo.css'), /fire glow|near fire/)
 
 // D — internal storage key unchanged
 const chatContext = read('src/context/ChatContext.tsx')

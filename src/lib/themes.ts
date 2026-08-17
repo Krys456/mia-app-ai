@@ -422,11 +422,11 @@ export function applyThemeToDocument(theme: ThemeDefinition) {
     if (theme.id === 'the-way-washi') {
       root.style.setProperty('--enso-ink', '#141210')
       root.style.setProperty('--enso-sun', accent)
-      root.style.setProperty('--enso-fire-ambient', rgba(accent, 0.2))
+      root.style.removeProperty('--enso-fire-ambient')
       root.style.setProperty('--enso-container-bg', '#FFFAF3')
       root.style.setProperty(
         '--enso-container-shadow',
-        `0 1px 3px ${rgba('#1C1916', 0.06)}, 0 4px 14px ${rgba('#1C1916', 0.05)}, 0 0 18px ${rgba(accent, 0.08)}`,
+        `0 1px 3px ${rgba('#1C1916', 0.06)}, 0 4px 14px ${rgba('#1C1916', 0.05)}`,
       )
       root.style.setProperty(
         '--the-way-page-atmosphere',
@@ -435,11 +435,11 @@ export function applyThemeToDocument(theme: ThemeDefinition) {
     } else {
       root.style.setProperty('--enso-ink', '#F5F0E8')
       root.style.setProperty('--enso-sun', accent)
-      root.style.setProperty('--enso-fire-ambient', rgba(accent, 0.28))
+      root.style.removeProperty('--enso-fire-ambient')
       root.style.setProperty('--enso-container-bg', '#1A1613')
       root.style.setProperty(
         '--enso-container-shadow',
-        `0 0 0 1px ${rgba('#F5F0E8', 0.06)}, 0 2px 10px ${rgba('#000000', 0.35)}, 0 0 20px ${rgba(accent, 0.16)}`,
+        `0 0 0 1px ${rgba('#F5F0E8', 0.06)}, 0 2px 10px ${rgba('#000000', 0.35)}`,
       )
       root.style.setProperty(
         '--the-way-page-atmosphere',
@@ -471,7 +471,7 @@ export function applyThemeToDocument(theme: ThemeDefinition) {
     // Classic / custom themes: Ensō follows strong text so the mark stays readable.
     root.style.setProperty('--enso-ink', colorScheme === 'light' ? '#141210' : '#F5F0E8')
     root.style.setProperty('--enso-sun', accent)
-    root.style.setProperty('--enso-fire-ambient', rgba(accent, colorScheme === 'light' ? 0.1 : 0.18))
+    root.style.removeProperty('--enso-fire-ambient')
     root.style.removeProperty('--enso-container-bg')
     root.style.removeProperty('--enso-container-shadow')
     root.style.removeProperty('--the-way-page-atmosphere')
