@@ -1,5 +1,5 @@
 /**
- * #298C — Small reusable client API error shape (status / code / requestId / retryAfter).
+ * #298C#298D — Small reusable client API error shape + Italian recovery copy.
  */
 
 export type ParsedApiErrorBody = {
@@ -38,6 +38,48 @@ export function shortRequestRef(requestId: string | null | undefined): string | 
   return compact || null
 }
 
+export const USER_NETWORK_ERROR =
+  'Connessione non disponibile. Controlla la rete e riprova.'
+
+export const USER_SESSION_PREPARING =
+  'ShinkAIdo sta preparando la sessione. Attendi un momento e riprova.'
+
+export const USER_SESSION_FAILED =
+  "Non è stato possibile preparare la sessione. Ricarica l'app e riprova."
+
+/**
+ * Map known machine codes / English server strings to Italian user copy.
+ * Preserves unknown safe messages. Never invents a requestId.
+ */
+export function userFacingApiMessage(input: {
+  code?: string | null
+  message?: string | null
+  retryAfter?: number | null
+}): string {
+  const code = typeof input.code === 'string' ? input.code.trim() : ''
+  const raw = typeof input.message === 'string' ? input.message.trim() : ''
+  const retryAfter =
+    typeof input.retryAfter === 'number' && Number.isFinite(input.retryAfter)
+      ? Math.max(0, Math.ceil(input.retryAfter))
+      : 0
+
+  if (code === 'rate_limit_exceeded' || raw === 'rate_limit_exceeded') {
+    if (retryAfter > 0 && retryAfter <= 3600) {
+      return `Hai effettuato molte richieste in poco tempo. Riprova tra circa ${retryAfter} secondi.`
+    }
+    return 'Hai effettuato molte richieste in poco tempo. Riprova tra poco.'
+  }
+
+  if (
+    code === 'rate_limit_unavailable' ||
+    /rate limit service unavailable/i.test(raw)
+  ) {
+    return 'Il servizio è temporaneamente occupato. Riprova tra poco.'
+  }
+
+  return raw || 'Richiesta non riuscita.'
+}
+
 /**
  * Parse JSON error body + X-Request-Id header.
  * Never trusts client-spoofed IDs from the request — only response values.
@@ -58,9 +100,8 @@ export function parseApiErrorResponse(
     data && typeof data.requestId === 'string' ? data.requestId.trim() : ''
   const requestId = bodyId || headerId || undefined
 
-  const code = data && typeof data.code === 'string' && data.code.trim() ? data.code.trim() : undefined
-  const message =
-    (data && typeof data.error === 'string' && data.error.trim()) || fallbackMessage
+  const code =
+    data && typeof data.code === 'string' && data.code.trim() ? data.code.trim() : undefined
 
   let retryAfter: number | undefined
   if (data && typeof data.retryAfter === 'number' && Number.isFinite(data.retryAfter)) {
@@ -69,6 +110,15 @@ export function parseApiErrorResponse(
     const ra = response.headers.get('Retry-After')
     if (ra && /^\d+$/.test(ra.trim())) retryAfter = Number(ra.trim())
   }
+
+  const rawMessage =
+    (data && typeof data.error === 'string' && data.error.trim()) || fallbackMessage
+
+  const message = userFacingApiMessage({
+    code,
+    message: rawMessage,
+    retryAfter,
+  })
 
   return {
     message,

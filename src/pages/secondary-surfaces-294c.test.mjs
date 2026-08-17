@@ -86,7 +86,7 @@ assert.match(memoryApi, /listMemories|\/api\/memories/)
 // —— #298B Privacy surface ——
 const privacyTsx = read('src/pages/PrivacyData.tsx')
 const privacyCopy = read('src/lib/privacyCopy.ts')
-assert.match(privacyTsx, /Privacy & Data/)
+assert.match(privacyTsx, /Privacy e dati/)
 assert.match(privacyCopy, /OpenAI/)
 assert.match(settingsTsx, /Privacy/)
 assert.match(appTsx, /PrivacyData/)

@@ -44,8 +44,8 @@ function ThemeCard({
         <span className="theme-card__meta">
           <span className="theme-card__name">
             {theme.name}
-            {theme.official ? <span className="theme-badge">Official</span> : null}
-            {active ? <span className="theme-badge theme-badge--active">Active</span> : null}
+            {theme.official ? <span className="theme-badge">Ufficiale</span> : null}
+            {active ? <span className="theme-badge theme-badge--active">Attivo</span> : null}
           </span>
           <span className="theme-card__desc">{theme.description}</span>
         </span>
@@ -54,12 +54,12 @@ function ThemeCard({
         <div className="theme-card__actions">
           {onEdit ? (
             <button type="button" className="theme-mini-btn" onClick={onEdit}>
-              Edit
+              Modifica
             </button>
           ) : null}
           {onDelete ? (
             <button type="button" className="theme-mini-btn theme-mini-btn--danger" onClick={onDelete}>
-              Delete
+              Elimina
             </button>
           ) : null}
         </div>
@@ -128,12 +128,12 @@ function CustomThemeEditor({
   return (
     <div className="theme-creator">
       <div className="theme-creator__head">
-        <h3>{mode === 'edit' ? 'Edit custom theme' : 'Create custom theme'}</h3>
+        <h3>{mode === 'edit' ? 'Modifica tema' : 'Crea tema personalizzato'}</h3>
         <p>Pick your colors — changes preview live across the app.</p>
       </div>
 
       <label className="field" htmlFor={nameId}>
-        <span className="field__label">Theme name</span>
+        <span className="field__label">Nome del tema</span>
         <input
           id={nameId}
           type="text"
@@ -155,8 +155,8 @@ function CustomThemeEditor({
             }))
           }
         >
-          <option value="dark">Dark</option>
-          <option value="light">Light</option>
+          <option value="dark">Scuro</option>
+          <option value="light">Chiaro</option>
         </select>
         <span className="field__hint">Suggested from background: {inferredScheme}</span>
       </label>
@@ -196,7 +196,7 @@ function CustomThemeEditor({
 
       <div className="theme-creator__actions">
         <button type="button" className="theme-btn theme-btn--ghost" onClick={onCancel}>
-          Cancel
+          Annulla
         </button>
         <button
           type="button"
@@ -212,7 +212,7 @@ function CustomThemeEditor({
             })
           }
         >
-          Save theme
+          Salva tema
         </button>
       </div>
     </div>
@@ -280,21 +280,21 @@ export function ThemeSettings({ active = true }: { active?: boolean }) {
   return (
     <section className="theme-settings" aria-labelledby="theme-settings-title">
       <div className="theme-settings__intro">
-        <h3 id="theme-settings-title">Theme</h3>
+        <h3 id="theme-settings-title">Tema</h3>
         <p>
-          Official {BRAND.accessibleProductName} look is{' '}
-          <strong>The Way — Washi</strong> (with Sumi for dark). Classic and custom palettes remain
-          available.
+          L’aspetto ufficiale di {BRAND.accessibleProductName} è{' '}
+          <strong>The Way — Washi</strong> (con Sumi per il buio). Restano disponibili le palette
+          Classic e i temi personalizzati.
         </p>
       </div>
 
       <div className="theme-settings__toolbar">
         <button type="button" className="theme-btn theme-btn--primary" onClick={openCreator}>
-          Create custom theme
+          Crea tema personalizzato
         </button>
         {activeTheme.id !== OFFICIAL_THEME_ID ? (
           <button type="button" className="theme-btn theme-btn--ghost" onClick={resetToOfficial}>
-            Reset to The Way — Washi
+            Ripristina The Way — Washi
           </button>
         ) : null}
       </div>
@@ -332,10 +332,10 @@ export function ThemeSettings({ active = true }: { active?: boolean }) {
       </div>
 
       <div className="theme-section">
-        <h4 className="theme-section__title">Your custom themes</h4>
+        <h4 className="theme-section__title">I tuoi temi</h4>
         {customThemes.length === 0 ? (
           <p className="theme-empty">
-            No custom themes yet. Start from the active palette and personalize every color.
+            Nessun tema personalizzato. Parti dalla palette attiva e regola i colori.
           </p>
         ) : (
           <div className="theme-list">
@@ -347,7 +347,7 @@ export function ThemeSettings({ active = true }: { active?: boolean }) {
                 onSelect={() => setActiveTheme(theme.id)}
                 onEdit={() => openEditor(theme)}
                 onDelete={() => {
-                  if (window.confirm(`Delete “${theme.name}”?`)) deleteCustomTheme(theme.id)
+                  if (window.confirm(`Eliminare “${theme.name}”?`)) deleteCustomTheme(theme.id)
                 }}
               />
             ))}

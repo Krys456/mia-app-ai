@@ -66,7 +66,7 @@ export async function uploadPdfAttachment(
   const auth = await resolveChatAuthForRequest()
   if (!auth.authorization) {
     throw new PdfUploadError(
-      'Sessione non pronta. Ricarica la pagina e riprova.',
+      'Non è stato possibile preparare la sessione. Ricarica l\'app e riprova.',
       'unauthorized',
       401,
     )

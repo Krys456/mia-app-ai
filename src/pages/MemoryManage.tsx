@@ -233,9 +233,10 @@ export function MemoryManage({ onBack }: MemoryManageProps) {
 
       <div className="memory-manage__body scroll-surface">
         <p className="memory-manage__lead">
-          Facts ShinkAIdo stores for you. Review, edit, or delete any memory. Memory OFF stops
-          automatic learning and everyday recall but does not erase these rows — use delete or
-          Delete all. New Chat clears only the on-screen conversation.
+          Fatti che ShinkAIdo conserva per te. Puoi rivedere, modificare o eliminare ogni ricordo.
+          Memoria OFF interrompe l’apprendimento automatico e il richiamo quotidiano, ma non cancella
+          queste voci — usa elimina o Cancella tutto. Nuova chat chiude solo la conversazione sullo
+          schermo.
         </p>
 
         <label className="memory-manage__search">

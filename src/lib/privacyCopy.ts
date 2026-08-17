@@ -1,5 +1,5 @@
 /**
- * #298B — Privacy & Data disclosure copy + beta contact config.
+ * #298B/#298D — Privacy & Data disclosure copy + beta contact config (Italian UI).
  *
  * Product transparency for closed beta — not legal certification.
  */
@@ -24,31 +24,41 @@ export function resolvePrivacyContactEmail(
 
 export const PRIVACY_DISCLOSURE = {
   aiProcessing:
-    'Messages, and any images or documents you attach, are sent through our servers to an AI provider (OpenAI) to generate replies.',
+    'I messaggi e le eventuali immagini o documenti che alleghi passano dai nostri server a un provider di AI (OpenAI) per generare le risposte.',
   files:
-    'Images are processed for the reply. Documents are uploaded to the AI file store with a short configured lifetime (~24 hours).',
+    'Le immagini vengono elaborate per la risposta. I documenti vengono caricati nello store file dell’AI con una durata configurata breve (~24 ore).',
   webSearch:
-    'When live information is needed, a web search tool may run via the AI provider; source links can appear as Fonti.',
+    'Quando servono informazioni aggiornate, può essere usata una ricerca web tramite il provider di AI; i link alle fonti possono comparire come Fonti.',
   memory:
-    'When Memory is enabled, ShinkAIdo may store useful long-term information in your account so it can be used in later conversations.',
+    'Quando la Memoria è attiva, ShinkAIdo può salvare informazioni utili a lungo termine nel tuo account per usarle nelle conversazioni successive.',
   anonymousSession:
-    'ShinkAIdo currently uses a silent anonymous account on this device. Clearing site data can create a new identity. Memory associated with the previous identity is not automatically transferred.',
+    'ShinkAIdo usa un account anonimo silenzioso su questo browser. Cancellare i dati del sito può creare una nuova identità. La Memoria collegata all’identità precedente non viene trasferita automaticamente.',
+  sharedDevice:
+    'Questa beta usa una sessione anonima salvata su questo browser. Evita di condividere lo stesso profilo browser con un altro tester.',
   sensitiveWarning:
-    'Do not store passwords, payment details, API keys, or other highly sensitive secrets in Memory.',
+    'Non salvare in Memoria password, dati di pagamento, chiavi API o altri segreti sensibili.',
   processors:
-    'Major services used by ShinkAIdo: OpenAI (AI processing), Supabase (auth and Memory storage), Vercel (hosting), Upstash (rate limiting).',
+    'Servizi principali usati da ShinkAIdo: OpenAI (elaborazione AI), Supabase (autenticazione e Memoria), Vercel (hosting), Upstash (limite di richieste).',
   newChatVsMemory:
-    'New Chat clears the conversation on screen. Delete Memory removes durable stored memories. Account deletion is not available yet.',
+    'Nuova chat chiude la conversazione sullo schermo. Eliminare la Memoria rimuove i ricordi salvati. L’eliminazione dell’account non è ancora disponibile.',
+  highStakes:
+    'ShinkAIdo può commettere errori. Per decisioni mediche, legali, finanziarie o altre decisioni critiche, verifica sempre con fonti o professionisti qualificati.',
+  conversationSession:
+    'La conversazione sullo schermo resta nella sessione corrente del browser: un aggiornamento della pagina può cancellarla. La Memoria è separata e persistente.',
 } as const
 
 export function buildBetaContactLine(email = resolvePrivacyContactEmail()): string {
-  return `Closed beta: questions or deletion requests — contact ${email}.`
+  return `Closed Beta: domande o richieste di cancellazione — contatta ${email}.`
 }
 
-/** Settings Memory ON/OFF short notes (#298B corrected semantics). */
+/** Settings Memory ON/OFF short notes (#298B/#298D). */
 export const MEMORY_SETTINGS_COPY = {
-  on: 'When Memory is on, ShinkAIdo may save useful long-term facts about you and use them in later chats.',
-  off: 'When Memory is off, ShinkAIdo stops automatic learning and everyday recall. Existing memories are kept until you delete them.',
+  on: 'Con la Memoria attiva, ShinkAIdo può salvare fatti utili a lungo termine su di te e usarli nelle chat successive.',
+  off: 'Con la Memoria disattivata, ShinkAIdo interrompe l’apprendimento automatico e il richiamo quotidiano. I ricordi già salvati restano finché non li elimini.',
   delete:
-    'Deleting Memory removes stored memories from your account. The conversation currently on screen is separate — use New Chat to clear it.',
+    'Eliminare la Memoria rimuove i ricordi salvati dal tuo account. La conversazione sullo schermo è separata — usa Nuova chat per chiuderla.',
 } as const
+
+/** #298D — calm empty-state guidance (not an onboarding tour). */
+export const FIRST_RUN_HINT =
+  'Scrivi liberamente qui sotto. Memoria, privacy e altre opzioni sono disponibili nelle Impostazioni.'
