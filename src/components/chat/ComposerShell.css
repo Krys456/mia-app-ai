@@ -173,6 +173,11 @@
   display: inline-flex;
   align-items: center;
   align-self: flex-end;
+  gap: 0.35rem;
+}
+
+.composer--voice .composer__input {
+  opacity: 0.72;
 }
 
 .composer {

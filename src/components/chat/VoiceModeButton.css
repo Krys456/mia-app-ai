@@ -1,0 +1,85 @@
+.voice-mode-btn {
+  appearance: none;
+  flex-shrink: 0;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: max(var(--btn-send, 2.75rem), var(--touch-min));
+  height: max(var(--btn-send, 2.75rem), var(--touch-min));
+  margin: 0;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
+  border-radius: var(--radius-md, var(--radius-sm));
+  background: color-mix(in srgb, var(--surface-2) 70%, transparent);
+  color: var(--text);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    color var(--duration, 160ms) var(--ease-out, ease),
+    border-color var(--duration, 160ms) var(--ease-out, ease),
+    background var(--duration, 160ms) var(--ease-out, ease),
+    box-shadow var(--duration, 160ms) var(--ease-out, ease),
+    transform var(--duration-press, 100ms) var(--ease-out, ease);
+}
+
+.voice-mode-btn:hover:not(:disabled),
+.voice-mode-btn:focus-visible {
+  outline: none;
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface-2));
+}
+
+.voice-mode-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.voice-mode-btn:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.voice-mode-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.voice-mode-btn__glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Active Voice Mode — subtle blue → violet → pink brand accent */
+.voice-mode-btn--active {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--theme-accent-3, var(--accent-pink)) 40%, var(--accent));
+  background: var(--gradient-brand-soft);
+  box-shadow: var(--glow-brand);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .voice-mode-btn--active {
+    animation: voice-mode-btn-glow 1.8s var(--ease-out, ease) infinite;
+  }
+}
+
+@keyframes voice-mode-btn-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 28%, transparent),
+      0 0 18px color-mix(in srgb, var(--theme-accent-4, var(--accent-pink)) 12%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 16%, transparent),
+      0 0 22px color-mix(in srgb, var(--theme-accent-3, #e20dc4) 16%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .voice-mode-btn--active {
+    animation: none;
+  }
+}

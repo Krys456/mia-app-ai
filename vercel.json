@@ -13,6 +13,10 @@
       "includeFiles": "lib/server/**",
       "maxDuration": 60
     },
+    "api/tts.ts": {
+      "includeFiles": "lib/server/**",
+      "maxDuration": 30
+    },
     "api/files.ts": {
       "includeFiles": "lib/server/**",
       "maxDuration": 60
