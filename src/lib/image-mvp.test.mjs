@@ -88,8 +88,11 @@ assert.match(types, /source\?: 'generated' \| 'edited' \| 'uploaded'/)
 assert.match(chatApi, /sanitizeChatApiImages|ChatApiGeneratedImage/)
 assert.match(chatContext, /replyImages|assistantAttachments/)
 assert.match(chatContext, /source === 'generated' \|\| a\.source === 'edited'/)
+assert.match(chatContext, /artifactProof/)
 assert.match(apiChat, /buildImageGenerationTools|parseImageGenerationCalls/)
-assert.match(serverImage, /requireGeneratedSource|assistant_image_forbidden/)
+assert.match(apiChat, /sealChatApiImages/)
+assert.match(serverImage, /requireArtifactProof|assistant_image_forbidden/)
+assert.match(serverImage, /SERVER_MAX_GENERATED_DATA_URL_CHARS/)
 
 // No raw dataUrl as text content path
 assert.doesNotMatch(bubble, /\{att\.dataUrl\}/)

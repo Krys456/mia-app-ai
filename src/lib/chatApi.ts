@@ -19,9 +19,10 @@ export interface ChatApiImageAttachment {
   type: 'image'
   mimeType: 'image/jpeg' | 'image/png' | 'image/webp' | string
   dataUrl: string
-  /** #289 — assistant replay requires generated|edited. */
+  /** #289 — assistant replay requires generated|edited + artifactProof. */
   source?: 'generated' | 'edited' | 'uploaded'
   id?: string
+  artifactProof?: string
 }
 
 export interface ChatApiFileAttachment {
@@ -114,6 +115,8 @@ export interface ChatApiGeneratedImage {
   mimeType: string
   dataUrl: string
   source: 'generated' | 'edited'
+  /** HMAC proof — required for assistant history replay. */
+  artifactProof: string
   providerCallId?: string
   width?: number
   height?: number
@@ -312,7 +315,10 @@ function sanitizeChatApiImages(raw: unknown): ChatApiGeneratedImage[] {
     const dataUrl = typeof img.dataUrl === 'string' ? img.dataUrl.trim() : ''
     const mimeType = typeof img.mimeType === 'string' ? img.mimeType.trim().toLowerCase() : ''
     const source = img.source === 'edited' ? 'edited' : img.source === 'generated' ? 'generated' : null
+    const artifactProof =
+      typeof img.artifactProof === 'string' ? img.artifactProof.trim() : ''
     if (!source) continue
+    if (!artifactProof || !/^[a-f0-9]{64}$/i.test(artifactProof)) continue
     if (!/^data:image\/(jpeg|png|webp);base64,/i.test(dataUrl)) continue
     if (mimeType !== 'image/jpeg' && mimeType !== 'image/png' && mimeType !== 'image/webp') continue
     const id =
@@ -320,7 +326,13 @@ function sanitizeChatApiImages(raw: unknown): ChatApiGeneratedImage[] {
         ? img.id.trim().slice(0, 120)
         : `gen-${out.length + 1}`
     /** @type {ChatApiGeneratedImage} */
-    const entry: ChatApiGeneratedImage = { id, mimeType, dataUrl, source }
+    const entry: ChatApiGeneratedImage = {
+      id,
+      mimeType,
+      dataUrl,
+      source,
+      artifactProof,
+    }
     if (typeof img.providerCallId === 'string' && img.providerCallId.trim()) {
       entry.providerCallId = img.providerCallId.trim().slice(0, 120)
     }

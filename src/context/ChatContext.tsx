@@ -445,6 +445,7 @@ function toApiMessages(messages: ChatMessage[]): ChatApiMessage[] {
           (a): a is Extract<ChatAttachment, { kind: 'image' }> =>
             a.kind === 'image' &&
             Boolean(a.dataUrl) &&
+            Boolean(a.artifactProof) &&
             (a.source === 'generated' || a.source === 'edited'),
         )
         if (imageAtts.length && remainingImages > 0) {
@@ -458,6 +459,7 @@ function toApiMessages(messages: ChatMessage[]): ChatApiMessage[] {
               dataUrl: a.dataUrl,
               source: a.source as 'generated' | 'edited',
               id: a.id,
+              artifactProof: a.artifactProof as string,
             })),
           }
         }
@@ -700,7 +702,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
                 img.mimeType === 'image/webp'
                   ? img.mimeType
                   : null
-              if (!mime || !img.dataUrl) return []
+              if (!mime || !img.dataUrl || !img.artifactProof) return []
               return [
                 {
                   id: img.id || uid(),
@@ -709,6 +711,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
                   dataUrl: img.dataUrl,
                   previewUrl: img.dataUrl,
                   source: img.source,
+                  artifactProof: img.artifactProof,
                   ...(typeof img.width === 'number' ? { width: img.width } : {}),
                   ...(typeof img.height === 'number' ? { height: img.height } : {}),
                 },

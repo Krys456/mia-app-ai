@@ -43,6 +43,7 @@ import {
   parseImageGenerationCalls,
   toChatApiImages,
 } from '../lib/server/image-generation.js'
+import { sealChatApiImages } from '../lib/server/image-artifact-proof.js'
 
 export const config = {
   runtime: 'nodejs',
@@ -547,7 +548,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     )
 
     const parsedImages = parseImageGenerationCalls(response)
-    const images = toChatApiImages(parsedImages.images)
+    // Seal with HMAC proof so later history replay cannot spoof assistant images
+    // merely by setting source=generated (and allows >1.5MB generated payloads).
+    const images = sealChatApiImages(toChatApiImages(parsedImages.images))
     let content = response.output_text?.trim() || ''
 
     if (!content && images.length === 0) {

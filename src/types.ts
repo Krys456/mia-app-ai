@@ -66,10 +66,13 @@ export interface ChatImageAttachment {
   height?: number
   /**
    * #289 session-only provenance.
-   * `generated` / `edited` = trusted server tool result (assistant replay).
+   * `generated` / `edited` = server tool result (assistant replay).
    * `uploaded` = user-provided (default when omitted).
+   * Not a security boundary alone — replay requires artifactProof.
    */
   source?: 'generated' | 'edited' | 'uploaded'
+  /** Server HMAC proof required for assistant history replay (#289). */
+  artifactProof?: string
 }
 
 /** Supported document MIME union (#275 PDF + #276 TXT/DOCX). */
