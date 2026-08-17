@@ -273,7 +273,7 @@ export function Vision({ onBack, onHandoffToChat }: VisionProps) {
     setError(null)
     setStatus(
       action === 'analyze'
-        ? 'Invio a LAIfe…'
+        ? 'Invio a ShinkAIdo…'
         : action === 'read'
           ? 'Lettura testo…'
           : 'Spiegazione…',
@@ -312,7 +312,7 @@ export function Vision({ onBack, onHandoffToChat }: VisionProps) {
 
       <div className="laife-vision__body scroll-surface">
         <p className="laife-vision__lead">
-          Inquadra o scegli una foto. LAIfe la analizza nella chat normale — stesso Core.
+          Inquadra o scegli una foto. ShinkAIdo la analizza nella chat normale — stesso Core.
         </p>
 
         <div className="sr-only" aria-live="polite" aria-atomic="true">

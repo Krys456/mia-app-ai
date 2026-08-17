@@ -1,58 +1,57 @@
 :root {
-  /* Default semantic tokens = official LAIfe Theme (overridden at runtime by ThemeProvider) */
-  --theme-bg: #000000;
-  --theme-surface: #111111;
-  --theme-surface-2: #222222;
-  --theme-text: #ffffff;
-  --theme-text-muted: #b4b4bf;
-  --theme-accent: #2b98ff;
-  --theme-accent-2: #1c84e9;
-  --theme-accent-3: #e20dc4;
-  --theme-accent-4: #ef08a1;
+  /* Default semantic tokens = The Way — Washi (overridden at runtime by ThemeProvider) */
+  --theme-bg: #F6F1E8;
+  --theme-surface: #FFFCF7;
+  --theme-surface-2: #EFE8DC;
+  --theme-text: #1C1916;
+  --theme-text-muted: #6E675F;
+  --theme-accent: #C23B2A;
+  --theme-accent-2: #9E2F22;
+  --theme-accent-3: #D45A4A;
+  --theme-accent-4: #A67C52;
 
   --bg: var(--theme-bg);
-  --surface: rgba(17, 17, 17, 0.82);
+  --surface: color-mix(in srgb, var(--theme-surface) 82%, transparent);
   --surface-solid: var(--theme-surface);
   --surface-2: var(--theme-surface-2);
-  --border: rgba(255, 255, 255, 0.08);
-  --border-glow: color-mix(in srgb, var(--theme-accent) 28%, transparent);
+  --surface-elevated: var(--theme-surface-2);
+  --border: rgba(0, 0, 0, 0.12);
+  --border-glow: color-mix(in srgb, var(--theme-accent) 16%, transparent);
   --text: var(--theme-text);
   --text-muted: var(--theme-text-muted);
   --accent: var(--theme-accent);
-  --accent-pink: var(--theme-accent-4);
+  --accent-hover: var(--theme-accent-2);
+  --brand-ai: var(--theme-accent);
+  --accent-pink: var(--theme-accent-3);
   --accent-soft: color-mix(in srgb, var(--theme-accent) 70%, white);
-  --on-accent: #000000;
-  --strong-text: #ffffff;
-  --code-bg: rgba(255, 255, 255, 0.06);
-  --shadow-lift: rgba(0, 0, 0, 0.45);
-  --scrim: rgba(0, 0, 0, 0.55);
-  --atmosphere-1: rgba(43, 152, 255, 0.18);
-  --atmosphere-2: rgba(239, 8, 161, 0.15);
-  --atmosphere-3: rgba(226, 13, 196, 0.11);
+  --on-accent: #ffffff;
+  --strong-text: #0a0a0a;
+  --code-bg: rgba(0, 0, 0, 0.06);
+  --shadow-lift: rgba(15, 23, 42, 0.12);
+  --scrim: rgba(20, 24, 32, 0.35);
+  --atmosphere-1: rgba(194, 59, 42, 0.06);
+  --atmosphere-2: rgba(166, 124, 82, 0.05);
+  --atmosphere-3: rgba(212, 90, 74, 0.04);
   --bubble-user-bg: linear-gradient(
     135deg,
-    rgba(43, 152, 255, 0.16),
-    rgba(226, 13, 196, 0.14) 45%,
-    rgba(239, 8, 161, 0.16)
+    rgba(194, 59, 42, 0.12),
+    rgba(158, 47, 34, 0.08)
   );
 
   --gradient-brand: linear-gradient(
     115deg,
     var(--theme-accent) 0%,
-    var(--theme-accent-2) 26%,
-    var(--theme-accent-3) 62%,
-    var(--theme-accent-4) 100%
+    var(--theme-accent-2) 55%,
+    var(--theme-accent-3) 100%
   );
   --gradient-brand-soft: linear-gradient(
     135deg,
-    color-mix(in srgb, var(--theme-accent) 20%, transparent),
-    color-mix(in srgb, var(--theme-accent-3) 12%, transparent),
-    color-mix(in srgb, var(--theme-accent-4) 16%, transparent)
+    color-mix(in srgb, var(--theme-accent) 14%, transparent),
+    color-mix(in srgb, var(--theme-accent-2) 8%, transparent)
   );
-  --glow-cyan: 0 0 24px color-mix(in srgb, var(--theme-accent) 32%, transparent);
-  --glow-pink: 0 0 24px color-mix(in srgb, var(--theme-accent-4) 26%, transparent);
-  --glow-brand: 0 0 28px color-mix(in srgb, var(--theme-accent) 24%, transparent),
-    0 0 48px color-mix(in srgb, var(--theme-accent-4) 14%, transparent);
+  --glow-cyan: 0 0 14px color-mix(in srgb, var(--theme-accent) 14%, transparent);
+  --glow-pink: 0 0 14px color-mix(in srgb, var(--theme-accent-3) 10%, transparent);
+  --glow-brand: 0 0 16px color-mix(in srgb, var(--theme-accent) 12%, transparent);
 
   --danger: #ff6b84;
   --danger-soft: color-mix(in srgb, #ff6b84 14%, transparent);
@@ -139,6 +138,13 @@ body {
     radial-gradient(640px 420px at 50% 110%, var(--atmosphere-3), transparent 55%),
     var(--bg);
   transition: background-color var(--duration) var(--ease-out), color var(--duration) var(--ease-out);
+}
+
+html[data-theme='the-way-washi'] body,
+html[data-theme='the-way-sumi'] body {
+  background:
+    var(--the-way-page-atmosphere, none),
+    var(--bg);
 }
 
 button,

@@ -152,7 +152,7 @@ function MessageBubbleComponent({
       data-role={message.role}
       data-plain-text={isAssistant && !isError ? message.content : undefined}
       className={`bubble bubble--${message.role}${isError ? ' bubble--error' : ''}${actionsPinned ? ' bubble--actions-open' : ''}`}
-      aria-label={message.role === 'user' ? 'Tu' : isError ? 'Errore' : 'LAIfe'}
+      aria-label={message.role === 'user' ? 'Tu' : isError ? 'Errore' : 'ShinkAIdo'}
       role={isError ? 'alert' : undefined}
       tabIndex={actionsEnabled || (showActions && hasVisibleBody) ? 0 : undefined}
       onPointerDown={onPointerDown}
@@ -170,7 +170,7 @@ function MessageBubbleComponent({
             >
               <span className="bubble__avatar-mark">L</span>
             </span>
-            <span className="bubble__label">{isError ? 'Errore' : 'LAIfe'}</span>
+            <span className="bubble__label">{isError ? 'Errore' : 'ShinkAIdo'}</span>
           </div>
           {!isError && message.memoryEvent ? (
             <MemoryMessageIndicator event={message.memoryEvent} />

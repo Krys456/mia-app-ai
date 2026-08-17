@@ -234,7 +234,7 @@ export function SettingsDrawer({ onOpenMemory }: SettingsDrawerProps) {
             </div>
 
             <p className="settings-note settings-note--tight">
-              Se attiva, LAIfe impara in automatico fatti utili a lungo termine. Nessun pulsante in
+              Se attiva, ShinkAIdo impara in automatico fatti utili a lungo termine. Nessun pulsante in
               chat: tutto avviene in background.
             </p>
 
@@ -270,7 +270,7 @@ export function SettingsDrawer({ onOpenMemory }: SettingsDrawerProps) {
                 type="text"
                 value={p.displayName}
                 onChange={(e) => set('displayName', e.target.value)}
-                placeholder="Come dovrebbe chiamarti LAIfe?"
+                placeholder="Come dovrebbe chiamarti ShinkAIdo?"
                 autoComplete="nickname"
               />
             </label>
@@ -292,7 +292,7 @@ export function SettingsDrawer({ onOpenMemory }: SettingsDrawerProps) {
               </select>
             </label>
             <p className="settings-note" style={{ marginTop: '-0.35rem' }}>
-              LAIfe non usa una personalità fissa: seleziona il comportamento a ogni turno. Questa
+              ShinkAIdo non usa una personalità fissa: seleziona il comportamento a ogni turno. Questa
               scelta è solo un bias leggero.
             </p>
 
@@ -325,14 +325,14 @@ export function SettingsDrawer({ onOpenMemory }: SettingsDrawerProps) {
                 rows={4}
                 value={p.customInstructions}
                 onChange={(e) => set('customInstructions', e.target.value)}
-                placeholder="Cose che LAIfe dovrebbe sempre tenere a mente…"
+                placeholder="Cose che ShinkAIdo dovrebbe sempre tenere a mente…"
               />
             </label>
           </section>
 
           <p className="settings-note">
             Tema e preferenze assistente si salvano su questo dispositivo. La memoria si può
-            spegnere in qualsiasi momento; se è OFF, LAIfe non legge né scrive memorie in chat.
+            spegnere in qualsiasi momento; se è OFF, ShinkAIdo non legge né scrive memorie in chat.
           </p>
         </div>
       </aside>
