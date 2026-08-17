@@ -8,7 +8,7 @@
   height: max(var(--btn-send), var(--touch-min));
   margin: 0;
   padding: 0;
-  border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--border));
+  border: 1px solid color-mix(in srgb, var(--border) 90%, transparent);
   border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--surface-2) 70%, transparent);
   color: var(--text);
@@ -23,7 +23,7 @@
 }
 
 .composer-mic:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
+  border-color: color-mix(in srgb, var(--accent) 36%, var(--border));
   color: var(--accent);
 }
 
@@ -73,8 +73,16 @@
 
 @media (prefers-reduced-motion: no-preference) {
   .composer-mic--listening {
-    box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 35%, transparent);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 28%, transparent);
     animation: composer-mic-pulse 1.6s var(--ease-out) infinite;
+  }
+
+  [data-theme='the-way-washi'] .composer-mic--listening,
+  [data-theme='the-way-sumi'] .composer-mic--listening {
+    animation: none;
+    box-shadow: none;
+    outline: 2px solid color-mix(in srgb, var(--accent) 40%, transparent);
+    outline-offset: 1px;
   }
 }
 

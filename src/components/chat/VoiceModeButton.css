@@ -24,6 +24,12 @@
     transform var(--duration-press, 100ms) var(--ease-out, ease);
 }
 
+/* Idle Voice entry stays quieter than primary send; distinct from dictation mic */
+[data-theme='the-way-washi'] .voice-mode-btn:not(.voice-mode-btn--active),
+[data-theme='the-way-sumi'] .voice-mode-btn:not(.voice-mode-btn--active) {
+  border-color: color-mix(in srgb, var(--border) 88%, transparent);
+}
+
 .voice-mode-btn:hover:not(:disabled),
 .voice-mode-btn:focus-visible {
   outline: none;

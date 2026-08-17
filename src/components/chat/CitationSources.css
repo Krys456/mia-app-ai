@@ -130,3 +130,12 @@
 [data-theme='the-way-sumi'] .citation-sources__summary-count {
   color: color-mix(in srgb, var(--accent) 65%, var(--text-muted));
 }
+
+/* Compact Fonti inside overlays — same family, denser reading */
+.citation-sources--compact .citation-sources__list {
+  gap: 0.22rem;
+}
+
+.citation-sources--compact .citation-sources__link {
+  padding: 0.22rem 0.3rem;
+}
