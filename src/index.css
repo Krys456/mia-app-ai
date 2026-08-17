@@ -147,6 +147,13 @@ html[data-theme='the-way-sumi'] body {
     var(--bg);
 }
 
+/* #294D — readable danger on warm ivory (not light-pink-only) */
+html[data-theme='the-way-washi'] {
+  --danger-text: #a12d3f;
+  --danger-border: color-mix(in srgb, #a12d3f 36%, var(--border));
+  --danger-soft: color-mix(in srgb, #a12d3f 9%, transparent);
+}
+
 button,
 input,
 textarea,

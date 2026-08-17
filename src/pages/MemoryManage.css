@@ -70,13 +70,14 @@
 }
 
 [data-theme='the-way-washi'] .memory-manage__list {
-  background: color-mix(in srgb, var(--surface-solid) 92%, #fff8ee);
+  background: color-mix(in srgb, var(--surface-solid) 94%, #fff8ee);
   border-color: color-mix(in srgb, var(--accent) 10%, var(--border));
 }
 
 [data-theme='the-way-sumi'] .memory-manage__list {
-  background: color-mix(in srgb, var(--surface-solid) 90%, #0c0a09);
-  border-color: color-mix(in srgb, var(--text) 10%, transparent);
+  background: color-mix(in srgb, var(--surface-solid) 92%, #12100e);
+  border-color: color-mix(in srgb, var(--text) 14%, transparent);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--text) 5%, transparent);
 }
 
 .memory-manage__list > li + li {
@@ -140,7 +141,7 @@
   font-weight: 600;
   letter-spacing: 0.05em;
   text-transform: lowercase;
-  color: color-mix(in srgb, var(--text) 48%, var(--accent));
+  color: var(--text-muted);
 }
 
 .memory-manage__footer {
@@ -266,7 +267,7 @@
   border: 0;
   background: var(--scrim);
   cursor: pointer;
-  animation: memory-scrim-in 200ms var(--ease-out);
+  animation: memory-scrim-in var(--duration) var(--ease-out);
 }
 
 [data-theme='the-way-washi'] .memory-panel-scrim {
@@ -303,7 +304,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.9rem;
-  animation: memory-panel-in 260ms var(--ease-out);
+  animation: memory-panel-in var(--duration-enter) var(--ease-out);
 }
 
 [data-theme='the-way-washi'] .memory-panel {
@@ -354,7 +355,7 @@
 
 .memory-panel__head h2 {
   margin: 0;
-  font-size: 1.15rem;
+  font-size: 1.1rem;
   font-weight: 600;
   letter-spacing: -0.01em;
   color: var(--text);

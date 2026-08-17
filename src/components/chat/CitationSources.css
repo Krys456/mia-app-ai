@@ -123,12 +123,9 @@
   border-top-color: color-mix(in srgb, var(--border) 70%, transparent);
 }
 
-[data-theme='the-way-washi'] .citation-sources__summary-count {
-  color: color-mix(in srgb, var(--accent) 70%, var(--text-muted));
-}
-
+[data-theme='the-way-washi'] .citation-sources__summary-count,
 [data-theme='the-way-sumi'] .citation-sources__summary-count {
-  color: color-mix(in srgb, var(--accent) 65%, var(--text-muted));
+  color: var(--text-muted);
 }
 
 /* Compact Fonti inside overlays — same family, denser reading */

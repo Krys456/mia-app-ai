@@ -24,7 +24,8 @@
     radial-gradient(circle at 70% 45%, var(--atmosphere-2), transparent 50%);
   filter: blur(18px);
   pointer-events: none;
-  animation: glow-pulse 5.5s ease-in-out infinite;
+  /* #294D — static atmosphere; no continuous decorative pulse */
+  opacity: 0.88;
 }
 
 [data-theme='the-way-washi'] .home-hero__glow,
@@ -34,7 +35,6 @@
   inset: 8% 5% auto;
   height: 62%;
   opacity: 0.95;
-  animation: none;
 }
 
 .home-hero__stage {
@@ -151,18 +151,6 @@
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
-  }
-}
-
-@keyframes glow-pulse {
-  0%,
-  100% {
-    opacity: 0.75;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 1;
-    transform: scale(1.04);
   }
 }
 

@@ -70,8 +70,8 @@
     transform: scale(1);
   }
   50% {
-    box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 14%, transparent);
-    transform: scale(1.03);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 10%, transparent);
+    transform: scale(1.02);
   }
 }
 
@@ -102,10 +102,17 @@
 [data-theme='the-way-sumi'] .bubble__label {
   letter-spacing: 0.08em;
   font-weight: 550;
-  color: color-mix(in srgb, var(--text) 52%, var(--accent));
+  color: var(--text-muted);
   background: none;
   -webkit-background-clip: unset;
   background-clip: unset;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-theme='the-way-washi'] .bubble__avatar--pulse,
+  [data-theme='the-way-sumi'] .bubble__avatar--pulse {
+    animation: bubble-avatar-pulse 2.2s infinite var(--ease-out);
+  }
 }
 
 .bubble--assistant .bubble__body {
