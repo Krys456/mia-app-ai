@@ -14,7 +14,11 @@
   filter: none;
 }
 
-.enso-mark__fire-ambient {
+.enso-mark__fire-ambient,
+.enso-mark__fire-glow,
+.enso-mark__fire-secondary,
+.enso-mark__fire,
+.enso-mark__ember {
   pointer-events: none;
 }
 

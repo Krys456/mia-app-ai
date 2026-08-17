@@ -1,11 +1,13 @@
 import { BRAND } from '../lib/brand'
-import { EnsoMark } from './EnsoMark'
+import { EnsoMark, type EnsoMarkSize } from './EnsoMark'
 import './BrandLogo.css'
 
 type BrandLogoProps = {
   variant?: 'full' | 'mark'
   className?: string
   priority?: boolean
+  /** hero = full fire detail; compact = header-scale exaggeration. */
+  size?: EnsoMarkSize
 }
 
 /**
@@ -16,11 +18,15 @@ export function BrandLogo({
   variant = 'full',
   className = '',
   priority: _priority = false,
+  size,
 }: BrandLogoProps) {
   const label =
     variant === 'mark'
       ? BRAND.accessibleProductName
       : `${BRAND.accessibleProductName} — ${BRAND.tagline}`
+
+  // Header mark defaults to compact so fire identity survives downscaling.
+  const ensoSize: EnsoMarkSize = size ?? (variant === 'mark' ? 'compact' : 'hero')
 
   return (
     <span
@@ -28,7 +34,7 @@ export function BrandLogo({
       role="img"
       aria-label={label}
     >
-      <EnsoMark decorative className="brand-logo__enso" />
+      <EnsoMark decorative size={ensoSize} className="brand-logo__enso" />
     </span>
   )
 }

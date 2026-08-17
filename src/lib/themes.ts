@@ -422,7 +422,7 @@ export function applyThemeToDocument(theme: ThemeDefinition) {
     if (theme.id === 'the-way-washi') {
       root.style.setProperty('--enso-ink', '#141210')
       root.style.setProperty('--enso-sun', accent)
-      root.style.setProperty('--enso-fire-ambient', rgba(accent, 0.12))
+      root.style.setProperty('--enso-fire-ambient', rgba(accent, 0.2))
       root.style.setProperty('--enso-container-bg', '#FFFAF3')
       root.style.setProperty(
         '--enso-container-shadow',
@@ -435,7 +435,7 @@ export function applyThemeToDocument(theme: ThemeDefinition) {
     } else {
       root.style.setProperty('--enso-ink', '#F5F0E8')
       root.style.setProperty('--enso-sun', accent)
-      root.style.setProperty('--enso-fire-ambient', rgba(accent, 0.22))
+      root.style.setProperty('--enso-fire-ambient', rgba(accent, 0.28))
       root.style.setProperty('--enso-container-bg', '#1A1613')
       root.style.setProperty(
         '--enso-container-shadow',

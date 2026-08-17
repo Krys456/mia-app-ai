@@ -8,7 +8,7 @@ export function HomeHero() {
     <section className="home-hero" aria-label={`Benvenuto in ${BRAND.accessibleProductName}`}>
       <div className="home-hero__glow" aria-hidden="true" />
       <div className="home-hero__stage">
-        <BrandLogo variant="mark" className="home-hero__mark" priority />
+        <BrandLogo variant="mark" size="hero" className="home-hero__mark" priority />
         <BrandWordmark emphasizeAi showTagline size="lg" className="home-hero__wordmark" />
         <p className="home-hero__lead">{BRAND.emptyPromptIt}</p>
       </div>
