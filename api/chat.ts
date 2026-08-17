@@ -18,6 +18,7 @@ import { applyCors, sendCorsPreflight, sendJson } from '../lib/server/http.js'
 import { buildCoreContinuityAppendix } from '../lib/server/conversation-continuity.js'
 import { buildCoreExpressionAppendix } from '../lib/server/conversation-expression.js'
 import { buildCoreProactiveIntelligenceAppendix } from '../lib/server/proactive-conversation.js'
+import { buildCoreConversationalUnderstandingAppendix } from '../lib/server/conversational-understanding.js'
 import { LAIFE_BASE_SYSTEM_PROMPT } from '../lib/server/laife-base-system-prompt.js'
 import { buildCoreLanguageAppendix } from '../lib/server/language-awareness.js'
 import { buildReferenceContextAppendix } from '../lib/server/core-reference-context.js'
@@ -191,15 +192,23 @@ function buildInstructions(body: ChatApiRequestBody, messages: ChatApiMessage[] 
     parts.push(languageAppendix)
   }
 
-  // Ephemeral CONTINUITY appendix (#263) — after LANGUAGE, before Reference / Working State / Memory.
+  // Ephemeral CONTINUITY appendix (#263) — after LANGUAGE, before Understanding / Reference / WS / Memory.
   // No resolver / second LLM / DB; model reasons from thread + this contract.
   const continuityAppendix = buildCoreContinuityAppendix()
   if (continuityAppendix) {
     parts.push(continuityAppendix)
   }
 
+  // Ephemeral CONVERSATIONAL UNDERSTANDING appendix (#286) — after CONTINUITY, before Reference.
+  // Model-led multi-part / ambiguity / distant context / corrections / thread>Memory.
+  // No classifiers, no new state, no LANGUAGE changes, no second LLM.
+  const understandingAppendix = buildCoreConversationalUnderstandingAppendix()
+  if (understandingAppendix) {
+    parts.push(understandingAppendix)
+  }
+
   // Temporary Reference Context (#279) — ordered-option + artifact evidence hints.
-  // After CONTINUITY, before Working State. Request-scoped only; keep attachments
+  // After CONTINUITY / Understanding, before Working State. Request-scoped only; keep attachments
   // so evidenceAvailable reflects multimodal caps honestly. No persistence / second LLM.
   const referenceContextAppendix = buildReferenceContextAppendix(messages)
   if (referenceContextAppendix) {
