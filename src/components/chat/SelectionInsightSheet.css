@@ -1,11 +1,15 @@
 .selection-insight {
   position: fixed;
   inset: 0;
-  z-index: 50;
+  /* Above sticky .composer-dock (z-index: 90) and MessageActions. */
+  z-index: 110;
   display: flex;
   align-items: flex-end;
   justify-content: center;
   pointer-events: none;
+  /* Keep sheet clear of the fixed/sticky composer + home-indicator. */
+  padding-bottom: calc(var(--composer-h, 5.75rem) + 0.5rem + var(--safe-bottom, 0px));
+  box-sizing: border-box;
 }
 
 .selection-insight__backdrop {
@@ -22,16 +26,18 @@
 .selection-insight__sheet {
   position: relative;
   z-index: 1;
+  display: flex;
+  flex-direction: column;
   width: min(100%, 34rem);
-  max-height: min(48vh, 22rem);
-  margin: 0 0.75rem 0.75rem;
+  max-height: min(62dvh, 28rem);
+  margin: 0 0.75rem;
   padding: 0.9rem 1rem 1rem;
   border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
   border-radius: calc(var(--radius-sm) + 4px);
   background: var(--surface);
   box-shadow: 0 -8px 32px color-mix(in srgb, #000 22%, transparent);
   box-sizing: border-box;
-  overflow: auto;
+  overflow: hidden;
   pointer-events: auto;
 }
 
@@ -41,6 +47,7 @@
   justify-content: space-between;
   gap: 0.75rem;
   margin-bottom: 0.65rem;
+  flex-shrink: 0;
 }
 
 .selection-insight__op {
@@ -80,9 +87,15 @@
 }
 
 .selection-insight__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   font-size: 0.95rem;
   line-height: 1.45;
   color: var(--text);
+  overscroll-behavior: contain;
 }
 
 .selection-insight__loading,
@@ -116,6 +129,8 @@
 @media (min-width: 768px) {
   .selection-insight {
     align-items: center;
+    /* Desktop: centered card — composer offset not needed for readability. */
+    padding-bottom: 0;
   }
 
   .selection-insight__sheet {

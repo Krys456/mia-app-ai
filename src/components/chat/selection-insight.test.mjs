@@ -70,4 +70,16 @@ assert.match(hook, /Escape/)
 assert.match(hook, /runOperation/)
 assert.match(bar, /onDefine|onExplain/)
 
+// Mobile sheet must sit above sticky composer (z-index 90) and clear composer height
+const sheetCss = read('src/components/chat/SelectionInsightSheet.css')
+const composerCss = read('src/components/chat/ComposerShell.css')
+assert.match(composerCss, /\.composer-dock[\s\S]*z-index:\s*90/)
+assert.match(sheetCss, /z-index:\s*110/)
+assert.match(sheetCss, /--composer-h/)
+assert.match(sheetCss, /safe-bottom|safe-area-inset-bottom/)
+assert.match(sheetCss, /padding-bottom:\s*calc\(var\(--composer-h/)
+assert.match(sheetCss, /selection-insight__body[\s\S]*overflow-y:\s*auto/)
+assert.match(sheetCss, /max-height:\s*min\(62dvh/)
+assert.match(sheetCss, /flex-shrink:\s*0/)
+
 console.log('ok: #290 selection client wiring')
