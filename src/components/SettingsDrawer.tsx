@@ -2,6 +2,7 @@ import { useEffect, useId, useRef } from 'react'
 import { useChat } from '../context/ChatContext'
 import { useTheme } from '../context/ThemeContext'
 import { isMemoryManageUiEnabled } from '../lib/memoryManageUi'
+import { isRemindersUiEnabled } from '../lib/remindersUi'
 import {
   MEMORY_SETTINGS_COPY,
   PRIVACY_DISCLOSURE,
@@ -19,9 +20,10 @@ const FOCUSABLE =
 interface SettingsDrawerProps {
   onOpenMemory?: () => void
   onOpenPrivacy?: () => void
+  onOpenReminders?: () => void
 }
 
-export function SettingsDrawer({ onOpenMemory, onOpenPrivacy }: SettingsDrawerProps) {
+export function SettingsDrawer({ onOpenMemory, onOpenPrivacy, onOpenReminders }: SettingsDrawerProps) {
   const {
     settingsOpen,
     closeSettings,
@@ -260,6 +262,19 @@ export function SettingsDrawer({ onOpenMemory, onOpenPrivacy }: SettingsDrawerPr
                 }}
               >
                 Gestisci Memoria
+              </button>
+            ) : null}
+
+            {isRemindersUiEnabled() ? (
+              <button
+                type="button"
+                className="settings-link-btn"
+                onClick={() => {
+                  closeSettings()
+                  onOpenReminders?.()
+                }}
+              >
+                Gestisci promemoria
               </button>
             ) : null}
           </section>

@@ -2,14 +2,17 @@ import { useRef, useState } from 'react'
 import { Header } from './components/Header'
 import { ChatContainer } from './components/chat'
 import { SettingsDrawer } from './components/SettingsDrawer'
+import { DueReminderHost } from './components/DueReminderHost'
 import { MemoryManage } from './pages/MemoryManage'
 import { PrivacyData } from './pages/PrivacyData'
+import { ReminderManage } from './pages/ReminderManage'
 import { Vision } from './pages/Vision'
 import { ChatProvider, useChat } from './context/ChatContext'
 import { ThemeProvider } from './context/ThemeContext'
 import { useAuthBootstrap } from './hooks/useAuthBootstrap'
 import { useVisualViewportHeight } from './hooks/useVisualViewportHeight'
 import { isMemoryManageUiEnabled } from './lib/memoryManageUi'
+import { isRemindersUiEnabled } from './lib/remindersUi'
 import type { AppView } from './types'
 import './App.css'
 
@@ -20,6 +23,7 @@ function AppShell() {
   const memoryReturnToSettingsRef = useRef(false)
   /** When true, leaving Privacy should reopen Settings. */
   const privacyReturnToSettingsRef = useRef(false)
+  const remindersReturnToSettingsRef = useRef(false)
   const { openSettings, closeSettings } = useChat()
   useVisualViewportHeight()
   // Phase 1A step 1 — silent anonymous session; does not gate chat.
@@ -45,6 +49,12 @@ function AppShell() {
     navigate('privacy')
   }
 
+  const openReminders = (fromSettings = true) => {
+    if (!isRemindersUiEnabled()) return
+    remindersReturnToSettingsRef.current = fromSettings
+    navigate('reminders')
+  }
+
   const backFromMemory = () => {
     const reopenSettings = memoryReturnToSettingsRef.current
     memoryReturnToSettingsRef.current = false
@@ -59,9 +69,23 @@ function AppShell() {
     if (reopenSettings) openSettings()
   }
 
+  const backFromReminders = () => {
+    const reopenSettings = remindersReturnToSettingsRef.current
+    remindersReturnToSettingsRef.current = false
+    navigate('chat')
+    if (reopenSettings) openSettings()
+  }
+
   const backFromVision = () => {
     const previous = previousViewRef.current
-    navigate(previous === 'vision' || previous === 'privacy' || previous === 'memory' ? 'chat' : previous)
+    navigate(
+      previous === 'vision' ||
+        previous === 'privacy' ||
+        previous === 'memory' ||
+        previous === 'reminders'
+        ? 'chat'
+        : previous,
+    )
   }
 
   const handoffVisionToChat = () => {
@@ -93,6 +117,12 @@ function AppShell() {
         </div>
       ) : null}
 
+      {view === 'reminders' && isRemindersUiEnabled() ? (
+        <div className="app-view" key="reminders">
+          <ReminderManage onBack={backFromReminders} />
+        </div>
+      ) : null}
+
       {view === 'vision' ? (
         <div className="app-view app-view--vision" key="vision">
           <Vision onBack={backFromVision} onHandoffToChat={handoffVisionToChat} />
@@ -102,7 +132,11 @@ function AppShell() {
       <SettingsDrawer
         onOpenMemory={() => openMemoryManage(true)}
         onOpenPrivacy={() => openPrivacy(true)}
+        onOpenReminders={() => openReminders(true)}
       />
+
+      {/* In-app / next-open reminder delivery (#303A) — no push. */}
+      <DueReminderHost />
     </div>
   )
 }

@@ -1,0 +1,117 @@
+.due-reminder {
+  position: fixed;
+  inset: 0;
+  z-index: 220;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 1rem;
+  padding-bottom: calc(1rem + var(--safe-bottom));
+  background: color-mix(in srgb, var(--bg) 35%, transparent);
+  box-sizing: border-box;
+}
+
+.due-reminder--toast {
+  inset: auto 0 0;
+  align-items: stretch;
+  background: transparent;
+  pointer-events: none;
+  padding: 0 var(--page-gutter) calc(0.75rem + var(--safe-bottom));
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.due-reminder__panel {
+  width: min(100%, 28rem);
+  padding: 1.1rem 1.15rem 1rem;
+  border-radius: calc(var(--radius-sm) + 2px);
+  border: 1px solid color-mix(in srgb, var(--border) 90%, transparent);
+  background: color-mix(in srgb, var(--surface-solid) 94%, var(--bg));
+  box-shadow: none;
+}
+
+[data-theme='the-way-washi'] .due-reminder__panel {
+  background: color-mix(in srgb, var(--surface-solid) 90%, #fff8ee);
+  border-color: color-mix(in srgb, var(--accent) 12%, var(--border));
+}
+
+[data-theme='the-way-sumi'] .due-reminder__panel {
+  background: color-mix(in srgb, var(--surface-solid) 92%, #0c0a09);
+  border-color: color-mix(in srgb, var(--text) 10%, transparent);
+}
+
+.due-reminder__eyebrow {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.due-reminder__title {
+  margin: 0.35rem 0 0;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.due-reminder__when,
+.due-reminder__body,
+.due-reminder__note {
+  margin: 0.45rem 0 0;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.due-reminder__error {
+  margin: 0.55rem 0 0;
+  color: var(--danger-text, var(--danger));
+  font-size: 0.86rem;
+}
+
+.due-reminder__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.95rem;
+}
+
+.due-reminder__primary,
+.due-reminder__ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--touch-min);
+  padding: 0.65rem 0.95rem;
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.due-reminder__primary {
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--text);
+}
+
+.due-reminder__ghost {
+  border: 1px solid color-mix(in srgb, var(--border) 92%, transparent);
+  background: color-mix(in srgb, var(--surface-2) 45%, transparent);
+  color: var(--text);
+}
+
+.due-reminder__primary:disabled,
+.due-reminder__ghost:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+@media (min-width: 768px) {
+  .due-reminder {
+    align-items: center;
+  }
+}
