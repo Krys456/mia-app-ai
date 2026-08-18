@@ -1,0 +1,15 @@
+# Supabase project configuration (repo-managed).
+#
+# #303C — reminder-push-dispatch is a machine-to-machine cron worker. It must be
+# reachable with ONLY its own application secret:
+#
+#   POST /functions/v1/reminder-push-dispatch
+#   Authorization: Bearer <REMINDER_PUSH_WORKER_SECRET>
+#   (or) x-reminder-push-secret: <REMINDER_PUSH_WORKER_SECRET>
+#
+# Platform JWT verification is therefore disabled for THIS function only, so the
+# gateway does not require a Supabase user/anon JWT before the function's own
+# REMINDER_PUSH_WORKER_SECRET check runs. The function still fail-closes:
+# missing/wrong worker secret -> 401. Do NOT disable verify_jwt globally.
+[functions.reminder-push-dispatch]
+verify_jwt = false
