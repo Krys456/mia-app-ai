@@ -7,6 +7,8 @@ interface ImportMetaEnv {
   readonly VITE_PRIVACY_CONTACT_EMAIL?: string
   readonly VITE_MEMORY_MANAGE_UI?: string
   readonly VITE_REMINDERS_ENABLED?: string
+  readonly VITE_VAPID_PUBLIC_KEY?: string
+  readonly VITE_PUSH_ENABLED?: string
   readonly VITE_BUILD_ID?: string
 }
 

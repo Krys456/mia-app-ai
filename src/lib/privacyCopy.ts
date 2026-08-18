@@ -32,15 +32,17 @@ export const PRIVACY_DISCLOSURE = {
   memory:
     'Quando la Memoria è attiva, ShinkAIdo può salvare informazioni utili a lungo termine nel tuo account per usarle nelle conversazioni successive.',
   reminders:
-    'I promemoria che confermi vengono salvati nel tuo account ShinkAIdo (titolo, dettaglio e orario). In questa fase vengono mostrati in app o al prossimo accesso: non vengono ancora inviate notifiche push in background.',
+    'I promemoria che confermi vengono salvati nel tuo account ShinkAIdo (titolo, dettaglio e orario). Restano disponibili in app e al prossimo accesso. Le notifiche push sono opzionali.',
+  pushNotifications:
+    'Se attivi le notifiche, ShinkAIdo chiede il permesso del browser e salva una sottoscrizione push (endpoint e chiavi tecniche del browser) collegata al tuo account anonimo su questo dispositivo. Il titolo del promemoria può comparire sulla schermata di blocco. La consegna passa dai servizi push della piattaforma (ad es. Chrome/FCM). Puoi disattivare le notifiche in Impostazioni; i promemoria in app restano disponibili. Su un altro telefono o dopo aver cancellato i dati del sito l’identità anonima può cambiare e le sottoscrizioni precedenti non si trasferiscono automaticamente.',
   anonymousSession:
-    'ShinkAIdo usa un account anonimo silenzioso su questo browser. Cancellare i dati del sito può creare una nuova identità. La Memoria collegata all’identità precedente non viene trasferita automaticamente.',
+    'ShinkAIdo usa un account anonimo silenzioso su questo browser. Cancellare i dati del sito può creare una nuova identità. La Memoria e i promemoria collegati all’identità precedente non vengono trasferiti automaticamente.',
   sharedDevice:
     'Questa beta usa una sessione anonima salvata su questo browser. Evita di condividere lo stesso profilo browser con un altro tester.',
   sensitiveWarning:
-    'Non salvare in Memoria password, dati di pagamento, chiavi API o altri segreti sensibili.',
+    'Non salvare in Memoria password, dati di pagamento, chiavi API o altri segreti sensibili. Evita titoli di promemoria troppo sensibili se attivi le notifiche sulla schermata di blocco.',
   processors:
-    'Servizi principali usati da ShinkAIdo: OpenAI (elaborazione AI), Supabase (autenticazione, Memoria e promemoria), Vercel (hosting), Upstash (limite di richieste).',
+    'Servizi principali usati da ShinkAIdo: OpenAI (elaborazione AI), Supabase (autenticazione, Memoria, promemoria e sottoscrizioni push), Vercel (hosting), Upstash (limite di richieste), e i servizi push del browser/sistema operativo per le notifiche opzionali.',
   newChatVsMemory:
     'Nuova chat chiude la conversazione sullo schermo. Eliminare la Memoria rimuove i ricordi salvati. L’eliminazione dell’account non è ancora disponibile.',
   highStakes:
