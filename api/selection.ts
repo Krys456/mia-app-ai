@@ -77,7 +77,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const sanitized = sanitizeSelectionRequest(body)
-  if (!sanitized.ok) {
+  // Explicit discriminant: Vercel backends typecheck does not narrow after `!sanitized.ok`.
+  if (sanitized.ok === false) {
     return sendJson(res, 400, { error: sanitized.error, code: sanitized.code }, req)
   }
 
