@@ -117,14 +117,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const { user_id: _ignoredUserId, userId: _ignoredUserIdCamel, ...safeBody } = body
 
       const validated = validateReminderCreateInput(safeBody)
-      if (!validated.ok || !validated.data) {
+      if (validated.ok === false) {
         return sendJson(
           res,
           400,
           {
             error: 'Validation failed',
             code: 'validation_failed',
-            errors: validated.errors ?? { _: 'validation_failed' },
+            errors: validated.errors,
           },
           req,
         )

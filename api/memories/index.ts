@@ -210,7 +210,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const validated = validateMemoryCreate(body)
-    if (!validated.ok) {
+    // Discriminated-union narrowing: use explicit `ok === false` (not `!ok`).
+    // Vercel's serverless TS check does not reliably narrow on `!validated.ok`.
+    if (validated.ok === false) {
       console.error('[api/memories] validation failed', validated.errors)
       return sendJson(res, 400, {
         success: false,

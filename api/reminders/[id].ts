@@ -125,14 +125,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       const validated = validateReminderUpdateInput(safeBody, { status: current.status })
-      if (!validated.ok || !validated.data) {
+      if (validated.ok === false) {
         return sendJson(
           res,
           400,
           {
             error: 'Validation failed',
             code: 'validation_failed',
-            errors: validated.errors ?? { _: 'validation_failed' },
+            errors: validated.errors,
           },
           req,
         )
