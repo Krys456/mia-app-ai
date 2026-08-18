@@ -1,3 +1,4 @@
+import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { requireMemoryApiUser } from '../../lib/server/memory-api-auth.js'
 import {
   cancelReminder,
@@ -24,7 +25,11 @@ export const config = {
 
 const SAFE_REMINDER_ERROR = 'Impossibile gestire i promemoria in questo momento. Riprova tra poco.'
 
-async function enforceReminderRateLimit(req, res, userId) {
+async function enforceReminderRateLimit(
+  req: VercelRequest,
+  res: VercelResponse,
+  userId: string,
+): Promise<boolean> {
   const limited = await consumeRateLimit({ userId, bucket: 'reminders' })
   if ('unavailable' in limited && limited.unavailable) {
     if (limited.retryAfter > 0) {
@@ -61,24 +66,14 @@ async function enforceReminderRateLimit(req, res, userId) {
   return true
 }
 
-function getId(req) {
+function getId(req: VercelRequest): string {
   const raw = req.query.id
   if (typeof raw === 'string') return raw.trim()
   if (Array.isArray(raw) && typeof raw[0] === 'string') return raw[0].trim()
   return ''
 }
 
-function querySoftCancel(req) {
-  const raw = req.query.cancel
-  if (raw === '1' || raw === 'true') return true
-  if (Array.isArray(raw) && (raw[0] === '1' || raw[0] === 'true')) return true
-  const hard = req.query.hard
-  if (hard === '1' || hard === 'true') return false
-  if (Array.isArray(hard) && (hard[0] === '1' || hard[0] === 'true')) return false
-  return true
-}
-
-export default async function handler(req, res) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     applyCors(res, req)
 
@@ -114,13 +109,14 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'PUT' || req.method === 'PATCH') {
-      let body
+      let body: Record<string, unknown>
       try {
         body = parseJsonBody(req)
       } catch {
         return sendJson(res, 400, { error: 'Invalid JSON body', code: 'invalid_json' }, req)
       }
 
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { user_id: _u, userId: _uc, id: _id, ...safeBody } = body
 
       const current = await getReminderById(id, scope)
@@ -191,4 +187,15 @@ export default async function handler(req, res) {
       req,
     )
   }
+}
+
+function querySoftCancel(req: VercelRequest): boolean {
+  const raw = req.query.cancel
+  if (raw === '1' || raw === 'true') return true
+  if (Array.isArray(raw) && (raw[0] === '1' || raw[0] === 'true')) return true
+  // Default DELETE = soft cancel for #303A (safer). Hard delete via ?hard=1
+  const hard = req.query.hard
+  if (hard === '1' || hard === 'true') return false
+  if (Array.isArray(hard) && (hard[0] === '1' || hard[0] === 'true')) return false
+  return true
 }
