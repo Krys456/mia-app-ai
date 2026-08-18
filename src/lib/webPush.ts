@@ -3,15 +3,16 @@
  */
 
 import { resolveChatAuthForRequest } from './chatAuth'
+import {
+  resolvePushToggleModel,
+  type NotificationPermissionState,
+  type PushSupportState,
+  type PushToggleStatusCode,
+  type PushToggleVisual,
+} from './pushToggleModel'
 
-export type PushSupportState =
-  | 'unsupported'
-  | 'unsupported_ios_safari_tab'
-  | 'missing_vapid'
-  | 'disabled'
-  | 'supported'
-
-export type NotificationPermissionState = NotificationPermission | 'unsupported'
+export type { NotificationPermissionState, PushSupportState, PushToggleStatusCode, PushToggleVisual }
+export { resolvePushToggleModel }
 
 function viteEnv(): Record<string, unknown> {
   try {
@@ -26,6 +27,10 @@ export function getVapidPublicKey(): string {
   return typeof env.VITE_VAPID_PUBLIC_KEY === 'string' ? env.VITE_VAPID_PUBLIC_KEY.trim() : ''
 }
 
+/**
+ * Build/config feature gate (VITE_PUSH_ENABLED + public VAPID).
+ * Separate from the user's per-device notification toggle / subscription.
+ */
 export function isClientPushFlagEnabled(): boolean {
   const env = viteEnv()
   const raw = typeof env.VITE_PUSH_ENABLED === 'string' ? env.VITE_PUSH_ENABLED.trim() : ''
@@ -38,10 +43,13 @@ export function isClientPushFlagEnabled(): boolean {
 export function isLikelyIosSafariTab(): boolean {
   if (typeof navigator === 'undefined') return false
   const ua = navigator.userAgent || ''
-  const iOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+  const iOS =
+    /iPad|iPhone|iPod/.test(ua) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
   if (!iOS) return false
   const standalone =
-    ('standalone' in navigator && Boolean((navigator as Navigator & { standalone?: boolean }).standalone)) ||
+    ('standalone' in navigator &&
+      Boolean((navigator as Navigator & { standalone?: boolean }).standalone)) ||
     (typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches)
   return !standalone
 }
@@ -79,6 +87,22 @@ export async function registerPushServiceWorker(): Promise<ServiceWorkerRegistra
   return navigator.serviceWorker.register('/sw.js', { scope: '/' })
 }
 
+/** Current browser PushSubscription, if any (does not imply server row). */
+export async function getLocalPushSubscription(): Promise<PushSubscription | null> {
+  if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return null
+  try {
+    const reg = await navigator.serviceWorker.getRegistration('/')
+    const sub = await reg?.pushManager.getSubscription()
+    return sub ?? null
+  } catch {
+    return null
+  }
+}
+
+export async function hasActiveLocalPushSubscription(): Promise<boolean> {
+  return Boolean(await getLocalPushSubscription())
+}
+
 async function remindersPushFetch(
   method: string,
   body?: Record<string, unknown>,
@@ -102,8 +126,30 @@ async function remindersPushFetch(
   })
 }
 
+async function persistSubscription(
+  subscription: PushSubscription,
+): Promise<{ ok: boolean; code: string }> {
+  const json = subscription.toJSON()
+  const endpoint = json.endpoint || ''
+  const p256dh = json.keys?.p256dh || ''
+  const auth = json.keys?.auth || ''
+  if (!endpoint || !p256dh || !auth) {
+    return { ok: false, code: 'subscription_incomplete' }
+  }
+  const res = await remindersPushFetch('POST', {
+    action: 'push_subscribe',
+    endpoint,
+    keys: { p256dh, auth },
+    user_agent: typeof navigator !== 'undefined' ? navigator.userAgent.slice(0, 512) : null,
+  })
+  if (!res.ok) return { ok: false, code: `subscribe_api_${res.status}` }
+  return { ok: true, code: 'subscribed' }
+}
+
 /**
- * Request permission only after explicit user action, then subscribe + persist.
+ * Enable Push from an explicit user gesture (Settings toggle / opt-in).
+ * Requests Notification.permission only when current state is "default".
+ * If already "granted", subscribes without prompting again.
  */
 export async function enableWebPushFromUserGesture(): Promise<{
   ok: boolean
@@ -115,7 +161,17 @@ export async function enableWebPushFromUserGesture(): Promise<{
     return { ok: false, code: support }
   }
 
-  const permission = await Notification.requestPermission()
+  const current = getNotificationPermission()
+  if (current === 'denied' || current === 'unsupported') {
+    return { ok: false, code: 'permission_denied', permission: current }
+  }
+
+  let permission: NotificationPermissionState = current
+  if (current === 'default') {
+    permission = await Notification.requestPermission()
+  }
+  // If already "granted", do not call requestPermission again.
+
   if (permission !== 'granted') {
     return { ok: false, code: 'permission_denied', permission }
   }
@@ -123,32 +179,28 @@ export async function enableWebPushFromUserGesture(): Promise<{
   const reg = await registerPushServiceWorker()
   await navigator.serviceWorker.ready
 
+  const existing = await reg.pushManager.getSubscription()
   const key = getVapidPublicKey()
-  const subscription = await reg.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey: urlBase64ToUint8Array(key) as BufferSource,
-  })
+  const subscription =
+    existing ||
+    (await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(key) as BufferSource,
+    }))
 
-  const json = subscription.toJSON()
-  const endpoint = json.endpoint || ''
-  const p256dh = json.keys?.p256dh || ''
-  const auth = json.keys?.auth || ''
-  if (!endpoint || !p256dh || !auth) {
-    return { ok: false, code: 'subscription_incomplete', permission }
-  }
-
-  const res = await remindersPushFetch('POST', {
-    action: 'push_subscribe',
-    endpoint,
-    keys: { p256dh, auth },
-    user_agent: typeof navigator !== 'undefined' ? navigator.userAgent.slice(0, 512) : null,
-  })
-  if (!res.ok) {
-    return { ok: false, code: `subscribe_api_${res.status}`, permission }
+  const persisted = await persistSubscription(subscription)
+  if (!persisted.ok) {
+    return { ok: false, code: persisted.code, permission }
   }
   return { ok: true, code: 'subscribed', permission }
 }
 
+/**
+ * Turn Push OFF for this browser/device:
+ * unsubscribe locally + push_unsubscribe API.
+ * Does not revoke browser Notification.permission.
+ * Does not delete reminders or affect #303A next-open.
+ */
 export async function disableWebPush(): Promise<{ ok: boolean; code: string }> {
   if (!('serviceWorker' in navigator)) return { ok: true, code: 'no_sw' }
   const reg = await navigator.serviceWorker.getRegistration('/')
@@ -176,17 +228,9 @@ export async function disableWebPush(): Promise<{ ok: boolean; code: string }> {
 export async function syncExistingPushSubscription(): Promise<void> {
   if (detectPushSupport() !== 'supported') return
   if (getNotificationPermission() !== 'granted') return
-  const reg = await navigator.serviceWorker.getRegistration('/')
-  const sub = await reg?.pushManager.getSubscription()
+  const sub = await getLocalPushSubscription()
   if (!sub) return
-  const json = sub.toJSON()
-  if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) return
-  await remindersPushFetch('POST', {
-    action: 'push_subscribe',
-    endpoint: json.endpoint,
-    keys: { p256dh: json.keys.p256dh, auth: json.keys.auth },
-    user_agent: navigator.userAgent.slice(0, 512),
-  })
+  await persistSubscription(sub)
 }
 
 const OPT_IN_STORAGE_KEY = 'shinkaido.push.optin.dismissed'
