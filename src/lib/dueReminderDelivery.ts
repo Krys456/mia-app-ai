@@ -85,6 +85,9 @@ export function shouldMarkDeliveredOnFetch(): boolean {
 /**
  * Client must not drop past-due pending rows (missed / next-open).
  * Server already filters status + fire_at; this guards accidental UI filters.
+ *
+ * #303B: background claim/lease metadata must not hide a due reminder.
+ * CLAIMED != DELIVERED — only user acknowledgement marks delivered.
  */
 export function isEligibleForNextOpenSurface(reminder: Reminder, nowMs = Date.now()): boolean {
   if (reminder.status !== 'pending' && reminder.status !== 'snoozed') return false
