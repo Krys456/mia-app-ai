@@ -1,0 +1,17 @@
+{
+  "name": "LAIfe (Vite + React + Vercel API)",
+  "install": "npm install",
+  "terminals": [
+    {
+      "name": "dev",
+      "command": "npm run dev",
+      "description": "Vite dev server for the LAIfe React app on http://localhost:5173 (proxies /api to a Vercel dev server on :3000 when running)."
+    }
+  ],
+  "ports": [
+    {
+      "name": "vite-dev",
+      "port": 5173
+    }
+  ]
+}
