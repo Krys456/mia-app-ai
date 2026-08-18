@@ -44,3 +44,7 @@ Only after confirming no production dependency on reminder rows.
 ## Out of #303A
 
 Cron, push, calendar, tasks/goals, RRULE recurrence engine.
+
+Lease/claim columns and claim RPCs live in #303B
+(`20260818100000_reminders_scheduler_303b.sql`) — additive only; #303A
+next-open `GET ?due=1` semantics must remain unchanged.
