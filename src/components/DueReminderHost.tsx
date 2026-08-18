@@ -6,13 +6,21 @@ import {
   listDueReminders,
   markReminderDelivered,
 } from '../lib/reminderApi'
+import {
+  mergeDueIntoQueue,
+  pollDueRemindersAfterAuth,
+  shouldMarkDeliveredOnFetch,
+} from '../lib/dueReminderDelivery'
 import type { Reminder } from '../lib/reminderTypes'
 import { isRemindersUiEnabled } from '../lib/remindersUi'
+import { useAuthBootstrap } from '../hooks/useAuthBootstrap'
+import { resolveChatAuthForRequest } from '../lib/chatAuth'
 import './DueReminderHost.css'
 
 /**
  * #303A — Deterministic in-app / next-open delivery.
- * No OpenAI. No Web Push. Marks delivered once shown.
+ * No OpenAI. No Web Push.
+ * Marks delivered only after the user acknowledges the sheet (never on fetch).
  */
 export function DueReminderHost() {
   const [queue, setQueue] = useState<Reminder[]>([])
@@ -20,25 +28,24 @@ export function DueReminderHost() {
   const [busy, setBusy] = useState(false)
   const deliveringRef = useRef<Set<string>>(new Set())
   const enabled = isRemindersUiEnabled()
+  const auth = useAuthBootstrap()
 
   const pollDue = useCallback(async () => {
     if (!enabled) return
     try {
-      const due = await listDueReminders()
-      setQueue((prev) => {
-        const seen = new Set(prev.map((r) => r.id))
-        const merged = [...prev]
-        for (const item of due) {
-          if (!seen.has(item.id) && !deliveringRef.current.has(item.id)) {
-            merged.push(item)
-            seen.add(item.id)
-          }
-        }
-        return merged
+      const result = await pollDueRemindersAfterAuth({
+        ensureAuth: resolveChatAuthForRequest,
+        listDue: listDueReminders,
       })
+      if (result.authUnavailable) {
+        // Auth still not ready — soft; bootstrap / next tick will retry.
+        return
+      }
+      // Contract: fetch ≠ delivered.
+      if (shouldMarkDeliveredOnFetch()) return
+      setQueue((prev) => mergeDueIntoQueue(prev, result.reminders, deliveringRef.current))
       setError(null)
     } catch (err) {
-      // Soft: auth not ready or network — do not spam.
       if (err instanceof ReminderApiError && err.status === 401) return
       setError(err instanceof ReminderApiError ? err.message : null)
     }
@@ -46,7 +53,15 @@ export function DueReminderHost() {
 
   useEffect(() => {
     if (!enabled) return
-    void pollDue()
+
+    // Fresh mount: wait until silent auth is ready (or soft-failed), then poll.
+    // Do not rely on focus/visibility — those do not fire on a cold open.
+    const authSettled =
+      auth.status === 'ready' || auth.status === 'error' || auth.status === 'skipped'
+    if (authSettled) {
+      void pollDue()
+    }
+
     const interval = window.setInterval(() => {
       void pollDue()
     }, 45_000)
@@ -63,7 +78,7 @@ export function DueReminderHost() {
       window.removeEventListener('focus', onFocus)
       document.removeEventListener('visibilitychange', onVis)
     }
-  }, [enabled, pollDue])
+  }, [enabled, pollDue, auth.status])
 
   const current = queue[0] ?? null
 
@@ -72,6 +87,7 @@ export function DueReminderHost() {
     setBusy(true)
     deliveringRef.current.add(reminder.id)
     try {
+      // Delivered only after the sheet was shown and the user acts.
       await markReminderDelivered(reminder.id)
       if (complete) {
         await completeReminder(reminder.id)

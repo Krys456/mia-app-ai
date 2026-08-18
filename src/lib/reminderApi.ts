@@ -1,5 +1,6 @@
 import type { Reminder, ReminderProposal } from './reminderTypes'
-import { getSupabase, isSupabaseConfigured } from './supabase'
+import { resolveChatAuthForRequest } from './chatAuth'
+import { isSupabaseConfigured } from './supabase'
 import { getOrCreateUserId } from './userId'
 import { parseApiErrorResponse, withErrorReference, userFacingApiMessage } from './apiError'
 
@@ -53,12 +54,11 @@ async function authHeaders(json = false): Promise<HeadersInit> {
 
   if (isSupabaseConfigured()) {
     try {
-      const { data, error } = await getSupabase().auth.getSession()
-      if (!error) {
-        const token = data.session?.access_token?.trim()
-        if (token) {
-          headers.Authorization = `Bearer ${token}`
-        }
+      // Await shared anonymous bootstrap (same flight as chat/mount).
+      // Raw getSession() alone races DueReminderHost's first poll on fresh open.
+      const { authorization } = await resolveChatAuthForRequest()
+      if (authorization) {
+        headers.Authorization = authorization
       }
     } catch {
       // Soft: server 401 if missing.
