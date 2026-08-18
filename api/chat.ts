@@ -371,7 +371,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const sanitized = sanitizeMultimodalMessages(body.messages)
-  if (!sanitized.ok) {
+  // Explicit discriminant: Vercel backends typecheck (root tsconfig, strict off)
+  // does not narrow after `!sanitized.ok`.
+  if (sanitized.ok === false) {
     console.warn(
       '[api/chat] multimodal sanitize rejected',
       redactAttachmentsForLog({

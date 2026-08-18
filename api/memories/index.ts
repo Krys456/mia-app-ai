@@ -26,6 +26,12 @@ type ValidationResult =
   | { ok: true; data: MemoryCreateInput }
   | { ok: false; errors: Record<string, string> }
 
+function isMemoryCreateFailure(
+  result: ValidationResult,
+): result is { ok: false; errors: Record<string, string> } {
+  return result.ok === false
+}
+
 function validateMemoryCreate(body: Record<string, unknown>): ValidationResult {
   const errors: Record<string, string> = {}
 
@@ -210,7 +216,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const validated = validateMemoryCreate(body)
-    if (!validated.ok) {
+    if (isMemoryCreateFailure(validated)) {
       console.error('[api/memories] validation failed', validated.errors)
       return sendJson(res, 400, {
         success: false,

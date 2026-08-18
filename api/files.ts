@@ -78,7 +78,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const validated = validateDocumentBuffer(parsed.buffer, parsed.filename, parsed.mimeType)
-  if (!validated.ok) {
+  // Explicit discriminant: Vercel backends typecheck does not narrow after `!validated.ok`.
+  if (validated.ok === false) {
     console.warn(
       '[api/files] document rejected',
       summarizePdfForLog({

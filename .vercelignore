@@ -1,0 +1,4 @@
+# Dev-only Memory probe — keep in repo for tests, do not deploy as a 9th serverless function.
+api/memory-test.ts
+api/memory-test.prod.test.mjs
+api/memories.phase0.test.mjs

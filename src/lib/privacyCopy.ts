@@ -31,6 +31,8 @@ export const PRIVACY_DISCLOSURE = {
     'Quando servono informazioni aggiornate, può essere usata una ricerca web tramite il provider di AI; i link alle fonti possono comparire come Fonti.',
   memory:
     'Quando la Memoria è attiva, ShinkAIdo può salvare informazioni utili a lungo termine nel tuo account per usarle nelle conversazioni successive.',
+  reminders:
+    'I promemoria che confermi vengono salvati nel tuo account ShinkAIdo (titolo, dettaglio e orario). In questa fase vengono mostrati in app o al prossimo accesso: non vengono ancora inviate notifiche push in background.',
   anonymousSession:
     'ShinkAIdo usa un account anonimo silenzioso su questo browser. Cancellare i dati del sito può creare una nuova identità. La Memoria collegata all’identità precedente non viene trasferita automaticamente.',
   sharedDevice:
@@ -38,7 +40,7 @@ export const PRIVACY_DISCLOSURE = {
   sensitiveWarning:
     'Non salvare in Memoria password, dati di pagamento, chiavi API o altri segreti sensibili.',
   processors:
-    'Servizi principali usati da ShinkAIdo: OpenAI (elaborazione AI), Supabase (autenticazione e Memoria), Vercel (hosting), Upstash (limite di richieste).',
+    'Servizi principali usati da ShinkAIdo: OpenAI (elaborazione AI), Supabase (autenticazione, Memoria e promemoria), Vercel (hosting), Upstash (limite di richieste).',
   newChatVsMemory:
     'Nuova chat chiude la conversazione sullo schermo. Eliminare la Memoria rimuove i ricordi salvati. L’eliminazione dell’account non è ancora disponibile.',
   highStakes:

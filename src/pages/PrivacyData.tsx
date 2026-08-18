@@ -67,6 +67,13 @@ export function PrivacyData({ onBack }: PrivacyDataProps) {
           </p>
         </section>
 
+        <section className="privacy-data__section" aria-labelledby="privacy-reminders-title">
+          <h2 id="privacy-reminders-title" className="privacy-data__heading">
+            Promemoria
+          </h2>
+          <p>{PRIVACY_DISCLOSURE.reminders}</p>
+        </section>
+
         <section className="privacy-data__section" aria-labelledby="privacy-session-title">
           <h2 id="privacy-session-title" className="privacy-data__heading">
             Sessione anonima
