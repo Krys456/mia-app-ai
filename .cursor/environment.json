@@ -1,0 +1,17 @@
+{
+  "name": "LAIfe",
+  "install": "npm ci",
+  "terminals": [
+    {
+      "name": "dev",
+      "command": "npm run dev",
+      "description": "Vite dev server for the LAIfe React + TypeScript frontend (http://localhost:5173). Hot-reloads the app. The /api routes are Vercel serverless functions and are not started here; chat/memory features that call /api require OPENAI_API_KEY and Supabase credentials plus a running `vercel dev` proxy."
+    }
+  ],
+  "ports": [
+    {
+      "name": "vite dev server",
+      "port": 5173
+    }
+  ]
+}
