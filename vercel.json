@@ -36,6 +36,10 @@
     "api/reminders/index.ts": {
       "includeFiles": "lib/server/**",
       "maxDuration": 15
+    },
+    "api/reminders/[id].js": {
+      "includeFiles": "lib/server/**",
+      "maxDuration": 15
     }
   },
   "rewrites": [
