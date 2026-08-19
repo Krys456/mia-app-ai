@@ -3,13 +3,21 @@
  */
 
 import { phoneCopy } from './copy.js'
-import { buildMapsDirectionsUrl, getOpenAppTarget } from './destinations.js'
+import {
+  buildMapsDirectionsUrl,
+  buildWhatsAppComposeUrl,
+  getOpenAppTarget,
+} from './destinations.js'
 import {
   createDefaultHandoffEnv,
   openHttps,
   openUriScheme,
 } from './handoff.js'
 import { detectPhoneActionIntent } from './intent.js'
+import {
+  createMessagingContext,
+  isMessagingContextFresh,
+} from './messaging-context.js'
 import {
   buildMailtoUri,
   buildSmsUri,
@@ -63,11 +71,17 @@ function copyTextSync(text, env) {
 
 /**
  * Synchronous apply — keeps open/share inside the user-gesture turn.
+ * @param {object} input
+ * @param {object|null} [input.messagingContext]
  */
 export function applyPhoneAction(input) {
   const env = { ...createDefaultHandoffEnv(), ...(input.env || {}) }
+  const messagingContext = isMessagingContextFresh(input.messagingContext)
+    ? input.messagingContext
+    : null
   const intent = detectPhoneActionIntent(input.text, {
     languageHint: input.languageHint,
+    hasMessagingContext: Boolean(messagingContext),
   })
   const lang = intent.language
 
@@ -79,6 +93,7 @@ export function applyPhoneAction(input) {
       target: null,
       safetyClass: null,
       navigateVision: false,
+      messagingContext,
       diag: emptyDiag(intent),
     }
   }
@@ -179,7 +194,9 @@ export function applyPhoneAction(input) {
           ? 'open_youtube'
           : intent.target === 'gmail'
             ? 'open_gmail'
-            : 'open_maps'
+            : intent.target === 'whatsapp'
+              ? 'open_whatsapp'
+              : 'open_maps'
     return {
       handled: true,
       reply: hop.ok ? phoneCopy(replyKey, lang) : phoneCopy('failed', lang),
@@ -187,6 +204,7 @@ export function applyPhoneAction(input) {
       target: intent.target,
       safetyClass: SAFETY.LOW_RISK,
       navigateVision: false,
+      messagingContext,
       diag: {
         ...emptyDiag(intent),
         action: 'open_app',
@@ -195,6 +213,79 @@ export function applyPhoneAction(input) {
         validationPassed: true,
         handoffAttempted: Boolean(hop.handoffAttempted),
         failureCode: hop.ok ? null : hop.failureCode,
+      },
+    }
+  }
+
+  if (intent.kind === 'whatsapp_needs_number') {
+    return {
+      handled: true,
+      reply: phoneCopy('whatsapp_needs_number', lang),
+      action: 'whatsapp',
+      target: 'whatsapp',
+      safetyClass: SAFETY.USER_HANDOFF,
+      navigateVision: false,
+      messagingContext,
+      diag: {
+        ...emptyDiag(intent),
+        action: 'whatsapp',
+        safetyClass: SAFETY.USER_HANDOFF,
+        failureCode: 'phone_required',
+      },
+    }
+  }
+
+  if (intent.kind === 'whatsapp' || intent.kind === 'whatsapp_followup') {
+    const phone =
+      intent.kind === 'whatsapp_followup' ? messagingContext?.phone : intent.phone
+    const body =
+      intent.kind === 'whatsapp_followup' ? messagingContext?.body || '' : intent.body || ''
+    const url = buildWhatsAppComposeUrl(phone, body)
+    if (!url) {
+      return {
+        handled: true,
+        reply: phoneCopy(
+          intent.kind === 'whatsapp_followup' ? 'failed' : 'whatsapp_needs_number',
+          lang,
+        ),
+        action: 'whatsapp',
+        target: 'whatsapp',
+        safetyClass: SAFETY.USER_HANDOFF,
+        navigateVision: false,
+        messagingContext: intent.kind === 'whatsapp_followup' ? messagingContext : null,
+        diag: {
+          ...emptyDiag(intent),
+          action: 'whatsapp',
+          target: 'whatsapp',
+          safetyClass: SAFETY.USER_HANDOFF,
+          failureCode: 'bad_whatsapp_url',
+          maskedPhone: phone ? maskPhone(phone) : null,
+        },
+      }
+    }
+    const hop = openHttps(url, env)
+    const nextCtx = createMessagingContext({
+      phone,
+      body,
+      channel: 'whatsapp',
+    })
+    return {
+      handled: true,
+      reply: hop.ok ? phoneCopy('whatsapp', lang) : phoneCopy('failed', lang),
+      action: 'whatsapp',
+      target: 'whatsapp',
+      safetyClass: SAFETY.USER_HANDOFF,
+      navigateVision: false,
+      messagingContext: hop.ok ? nextCtx : messagingContext,
+      diag: {
+        ...emptyDiag(intent),
+        action: 'whatsapp',
+        target: 'whatsapp',
+        safetyClass: SAFETY.USER_HANDOFF,
+        validationPassed: true,
+        handoffAttempted: Boolean(hop.handoffAttempted),
+        failureCode: hop.ok ? null : hop.failureCode,
+        maskedPhone: phone ? maskPhone(phone) : null,
       },
     }
   }
@@ -289,6 +380,7 @@ export function applyPhoneAction(input) {
         target: null,
         safetyClass: SAFETY.USER_HANDOFF,
         navigateVision: false,
+        messagingContext,
         diag: {
           ...emptyDiag(intent),
           action: 'sms',
@@ -298,6 +390,11 @@ export function applyPhoneAction(input) {
       }
     }
     const hop = openUriScheme(uri, env)
+    const nextCtx = createMessagingContext({
+      phone: intent.phone,
+      body: intent.body || '',
+      channel: 'sms',
+    })
     return {
       handled: true,
       reply: hop.ok ? phoneCopy('sms', lang) : phoneCopy('failed', lang),
@@ -305,6 +402,7 @@ export function applyPhoneAction(input) {
       target: null,
       safetyClass: SAFETY.USER_HANDOFF,
       navigateVision: false,
+      messagingContext: hop.ok ? nextCtx : messagingContext,
       diag: {
         ...emptyDiag(intent),
         action: 'sms',

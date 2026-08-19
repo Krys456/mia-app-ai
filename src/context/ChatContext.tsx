@@ -46,6 +46,10 @@ import {
   logPhoneActionSafe,
   rememberPhoneActionDiag,
   requestAppNavigate,
+  clearMessagingContext,
+  loadMessagingContext,
+  saveMessagingContext,
+  shouldClearMessagingOnUserText,
 } from '../lib/phoneAction'
 import { deriveDictationLangFromMessages } from '../lib/dictationLanguage'
 import {
@@ -1104,6 +1108,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           text: content,
           lastAssistantText,
           languageHint: langHint,
+          messagingContext: loadMessagingContext(),
           env: {
             navigateApp: (view: string) => {
               requestAppNavigate(view)
@@ -1111,6 +1116,16 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           },
         })
         if (phone.handled && phone.reply) {
+          if (phone.messagingContext) {
+            saveMessagingContext(phone.messagingContext)
+          } else if (
+            phone.action &&
+            phone.action !== 'sms' &&
+            phone.action !== 'whatsapp' &&
+            shouldClearMessagingOnUserText(content)
+          ) {
+            clearMessagingContext()
+          }
           dispatch({
             type: 'LOCAL_EXCHANGE',
             userContent: content,
@@ -1127,6 +1142,9 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             rememberPhoneActionDiag(buildPhoneActionDiag(phone.diag))
           }
           return true
+        }
+        if (shouldClearMessagingOnUserText(content)) {
+          clearMessagingContext()
         }
       }
 

@@ -202,6 +202,8 @@ function looksCopyIntent(raw) {
 }
 
 function looksSmsIntent(raw, text) {
+  if (/\bwhatsapp\b/.test(text)) return false
+
   const phone = extractPhoneNumber(raw)
   if (!phone) {
     // Explicit SMS without number → needs number (caller handles)
@@ -234,6 +236,166 @@ function looksSmsIntent(raw, text) {
       return false
     }
     return 'sms'
+  }
+
+  return false
+}
+
+/**
+ * Capability / meta questions about WhatsApp → leave to Core (+ capability appendix).
+ * Explicit "Apri WhatsApp" still routes to the Phone Action handler.
+ */
+export function looksWhatsAppCapabilityQuestion(raw, text) {
+  if (!/\bwhatsapp\b/.test(text)) return false
+  // Explicit imperative open/compose must NOT be treated as a capability question.
+  if (
+    /^\s*(apri|aprimi|open|avvia|scrivi|manda|invia|send|text)\b/i.test(stripDiscoursePrefix(raw))
+  ) {
+    return false
+  }
+  if (
+    /\b(puoi|non\s+puoi|can\s+you|could\s+you|are\s+you\s+able|sei\s+in\s+grado)\b.{0,50}\b(aprire|apri|open|usare|use)\b.{0,30}\bwhatsapp\b/.test(
+      text,
+    ) ||
+    /\b(puoi|non\s+puoi|can\s+you|could\s+you)\b.{0,40}\bwhatsapp\b/.test(text)
+  ) {
+    return true
+  }
+  if (
+    /\b(whatsapp)\b.{0,40}\b(funziona|disponibile|available|supportat|supported)\b/.test(text) &&
+    !/\b(apri|open|scrivi|manda|send)\b/.test(text)
+  ) {
+    return true
+  }
+  return false
+}
+
+/**
+ * Extract WhatsApp phone + optional body from IT/EN compose phrases.
+ * Never accepts a raw wa.me / https URL as the phone.
+ */
+export function extractWhatsAppCompose(text) {
+  const raw = normalizeTimerText(text)
+  if (/wa\.me|web\.whatsapp\.com|api\.whatsapp\.com/i.test(raw) && !/\+\s*\d/.test(raw)) {
+    // Injected URL without an explicit +number → reject
+    return { phone: null, body: '' }
+  }
+  const phone = extractPhoneNumber(raw)
+  if (!phone) return { phone: null, body: '' }
+
+  let body = ''
+
+  // Quoted: Scrivi "Ciao Krys" su WhatsApp a +39…
+  const quoted =
+    raw.match(
+      /\b(?:scrivi|manda|invia|text|send)\s+[«"“']([^"”»']+)[»"”']\s+(?:su\s+whatsapp|on\s+whatsapp|via\s+whatsapp|a|to)\b/i,
+    ) ||
+    raw.match(/[«"“']([^"”»']+)[»"”']\s+(?:su\s+whatsapp|on\s+whatsapp|a|to)\s+\+/i)
+  if (quoted) body = quoted[1].trim()
+
+  // Colon body after number: Manda su WhatsApp a +39…: Ciao Krys
+  if (!body) {
+    const afterPhone = raw.match(
+      /\+?\d[\d\s().-]{6,28}\d\s*[:\-–]\s*(.+)$/i,
+    )
+    if (afterPhone) {
+      body = afterPhone[1].trim()
+    }
+  }
+  if (!body) {
+    const colon = raw.match(/:\s*(.+)$/i)
+    if (colon) {
+      const candidate = colon[1].trim()
+      // Ignore if colon captured only a phone fragment
+      if (candidate && !/^\+?\d[\d\s().-]*$/.test(candidate)) {
+        body = candidate
+      }
+    }
+  }
+
+  // Scrivi Ciao Krys su WhatsApp a +39… / Text Ciao on WhatsApp to +1…
+  if (!body) {
+    const beforeWa = raw.match(
+      /\b(?:scrivi|manda|invia|text|send)\s+(.+?)\s+(?:su|on|via)\s+whatsapp\b/i,
+    )
+    if (beforeWa) {
+      let mid = beforeWa[1].trim()
+      mid = mid
+        .replace(/^(un\s+)?(messaggio|message)\s+/i, '')
+        .replace(/^["«“']+|["»”']+$/g, '')
+        .trim()
+      // Drop trailing "a"/"to" if present without phone in this capture
+      mid = mid.replace(/\s+(?:a|to)$/i, '').trim()
+      if (mid && !/^(su|on|via)$/i.test(mid)) body = mid
+    }
+  }
+
+  // Scrivi a +39… dicendo / con scritto …
+  if (!body) {
+    const saying =
+      raw.match(/\bdicendo(?:\s+che)?\s+(.+)$/i) ||
+      raw.match(/\bcon\s+scritto\s+(.+)$/i) ||
+      raw.match(/\b(?:saying|with(?:\s+message)?|message)\s*[:\s]\s*(.+)$/i)
+    if (saying) body = saying[1].trim()
+  }
+
+  if (body) {
+    body = body
+      .replace(/\b(su|on|via|con)\s+whatsapp\b/gi, '')
+      .replace(/\bwhatsapp\b/gi, '')
+      .replace(/^["«“']+|["»”']+$/g, '')
+      .replace(/\s{2,}/g, ' ')
+      .trim()
+    const phoneDigits = phone.replace(/\D/g, '')
+    if (body.replace(/\D/g, '').includes(phoneDigits) && body.length < phone.length + 6) {
+      body = ''
+    }
+  }
+
+  return { phone, body }
+}
+
+/**
+ * WhatsApp compose / open / follow-up.
+ * @returns {false | 'open' | 'compose' | 'followup' | 'needs_number'}
+ */
+export function looksWhatsAppIntent(raw, text, opts = {}) {
+  const hasCtx = Boolean(opts.hasMessagingContext)
+  const stripped = stripDiscoursePrefix(raw)
+
+  if (
+    hasCtx &&
+    (/^\s*(su\s+whatsapp|on\s+whatsapp|via\s+whatsapp|con\s+whatsapp)\s*[.!]?\s*$/i.test(stripped) ||
+      /^\s*whatsapp\s*[.!]?\s*$/i.test(stripped))
+  ) {
+    return 'followup'
+  }
+
+  if (!/\bwhatsapp\b/.test(text)) return false
+
+  // Capability questions → Core (capability truth appendix), not handoff.
+  if (looksWhatsAppCapabilityQuestion(raw, text)) {
+    return false
+  }
+
+  const phone = extractPhoneNumber(raw)
+
+  if (/\b(scrivi|manda|invia|send|text)\b/.test(text)) {
+    if (!phone) return 'needs_number'
+    return 'compose'
+  }
+
+  // Explicit open / open-with-number
+  if (
+    /\b(apri|aprimi|open|avvia)\b.{0,40}\bwhatsapp\b/.test(text) ||
+    /\bwhatsapp\b.{0,30}\b(apri|open)\b/.test(text)
+  ) {
+    return phone ? 'compose' : 'open'
+  }
+
+  // "Apri WhatsApp con +39…" already covered; also "WhatsApp a +39…"
+  if (phone && /\b(a|to|con|with)\b/.test(text)) {
+    return 'compose'
   }
 
   return false
@@ -296,6 +458,33 @@ export function detectPhoneActionIntent(raw, opts = {}) {
     /\b(telefono|phone|ios|android|sistema)\b/.test(text)
   ) {
     return { kind: 'native_required', language, target: 'notes' }
+  }
+
+  // --- WhatsApp (#315B) — before SMS so "su WhatsApp" / compose wins
+  const wa = looksWhatsAppIntent(raw, text, {
+    hasMessagingContext: Boolean(opts.hasMessagingContext),
+  })
+  if (wa === 'followup') {
+    return { kind: 'whatsapp_followup', language, target: 'whatsapp' }
+  }
+  if (wa === 'open') {
+    return { kind: 'open_app', language, target: 'whatsapp' }
+  }
+  if (wa === 'needs_number') {
+    return { kind: 'whatsapp_needs_number', language, failureCode: 'phone_required' }
+  }
+  if (wa === 'compose') {
+    const parts = extractWhatsAppCompose(raw)
+    if (parts.phone) {
+      return {
+        kind: 'whatsapp',
+        language,
+        phone: parts.phone,
+        body: parts.body || '',
+        target: 'whatsapp',
+      }
+    }
+    return { kind: 'whatsapp_needs_number', language, failureCode: 'phone_required' }
   }
 
   // --- Open Vision / camera
@@ -395,6 +584,9 @@ export function detectPhoneActionIntent(raw, opts = {}) {
     }
     if (/\bgmail\b/.test(text)) {
       return { kind: 'open_app', language, target: 'gmail' }
+    }
+    if (/\bwhatsapp\b/.test(text)) {
+      return { kind: 'open_app', language, target: 'whatsapp' }
     }
   }
 

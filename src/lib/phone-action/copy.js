@@ -8,6 +8,10 @@ export function phoneCopy(key, lang, vars = {}) {
     open_youtube: 'Ti apro YouTube.',
     open_maps: 'Ti apro Google Maps.',
     open_gmail: 'Ti apro Gmail.',
+    open_whatsapp: 'Ti apro WhatsApp.',
+    whatsapp:
+      'Ti apro WhatsApp con il messaggio pronto; puoi controllarlo e inviarlo tu.',
+    whatsapp_needs_number: 'Per WhatsApp mi serve un numero di telefono valido (es. +39…).',
     navigate: `Ho aperto le indicazioni per «${vars.destination || ''}» in Maps.`,
     call: `Ti apro il dialer con il numero ${vars.phone || ''} pronto.`,
     call_needs_number:
@@ -35,6 +39,9 @@ export function phoneCopy(key, lang, vars = {}) {
     open_youtube: 'Opening YouTube for you.',
     open_maps: 'Opening Google Maps for you.',
     open_gmail: 'Opening Gmail for you.',
+    open_whatsapp: 'Opening WhatsApp for you.',
+    whatsapp: 'Opening WhatsApp with the message ready — review it and send yourself.',
+    whatsapp_needs_number: 'I need a valid phone number for WhatsApp (e.g. +1…).',
     navigate: `I've opened directions to “${vars.destination || ''}” in Maps.`,
     call: `Opening the dialer with ${vars.phone || ''} ready.`,
     call_needs_number:

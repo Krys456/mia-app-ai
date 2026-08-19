@@ -20,6 +20,7 @@ export function safetyForAction(action) {
     case 'call':
     case 'sms':
     case 'email':
+    case 'whatsapp':
       return SAFETY.USER_HANDOFF
     case 'native_required':
       return SAFETY.NATIVE_REQUIRED
