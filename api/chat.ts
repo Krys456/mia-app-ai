@@ -734,10 +734,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // #310C — temporary Preview opt-in Calendar live trace (safe fields only).
-    if (isCalendarDiagEnvAllowed(process.env) && isCalendarDiagRequested(req, body)) {
+    if (isCalendarDiagEnvAllowed(process.env) && isCalendarDiagRequested(req, body as unknown as Record<string, unknown>)) {
       const clientHost =
-        typeof (body as { clientSupabaseHost?: unknown }).clientSupabaseHost === 'string'
-          ? (body as { clientSupabaseHost: string }).clientSupabaseHost
+        typeof body.clientSupabaseHost === 'string'
+          ? body.clientSupabaseHost
           : typeof req.headers?.['x-shinkaido-supabase-host'] === 'string'
             ? req.headers['x-shinkaido-supabase-host']
             : null
