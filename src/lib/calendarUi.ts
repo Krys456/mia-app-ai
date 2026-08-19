@@ -1,17 +1,19 @@
 /**
- * #304A1 — Client Calendar UI gate.
+ * #304A1 — Calendar Settings visibility.
  *
- * Default OFF until VITE_CALENDAR_ENABLED is explicitly set.
- * Independent of reminders / push flags.
+ * Settings → Integrazioni → Google Calendar is ALWAYS visible.
+ * VITE_CALENDAR_ENABLED is NOT a security boundary and does not hide the section.
+ *
+ * Real activation gate: Edge/server CALENDAR_ENABLED (OAuth start / connection APIs).
+ * When server Calendar is disabled, the UI stays visible and shows unavailable state.
  */
 
+/**
+ * @deprecated Visibility is always on. Kept for call-site compatibility / tests.
+ * Always returns true — do not use as a security check.
+ */
 export function isCalendarUiEnabled(
-  env: { VITE_CALENDAR_ENABLED?: unknown } | undefined = typeof import.meta !== 'undefined'
-    ? (import.meta as ImportMeta & { env?: { VITE_CALENDAR_ENABLED?: unknown } }).env
-    : undefined,
+  _env?: { VITE_CALENDAR_ENABLED?: unknown },
 ): boolean {
-  const raw = env?.VITE_CALENDAR_ENABLED
-  if (typeof raw !== 'string') return false
-  const v = raw.trim().toLowerCase()
-  return v === '1' || v === 'true' || v === 'yes'
+  return true
 }

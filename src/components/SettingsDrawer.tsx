@@ -13,7 +13,6 @@ import type { AppearanceFontFamily, AppearanceFontSize, PersonalizationSettings 
 import { ThemeSettings } from './ThemeSettings'
 import { NotificationsSettings } from './NotificationsSettings'
 import { CalendarIntegrationsSettings } from './CalendarIntegrationsSettings'
-import { isCalendarUiEnabled } from '../lib/calendarUi'
 import './SettingsDrawer.css'
 import './MemoryToggle.css'
 
@@ -214,12 +213,9 @@ export function SettingsDrawer({ onOpenMemory, onOpenPrivacy, onOpenReminders }:
 
           <NotificationsSettings />
 
-          {isCalendarUiEnabled() ? (
-            <>
-              <div className="settings-divider" role="separator" />
-              <CalendarIntegrationsSettings />
-            </>
-          ) : null}
+          <div className="settings-divider" role="separator" />
+
+          <CalendarIntegrationsSettings />
 
           <div className="settings-divider" role="separator" />
 

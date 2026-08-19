@@ -75,11 +75,15 @@ supabase functions deploy calendar-connection
 
 ## 4) Vercel / client flags (manual)
 
+Settings → Integrazioni → Google Calendar is **always visible** in the client.
+`VITE_CALENDAR_ENABLED` is **not** required and is **not** a security boundary.
+
 | Variable | Where | Notes |
 |----------|-------|-------|
-| `VITE_CALENDAR_ENABLED` | Vercel Preview (later Prod) | `1` to show Settings UI; default unset = OFF |
-| `CALENDAR_ENABLED` | Supabase Edge | `true` only when ready; default OFF |
+| `CALENDAR_ENABLED` | Supabase Edge | Real activation gate; `true` only when ready; default OFF |
 | Google + encryption secrets | Edge only | **never** `VITE_*` |
+
+When `CALENDAR_ENABLED` is false, the Settings section still shows and reports “Non disponibile”.
 
 Do not couple to `REMINDERS_ENABLED` / `PUSH_ENABLED`.
 
@@ -98,7 +102,7 @@ Do not couple to `REMINDERS_ENABLED` / `PUSH_ENABLED`.
 4. Land back on app with Connected + “Sola lettura” + account email.
 5. Confirm no Google tokens in DevTools Application / localStorage.
 6. Disconnect → status Disconnected; Memory / reminders / push unchanged.
-7. Disable `CALENDAR_ENABLED` / `VITE_CALENDAR_ENABLED` after smoke if desired.
+7. Set `CALENDAR_ENABLED=false` after smoke if desired (UI stays visible as unavailable).
 
 ## Security model (summary)
 

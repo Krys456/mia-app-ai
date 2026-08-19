@@ -3,11 +3,13 @@
  *
  * Calls Supabase Edge Functions with the anonymous ShinkAIdo JWT.
  * NEVER stores Google tokens in localStorage or React state.
+ *
+ * Settings UI is always visible. Server CALENDAR_ENABLED gates real OAuth/ops
+ * (Edge returns calendar_disabled / 404 when off).
  */
 
 import { resolveChatAuthForRequest } from './chatAuth.ts'
 import { isSupabaseConfigured } from './supabase.ts'
-import { isCalendarUiEnabled } from './calendarUi.ts'
 
 export type CalendarConnectionStatus =
   | 'disconnected'
@@ -58,9 +60,6 @@ export async function fetchCalendarConnectionStatus(): Promise<{
   connection: CalendarConnectionPublic | null
   code?: string
 }> {
-  if (!isCalendarUiEnabled()) {
-    return { ok: false, connection: null, code: 'calendar_ui_disabled' }
-  }
   const base = supabaseFunctionsBase()
   const headers = await edgeHeaders()
   if (!base || !headers) return { ok: false, connection: null, code: 'auth_unavailable' }
@@ -89,7 +88,6 @@ export async function startGoogleCalendarOAuth(): Promise<{
   authorizeUrl?: string
   code?: string
 }> {
-  if (!isCalendarUiEnabled()) return { ok: false, code: 'calendar_ui_disabled' }
   const base = supabaseFunctionsBase()
   const headers = await edgeHeaders()
   if (!base || !headers) return { ok: false, code: 'auth_unavailable' }
@@ -122,7 +120,6 @@ export async function disconnectGoogleCalendar(): Promise<{
   connection: CalendarConnectionPublic | null
   code?: string
 }> {
-  if (!isCalendarUiEnabled()) return { ok: false, connection: null, code: 'calendar_ui_disabled' }
   const base = supabaseFunctionsBase()
   const headers = await edgeHeaders()
   if (!base || !headers) return { ok: false, connection: null, code: 'auth_unavailable' }

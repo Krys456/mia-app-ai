@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from 'react'
-import { isCalendarUiEnabled } from '../lib/calendarUi'
 import {
   consumeCalendarReturnQuery,
   disconnectGoogleCalendar,
@@ -10,8 +9,19 @@ import {
 import './MemoryToggle.css'
 
 type UiPhase = 'idle' | 'loading' | 'connecting' | 'busy'
+type ServiceState = 'unknown' | 'available' | 'disabled' | 'auth_unavailable' | 'error'
 
-function statusLabel(connection: CalendarConnectionPublic | null, phase: UiPhase): string {
+function statusLabel(
+  connection: CalendarConnectionPublic | null,
+  phase: UiPhase,
+  service: ServiceState,
+): string {
+  if (service === 'disabled') {
+    return 'Integrazione Calendar non disponibile su questo ambiente (disattivata lato server).'
+  }
+  if (service === 'auth_unavailable') {
+    return 'Sessione non pronta. Riprova tra poco per controllare lo stato del Calendar.'
+  }
   if (phase === 'connecting') return 'Connessione a Google in corso…'
   if (phase === 'loading') return 'Controllo stato connessione…'
   if (!connection || connection.status === 'disconnected') {
@@ -32,24 +42,37 @@ function statusLabel(connection: CalendarConnectionPublic | null, phase: UiPhase
   return 'Stato sconosciuto.'
 }
 
-/** #304A1 — Settings → Integrazioni → Google Calendar (connection only). */
+/** #304A1 — Settings → Integrazioni → Google Calendar (always visible). */
 export function CalendarIntegrationsSettings() {
-  const enabled = isCalendarUiEnabled()
   const [connection, setConnection] = useState<CalendarConnectionPublic | null>(null)
   const [phase, setPhase] = useState<UiPhase>('loading')
+  const [service, setService] = useState<ServiceState>('unknown')
   const [note, setNote] = useState<string | null>(null)
 
   const refresh = useCallback(async () => {
-    if (!enabled) return
     const result = await fetchCalendarConnectionStatus()
-    if (result.ok) setConnection(result.connection)
-    else if (result.code === 'calendar_disabled') {
-      setNote('Integrazione Calendar non attiva su questo ambiente.')
+    if (result.ok) {
+      setConnection(result.connection)
+      setService('available')
+      return
     }
-  }, [enabled])
+    if (result.code === 'calendar_disabled') {
+      setConnection(null)
+      setService('disabled')
+      setNote(
+        'Il collegamento Google non è attivato su questo ambiente. La sezione resta visibile; Memoria, promemoria e notifiche non sono interessati.',
+      )
+      return
+    }
+    if (result.code === 'auth_unavailable') {
+      setService('auth_unavailable')
+      return
+    }
+    setService('error')
+    setNote('Impossibile verificare lo stato del Calendar. Riprova tra poco.')
+  }, [])
 
   useEffect(() => {
-    if (!enabled) return
     const returned = consumeCalendarReturnQuery()
     void (async () => {
       setPhase('loading')
@@ -65,18 +88,30 @@ export function CalendarIntegrationsSettings() {
       }
       setPhase('idle')
     })()
-  }, [enabled, refresh])
+  }, [refresh])
 
-  if (!enabled) return null
+  const actionsDisabled =
+    service === 'disabled' ||
+    service === 'auth_unavailable' ||
+    phase === 'connecting' ||
+    phase === 'busy' ||
+    phase === 'loading'
 
   const onConnect = async () => {
-    if (phase === 'connecting' || phase === 'busy') return
+    if (actionsDisabled) return
     setPhase('connecting')
     setNote(null)
     try {
       const result = await startGoogleCalendarOAuth()
       if (!result.ok || !result.authorizeUrl) {
-        setNote('Impossibile avviare Google OAuth. Riprova tra poco.')
+        if (result.code === 'calendar_disabled') {
+          setService('disabled')
+          setNote(
+            'Il collegamento Google non è attivato su questo ambiente (lato server).',
+          )
+        } else {
+          setNote('Impossibile avviare Google OAuth. Riprova tra poco.')
+        }
         setPhase('idle')
         return
       }
@@ -88,6 +123,7 @@ export function CalendarIntegrationsSettings() {
   }
 
   const onDisconnect = async () => {
+    if (actionsDisabled && service === 'disabled') return
     if (phase === 'busy' || phase === 'connecting') return
     setPhase('busy')
     setNote(null)
@@ -95,9 +131,13 @@ export function CalendarIntegrationsSettings() {
       const result = await disconnectGoogleCalendar()
       if (result.ok) {
         setConnection(result.connection)
+        setService('available')
         setNote(
           'Google Calendar scollegato. Memoria, promemoria e notifiche non sono stati modificati.',
         )
+      } else if (result.code === 'calendar_disabled') {
+        setService('disabled')
+        setNote('Il collegamento Google non è attivato su questo ambiente (lato server).')
       } else {
         setNote('Scollegamento non riuscito. Riprova.')
       }
@@ -124,7 +164,11 @@ export function CalendarIntegrationsSettings() {
           <span className="field__label" id="google-calendar-label">
             Google Calendar
           </span>
-          {connected ? (
+          {service === 'disabled' ? (
+            <span className="settings-badge" title="Disattivata lato server">
+              Non disponibile
+            </span>
+          ) : connected ? (
             <span className="settings-badge" title="Permesso sola lettura">
               Sola lettura
             </span>
@@ -132,7 +176,7 @@ export function CalendarIntegrationsSettings() {
         </div>
 
         <p className="settings-note settings-note--tight" role="status">
-          {statusLabel(connection, phase)}
+          {statusLabel(connection, phase, service)}
         </p>
 
         <p className="settings-note settings-note--tight">
@@ -145,7 +189,7 @@ export function CalendarIntegrationsSettings() {
             <button
               type="button"
               className="settings-link-btn"
-              disabled={phase !== 'idle'}
+              disabled={phase !== 'idle' || service === 'disabled'}
               onClick={() => void onDisconnect()}
             >
               Scollega
@@ -154,10 +198,14 @@ export function CalendarIntegrationsSettings() {
             <button
               type="button"
               className="settings-link-btn"
-              disabled={phase === 'connecting' || phase === 'busy' || phase === 'loading'}
+              disabled={actionsDisabled}
               onClick={() => void onConnect()}
             >
-              {needsReconnect ? 'Collega di nuovo' : 'Collega Google Calendar'}
+              {service === 'disabled'
+                ? 'Non disponibile'
+                : needsReconnect
+                  ? 'Collega di nuovo'
+                  : 'Collega Google Calendar'}
             </button>
           )}
         </div>
