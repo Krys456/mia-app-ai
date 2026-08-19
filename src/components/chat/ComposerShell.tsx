@@ -25,7 +25,9 @@ import {
   isActiveDocumentExpired,
   truncateActiveDocumentName,
 } from '../../lib/activeDocumentContext'
+import { detectTimerLanguage } from '../../lib/timer'
 import type { ChatAttachment } from '../../types'
+import { ActiveTimerChip } from './ActiveTimerChip'
 import { ComposerAttachMenu } from './ComposerAttachMenu'
 import { ComposerMicrophoneButton } from './ComposerMicrophoneButton'
 import {
@@ -88,8 +90,19 @@ export type ComposerShellProps = {
  * Extensible composer shell (#271 + #272 image + #273 dictation + #275 PDF).
  */
 export function ComposerShell({ onMessageSent }: ComposerShellProps) {
-  const { sendMessage, messages, isThinking, isStreaming, settingsOpen, activeDocument, clearActiveDocument } =
-    useChat()
+  const {
+    sendMessage,
+    messages,
+    isThinking,
+    isStreaming,
+    settingsOpen,
+    activeDocument,
+    clearActiveDocument,
+    activeTimer,
+    stopActiveTimer,
+    addMinuteToActiveTimer,
+    dismissCompletedTimer,
+  } = useChat()
   const {
     draft,
     setText,
@@ -392,7 +405,14 @@ export function ComposerShell({ onMessageSent }: ComposerShellProps) {
               : dictation.statusAnnouncement || undefined
 
   const tray =
-    voice.active || image || document || showActiveDocChip || attachError || dictation.error ? (
+    voice.active ||
+    image ||
+    document ||
+    showActiveDocChip ||
+    (activeTimer &&
+      (activeTimer.status === 'running' || activeTimer.status === 'completed')) ||
+    attachError ||
+    dictation.error ? (
       <div className="composer-tray-inner">
         {voice.active ? (
           <VoiceModeBar
@@ -474,6 +494,18 @@ export function ComposerShell({ onMessageSent }: ComposerShellProps) {
               ×
             </button>
           </div>
+        ) : null}
+        {activeTimer && (activeTimer.status === 'running' || activeTimer.status === 'completed') ? (
+          <ActiveTimerChip
+            timer={activeTimer}
+            language={detectTimerLanguage(
+              messages.filter((m) => m.role === 'user').slice(-1)[0]?.content || '',
+              'it',
+            )}
+            onStop={stopActiveTimer}
+            onAddMinute={addMinuteToActiveTimer}
+            onDismissCompleted={dismissCompletedTimer}
+          />
         ) : null}
         {attachError ? (
           <p className="composer-attach-error" role="alert">

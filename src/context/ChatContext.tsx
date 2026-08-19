@@ -19,6 +19,27 @@ import {
 } from '../lib/activeDocumentContext'
 import { rememberDocumentDiag } from '../lib/documentDiag'
 import {
+  applyTimerIntent,
+  buildTimerDiag,
+  clearActiveTimerStorage,
+  detectTimerLanguage,
+  expireRunningTimer,
+  isTimerDiagClientEnabled,
+  loadActiveTimerFromStorage,
+  loadPendingReplace,
+  logTimerSafe,
+  markCompletionAnnounced,
+  playTimerCompletionSound,
+  remainingMs,
+  rememberTimerDiag,
+  saveActiveTimerToStorage,
+  savePendingReplace,
+  tryTimerCompletionNotification,
+  type ActiveTimerContext,
+  type PendingTimerReplace,
+} from '../lib/timer'
+import { deriveDictationLangFromMessages } from '../lib/dictationLanguage'
+import {
   finalizeConversationLearning,
   getLearningSignals,
   saveLearningSignals,
@@ -208,6 +229,8 @@ type Action =
   | { type: 'UPDATE_APPEARANCE'; payload: Partial<AppearanceSettings> }
   | { type: 'UPDATE_DEVELOPER'; payload: Partial<DeveloperSettings> }
   | { type: 'SEND_USER'; content: string; attachments?: ChatAttachment[] }
+  /** #314 — local user+assistant exchange (timer / alarm honesty); no model call. */
+  | { type: 'LOCAL_EXCHANGE'; userContent: string; assistantContent: string }
   | { type: 'ASSISTANT_START'; id: string; memoryEvent?: MemoryFeedbackEvent | null }
   | { type: 'ASSISTANT_PROGRESS'; id: string; content: string }
   | {
@@ -319,6 +342,27 @@ function reducer(state: AppState, action: Action): AppState {
         topicMemory,
       }
     }
+    case 'LOCAL_EXCHANGE': {
+      const userMsg: ChatMessage = {
+        id: uid(),
+        role: 'user',
+        content: action.userContent,
+        createdAt: Date.now(),
+      }
+      const assistantMsg: ChatMessage = {
+        id: uid(),
+        role: 'assistant',
+        content: action.assistantContent,
+        createdAt: Date.now(),
+      }
+      return {
+        ...state,
+        messages: [...state.messages, userMsg, assistantMsg],
+        isThinking: false,
+        isStreaming: false,
+        topicMemory: rememberAssistantMessage(state.topicMemory, action.assistantContent),
+      }
+    }
     case 'ASSISTANT_START': {
       const startEvent =
         action.memoryEvent &&
@@ -420,6 +464,11 @@ interface ChatContextValue {
   /** #313 — metadata-only active document for continuity UI. */
   activeDocument: ActiveDocumentContext | null
   clearActiveDocument: () => void
+  /** #314 — client-first active timer (endsAt truth). */
+  activeTimer: ActiveTimerContext | null
+  stopActiveTimer: () => void
+  addMinuteToActiveTimer: () => void
+  dismissCompletedTimer: () => void
   newChat: () => void
   openSettings: () => void
   closeSettings: () => void
@@ -531,6 +580,15 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   /** #313 — user dismissed active document until next file upload. */
   const suppressDocReuseRef = useRef(false)
   const [activeDocument, setActiveDocument] = useState<ActiveDocumentContext | null>(null)
+  /** #314 — client-first timer (persisted endsAt). */
+  const [activeTimer, setActiveTimer] = useState<ActiveTimerContext | null>(() =>
+    loadActiveTimerFromStorage(),
+  )
+  const [pendingTimerReplace, setPendingTimerReplace] = useState<PendingTimerReplace | null>(() =>
+    loadPendingReplace(),
+  )
+  const timerLangRef = useRef<'it' | 'en'>('it')
+  const completionLockRef = useRef(false)
 
   const syncActiveDocument = useCallback((messages: ChatMessage[]) => {
     if (suppressDocReuseRef.current) {
@@ -548,6 +606,124 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     suppressDocReuseRef.current = true
     setActiveDocument(null)
   }, [])
+
+  const persistTimer = useCallback((next: ActiveTimerContext | null) => {
+    setActiveTimer(next)
+    if (!next || next.status === 'cancelled') {
+      clearActiveTimerStorage()
+      return
+    }
+    saveActiveTimerToStorage(next)
+  }, [])
+
+  const persistPendingReplace = useCallback((next: PendingTimerReplace | null) => {
+    setPendingTimerReplace(next)
+    savePendingReplace(next)
+  }, [])
+
+  const stopActiveTimer = useCallback(() => {
+    setActiveTimer((prev) => {
+      if (!prev || prev.status !== 'running') {
+        clearActiveTimerStorage()
+        return null
+      }
+      clearActiveTimerStorage()
+      return null
+    })
+    persistPendingReplace(null)
+    logTimerSafe({ action: 'ui_stop' })
+  }, [persistPendingReplace])
+
+  const addMinuteToActiveTimer = useCallback(() => {
+    setActiveTimer((prev) => {
+      if (!prev || prev.status !== 'running') return prev
+      const next = {
+        ...prev,
+        endsAt: prev.endsAt + 60_000,
+        durationMs: prev.durationMs + 60_000,
+      }
+      saveActiveTimerToStorage(next)
+      logTimerSafe({
+        action: 'ui_add_minute',
+        durationMs: 60_000,
+        remainingMs: remainingMs(next),
+      })
+      return next
+    })
+  }, [])
+
+  const dismissCompletedTimer = useCallback(() => {
+    clearActiveTimerStorage()
+    setActiveTimer(null)
+    completionLockRef.current = false
+  }, [])
+
+  // #314 — tick completion from endsAt (truth), not chained timeouts.
+  useEffect(() => {
+    if (!activeTimer || activeTimer.status !== 'running') return
+    const tick = () => {
+      const now = Date.now()
+      if (activeTimer.endsAt > now) return
+      if (completionLockRef.current || activeTimer.completionAnnounced) return
+      completionLockRef.current = true
+      const lang = timerLangRef.current
+      const { timer: done } = expireRunningTimer(activeTimer, lang, now)
+      const announced = markCompletionAnnounced(done)
+      persistTimer(announced)
+      void (async () => {
+        const sound = await playTimerCompletionSound()
+        const note = tryTimerCompletionNotification(lang)
+        if (isTimerDiagClientEnabled()) {
+          rememberTimerDiag(
+            buildTimerDiag({
+              timerIntent: 'complete',
+              timerAction: 'complete',
+              activeTimerFound: true,
+              timerCompleted: true,
+              endsAt: announced.endsAt,
+              remainingMs: 0,
+              completionSoundAttempted: sound.attempted,
+              notificationAttempted: note.attempted,
+              failureCode: sound.failureCode || note.failureCode,
+            }),
+          )
+        }
+        logTimerSafe({ action: 'complete', remainingMs: 0, status: 'completed' })
+      })()
+    }
+    tick()
+    const id = window.setInterval(tick, 250)
+    return () => window.clearInterval(id)
+  }, [activeTimer, persistTimer])
+
+  // Restore expired-on-reload completion once.
+  useEffect(() => {
+    if (!activeTimer || activeTimer.status !== 'completed' || activeTimer.completionAnnounced) return
+    if (completionLockRef.current) return
+    completionLockRef.current = true
+    const lang = timerLangRef.current
+    const announced = markCompletionAnnounced(activeTimer)
+    persistTimer(announced)
+    void (async () => {
+      const sound = await playTimerCompletionSound()
+      const note = tryTimerCompletionNotification(lang)
+      if (isTimerDiagClientEnabled()) {
+        rememberTimerDiag(
+          buildTimerDiag({
+            timerIntent: 'complete_on_reload',
+            timerAction: 'complete',
+            activeTimerFound: true,
+            timerCompleted: true,
+            endsAt: announced.endsAt,
+            remainingMs: 0,
+            completionSoundAttempted: sound.attempted,
+            notificationAttempted: note.attempted,
+            failureCode: sound.failureCode || note.failureCode,
+          }),
+        )
+      }
+    })()
+  }, [activeTimer, persistTimer])
 
   const abortActiveCompletion = useCallback(() => {
     abortRef.current?.abort()
@@ -853,6 +1029,51 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         suppressDocReuseRef.current = false
       }
 
+      // #314 — deterministic timer / alarm honesty (no attachments). Never LLM-owned time.
+      if (content && wireAtts.length === 0) {
+        const sticky = deriveDictationLangFromMessages(state.messages)
+        const langHint =
+          sticky === 'en' ? 'en' : sticky === 'it' ? 'it' : detectTimerLanguage(content, 'it')
+        timerLangRef.current = langHint
+        const result = applyTimerIntent({
+          text: content,
+          activeTimer: activeTimer?.status === 'running' ? activeTimer : null,
+          pendingReplace: pendingTimerReplace,
+          languageHint: langHint,
+        })
+        if (result.handled && result.reply) {
+          if (result.clearTimer) {
+            persistTimer(null)
+            completionLockRef.current = false
+          } else if (result.timer) {
+            if (result.diag.timerStarted) completionLockRef.current = false
+            persistTimer(result.timer)
+          }
+          persistPendingReplace(result.pendingReplace)
+          dispatch({
+            type: 'LOCAL_EXCHANGE',
+            userContent: content,
+            assistantContent: result.reply,
+          })
+          logTimerSafe({
+            action: String(result.diag.timerAction || result.diag.timerIntent),
+            durationMs: result.diag.parsedDurationMs,
+            remainingMs: result.diag.remainingMs,
+            status: result.timer?.status ?? null,
+          })
+          if (isTimerDiagClientEnabled()) {
+            rememberTimerDiag(
+              buildTimerDiag({
+                ...result.diag,
+                completionSoundAttempted: false,
+                notificationAttempted: false,
+              }),
+            )
+          }
+          return true
+        }
+      }
+
       const personalization = state.settings.personalization
       const developer = state.settings.developer ?? DEFAULT_DEVELOPER_SETTINGS
       const history: ChatApiMessage[] = [
@@ -897,6 +1118,10 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       state.messages,
       state.settings.personalization,
       state.settings.developer,
+      activeTimer,
+      pendingTimerReplace,
+      persistTimer,
+      persistPendingReplace,
       runAssistantCompletion,
     ],
   )
@@ -944,6 +1169,10 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       isStreaming: state.isStreaming,
       activeDocument,
       clearActiveDocument,
+      activeTimer,
+      stopActiveTimer,
+      addMinuteToActiveTimer,
+      dismissCompletedTimer,
       newChat,
       openSettings,
       closeSettings,
@@ -963,6 +1192,10 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       state.isStreaming,
       activeDocument,
       clearActiveDocument,
+      activeTimer,
+      stopActiveTimer,
+      addMinuteToActiveTimer,
+      dismissCompletedTimer,
       newChat,
       openSettings,
       closeSettings,

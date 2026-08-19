@@ -163,6 +163,89 @@
   opacity: 0.95;
 }
 
+.composer-timer-chip {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  max-width: 100%;
+  min-width: 0;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border));
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface-2));
+  box-sizing: border-box;
+}
+
+.composer-timer-chip--done {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface-2));
+}
+
+.composer-timer-chip__icon {
+  flex-shrink: 0;
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+.composer-timer-chip__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.composer-timer-chip__name {
+  font-size: 0.78rem;
+  font-weight: 650;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.composer-timer-chip__time {
+  font-variant-numeric: tabular-nums;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--text);
+  line-height: 1.15;
+}
+
+.composer-timer-chip__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-shrink: 0;
+}
+
+.composer-timer-chip__btn {
+  margin: 0;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 650;
+  line-height: 1;
+  cursor: pointer;
+  touch-action: manipulation;
+  min-height: 2rem;
+}
+
+.composer-timer-chip__btn--stop {
+  background: color-mix(in srgb, var(--accent) 18%, var(--surface));
+}
+
+.composer-timer-chip__btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
 .composer-attach-error {
   margin: 0;
   padding: 0.55rem 0.7rem;
