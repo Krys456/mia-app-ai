@@ -135,7 +135,7 @@ Deno.serve(async (req) => {
             ok: true,
             runId,
             diag: {
-              diagBuild: '310C-edge-v4',
+              diagBuild: '310C3-edge-v5',
               phase: 'connection_diag',
               timestamp: new Date().toISOString(),
               authUid: maskUid(userId),

@@ -9,7 +9,24 @@
  */
 
 import { resolveChatAuthForRequest } from './chatAuth.ts'
+import {
+  bootstrapCalendarDiagMode,
+  CALENDAR_DIAG_CID_KEY,
+  CALENDAR_DIAG_CONNECTION_KEY,
+  CALENDAR_DIAG_OAUTH_KEY,
+  enableCalendarDiagMode,
+  ensureCalendarDiagInUrl,
+  isCalendarDiagModeEnabled,
+  writeCalendarDiagSnapshot,
+} from './calendarDiagClient.ts'
 import { isSupabaseConfigured } from './supabase.ts'
+
+export {
+  bootstrapCalendarDiagMode,
+  enableCalendarDiagMode,
+  ensureCalendarDiagInUrl,
+  isCalendarDiagModeEnabled,
+} from './calendarDiagClient.ts'
 
 export type CalendarConnectionStatus =
   | 'disconnected'
@@ -99,13 +116,18 @@ export async function startGoogleCalendarOAuth(): Promise<{
       ? crypto.randomUUID()
       : `cid-${Date.now()}`
 
+  const diagMode = isCalendarDiagModeEnabled()
+  if (diagMode) enableCalendarDiagMode('oauth_start')
+
   const res = await fetch(`${base}/functions/v1/calendar-oauth-start`, {
     method: 'POST',
     headers,
     // Bind callback return to THIS browser origin (HMAC-signed server-side).
+    // calendarDiag:1 is HMAC-bound into OAuth state so callback can restore ?calendar_diag=1.
     body: JSON.stringify({
       returnOrigin: typeof window !== 'undefined' ? window.location.origin : '',
       correlationId,
+      ...(diagMode ? { calendarDiag: true } : {}),
     }),
   })
   if (res.status === 404) return { ok: false, code: 'calendar_disabled' }
@@ -127,18 +149,24 @@ export async function startGoogleCalendarOAuth(): Promise<{
   if (!body.authorizeUrl || !body.authorizeUrl.startsWith('https://accounts.google.com/')) {
     return { ok: false, code: 'authorize_url_invalid' }
   }
-  try {
-    if (typeof sessionStorage !== 'undefined') {
-      sessionStorage.setItem('shinkaido.calendar.correlationId', body.correlationId || correlationId)
-      if (body.diag) sessionStorage.setItem('shinkaido.calendar.lastOauthStartDiag', JSON.stringify(body.diag))
-    }
-  } catch {
-    /* soft */
+  const cid = body.correlationId || correlationId
+  writeCalendarDiagSnapshot(CALENDAR_DIAG_CID_KEY, cid)
+  if (body.diag) {
+    writeCalendarDiagSnapshot(CALENDAR_DIAG_OAUTH_KEY, body.diag)
+  } else if (diagMode) {
+    // Still leave a visible breadcrumb when Edge omits diag (old deploy).
+    writeCalendarDiagSnapshot(CALENDAR_DIAG_OAUTH_KEY, {
+      diagBuild: 'client-fallback',
+      phase: 'oauth_start',
+      timestamp: new Date().toISOString(),
+      correlationId: cid,
+      note: 'edge_diag_missing',
+    })
   }
   return {
     ok: true,
     authorizeUrl: body.authorizeUrl,
-    correlationId: body.correlationId || correlationId,
+    correlationId: cid,
     diag: body.diag,
   }
 }
@@ -202,48 +230,49 @@ export async function fetchCalendarLiveDiag(): Promise<{
   return { ok: true, diag: body.diag }
 }
 
-/** Map URL query ?calendar=… after OAuth return. */
+/** Cached OAuth return flag for this page load (Settings + panel both read it). */
+let cachedCalendarReturnFlag: string | null | undefined
+
+/** Map URL query ?calendar=… after OAuth return. Preserves diagnostic mode. */
 export function consumeCalendarReturnQuery(): string | null {
   if (typeof window === 'undefined') return null
+  if (cachedCalendarReturnFlag !== undefined) return cachedCalendarReturnFlag
   try {
     const url = new URL(window.location.href)
     const flag = url.searchParams.get('calendar')
     const cid = url.searchParams.get('cid')
-    if (cid) {
-      try {
-        sessionStorage.setItem('shinkaido.calendar.correlationId', cid)
-        sessionStorage.setItem('shinkaido.calendar.diag', '1')
-      } catch {
-        /* soft */
-      }
+    const diagInUrl = url.searchParams.get('calendar_diag') === '1'
+
+    if (diagInUrl) {
+      enableCalendarDiagMode('oauth_return_url')
+    } else {
+      bootstrapCalendarDiagMode()
     }
-    if (!flag) return null
+
+    if (cid) writeCalendarDiagSnapshot(CALENDAR_DIAG_CID_KEY, cid)
+
+    if (!flag) {
+      ensureCalendarDiagInUrl()
+      cachedCalendarReturnFlag = null
+      return null
+    }
+
     url.searchParams.delete('calendar')
     url.searchParams.delete('code')
     url.searchParams.delete('cid')
+    // Keep calendar_diag=1 visible after OAuth so mode cannot silently drop.
+    if (isCalendarDiagModeEnabled()) url.searchParams.set('calendar_diag', '1')
     const next = `${url.pathname}${url.search}${url.hash}`
     window.history.replaceState({}, '', next || '/')
+    cachedCalendarReturnFlag = flag
     return flag
   } catch {
+    cachedCalendarReturnFlag = null
     return null
   }
 }
 
-export function isCalendarDiagModeEnabled(): boolean {
-  if (typeof window === 'undefined') return false
-  try {
-    const url = new URL(window.location.href)
-    if (url.searchParams.get('calendar_diag') === '1') return true
-    return sessionStorage.getItem('shinkaido.calendar.diag') === '1'
-  } catch {
-    return false
-  }
-}
-
-export function enableCalendarDiagMode(): void {
-  try {
-    sessionStorage.setItem('shinkaido.calendar.diag', '1')
-  } catch {
-    /* soft */
-  }
+/** Persist connection diag snapshot (Settings + panel). */
+export function persistCalendarConnectionDiag(diag: Record<string, unknown>): void {
+  writeCalendarDiagSnapshot(CALENDAR_DIAG_CONNECTION_KEY, diag)
 }

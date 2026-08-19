@@ -32,7 +32,7 @@ import {
   normalizeReturnOrigin,
 } from '../_shared/calendar-oauth.ts'
 
-const OAUTH_DIAG_BUILD = '310C-edge-v4'
+const OAUTH_DIAG_BUILD = '310C3-edge-v5'
 
 Deno.serve(async (req) => {
   const started = Date.now()
@@ -80,6 +80,7 @@ Deno.serve(async (req) => {
   // Capture optional returnOrigin so callback returns to the SAME Preview/app origin.
   let bodyReturnOrigin: string | null = null
   let bodyCorrelationId: string | null = null
+  let bodyCalendarDiag = false
   try {
     if (req.method === 'POST') {
       const text = await req.text()
@@ -93,6 +94,9 @@ Deno.serve(async (req) => {
         }
         if (typeof body.correlationId === 'string' && body.correlationId.trim()) {
           bodyCorrelationId = body.correlationId.trim().slice(0, 64)
+        }
+        if (body.calendarDiag === true || body.calendarDiag === 1 || body.calendarDiag === '1') {
+          bodyCalendarDiag = true
         }
       }
     }
@@ -133,6 +137,7 @@ Deno.serve(async (req) => {
         codeVerifier,
         returnOrigin: requestedOrigin,
         correlationId: effectiveCorrelationId,
+        calendarDiag: bodyCalendarDiag,
       },
       encKey,
     )

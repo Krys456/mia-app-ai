@@ -189,6 +189,7 @@ export async function requestChatCompletion(
 ): Promise<ChatApiSuccess> {
   const endpoint = resolveChatEndpoint()
 
+  let calendarDiagRequested = false
   let response: Response
   try {
     const headers: Record<string, string> = {
@@ -204,17 +205,16 @@ export async function requestChatCompletion(
     }
     headers.Authorization = auth.authorization
 
-    let calendarDiag = false
     let clientSupabaseHost: string | undefined
     try {
       const { isCalendarDiagModeEnabled } = await import('./calendarApi.ts')
-      calendarDiag = isCalendarDiagModeEnabled()
+      calendarDiagRequested = isCalendarDiagModeEnabled()
       const viteUrl = (import.meta.env.VITE_SUPABASE_URL || '').trim()
       if (viteUrl) clientSupabaseHost = new URL(viteUrl).hostname
     } catch {
       /* soft */
     }
-    if (calendarDiag) {
+    if (calendarDiagRequested) {
       headers['X-Shinkaido-Calendar-Diag'] = '1'
       if (clientSupabaseHost) headers['X-Shinkaido-Supabase-Host'] = clientSupabaseHost
     }
@@ -256,7 +256,7 @@ export async function requestChatCompletion(
           : payload.locale
             ? { browserLocale: payload.locale }
             : {}),
-        ...(calendarDiag ? { calendarDiag: true } : {}),
+        ...(calendarDiagRequested ? { calendarDiag: true } : {}),
         ...(clientSupabaseHost ? { clientSupabaseHost } : {}),
       }),
       signal: init?.signal,
@@ -330,14 +330,43 @@ export async function requestChatCompletion(
 
   const v2Debug = sanitizeV2Debug(data.v2Debug)
 
+  const headerRequestId = response.headers.get('X-Request-Id')?.trim() || undefined
   const calendarDiag =
     data.calendarDiag && typeof data.calendarDiag === 'object'
       ? (data.calendarDiag as Record<string, unknown>)
       : null
   if (calendarDiag) {
     try {
-      sessionStorage.setItem('shinkaido.calendar.lastChatDiag', JSON.stringify(calendarDiag))
-      console.info('[calendarDiag]', calendarDiag)
+      const { writeCalendarDiagSnapshot, CALENDAR_DIAG_CHAT_KEY } = await import(
+        './calendarDiagClient.ts'
+      )
+      const enriched = {
+        ...calendarDiag,
+        requestId:
+          (typeof calendarDiag.requestId === 'string' && calendarDiag.requestId) ||
+          (typeof calendarDiag.correlationId === 'string' && calendarDiag.correlationId) ||
+          headerRequestId ||
+          null,
+      }
+      writeCalendarDiagSnapshot(CALENDAR_DIAG_CHAT_KEY, enriched)
+      console.info('[calendarDiag]', enriched)
+    } catch {
+      /* soft */
+    }
+  } else if (calendarDiagRequested) {
+    // Diag was requested but server omitted payload — still leave a visible marker.
+    try {
+      const { writeCalendarDiagSnapshot, CALENDAR_DIAG_CHAT_KEY } = await import(
+        './calendarDiagClient.ts'
+      )
+      writeCalendarDiagSnapshot(CALENDAR_DIAG_CHAT_KEY, {
+        diagBuild: 'client-fallback',
+        phase: 'chat',
+        timestamp: new Date().toISOString(),
+        requestId: headerRequestId || null,
+        note: 'server_calendarDiag_missing',
+        httpStatus: response.status,
+      })
     } catch {
       /* soft */
     }

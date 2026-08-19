@@ -133,6 +133,8 @@ export async function createSignedOAuthState(
     expiresAtUnix?: number
     returnOrigin?: string | null
     correlationId?: string | null
+    /** #310C3 — when true, callback restores ?calendar_diag=1 */
+    calendarDiag?: boolean
   },
   keyEnv: string | null | undefined,
 ) {
@@ -156,6 +158,7 @@ export async function createSignedOAuthState(
   const correlationId =
     typeof input.correlationId === 'string' ? input.correlationId.trim().slice(0, 64) : ''
   if (correlationId) payload.c = correlationId
+  if (input.calendarDiag === true) payload.d = 1
 
   const body = toB64Url(utf8(JSON.stringify(payload)))
   const sigBuf = await crypto.subtle.sign('HMAC', imported.key, utf8(body))
@@ -166,6 +169,7 @@ export async function createSignedOAuthState(
     expiresAtUnix: exp,
     returnOrigin: returnOrigin || null,
     correlationId: correlationId || null,
+    calendarDiag: input.calendarDiag === true,
   }
 }
 
@@ -193,7 +197,7 @@ export async function verifySignedOAuthState(
   }
   if (!valid) return { ok: false as const, code: 'oauth_state_tampered' }
 
-  let payload: { u?: string; n?: string; e?: number; v?: string; o?: string; c?: string }
+  let payload: { u?: string; n?: string; e?: number; v?: string; o?: string; c?: string; d?: number }
   try {
     payload = JSON.parse(new TextDecoder().decode(fromB64Url(body)))
   } catch {
@@ -230,6 +234,7 @@ export async function verifySignedOAuthState(
     returnOrigin: normalizeReturnOrigin(payload?.o),
     correlationId:
       typeof payload?.c === 'string' && payload.c.trim() ? payload.c.trim().slice(0, 64) : null,
+    calendarDiag: payload?.d === 1,
   }
 }
 

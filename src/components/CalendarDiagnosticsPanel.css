@@ -1,0 +1,73 @@
+.calendar-diag-panel {
+  position: fixed;
+  z-index: 80;
+  right: max(0.75rem, var(--safe-right, 0px));
+  bottom: max(0.75rem, var(--safe-bottom, 0px));
+  width: min(22rem, calc(100vw - 1.5rem));
+  max-height: min(70vh, 32rem);
+  overflow: auto;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid color-mix(in srgb, CanvasText 28%, transparent);
+  background: color-mix(in srgb, Canvas 92%, CanvasText 8%);
+  color: CanvasText;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.68rem;
+  line-height: 1.35;
+  box-shadow: 0 8px 24px color-mix(in srgb, CanvasText 18%, transparent);
+}
+
+.calendar-diag-panel--collapsed {
+  max-height: none;
+  overflow: visible;
+}
+
+.calendar-diag-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+}
+
+.calendar-diag-panel__title {
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+}
+
+.calendar-diag-panel__toggle {
+  appearance: none;
+  border: 1px solid color-mix(in srgb, CanvasText 30%, transparent);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  padding: 0.15rem 0.4rem;
+  cursor: pointer;
+}
+
+.calendar-diag-panel__list {
+  margin: 0;
+}
+
+.calendar-diag-panel__row {
+  display: grid;
+  grid-template-columns: 1fr 1.1fr;
+  gap: 0.35rem;
+  padding: 0.15rem 0;
+  border-top: 1px solid color-mix(in srgb, CanvasText 12%, transparent);
+}
+
+.calendar-diag-panel__row dt {
+  margin: 0;
+  opacity: 0.75;
+}
+
+.calendar-diag-panel__row dd {
+  margin: 0;
+  word-break: break-word;
+  font-weight: 600;
+}
+
+.calendar-diag-panel__hint {
+  margin: 0;
+  opacity: 0.8;
+}

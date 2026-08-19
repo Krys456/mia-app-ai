@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { Header } from './components/Header'
 import { ChatContainer } from './components/chat'
 import { SettingsDrawer } from './components/SettingsDrawer'
+import { CalendarDiagnosticsPanel } from './components/CalendarDiagnosticsPanel'
 import { DueReminderHost } from './components/DueReminderHost'
 import { MemoryManage } from './pages/MemoryManage'
 import { PrivacyData } from './pages/PrivacyData'
@@ -134,6 +135,9 @@ function AppShell() {
         onOpenPrivacy={() => openPrivacy(true)}
         onOpenReminders={() => openReminders(true)}
       />
+
+      {/* #310C3 — temporary Preview Calendar diagnostics (safe fields only). */}
+      <CalendarDiagnosticsPanel />
 
       {/* In-app / next-open reminder delivery (#303A) — no push. */}
       <DueReminderHost />

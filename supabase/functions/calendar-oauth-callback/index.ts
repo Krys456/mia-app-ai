@@ -271,10 +271,12 @@ Deno.serve(async (req) => {
     const calendarFlag =
       refreshResolved.status === 'connected' ? 'connected' : 'reconnect_required'
     const cid = verified.correlationId ? `&cid=${encodeURIComponent(verified.correlationId)}` : ''
+    // #310C3 — restore ?calendar_diag=1 after Google so frontend diag mode cannot drop.
+    const diagQ = verified.calendarDiag ? '&calendar_diag=1' : ''
     const safe = resolveOAuthCallbackReturnUrl({
       signedReturnOrigin: verified.returnOrigin,
       allowedBase: returnBase,
-      pathQuery: `calendar=${calendarFlag}${cid}`,
+      pathQuery: `calendar=${calendarFlag}${cid}${diagQ}`,
     })
     if (!safe.ok) return failRedirect(returnBase, safe.code || 'return_url_not_configured')
     return redirect(safe.url)

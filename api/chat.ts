@@ -733,7 +733,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         : {}),
     }
 
-    // #310C — temporary Preview opt-in Calendar live trace (safe fields only).
+    // #310C / #310C3 — temporary Preview opt-in Calendar live trace (safe fields only).
     if (isCalendarDiagEnvAllowed(process.env) && isCalendarDiagRequested(req, body as unknown as Record<string, unknown>)) {
       const clientHost =
         typeof body.clientSupabaseHost === 'string'
@@ -747,6 +747,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         clientSupabaseHost: clientHost,
         enrichment: calendarEnrichment,
       })
+      try {
+        res.setHeader('X-Shinkaido-Calendar-Diag', '1')
+        res.setHeader('X-Shinkaido-Calendar-Diag-Build', '310C3-1')
+      } catch {
+        /* soft */
+      }
     }
 
     return sendJson(res, 200, payload, req)

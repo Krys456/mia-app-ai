@@ -6,6 +6,7 @@ import {
   fetchCalendarConnectionStatus,
   fetchCalendarLiveDiag,
   isCalendarDiagModeEnabled,
+  persistCalendarConnectionDiag,
   startGoogleCalendarOAuth,
   type CalendarConnectionPublic,
 } from '../lib/calendarApi'
@@ -67,11 +68,7 @@ export function CalendarIntegrationsSettings() {
         if (isCalendarDiagModeEnabled()) {
           const diag = await fetchCalendarLiveDiag()
           if (diag.ok && diag.diag) {
-            try {
-              sessionStorage.setItem('shinkaido.calendar.lastConnectionDiag', JSON.stringify(diag.diag))
-            } catch {
-              /* soft */
-            }
+            persistCalendarConnectionDiag(diag.diag)
             const uid = typeof diag.diag.authUid === 'string' ? diag.diag.authUid : '?'
             const row = diag.diag.rowFound === true ? 'YES' : 'NO'
             const st = typeof diag.diag.connectionStatus === 'string' ? diag.diag.connectionStatus : '?'
