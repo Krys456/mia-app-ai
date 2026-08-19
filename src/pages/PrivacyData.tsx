@@ -81,6 +81,13 @@ export function PrivacyData({ onBack }: PrivacyDataProps) {
           <p>{PRIVACY_DISCLOSURE.pushNotifications}</p>
         </section>
 
+        <section className="privacy-data__section" aria-labelledby="privacy-calendar-title">
+          <h2 id="privacy-calendar-title" className="privacy-data__heading">
+            Google Calendar
+          </h2>
+          <p>{PRIVACY_DISCLOSURE.googleCalendar}</p>
+        </section>
+
         <section className="privacy-data__section" aria-labelledby="privacy-session-title">
           <h2 id="privacy-session-title" className="privacy-data__heading">
             Sessione anonima

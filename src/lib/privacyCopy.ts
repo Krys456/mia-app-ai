@@ -35,6 +35,8 @@ export const PRIVACY_DISCLOSURE = {
     'I promemoria che confermi vengono salvati nel tuo account ShinkAIdo (titolo, dettaglio e orario). Restano disponibili in app e al prossimo accesso. Le notifiche push sono opzionali.',
   pushNotifications:
     'Se attivi le notifiche, ShinkAIdo chiede il permesso del browser e salva una sottoscrizione push (endpoint e chiavi tecniche del browser) collegata al tuo account anonimo su questo dispositivo. Il titolo del promemoria può comparire sulla schermata di blocco. La consegna passa dai servizi push della piattaforma (ad es. Chrome/FCM). Puoi disattivare le notifiche in Impostazioni; i promemoria in app restano disponibili. Su un altro telefono o dopo aver cancellato i dati del sito l’identità anonima può cambiare e le sottoscrizioni precedenti non si trasferiscono automaticamente.',
+  googleCalendar:
+    'Puoi collegare opzionalmente Google Calendar da Impostazioni → Integrazioni. ShinkAIdo chiede solo il permesso di lettura (sola lettura): non può creare, modificare o eliminare eventi in questa versione. I token di accesso Google sono crittografati lato server e non vengono salvati nel browser. In #304A1 i dati del Calendar non sono ancora usati in chat. Puoi scollegare in qualsiasi momento; Memoria, promemoria e notifiche restano indipendenti. Con una sessione anonima su questo dispositivo, cancellare i dati del sito può richiedere di collegare di nuovo Google.',
   anonymousSession:
     'ShinkAIdo usa un account anonimo silenzioso su questo browser. Cancellare i dati del sito può creare una nuova identità. La Memoria e i promemoria collegati all’identità precedente non vengono trasferiti automaticamente.',
   sharedDevice:
@@ -42,7 +44,7 @@ export const PRIVACY_DISCLOSURE = {
   sensitiveWarning:
     'Non salvare in Memoria password, dati di pagamento, chiavi API o altri segreti sensibili. Evita titoli di promemoria troppo sensibili se attivi le notifiche sulla schermata di blocco.',
   processors:
-    'Servizi principali usati da ShinkAIdo: OpenAI (elaborazione AI), Supabase (autenticazione, Memoria, promemoria e sottoscrizioni push), Vercel (hosting), Upstash (limite di richieste), e i servizi push del browser/sistema operativo per le notifiche opzionali.',
+    'Servizi principali usati da ShinkAIdo: OpenAI (elaborazione AI), Supabase (autenticazione, Memoria, promemoria, sottoscrizioni push e, se collegato, connessione Calendar), Vercel (hosting), Upstash (limite di richieste), i servizi push del browser/sistema operativo per le notifiche opzionali, e Google (OAuth Calendar, solo se colleghi Calendar).',
   newChatVsMemory:
     'Nuova chat chiude la conversazione sullo schermo. Eliminare la Memoria rimuove i ricordi salvati. L’eliminazione dell’account non è ancora disponibile.',
   highStakes:

@@ -12,6 +12,7 @@ import { getClientBuildId } from '../lib/buildInfo'
 import type { AppearanceFontFamily, AppearanceFontSize, PersonalizationSettings } from '../types'
 import { ThemeSettings } from './ThemeSettings'
 import { NotificationsSettings } from './NotificationsSettings'
+import { CalendarIntegrationsSettings } from './CalendarIntegrationsSettings'
 import './SettingsDrawer.css'
 import './MemoryToggle.css'
 
@@ -211,6 +212,10 @@ export function SettingsDrawer({ onOpenMemory, onOpenPrivacy, onOpenReminders }:
           <div className="settings-divider" role="separator" />
 
           <NotificationsSettings />
+
+          <div className="settings-divider" role="separator" />
+
+          <CalendarIntegrationsSettings />
 
           <div className="settings-divider" role="separator" />
 
