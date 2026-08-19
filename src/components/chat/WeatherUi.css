@@ -1,0 +1,86 @@
+.weather-ui {
+  margin-top: 0.65rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.weather-ui__card {
+  padding: 0.75rem 0.85rem;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--bubble-assistant-bg, #1a1f2e) 88%, #3a7ca5);
+  border: 1px solid color-mix(in srgb, currentColor 12%, transparent);
+  max-width: 18rem;
+}
+
+.weather-ui__place {
+  font-size: 0.8rem;
+  font-weight: 600;
+  opacity: 0.9;
+  margin-bottom: 0.25rem;
+}
+
+.weather-ui__main {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 1.45rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.weather-ui__emoji {
+  font-size: 1.5rem;
+}
+
+.weather-ui__desc {
+  font-size: 0.85rem;
+  margin-top: 0.2rem;
+  opacity: 0.9;
+}
+
+.weather-ui__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.75rem;
+  margin-top: 0.45rem;
+  font-size: 0.75rem;
+  opacity: 0.85;
+}
+
+.weather-ui__attr {
+  margin-top: 0.4rem;
+  font-size: 0.65rem;
+  opacity: 0.55;
+}
+
+.weather-ui__attr--solo {
+  margin-top: 0;
+}
+
+.weather-ui__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.weather-ui__btn {
+  appearance: none;
+  border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+  background: color-mix(in srgb, var(--bubble-assistant-bg, #1a1f2e) 70%, transparent);
+  color: inherit;
+  border-radius: 999px;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.weather-ui__btn:hover {
+  border-color: color-mix(in srgb, currentColor 35%, transparent);
+}
+
+@media (max-width: 480px) {
+  .weather-ui__card {
+    max-width: 100%;
+  }
+}
