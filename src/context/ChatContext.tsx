@@ -33,6 +33,7 @@ import {
   getPendingAutomation,
   savePendingAutomation,
 } from '../lib/pendingAutomation'
+import { guessBrowserTimeZone } from '../lib/reminderApi'
 import {
   applyPivotSuppression,
   COMFORT_TRAP_TOPICS,
@@ -618,6 +619,11 @@ export function ChatProvider({ children }: { children: ReactNode }) {
               conversationMemoryMap: getConversationMemoryMap() || undefined,
               conversationPreferenceProfile:
                 getConversationPreferenceProfile() || undefined,
+              timeZone: guessBrowserTimeZone(),
+              browserLocale:
+                typeof navigator !== 'undefined' && typeof navigator.language === 'string'
+                  ? navigator.language
+                  : undefined,
             },
             { signal: controller.signal },
           )

@@ -85,6 +85,11 @@ export interface ChatApiRequest {
   conversationMemoryMap?: Record<string, unknown> | null
   /** Conversation Preference Profile — style prefs from feedback. */
   conversationPreferenceProfile?: Record<string, unknown> | null
+  /** #304A3 — IANA timezone from the browser (validated server-side). */
+  timeZone?: string
+  /** Optional browser locale (language fallback). */
+  browserLocale?: string
+  locale?: string
 }
 
 export interface ChatApiSuccess {
@@ -228,6 +233,12 @@ export async function requestChatCompletion(
         ...(payload.conversationPreferenceProfile
           ? { conversationPreferenceProfile: payload.conversationPreferenceProfile }
           : {}),
+        ...(payload.timeZone ? { timeZone: payload.timeZone } : {}),
+        ...(payload.browserLocale
+          ? { browserLocale: payload.browserLocale }
+          : payload.locale
+            ? { browserLocale: payload.locale }
+            : {}),
       }),
       signal: init?.signal,
     })

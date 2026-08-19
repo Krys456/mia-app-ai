@@ -51,7 +51,7 @@ export function CalendarIntegrationsSettings() {
       await refresh()
       if (returned === 'connected') {
         setNote(
-          'Google Calendar collegato. In questa versione ShinkAIdo non legge ancora gli eventi in chat.',
+          'Google Calendar collegato. ShinkAIdo può usare il tuo calendario in sola lettura quando fai domande sui tuoi impegni.',
         )
       } else if (returned === 'reconnect_required') {
         setNote('Autorizzazione incompleta: manca il refresh token. Usa ON per riprovare.')
@@ -190,8 +190,8 @@ export function CalendarIntegrationsSettings() {
         </div>
 
         <p className="settings-note settings-note--tight">
-          ShinkAIdo può leggere il Calendar solo dopo il consenso. In #304A1 non può creare,
-          modificare o eliminare eventi, e non usa ancora il Calendar in chat. ON avvia Google
+          ShinkAIdo può leggere il Calendar solo dopo il consenso, in sola lettura, quando fai
+          domande sui tuoi impegni. Non può creare, modificare o eliminare eventi. ON avvia Google
           OAuth; OFF scollega e revoca i token lato server.
         </p>
 

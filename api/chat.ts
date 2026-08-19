@@ -54,6 +54,11 @@ import {
   extractUrlCitations,
   modelSupportsWebSearchTool,
 } from '../lib/server/web-search.js'
+import {
+  appendCalendarPackToInstructions,
+  maybeBuildCalendarChatEnrichment,
+} from '../lib/server/calendar-chat-pack.js'
+import { getRequestContext } from '../lib/server/request-id.js'
 
 export const config = {
   runtime: 'nodejs',
@@ -106,6 +111,9 @@ interface ChatApiRequestBody {
   /** Optional browser locale — final language fallback only when turn+sticky are uncertain. */
   browserLocale?: string
   locale?: string
+  /** #304A3 — IANA timezone from browser (validated server-side). */
+  timeZone?: string
+  timezone?: string
   /** Legacy V1/V2 flags — ignored by the new core. */
   developerMode?: boolean
   engine?: 'v1' | 'v2'
@@ -581,12 +589,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           })
         : ''
 
-    const instructions = appendWebSearchGuidance(
-      appendImageGenerationGuidance(
-        appendMemoryPackToInstructions(buildInstructions(body, messages), memoryPack),
+    // #304A3 — Calendar enrichment ONLY on relevant turns (after auth/rate-limit).
+    // Soft-fail; never breaks Core. Exactly one responses.create follows.
+    const calendarRequestId = getRequestContext(req as unknown as { [key: string]: unknown })
+      ?.requestId
+    const calendarEnrichment =
+      lastUserCaption && memoryOwnerUserId
+        ? await maybeBuildCalendarChatEnrichment({
+            userMessage: lastUserCaption,
+            userId: memoryOwnerUserId,
+            timeZone: body.timeZone || body.timezone,
+            requestId: calendarRequestId,
+          })
+        : {
+            used: false,
+            intent: 'none' as const,
+            pack: '',
+            skipMemoryExtraction: false,
+            status: null,
+          }
+
+    const instructions = appendCalendarPackToInstructions(
+      appendWebSearchGuidance(
+        appendImageGenerationGuidance(
+          appendMemoryPackToInstructions(buildInstructions(body, messages), memoryPack),
+          model,
+        ),
         model,
       ),
-      model,
+      calendarEnrichment.pack,
     )
     const OpenAI = (await import('openai')).default
     const client = new OpenAI({ apiKey })
@@ -645,13 +676,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Image-only / PDF-only turns (empty caption) skip durable extraction.
     // Vision Lens Read/Explain shortcuts are ephemeral task instructions — not user facts.
     // Forget early-return already forces memoryEvent: null (assistant reply is authoritative).
+    // #304A3 — Calendar pack turns are ephemeral schedule DATA; skip auto-extraction.
     // Transient image-edit captions are still subject to existing Memory rules (no bytes stored).
     const skipExtractionForInspection =
       overviewHandled ||
       !lastUserCaption ||
       isPersonalMemoryProbe(lastUserCaption) ||
       isVisionTaskShortcut(lastUserCaption) ||
-      images.length > 0
+      images.length > 0 ||
+      calendarEnrichment.skipMemoryExtraction
 
     if (lastUserCaption && !skipExtractionForInspection) {
       const write = await runMemoryIfEnabled(
