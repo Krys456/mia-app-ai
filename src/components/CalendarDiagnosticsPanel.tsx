@@ -69,21 +69,30 @@ export function CalendarDiagnosticsPanel() {
       },
       {
         label: 'CALENDAR_ENABLED',
-        value: asText(
-          chat?.runtimeCalendarEnabled ??
-            connection?.edgeCalendarEnabled ??
-            oauth?.edgeCalendarEnabled,
-        ),
+        value: asText(chat?.runtimeCalendarEnabled),
+      },
+      { label: 'chat intent', value: asText(chat?.intent) },
+      { label: 'chat used', value: asText(chat?.used) },
+      {
+        label: 'connection row found (chat)',
+        value: asText(chat?.rowFound),
       },
       {
-        label: 'connection row found',
-        value: asText(chat?.rowFound ?? connection?.rowFound),
+        label: 'connection status (chat)',
+        value: asText(chat?.connectionStatus),
       },
       {
-        label: 'connection status',
-        value: asText(
-          chat?.connectionStatus || connection?.connectionStatus || connection?.status,
-        ),
+        label: 'connection row found (settings)',
+        value: asText(connection?.rowFound),
+      },
+      {
+        label: 'connection status (settings)',
+        value: asText(connection?.connectionStatus || connection?.status),
+      },
+      { label: 'tokenDecrypt', value: asText(chat?.tokenDecrypt) },
+      {
+        label: 'preGoogleFailureCode',
+        value: asText(chat?.preGoogleFailureCode || chat?.code),
       },
       {
         label: 'Google request reached',

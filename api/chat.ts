@@ -616,6 +616,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             pack: '',
             skipMemoryExtraction: false,
             status: null,
+            tokenDecrypt: 'NOT_REACHED' as const,
+            preGoogleFailureCode: lastUserCaption ? 'missing_owner' : 'empty_caption',
           }
 
     const instructions = appendCalendarPackToInstructions(
@@ -749,7 +751,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       })
       try {
         res.setHeader('X-Shinkaido-Calendar-Diag', '1')
-        res.setHeader('X-Shinkaido-Calendar-Diag-Build', '310C3-1')
+        res.setHeader('X-Shinkaido-Calendar-Diag-Build', '310D-1')
       } catch {
         /* soft */
       }
