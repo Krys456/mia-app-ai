@@ -45,5 +45,3 @@ export {
   logTimerSafe,
   rememberTimerDiag,
 } from './timer/diag.js'
-
-export { timerCompletedMessage } from './timer/copy.js'
