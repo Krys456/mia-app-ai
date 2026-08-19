@@ -17,6 +17,10 @@ interface MessageActionsProps {
   variant?: MessageActionsVariant
   canRegenerate?: boolean
   onRegenerate?: () => void
+  /** #312 — Vision × Search compact action (only when visual context exists). */
+  showVisionSearch?: boolean
+  visionSearchLabel?: string
+  onVisionSearch?: () => void
   /** Force visible (keyboard / long-press). */
   forceVisible?: boolean
   /** Fired after any toolbar action (helps dismiss touch pin). */
@@ -29,6 +33,9 @@ function MessageActionsComponent({
   variant = 'assistant',
   canRegenerate = false,
   onRegenerate,
+  showVisionSearch = false,
+  visionSearchLabel = 'Search',
+  onVisionSearch,
   forceVisible = false,
   onAction,
 }: MessageActionsProps) {
@@ -121,6 +128,22 @@ function MessageActionsComponent({
         <span className="message-actions__label">{copied ? 'Copiato' : 'Copia'}</span>
       </button>
 
+      {!isUser && showVisionSearch ? (
+        <button
+          type="button"
+          className="message-actions__btn"
+          onClick={() => {
+            onAction?.()
+            onVisionSearch?.()
+          }}
+          aria-label={visionSearchLabel}
+          title={visionSearchLabel}
+        >
+          <IconSearch />
+          <span className="message-actions__label">{visionSearchLabel}</span>
+        </button>
+      ) : null}
+
       {!isUser ? (
         <button
           type="button"
@@ -181,6 +204,20 @@ function IconRefresh() {
         strokeWidth="1.7"
         strokeLinecap="round"
         strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+function IconSearch() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="11" cy="11" r="6.5" stroke="currentColor" strokeWidth="1.7" />
+      <path
+        d="M16.5 16.5 20 20"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
       />
     </svg>
   )

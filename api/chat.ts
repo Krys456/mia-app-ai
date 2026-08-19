@@ -53,7 +53,18 @@ import {
   detectExplicitWebSearchIntent,
   extractUrlCitations,
   modelSupportsWebSearchTool,
+  responseUsedWebSearch,
 } from '../lib/server/web-search.js'
+import { selectLatestVisionSearchContext } from '../lib/server/vision-search-context.js'
+import { detectVisionSearchIntent } from '../lib/server/vision-search-intent.js'
+import {
+  buildVisionSearchAppendix,
+  buildVisionSearchQuery,
+} from '../lib/server/vision-search-query.js'
+import {
+  buildVisionSearchDiagPayload,
+  isVisionSearchDiagEnabled,
+} from '../lib/server/vision-search-diag.js'
 
 export const config = {
   runtime: 'nodejs',
@@ -103,6 +114,8 @@ interface ChatApiRequestBody {
   conversationPreferenceProfile?: Record<string, unknown> | null
   conversationId?: string
   learningSignals?: unknown
+  /** #312 — opt-in Vision × Search diagnostics (Preview). */
+  visionSearchDiag?: boolean | 1 | '1'
   /** Optional browser locale — final language fallback only when turn+sticky are uncertain. */
   browserLocale?: string
   locale?: string
@@ -275,20 +288,26 @@ function appendWebSearchGuidance(instructions: string, model: string): string {
 /**
  * Build hosted tool list + optional tool_choice for this turn.
  * Narrow explicit search / no-search detector only — not a freshness classifier.
+ * #312 — `forceWebSearch` bridges Vision context into the same hosted web_search tool.
  */
-function resolveHostedToolsForTurn(model: string, lastUserCaption: string) {
+function resolveHostedToolsForTurn(
+  model: string,
+  lastUserCaption: string,
+  options: { forceWebSearch?: boolean } = {},
+) {
   const intent = detectExplicitWebSearchIntent(lastUserCaption)
-  const omitWebSearch = intent === 'forbid'
+  const forceWebSearch = options.forceWebSearch === true
+  const omitWebSearch = intent === 'forbid' && !forceWebSearch
   const webTools = omitWebSearch ? [] : buildWebSearchTools(model)
   const imageTools = buildImageGenerationTools(model)
   const tools = [...webTools, ...imageTools]
   /** @type {unknown | undefined} */
   let toolChoice: unknown | undefined
-  if (intent === 'require' && webTools.length > 0) {
-    // Force hosted web_search for explicit "Cerca sul web…" style requests.
+  if ((intent === 'require' || forceWebSearch) && webTools.length > 0) {
+    // Force hosted web_search for explicit "Cerca sul web…" / Vision×Search (#312).
     toolChoice = { type: 'web_search' }
   }
-  return { tools, toolChoice, intent }
+  return { tools, toolChoice, intent, forceWebSearch }
 }
 
 function resolveChatModel(env: NodeJS.ProcessEnv = process.env): string {
@@ -581,37 +600,144 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           })
         : ''
 
-    const instructions = appendWebSearchGuidance(
+    // #312 — Vision AI × Search: resolve visual context + NL/button intent, then
+    // force the *existing* hosted web_search pipeline (no reverse-image upload).
+    const visionDiagOn = isVisionSearchDiagEnabled(req, body as Record<string, unknown>)
+    const visionMsgs = messages.map((m) => ({
+      role: m.role,
+      content: typeof m.content === 'string' ? m.content : '',
+      attachments: m.attachments,
+    }))
+    const visionCtx = selectLatestVisionSearchContext(visionMsgs)
+    const visionRoute = detectVisionSearchIntent(lastUserCaption || '', {
+      messages: visionMsgs,
+      hasVisionContext: Boolean(visionCtx),
+    })
+    let visionSearchActive = false
+    let visionSearchQuery = ''
+    let visionSearchKind: string | null = null
+    let visionSearchFailure: string | null = null
+    let visionSearchContextSent = false
+    let instructionsWithVision = appendWebSearchGuidance(
       appendImageGenerationGuidance(
         appendMemoryPackToInstructions(buildInstructions(body, messages), memoryPack),
         model,
       ),
       model,
     )
+
+    if (visionRoute.intent === 'vision_search') {
+      visionSearchKind = visionRoute.kind
+      if (!visionCtx) {
+        visionSearchFailure = 'no_vision_context'
+      } else if (!modelSupportsWebSearchTool(model)) {
+        visionSearchFailure = 'search_unavailable'
+      } else {
+        const built = buildVisionSearchQuery({
+          kind: visionRoute.kind,
+          userMessage: lastUserCaption || '',
+          vision: visionCtx,
+        })
+        if (!built.ok || !built.query) {
+          visionSearchFailure = built.code || 'query_generation_failed'
+        } else {
+          visionSearchQuery = built.query
+          visionSearchActive = true
+          const vsAppendix = buildVisionSearchAppendix({
+            query: built.query,
+            kind: visionRoute.kind,
+            uncertain: Boolean(visionCtx.uncertain),
+            visionSummary: visionCtx.summary,
+          })
+          if (vsAppendix) {
+            instructionsWithVision = `${instructionsWithVision}\n\n${vsAppendix}`
+            visionSearchContextSent = true
+          }
+        }
+      }
+    }
+
+    const instructions = instructionsWithVision
     const OpenAI = (await import('openai')).default
     const client = new OpenAI({ apiKey })
 
     const { tools: hostedTools, toolChoice } = resolveHostedToolsForTurn(
       model,
       lastUserCaption || '',
+      { forceWebSearch: visionSearchActive },
     )
-    const response = await client.responses.create(
-      buildCoreResponsesCreateParams({
-        model,
-        instructions,
-        maxOutputTokens: modality === 'voice' ? 700 : 4096,
-        input: mapMessagesToResponsesInput(messages),
-        ...(hostedTools.length ? { tools: hostedTools } : {}),
-        ...(toolChoice != null ? { toolChoice } : {}),
-      }),
-    )
+    let existingSearchInvoked = false
+    let searchResultCount = 0
+    let finalResponseReceived = false
+    let webSearchUsed: boolean | null = null
+    let response: Awaited<ReturnType<typeof client.responses.create>>
+    try {
+      response = await client.responses.create(
+        buildCoreResponsesCreateParams({
+          model,
+          instructions,
+          maxOutputTokens: modality === 'voice' ? 700 : 4096,
+          input: mapMessagesToResponsesInput(messages),
+          ...(hostedTools.length ? { tools: hostedTools } : {}),
+          ...(toolChoice != null ? { toolChoice } : {}),
+        }),
+      )
+      existingSearchInvoked = visionSearchActive
+      finalResponseReceived = true
+      webSearchUsed = responseUsedWebSearch(response)
+    } catch (upstreamErr) {
+      if (visionSearchActive) {
+        visionSearchFailure = 'search_unavailable'
+        console.warn(
+          '[api/chat] vision-search upstream failed:',
+          safeErrorSnippet(upstreamErr),
+        )
+        // Soft-fail: keep Vision answer path by retrying without forced search.
+        response = await client.responses.create(
+          buildCoreResponsesCreateParams({
+            model,
+            instructions: appendWebSearchGuidance(
+              appendImageGenerationGuidance(
+                appendMemoryPackToInstructions(buildInstructions(body, messages), memoryPack),
+                model,
+              ),
+              model,
+            ),
+            maxOutputTokens: modality === 'voice' ? 700 : 4096,
+            input: mapMessagesToResponsesInput(messages),
+            ...(buildImageGenerationTools(model).length
+              ? { tools: buildImageGenerationTools(model) }
+              : {}),
+          }),
+        )
+        finalResponseReceived = true
+        existingSearchInvoked = false
+        webSearchUsed = false
+      } else {
+        throw upstreamErr
+      }
+    }
 
     const parsedImages = parseImageGenerationCalls(response)
     // Seal with HMAC proof so later history replay cannot spoof assistant images
     // merely by setting source=generated (and allows >1.5MB generated payloads).
     const images = sealChatApiImages(toChatApiImages(parsedImages.images))
     const citations = extractUrlCitations(response)
+    searchResultCount = citations.length
     let content = response.output_text?.trim() || ''
+
+    if (visionSearchActive && visionSearchFailure === 'search_unavailable' && content) {
+      const note =
+        /[àèéìòù]/.test(content) || /\b(il|la|di|che|sono|è)\b/i.test(content)
+          ? '\n\nNon sono riuscito a recuperare informazioni aggiornate dal web in questo momento.'
+          : '\n\nI could not retrieve current web information right now.'
+      if (!content.includes('recuperare informazioni aggiornate') && !content.includes('could not retrieve current web')) {
+        content = `${content}${note}`
+      }
+    }
+    if (visionSearchActive && !content && images.length === 0) {
+      visionSearchFailure = visionSearchFailure || 'no_search_results'
+    }
 
     if (!content && images.length === 0) {
       if (parsedImages.safetyRefused) {
@@ -689,6 +815,39 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ...(body.pendingAutomation !== undefined
         ? { pendingAutomation: body.pendingAutomation }
         : {}),
+    }
+
+    if (visionDiagOn || visionRoute.intent === 'vision_search' || visionSearchActive) {
+      const diag = buildVisionSearchDiagPayload({
+        requestId:
+          typeof (req as { headers?: Record<string, string> }).headers?.['x-request-id'] === 'string'
+            ? (req as { headers: Record<string, string> }).headers['x-request-id']
+            : null,
+        visionContextFound: Boolean(visionCtx),
+        sourceVisionTurnId: visionCtx?.sourceTurnId ?? null,
+        visualEntityAvailable: Boolean(visionCtx?.entities?.length),
+        visualSearchIntent: visionSearchKind,
+        generatedSearchQuery: visionSearchQuery || null,
+        existingSearchInvoked,
+        searchResultCount,
+        searchContextSentToModel: visionSearchContextSent,
+        finalResponseReceived,
+        failureCode: visionSearchFailure,
+        webSearchUsed,
+      })
+      if (visionDiagOn) {
+        payload.visionSearchDiag = diag
+      }
+      console.info('[api/chat] vision-search', {
+        route: diag.route,
+        buildId: diag.buildId,
+        visionContextFound: diag.visionContextFound,
+        visualSearchIntent: diag.visualSearchIntent,
+        existingSearchInvoked: diag.existingSearchInvoked,
+        searchResultCount: diag.searchResultCount,
+        failureCode: diag.failureCode,
+        generatedSearchQueryPreview: diag.generatedSearchQueryPreview,
+      })
     }
 
     return sendJson(res, 200, payload, req)
