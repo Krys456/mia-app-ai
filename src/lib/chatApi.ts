@@ -120,6 +120,8 @@ export interface ChatApiSuccess {
   conversationPreferenceProfile?: Record<string, unknown> | null
   /** Developer debug — present when the server returns a V2 debug snapshot. */
   v2Debug?: V2DebugInfo | null
+  /** #310C — temporary Preview Calendar live-trace (safe fields only). */
+  calendarDiag?: Record<string, unknown> | null
 }
 
 /** Server-authored image artifact from /api/chat (#289). */
@@ -202,6 +204,21 @@ export async function requestChatCompletion(
     }
     headers.Authorization = auth.authorization
 
+    let calendarDiag = false
+    let clientSupabaseHost: string | undefined
+    try {
+      const { isCalendarDiagModeEnabled } = await import('./calendarApi.ts')
+      calendarDiag = isCalendarDiagModeEnabled()
+      const viteUrl = (import.meta.env.VITE_SUPABASE_URL || '').trim()
+      if (viteUrl) clientSupabaseHost = new URL(viteUrl).hostname
+    } catch {
+      /* soft */
+    }
+    if (calendarDiag) {
+      headers['X-Shinkaido-Calendar-Diag'] = '1'
+      if (clientSupabaseHost) headers['X-Shinkaido-Supabase-Host'] = clientSupabaseHost
+    }
+
     response = await fetch(endpoint, {
       method: 'POST',
       headers,
@@ -239,6 +256,8 @@ export async function requestChatCompletion(
           : payload.locale
             ? { browserLocale: payload.locale }
             : {}),
+        ...(calendarDiag ? { calendarDiag: true } : {}),
+        ...(clientSupabaseHost ? { clientSupabaseHost } : {}),
       }),
       signal: init?.signal,
     })
@@ -311,6 +330,19 @@ export async function requestChatCompletion(
 
   const v2Debug = sanitizeV2Debug(data.v2Debug)
 
+  const calendarDiag =
+    data.calendarDiag && typeof data.calendarDiag === 'object'
+      ? (data.calendarDiag as Record<string, unknown>)
+      : null
+  if (calendarDiag) {
+    try {
+      sessionStorage.setItem('shinkaido.calendar.lastChatDiag', JSON.stringify(calendarDiag))
+      console.info('[calendarDiag]', calendarDiag)
+    } catch {
+      /* soft */
+    }
+  }
+
   return {
     content,
     ...(images.length ? { images } : {}),
@@ -341,6 +373,7 @@ export async function requestChatCompletion(
       data.conversationPreferenceProfile,
     ),
     v2Debug,
+    ...(calendarDiag ? { calendarDiag } : {}),
   }
 }
 

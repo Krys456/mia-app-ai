@@ -2,7 +2,10 @@ import { useCallback, useEffect, useState } from 'react'
 import {
   consumeCalendarReturnQuery,
   disconnectGoogleCalendar,
+  enableCalendarDiagMode,
   fetchCalendarConnectionStatus,
+  fetchCalendarLiveDiag,
+  isCalendarDiagModeEnabled,
   startGoogleCalendarOAuth,
   type CalendarConnectionPublic,
 } from '../lib/calendarApi'
@@ -48,11 +51,36 @@ export function CalendarIntegrationsSettings() {
     const returned = consumeCalendarReturnQuery()
     void (async () => {
       setPhase('loading')
+      if (typeof window !== 'undefined') {
+        try {
+          const url = new URL(window.location.href)
+          if (url.searchParams.get('calendar_diag') === '1') enableCalendarDiagMode()
+        } catch {
+          /* soft */
+        }
+      }
       await refresh()
       if (returned === 'connected') {
         setNote(
           'Google Calendar collegato. ShinkAIdo può usare il tuo calendario in sola lettura quando fai domande sui tuoi impegni.',
         )
+        if (isCalendarDiagModeEnabled()) {
+          const diag = await fetchCalendarLiveDiag()
+          if (diag.ok && diag.diag) {
+            try {
+              sessionStorage.setItem('shinkaido.calendar.lastConnectionDiag', JSON.stringify(diag.diag))
+            } catch {
+              /* soft */
+            }
+            const uid = typeof diag.diag.authUid === 'string' ? diag.diag.authUid : '?'
+            const row = diag.diag.rowFound === true ? 'YES' : 'NO'
+            const st = typeof diag.diag.connectionStatus === 'string' ? diag.diag.connectionStatus : '?'
+            setNote(
+              (n) =>
+                `${n || ''} Diag: uid=${uid} row=${row} status=${st} project=${String(diag.diag?.supabaseProject || '?')}`.trim(),
+            )
+          }
+        }
       } else if (returned === 'reconnect_required') {
         setNote('Autorizzazione incompleta: manca il refresh token. Usa ON per riprovare.')
       } else if (returned === 'error') {

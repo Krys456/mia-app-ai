@@ -87,10 +87,17 @@ export async function startGoogleCalendarOAuth(): Promise<{
   ok: boolean
   authorizeUrl?: string
   code?: string
+  correlationId?: string
+  diag?: Record<string, unknown>
 }> {
   const base = supabaseFunctionsBase()
   const headers = await edgeHeaders()
   if (!base || !headers) return { ok: false, code: 'auth_unavailable' }
+
+  const correlationId =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `cid-${Date.now()}`
 
   const res = await fetch(`${base}/functions/v1/calendar-oauth-start`, {
     method: 'POST',
@@ -98,6 +105,7 @@ export async function startGoogleCalendarOAuth(): Promise<{
     // Bind callback return to THIS browser origin (HMAC-signed server-side).
     body: JSON.stringify({
       returnOrigin: typeof window !== 'undefined' ? window.location.origin : '',
+      correlationId,
     }),
   })
   if (res.status === 404) return { ok: false, code: 'calendar_disabled' }
@@ -111,11 +119,28 @@ export async function startGoogleCalendarOAuth(): Promise<{
     }
     return { ok: false, code }
   }
-  const body = (await res.json()) as { authorizeUrl?: string }
+  const body = (await res.json()) as {
+    authorizeUrl?: string
+    correlationId?: string
+    diag?: Record<string, unknown>
+  }
   if (!body.authorizeUrl || !body.authorizeUrl.startsWith('https://accounts.google.com/')) {
     return { ok: false, code: 'authorize_url_invalid' }
   }
-  return { ok: true, authorizeUrl: body.authorizeUrl }
+  try {
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.setItem('shinkaido.calendar.correlationId', body.correlationId || correlationId)
+      if (body.diag) sessionStorage.setItem('shinkaido.calendar.lastOauthStartDiag', JSON.stringify(body.diag))
+    }
+  } catch {
+    /* soft */
+  }
+  return {
+    ok: true,
+    authorizeUrl: body.authorizeUrl,
+    correlationId: body.correlationId || correlationId,
+    diag: body.diag,
+  }
 }
 
 export async function disconnectGoogleCalendar(): Promise<{
@@ -147,19 +172,78 @@ export async function disconnectGoogleCalendar(): Promise<{
   return { ok: true, connection: body.connection ?? null }
 }
 
+/** #310C — authenticated Edge connection diag (safe fields only). */
+export async function fetchCalendarLiveDiag(): Promise<{
+  ok: boolean
+  diag?: Record<string, unknown>
+  code?: string
+}> {
+  const base = supabaseFunctionsBase()
+  const headers = await edgeHeaders()
+  if (!base || !headers) return { ok: false, code: 'auth_unavailable' }
+
+  const res = await fetch(`${base}/functions/v1/calendar-connection`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ action: 'diag' }),
+  })
+  if (res.status === 404) return { ok: false, code: 'calendar_disabled' }
+  if (!res.ok) {
+    let code = 'diag_failed'
+    try {
+      const body = await res.json()
+      if (typeof body?.code === 'string') code = body.code
+    } catch {
+      /* soft */
+    }
+    return { ok: false, code }
+  }
+  const body = (await res.json()) as { diag?: Record<string, unknown> }
+  return { ok: true, diag: body.diag }
+}
+
 /** Map URL query ?calendar=… after OAuth return. */
 export function consumeCalendarReturnQuery(): string | null {
   if (typeof window === 'undefined') return null
   try {
     const url = new URL(window.location.href)
     const flag = url.searchParams.get('calendar')
+    const cid = url.searchParams.get('cid')
+    if (cid) {
+      try {
+        sessionStorage.setItem('shinkaido.calendar.correlationId', cid)
+        sessionStorage.setItem('shinkaido.calendar.diag', '1')
+      } catch {
+        /* soft */
+      }
+    }
     if (!flag) return null
     url.searchParams.delete('calendar')
     url.searchParams.delete('code')
+    url.searchParams.delete('cid')
     const next = `${url.pathname}${url.search}${url.hash}`
     window.history.replaceState({}, '', next || '/')
     return flag
   } catch {
     return null
+  }
+}
+
+export function isCalendarDiagModeEnabled(): boolean {
+  if (typeof window === 'undefined') return false
+  try {
+    const url = new URL(window.location.href)
+    if (url.searchParams.get('calendar_diag') === '1') return true
+    return sessionStorage.getItem('shinkaido.calendar.diag') === '1'
+  } catch {
+    return false
+  }
+}
+
+export function enableCalendarDiagMode(): void {
+  try {
+    sessionStorage.setItem('shinkaido.calendar.diag', '1')
+  } catch {
+    /* soft */
   }
 }

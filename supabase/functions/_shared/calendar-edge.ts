@@ -73,6 +73,25 @@ export function logSafe(route: string, fields: Record<string, unknown>) {
   console.log(JSON.stringify({ route, ...redactTokenFields(fields) }))
 }
 
+/** #310C — mask auth.uid for safe diagnostics (never full UUID in client-facing diag if preferred). */
+export function maskUid(uid: unknown): string | null {
+  const id = typeof uid === 'string' ? uid.trim() : ''
+  if (id.length < 8) return id ? '…' : null
+  return `${id.slice(0, 4)}…${id.slice(-4)}`
+}
+
+export function supabaseProjectRefFromEnv(): string | null {
+  const raw = env('SUPABASE_URL')
+  if (!raw) return null
+  try {
+    const host = new URL(raw).hostname.toLowerCase()
+    const m = /^([a-z0-9-]+)\.supabase\.co$/.exec(host)
+    return m ? m[1] : host
+  } catch {
+    return null
+  }
+}
+
 export function extractBearer(req: Request): string | null {
   const header = req.headers.get('authorization') || ''
   if (!header.toLowerCase().startsWith('bearer ')) return null

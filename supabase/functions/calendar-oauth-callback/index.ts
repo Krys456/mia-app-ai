@@ -80,7 +80,7 @@ Deno.serve(async (req) => {
 
   const verified = await verifySignedOAuthState(state, {}, encKey)
   if (!verified.ok) {
-    logSafe('calendar-oauth-callback', { runId, code: verified.code, ok: false })
+    logSafe('calendar-oauth-callback', { runId, code: verified.code, ok: false, stateValid: false })
     return failRedirect(returnBase, verified.code)
   }
 
@@ -248,10 +248,15 @@ Deno.serve(async (req) => {
 
     logSafe('calendar-oauth-callback', {
       runId,
+      correlationId: verified.correlationId || null,
       ok: true,
-      userId,
+      authUid: (() => {
+        const id = String(userId)
+        return id.length >= 8 ? `${id.slice(0, 4)}…${id.slice(-4)}` : '…'
+      })(),
       status: refreshResolved.status,
       hasRefresh: Boolean(refreshResolved.refreshTokenEnc),
+      connectionUpserted: true,
       // origin host only — never tokens
       returnHost: (() => {
         try {
@@ -260,14 +265,16 @@ Deno.serve(async (req) => {
           return null
         }
       })(),
+      stateValid: true,
     })
 
     const calendarFlag =
       refreshResolved.status === 'connected' ? 'connected' : 'reconnect_required'
+    const cid = verified.correlationId ? `&cid=${encodeURIComponent(verified.correlationId)}` : ''
     const safe = resolveOAuthCallbackReturnUrl({
       signedReturnOrigin: verified.returnOrigin,
       allowedBase: returnBase,
-      pathQuery: `calendar=${calendarFlag}`,
+      pathQuery: `calendar=${calendarFlag}${cid}`,
     })
     if (!safe.ok) return failRedirect(returnBase, safe.code || 'return_url_not_configured')
     return redirect(safe.url)

@@ -16,7 +16,9 @@ import {
   isCalendarEnabled,
   json,
   logSafe,
+  maskUid,
   serviceClient,
+  supabaseProjectRefFromEnv,
   verifyUserJwt,
 } from '../_shared/calendar-edge.ts'
 import {
@@ -30,9 +32,12 @@ import {
   normalizeReturnOrigin,
 } from '../_shared/calendar-oauth.ts'
 
+const OAUTH_DIAG_BUILD = '310C-edge-v4'
+
 Deno.serve(async (req) => {
   const started = Date.now()
   const runId = crypto.randomUUID()
+  const correlationId = crypto.randomUUID()
   const cors = corsHeaders(req)
 
   if (req.method === 'OPTIONS') {
@@ -44,7 +49,12 @@ Deno.serve(async (req) => {
   }
 
   if (!isCalendarEnabled()) {
-    logSafe('calendar-oauth-start', { runId, code: 'calendar_disabled', ok: false })
+    logSafe('calendar-oauth-start', {
+      runId,
+      correlationId,
+      code: 'calendar_disabled',
+      ok: false,
+    })
     return json(404, { error: 'Calendar unavailable', code: 'calendar_disabled', runId }, cors)
   }
 
@@ -62,13 +72,14 @@ Deno.serve(async (req) => {
   const redirectUri = env('CALENDAR_OAUTH_REDIRECT_URI')
   const encKey = env('CALENDAR_TOKEN_ENCRYPTION_KEY')
   if (!clientId || !redirectUri || !encKey) {
-    logSafe('calendar-oauth-start', { runId, code: 'oauth_misconfigured', ok: false })
+    logSafe('calendar-oauth-start', { runId, correlationId, code: 'oauth_misconfigured', ok: false })
     return json(503, { error: 'misconfigured', code: 'oauth_misconfigured', runId }, cors)
   }
 
   // Reject if client secret somehow appears in request (defense).
   // Capture optional returnOrigin so callback returns to the SAME Preview/app origin.
   let bodyReturnOrigin: string | null = null
+  let bodyCorrelationId: string | null = null
   try {
     if (req.method === 'POST') {
       const text = await req.text()
@@ -80,19 +91,31 @@ Deno.serve(async (req) => {
         if (typeof body.returnOrigin === 'string') {
           bodyReturnOrigin = body.returnOrigin
         }
+        if (typeof body.correlationId === 'string' && body.correlationId.trim()) {
+          bodyCorrelationId = body.correlationId.trim().slice(0, 64)
+        }
       }
     }
   } catch {
     return json(400, { error: 'invalid_json', runId }, cors)
   }
 
+  const effectiveCorrelationId = bodyCorrelationId || correlationId
   const returnBase = env('CALENDAR_RETURN_URL')
   const headerOrigin = normalizeReturnOrigin(req.headers.get('Origin'))
   const requestedOrigin =
     normalizeReturnOrigin(bodyReturnOrigin) || headerOrigin || normalizeReturnOrigin(returnBase)
+  const returnOriginAccepted = Boolean(
+    requestedOrigin && isAllowedCalendarReturnOrigin(requestedOrigin, returnBase),
+  )
 
-  if (!requestedOrigin || !isAllowedCalendarReturnOrigin(requestedOrigin, returnBase)) {
-    logSafe('calendar-oauth-start', { runId, code: 'return_origin_invalid', ok: false })
+  if (!returnOriginAccepted || !requestedOrigin) {
+    logSafe('calendar-oauth-start', {
+      runId,
+      correlationId: effectiveCorrelationId,
+      code: 'return_origin_invalid',
+      ok: false,
+    })
     return json(400, { error: 'return_origin_invalid', code: 'return_origin_invalid', runId }, cors)
   }
 
@@ -104,11 +127,22 @@ Deno.serve(async (req) => {
     const codeChallenge = await generateCodeChallenge(codeVerifier)
     const nonce = generateOAuthNonce()
     const signed = await createSignedOAuthState(
-      { userId, nonce, codeVerifier, returnOrigin: requestedOrigin },
+      {
+        userId,
+        nonce,
+        codeVerifier,
+        returnOrigin: requestedOrigin,
+        correlationId: effectiveCorrelationId,
+      },
       encKey,
     )
     if (!signed.ok) {
-      logSafe('calendar-oauth-start', { runId, code: signed.code, ok: false })
+      logSafe('calendar-oauth-start', {
+        runId,
+        correlationId: effectiveCorrelationId,
+        code: signed.code,
+        ok: false,
+      })
       return json(503, { error: 'state_failed', code: signed.code, runId }, cors)
     }
 
@@ -136,23 +170,35 @@ Deno.serve(async (req) => {
       },
       { onConflict: 'user_id,provider' },
     )
+    const pendingRowCreated = !upsertError
     if (upsertError) {
-      logSafe('calendar-oauth-start', { runId, code: 'pending_upsert_failed', ok: false })
+      logSafe('calendar-oauth-start', {
+        runId,
+        correlationId: effectiveCorrelationId,
+        code: 'pending_upsert_failed',
+        ok: false,
+      })
       return json(500, { error: 'pending_upsert_failed', code: 'pending_upsert_failed', runId }, cors)
     }
 
+    const returnHost = (() => {
+      try {
+        return new URL(requestedOrigin).hostname
+      } catch {
+        return null
+      }
+    })()
+
     logSafe('calendar-oauth-start', {
       runId,
+      correlationId: effectiveCorrelationId,
       ok: true,
-      userId,
-      returnHost: (() => {
-        try {
-          return new URL(requestedOrigin).hostname
-        } catch {
-          return null
-        }
-      })(),
+      authUid: maskUid(userId),
+      origin: returnHost,
+      pendingRowCreated,
+      returnOriginAccepted: true,
       durationMs: Date.now() - started,
+      diagBuild: OAUTH_DIAG_BUILD,
     })
 
     return json(
@@ -162,14 +208,34 @@ Deno.serve(async (req) => {
         authorizeUrl: authorize.url,
         expiresAt: pendingExpires,
         runId,
+        correlationId: effectiveCorrelationId,
+        // #310C safe diag (no tokens)
+        diag: {
+          diagBuild: OAUTH_DIAG_BUILD,
+          phase: 'oauth_start',
+          timestamp: new Date().toISOString(),
+          correlationId: effectiveCorrelationId,
+          origin: requestedOrigin,
+          authUid: maskUid(userId),
+          pendingRowCreated,
+          returnOriginAccepted: true,
+          supabaseProject: supabaseProjectRefFromEnv(),
+          edgeCalendarEnabled: true,
+        },
       },
       cors,
     )
-  } catch (err) {
-    const code = err instanceof Error && err.message === 'supabase_service_misconfigured'
-      ? 'supabase_service_misconfigured'
-      : 'oauth_start_failed'
-    logSafe('calendar-oauth-start', { runId, code, ok: false })
+  } catch (_err) {
+    const code =
+      _err instanceof Error && _err.message === 'supabase_service_misconfigured'
+        ? 'supabase_service_misconfigured'
+        : 'oauth_start_failed'
+    logSafe('calendar-oauth-start', {
+      runId,
+      correlationId: effectiveCorrelationId,
+      code,
+      ok: false,
+    })
     return json(500, { error: 'oauth_start_failed', code, runId }, cors)
   }
 })

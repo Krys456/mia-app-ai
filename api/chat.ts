@@ -58,6 +58,11 @@ import {
   appendCalendarPackToInstructions,
   maybeBuildCalendarChatEnrichment,
 } from '../lib/server/calendar-chat-pack.js'
+import {
+  buildChatCalendarDiagPayload,
+  isCalendarDiagEnvAllowed,
+  isCalendarDiagRequested,
+} from '../lib/server/calendar-diag.js'
 import { getRequestContext } from '../lib/server/request-id.js'
 
 export const config = {
@@ -114,6 +119,10 @@ interface ChatApiRequestBody {
   /** #304A3 — IANA timezone from browser (validated server-side). */
   timeZone?: string
   timezone?: string
+  /** #310C — temporary Preview Calendar live-trace opt-in (safe fields only). */
+  calendarDiag?: boolean | number | string
+  /** #310C — client VITE_SUPABASE_URL hostname only (no keys). */
+  clientSupabaseHost?: string
   /** Legacy V1/V2 flags — ignored by the new core. */
   developerMode?: boolean
   engine?: 'v1' | 'v2'
@@ -722,6 +731,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ...(body.pendingAutomation !== undefined
         ? { pendingAutomation: body.pendingAutomation }
         : {}),
+    }
+
+    // #310C — temporary Preview opt-in Calendar live trace (safe fields only).
+    if (isCalendarDiagEnvAllowed(process.env) && isCalendarDiagRequested(req, body)) {
+      const clientHost =
+        typeof (body as { clientSupabaseHost?: unknown }).clientSupabaseHost === 'string'
+          ? (body as { clientSupabaseHost: string }).clientSupabaseHost
+          : typeof req.headers?.['x-shinkaido-supabase-host'] === 'string'
+            ? req.headers['x-shinkaido-supabase-host']
+            : null
+      payload.calendarDiag = buildChatCalendarDiagPayload({
+        correlationId: calendarRequestId || null,
+        authUserId: memoryOwnerUserId,
+        clientSupabaseHost: clientHost,
+        enrichment: calendarEnrichment,
+      })
     }
 
     return sendJson(res, 200, payload, req)

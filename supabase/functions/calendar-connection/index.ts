@@ -16,7 +16,9 @@ import {
   isCalendarEnabled,
   json,
   logSafe,
+  maskUid,
   serviceClient,
+  supabaseProjectRefFromEnv,
   toPublicConnection,
   verifyUserJwt,
 } from '../_shared/calendar-edge.ts'
@@ -101,6 +103,61 @@ Deno.serve(async (req) => {
       }
 
       const action = typeof body.action === 'string' ? body.action.trim() : 'disconnect'
+      // #310C — temporary authenticated Preview live-trace (safe fields only).
+      if (action === 'diag') {
+        const { data, error } = await supabase
+          .from('calendar_connections')
+          .select(
+            'status, provider, updated_at, created_at, token_expires_at, disconnected_at, last_error_code, access_token_enc, refresh_token_enc, oauth_pending_nonce',
+          )
+          .eq('user_id', userId)
+          .eq('provider', 'google')
+          .maybeSingle()
+
+        if (error) {
+          logSafe('calendar-connection', { runId, code: 'diag_lookup_failed', ok: false })
+          return json(500, { error: 'diag_failed', code: 'diag_lookup_failed', runId }, cors)
+        }
+
+        const rowFound = Boolean(data)
+        logSafe('calendar-connection', {
+          runId,
+          ok: true,
+          action: 'diag',
+          authUid: maskUid(userId),
+          rowFound,
+          status: data?.status || null,
+        })
+
+        return json(
+          200,
+          {
+            ok: true,
+            runId,
+            diag: {
+              diagBuild: '310C-edge-v4',
+              phase: 'connection_diag',
+              timestamp: new Date().toISOString(),
+              authUid: maskUid(userId),
+              edgeCalendarEnabled: true,
+              supabaseProject: supabaseProjectRefFromEnv(),
+              rowFound,
+              connectionStatus: data?.status || null,
+              provider: data?.provider || null,
+              createdAt: data?.created_at || null,
+              updatedAt: data?.updated_at || null,
+              tokenExpiresAt: data?.token_expires_at || null,
+              hasAccessTokenEnc: Boolean(data?.access_token_enc),
+              hasRefreshTokenEnc: Boolean(data?.refresh_token_enc),
+              pendingNonceSet: Boolean(data?.oauth_pending_nonce),
+              lastErrorCode: data?.last_error_code || null,
+              disconnectedAt: data?.disconnected_at || null,
+            },
+          },
+          cors,
+        )
+      }
+
       if (action !== 'disconnect') {
         return json(400, { error: 'unknown_action', code: 'unknown_action', runId }, cors)
       }
