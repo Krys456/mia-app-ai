@@ -7,11 +7,17 @@ import {
   useMemo,
   useReducer,
   useRef,
+  useState,
   type ReactNode,
 } from 'react'
 import { applyAppearanceToDocument, normalizeAppearance } from '../lib/appearance'
 import { requestChatCompletion, type ChatApiMessage } from '../lib/chatApi'
 import type { MemoryFeedbackEvent } from '../lib/memoryFeedback'
+import {
+  deriveActiveDocumentFromMessages,
+  type ActiveDocumentContext,
+} from '../lib/activeDocumentContext'
+import { rememberDocumentDiag } from '../lib/documentDiag'
 import {
   finalizeConversationLearning,
   getLearningSignals,
@@ -411,6 +417,9 @@ interface ChatContextValue {
   settingsOpen: boolean
   isThinking: boolean
   isStreaming: boolean
+  /** #313 — metadata-only active document for continuity UI. */
+  activeDocument: ActiveDocumentContext | null
+  clearActiveDocument: () => void
   newChat: () => void
   openSettings: () => void
   closeSettings: () => void
@@ -502,6 +511,7 @@ function toApiMessages(messages: ChatMessage[]): ChatApiMessage[] {
             name: a.name,
             mimeType: a.mimeType,
             size: a.size,
+            ...(typeof a.expiresAt === 'number' ? { expiresAt: a.expiresAt } : {}),
           })),
         }
       }
@@ -518,6 +528,26 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const abortRef = useRef<AbortController | null>(null)
   const topicMemoryRef = useRef(state.topicMemory)
   topicMemoryRef.current = state.topicMemory
+  /** #313 — user dismissed active document until next file upload. */
+  const suppressDocReuseRef = useRef(false)
+  const [activeDocument, setActiveDocument] = useState<ActiveDocumentContext | null>(null)
+
+  const syncActiveDocument = useCallback((messages: ChatMessage[]) => {
+    if (suppressDocReuseRef.current) {
+      setActiveDocument(null)
+      return
+    }
+    setActiveDocument(deriveActiveDocumentFromMessages(messages))
+  }, [])
+
+  useEffect(() => {
+    syncActiveDocument(state.messages)
+  }, [state.messages, syncActiveDocument])
+
+  const clearActiveDocument = useCallback(() => {
+    suppressDocReuseRef.current = true
+    setActiveDocument(null)
+  }, [])
 
   const abortActiveCompletion = useCallback(() => {
     abortRef.current?.abort()
@@ -527,6 +557,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const newChat = useCallback(() => {
     generationRef.current += 1
     inFlightRef.current = false
+    suppressDocReuseRef.current = false
+    setActiveDocument(null)
     abortActiveCompletion()
     // Close the conversation: keep preference/mistake signals, drop turn noise.
     // Invisible — never surfaces in UI; never writes factual memory.
@@ -601,6 +633,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             pendingAutomation,
             conversationMemoryMap,
             conversationPreferenceProfile,
+            documentDiag,
+            activeDocument: activeDocEcho,
           } =
             await requestChatCompletion(
             {
@@ -622,9 +656,30 @@ export function ChatProvider({ children }: { children: ReactNode }) {
                 typeof navigator !== 'undefined' && navigator.language
                   ? navigator.language
                   : 'it',
+              suppressActiveDocumentReuse: suppressDocReuseRef.current,
             },
             { signal: controller.signal },
           )
+
+          if (documentDiag) {
+            rememberDocumentDiag(documentDiag)
+          }
+          if (
+            activeDocEcho &&
+            typeof activeDocEcho === 'object' &&
+            typeof (activeDocEcho as ActiveDocumentContext).fileId === 'string' &&
+            !suppressDocReuseRef.current
+          ) {
+            const echo = activeDocEcho as ActiveDocumentContext
+            setActiveDocument({
+              fileId: echo.fileId,
+              filename: echo.filename || 'document',
+              mimeType: echo.mimeType || 'application/pdf',
+              size: typeof echo.size === 'number' ? echo.size : 0,
+              expiresAt: echo.expiresAt ?? null,
+              sourceTurnId: echo.sourceTurnId ?? null,
+            })
+          }
 
           if (import.meta.env.DEV) {
             console.log('[ChatContext] completion ok', {
@@ -793,6 +848,11 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         return false
       }
 
+      // #313 — new file upload becomes the active document (clears dismiss).
+      if (files.length) {
+        suppressDocReuseRef.current = false
+      }
+
       const personalization = state.settings.personalization
       const developer = state.settings.developer ?? DEFAULT_DEVELOPER_SETTINGS
       const history: ChatApiMessage[] = [
@@ -882,6 +942,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       settingsOpen: state.settingsOpen,
       isThinking: state.isThinking,
       isStreaming: state.isStreaming,
+      activeDocument,
+      clearActiveDocument,
       newChat,
       openSettings,
       closeSettings,
@@ -899,6 +961,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       state.settingsOpen,
       state.isThinking,
       state.isStreaming,
+      activeDocument,
+      clearActiveDocument,
       newChat,
       openSettings,
       closeSettings,
