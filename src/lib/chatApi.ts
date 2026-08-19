@@ -89,6 +89,9 @@ export interface ChatApiRequest {
   conversationPreferenceProfile?: Record<string, unknown> | null
   /** #312 — opt-in Vision × Search diagnostics. */
   visionSearchDiag?: boolean
+  /** Browser / UI locale — Language Awareness final fallback (#312A Vision). */
+  browserLocale?: string
+  locale?: string
 }
 
 export interface ChatApiSuccess {
@@ -219,6 +222,8 @@ export async function requestChatCompletion(
         userId: payload.userId,
         memoryEnabled: payload.memoryEnabled !== false,
         ...(visionDiag ? { visionSearchDiag: true } : {}),
+        ...(payload.browserLocale ? { browserLocale: payload.browserLocale } : {}),
+        ...(payload.locale ? { locale: payload.locale } : {}),
         ...(payload.learningSignals ? { learningSignals: payload.learningSignals } : {}),
         ...(payload.modality ? { modality: payload.modality } : {}),
         ...(payload.voice ? { voice: true } : {}),

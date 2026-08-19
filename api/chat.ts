@@ -677,7 +677,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           model,
           instructions,
           maxOutputTokens: modality === 'voice' ? 700 : 4096,
-          input: mapMessagesToResponsesInput(messages),
+          input: mapMessagesToResponsesInput(messages, {
+            browserLocale:
+              (typeof body.browserLocale === 'string' && body.browserLocale) ||
+              (typeof body.locale === 'string' && body.locale) ||
+              '',
+          }),
           ...(hostedTools.length ? { tools: hostedTools } : {}),
           ...(toolChoice != null ? { toolChoice } : {}),
         }),
@@ -704,7 +709,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               model,
             ),
             maxOutputTokens: modality === 'voice' ? 700 : 4096,
-            input: mapMessagesToResponsesInput(messages),
+            input: mapMessagesToResponsesInput(messages, {
+              browserLocale:
+                (typeof body.browserLocale === 'string' && body.browserLocale) ||
+                (typeof body.locale === 'string' && body.locale) ||
+                '',
+            }),
             ...(buildImageGenerationTools(model).length
               ? { tools: buildImageGenerationTools(model) }
               : {}),

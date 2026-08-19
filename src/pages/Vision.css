@@ -139,6 +139,85 @@
   box-sizing: border-box;
 }
 
+/* #312A — custom prompt belongs to the image preview */
+.laife-vision__prompt {
+  display: flex;
+  align-items: stretch;
+  gap: 0.4rem;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+}
+
+.laife-vision__prompt-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: var(--touch-min);
+  margin: 0;
+  padding: 0.65rem 0.85rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid color-mix(in srgb, var(--border) 92%, transparent);
+  background: color-mix(in srgb, var(--surface-2) 55%, transparent);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.92rem;
+  line-height: 1.35;
+  box-sizing: border-box;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.laife-vision__prompt-input::placeholder {
+  color: var(--text-muted);
+  opacity: 0.9;
+}
+
+.laife-vision__prompt-input:focus {
+  outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  outline-offset: 1px;
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+}
+
+.laife-vision__prompt-input:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.laife-vision__prompt-send {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--touch-min);
+  min-height: var(--touch-min);
+  margin: 0;
+  padding: 0 0.85rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--text);
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.laife-vision__prompt-send:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  outline-offset: 2px;
+}
+
+.laife-vision__prompt-send:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.laife-vision__actions--quick {
+  justify-content: flex-start;
+}
+
 .laife-vision__actions,
 .laife-vision__secondary {
   display: flex;
@@ -161,8 +240,12 @@
     min-width: calc(50% - 0.4rem);
   }
 
-  .laife-vision__primary {
-    flex: 1 1 100%;
+  .laife-vision__actions--quick .laife-vision__primary,
+  .laife-vision__actions--quick .laife-vision__ghost {
+    flex: 1 1 calc(33.33% - 0.4rem);
+    min-width: calc(33.33% - 0.4rem);
+    padding: 0.55rem 0.5rem;
+    font-size: 0.82rem;
   }
 }
 

@@ -162,5 +162,14 @@ describe('Vision sticky language (#274 follow-up)', () => {
   it('navigator only when thread has no recoverable language', () => {
     assert.equal(client.resolveVisionActionLang({ messages: [], navigatorLanguage: 'fr-FR' }), 'fr')
     assert.equal(resolveVisionStickyLang([], 'de-DE'), 'de')
+    // ShinkAIdo Italian-first when no navigator evidence
+    assert.equal(client.resolveVisionActionLang({ messages: [], navigatorLanguage: '' }), 'it')
+    assert.equal(resolveVisionStickyLang([], ''), 'it')
+  })
+
+  it('empty Analyze uses locale-aware Italian image-only nudge', () => {
+    const nudge = imageOnlyModelNudgeForMessages([], 'it-IT')
+    assert.match(nudge, /Analizza/)
+    assert.notEqual(nudge, IMAGE_ONLY_MODEL_NUDGE)
   })
 })

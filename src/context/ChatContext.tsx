@@ -618,6 +618,10 @@ export function ChatProvider({ children }: { children: ReactNode }) {
               conversationMemoryMap: getConversationMemoryMap() || undefined,
               conversationPreferenceProfile:
                 getConversationPreferenceProfile() || undefined,
+              browserLocale:
+                typeof navigator !== 'undefined' && navigator.language
+                  ? navigator.language
+                  : 'it',
             },
             { signal: controller.signal },
           )
