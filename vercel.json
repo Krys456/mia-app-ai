@@ -36,6 +36,10 @@
     "api/reminders/[id].ts": {
       "includeFiles": "lib/server/**",
       "maxDuration": 15
+    },
+    "api/weather.ts": {
+      "includeFiles": "lib/server/**",
+      "maxDuration": 30
     }
   },
   "rewrites": [

@@ -54,6 +54,34 @@ export interface ChatMessage {
     type: 'created' | 'updated' | 'removed'
     displayText?: string
   }
+  /** #317 — compact Weather card / location chips on an assistant message. */
+  weatherUi?: WeatherUiState | null
+}
+
+/** #317 — compact Weather action / card UI on an assistant message. */
+export type WeatherUiAction = {
+  id: string
+  label: string
+}
+
+export type WeatherCardModel = {
+  locationLabel: string
+  emoji: string
+  temperatureC?: number | null
+  apparentTemperatureC?: number | null
+  description?: string | null
+  temperatureMaxC?: number | null
+  temperatureMinC?: number | null
+  precipitationProbabilityMax?: number | null
+  windSpeedKmh?: number | null
+  attribution?: string
+}
+
+export type WeatherUiState = {
+  kind: 'location_permission' | 'card' | 'attribution'
+  actions?: WeatherUiAction[]
+  card?: WeatherCardModel | null
+  attribution?: string | null
 }
 
 /** #291 normalized citation from provider url_citation annotations. */

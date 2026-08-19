@@ -51,6 +51,27 @@ import {
   saveMessagingContext,
   shouldClearMessagingOnUserText,
 } from '../lib/phoneAction'
+import {
+  applyWeatherFollowUp,
+  buildWeatherDiag,
+  buildWeatherSuccessExchange,
+  clearPendingWeatherRequest,
+  clearWeatherContext,
+  detectWeatherLanguage,
+  geoFailureCopy,
+  getBrowserPosition,
+  isWeatherDiagEnabled,
+  loadPendingWeatherRequest,
+  loadWeatherContext,
+  logWeatherSafe,
+  mapStatusToCopyKey,
+  rememberWeatherDiag,
+  requestWeather,
+  saveWeatherContext,
+  weatherCopy,
+  WEATHER_ENTER_AREA_TRIGGER,
+  WEATHER_USE_LOCATION_TRIGGER,
+} from '../lib/weather'
 import { deriveDictationLangFromMessages } from '../lib/dictationLanguage'
 import {
   finalizeConversationLearning,
@@ -242,8 +263,13 @@ type Action =
   | { type: 'UPDATE_APPEARANCE'; payload: Partial<AppearanceSettings> }
   | { type: 'UPDATE_DEVELOPER'; payload: Partial<DeveloperSettings> }
   | { type: 'SEND_USER'; content: string; attachments?: ChatAttachment[] }
-  /** #314 — local user+assistant exchange (timer / alarm honesty); no model call. */
-  | { type: 'LOCAL_EXCHANGE'; userContent: string; assistantContent: string }
+  /** #314/#315/#317 — local user+assistant exchange (timer / phone / weather); no model call. */
+  | {
+      type: 'LOCAL_EXCHANGE'
+      userContent: string
+      assistantContent: string
+      weatherUi?: import('../types').WeatherUiState | null
+    }
   | { type: 'ASSISTANT_START'; id: string; memoryEvent?: MemoryFeedbackEvent | null }
   | { type: 'ASSISTANT_PROGRESS'; id: string; content: string }
   | {
@@ -367,6 +393,7 @@ function reducer(state: AppState, action: Action): AppState {
         role: 'assistant',
         content: action.assistantContent,
         createdAt: Date.now(),
+        ...(action.weatherUi ? { weatherUi: action.weatherUi } : {}),
       }
       return {
         ...state,
@@ -492,6 +519,8 @@ interface ChatContextValue {
   updateDeveloper: (patch: Partial<DeveloperSettings>) => void
   /** Returns true when the user turn was accepted into the thread. */
   sendMessage: (content: string, attachments?: ChatAttachment[]) => boolean
+  /** #317 — Weather UI action chips (location grant). */
+  handleWeatherUiAction: (actionId: string) => void
   /** Re-run the completion for an assistant message (drops that reply and regenerates). */
   regenerateAssistant: (assistantId: string) => void
 }
@@ -762,6 +791,12 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     } catch {
       /* ignore */
     }
+    try {
+      clearWeatherContext()
+      clearPendingWeatherRequest()
+    } catch {
+      /* ignore */
+    }
     dispatch({ type: 'NEW_CHAT' })
   }, [abortActiveCompletion])
   const openSettings = useCallback(() => dispatch({ type: 'OPEN_SETTINGS' }), [])
@@ -1019,6 +1054,204 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     [abortActiveCompletion],
   )
 
+  const runWeatherProvider = useCallback(
+    async (opts: {
+      intent: {
+        operation?: string
+        locationText?: string | null
+        timeHint?: string | null
+        language?: 'it' | 'en'
+        complexAdvice?: boolean
+      }
+      language: 'it' | 'en'
+      userContent: string
+      latitude?: number
+      longitude?: number
+      locationSource?: 'explicit' | 'gps'
+    }) => {
+      const lang = opts.language
+      const result = (await requestWeather({
+        operation: opts.intent.operation || 'current',
+        timeHint: opts.intent.timeHint || null,
+        language: lang,
+        locationText: opts.intent.locationText || null,
+        latitude: opts.latitude,
+        longitude: opts.longitude,
+      })) as Record<string, unknown>
+
+      if (result.status === 'geocode_ambiguous' && Array.isArray(result.geocodeCandidates)) {
+        const options = (result.geocodeCandidates as Array<Record<string, unknown>>)
+          .slice(0, 5)
+          .map((c, i) => {
+            const bits = [c.name, c.admin1, c.country].filter(Boolean).join(', ')
+            return `${i + 1}. ${bits}`
+          })
+          .join('\n')
+        dispatch({
+          type: 'LOCAL_EXCHANGE',
+          userContent: opts.userContent,
+          assistantContent: weatherCopy('geocode_ambiguous', lang, { options }),
+        })
+        logWeatherSafe({
+          operation: opts.intent.operation,
+          locationSource: 'explicit',
+          status: 'geocode_ambiguous',
+          failureCode: 'geocode_ambiguous',
+        })
+        return
+      }
+
+      if (result.status !== 'ok') {
+        dispatch({
+          type: 'LOCAL_EXCHANGE',
+          userContent: opts.userContent,
+          assistantContent: weatherCopy(mapStatusToCopyKey(String(result.status)), lang),
+        })
+        logWeatherSafe({
+          operation: opts.intent.operation,
+          locationSource: opts.locationSource || null,
+          status: String(result.status),
+          failureCode: (result.failureCode as string) || null,
+        })
+        if (isWeatherDiagEnabled()) {
+          rememberWeatherDiag(
+            buildWeatherDiag({
+              weatherIntent: 'weather',
+              operation: opts.intent.operation,
+              timeHint: opts.intent.timeHint,
+              locationSource: opts.locationSource || null,
+              geocodeReached: Boolean(result.geocodeReached),
+              providerRequestReached: Boolean(result.providerRequestReached),
+              providerHttpStatus: result.providerHttpStatus as number | null,
+              failureCode: (result.failureCode as string) || String(result.status),
+              requestId: result.requestId as string | undefined,
+            }),
+          )
+        }
+        return
+      }
+
+      const built = buildWeatherSuccessExchange({
+        weather: result,
+        language: lang,
+        operation: opts.intent.operation,
+        timeHint: opts.intent.timeHint,
+        locationText: opts.intent.locationText,
+        latitude: opts.latitude,
+        longitude: opts.longitude,
+        locationSource: opts.locationSource || (opts.intent.locationText ? 'explicit' : 'gps'),
+        complexAdvice: Boolean(opts.intent.complexAdvice),
+      })
+      if (built.weatherContext) saveWeatherContext(built.weatherContext)
+      clearPendingWeatherRequest()
+      dispatch({
+        type: 'LOCAL_EXCHANGE',
+        userContent: opts.userContent,
+        assistantContent: built.reply,
+        weatherUi: (built.weatherUi as import('../types').WeatherUiState | null) || null,
+      })
+      logWeatherSafe({
+        operation: opts.intent.operation,
+        locationSource: opts.locationSource || null,
+        status: 'ok',
+        cacheHit: false,
+      })
+      if (isWeatherDiagEnabled()) {
+        rememberWeatherDiag(
+          buildWeatherDiag({
+            weatherIntent: 'weather',
+            operation: opts.intent.operation,
+            timeHint: opts.intent.timeHint,
+            locationSource: opts.locationSource || null,
+            geocodeReached: Boolean(result.geocodeReached),
+            providerRequestReached: Boolean(result.providerRequestReached),
+            providerHttpStatus: result.providerHttpStatus as number | null,
+            hourlyDataPresent: Array.isArray(result.hourly) && (result.hourly as unknown[]).length > 0,
+            dailyDataPresent: Array.isArray(result.daily) && (result.daily as unknown[]).length > 0,
+            forecastDays: 7,
+            cacheHit: false,
+            activeWeatherContextCreated: Boolean(built.activeWeatherContextCreated),
+            requestId: result.requestId as string | undefined,
+          }),
+        )
+      }
+    },
+    [],
+  )
+
+  const runWeatherWithGeolocation = useCallback(
+    async (lang: 'it' | 'en') => {
+      const pending = loadPendingWeatherRequest()
+      const userLabel = lang === 'en' ? 'Use my location' : 'Usa la mia posizione'
+      dispatch({
+        type: 'LOCAL_EXCHANGE',
+        userContent: userLabel,
+        assistantContent: lang === 'en' ? 'Checking your location…' : 'Controllo la tua posizione…',
+      })
+      const pos = await getBrowserPosition()
+      if (!pos.ok) {
+        dispatch({
+          type: 'LOCAL_EXCHANGE',
+          userContent: userLabel,
+          assistantContent: geoFailureCopy(pos.code, lang),
+          weatherUi: {
+            kind: 'location_permission',
+            actions: [{ id: 'enter_area', label: weatherCopy('enter_area_btn', lang) }],
+          },
+        })
+        logWeatherSafe({ status: 'location_denied', failureCode: pos.code, locationSource: 'gps' })
+        if (isWeatherDiagEnabled()) {
+          rememberWeatherDiag(
+            buildWeatherDiag({
+              weatherIntent: 'weather',
+              operation: pending?.operation || 'current',
+              locationSource: 'gps',
+              failureCode: pos.code,
+            }),
+          )
+        }
+        return
+      }
+      await runWeatherProvider({
+        intent: {
+          operation: pending?.operation || 'current',
+          timeHint: pending?.timeHint || null,
+          language: pending?.language || lang,
+          complexAdvice: Boolean(pending?.complexAdvice),
+          locationText: null,
+        },
+        language: pending?.language || lang,
+        userContent: userLabel,
+        latitude: pos.latitude,
+        longitude: pos.longitude,
+        locationSource: 'gps',
+      })
+    },
+    [runWeatherProvider],
+  )
+
+  const handleWeatherUiAction = useCallback(
+    (actionId: string) => {
+      if (actionId === 'use_location') {
+        void runWeatherWithGeolocation(detectWeatherLanguage('', 'it') as 'it' | 'en')
+        return
+      }
+      if (actionId === 'enter_area') {
+        const follow = applyWeatherFollowUp({
+          text: WEATHER_ENTER_AREA_TRIGGER,
+          languageHint: 'it',
+          weatherContext: loadWeatherContext(),
+        })
+        dispatch({
+          type: 'LOCAL_EXCHANGE',
+          userContent: 'Inserisci zona',
+          assistantContent: follow.reply || weatherCopy('enter_area', 'it'),
+        })
+      }
+    },
+    [runWeatherWithGeolocation],
+  )
+
   const sendMessage = useCallback(
     (raw: string, attachments: ChatAttachment[] = []): boolean => {
       const content = raw.trim()
@@ -1148,6 +1381,71 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         }
       }
 
+      // #317 — deterministic Weather (after Phone Actions so "Portami a Milano" stays Maps).
+      if (content && wireAtts.length === 0) {
+        const sticky = deriveDictationLangFromMessages(state.messages)
+        const langHint =
+          sticky === 'en'
+            ? 'en'
+            : sticky === 'it'
+              ? 'it'
+              : detectWeatherLanguage(content, detectTimerLanguage(content, 'it'))
+
+        if (content.trim() === WEATHER_USE_LOCATION_TRIGGER) {
+          void runWeatherWithGeolocation(langHint as 'it' | 'en')
+          return true
+        }
+        if (content.trim() === WEATHER_ENTER_AREA_TRIGGER) {
+          const follow = applyWeatherFollowUp({
+            text: WEATHER_ENTER_AREA_TRIGGER,
+            languageHint: langHint,
+            weatherContext: loadWeatherContext(),
+          })
+          dispatch({
+            type: 'LOCAL_EXCHANGE',
+            userContent: langHint === 'en' ? 'Enter area' : 'Inserisci zona',
+            assistantContent: follow.reply || weatherCopy('enter_area', langHint),
+          })
+          return true
+        }
+
+        const weatherCtx = loadWeatherContext()
+        const weather = applyWeatherFollowUp({
+          text: content,
+          languageHint: langHint,
+          weatherContext: weatherCtx,
+        })
+        if (weather.handled && weather.reply && !(weather as { needsProvider?: boolean }).needsProvider) {
+          if (weather.weatherContext) saveWeatherContext(weather.weatherContext)
+          dispatch({
+            type: 'LOCAL_EXCHANGE',
+            userContent: content,
+            assistantContent: weather.reply,
+            weatherUi: (weather.weatherUi as import('../types').WeatherUiState | null) || null,
+          })
+          logWeatherSafe({
+            operation: String(weather.diag.operation || ''),
+            locationSource: (weather.diag.locationSource as string) || null,
+            status: weather.status || null,
+            failureCode: (weather.diag.failureCode as string) || null,
+            cacheHit: Boolean(weather.cacheHit || weather.diag.cacheHit),
+          })
+          if (isWeatherDiagEnabled()) {
+            rememberWeatherDiag(buildWeatherDiag(weather.diag || {}))
+          }
+          return true
+        }
+        if ((weather as { needsProvider?: boolean }).needsProvider && weather.intent) {
+          void runWeatherProvider({
+            intent: weather.intent,
+            language: langHint as 'it' | 'en',
+            userContent: content,
+            locationSource: weather.intent.locationText ? 'explicit' : undefined,
+          })
+          return true
+        }
+      }
+
       const personalization = state.settings.personalization
       const developer = state.settings.developer ?? DEFAULT_DEVELOPER_SETTINGS
       const history: ChatApiMessage[] = [
@@ -1197,6 +1495,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       persistTimer,
       persistPendingReplace,
       runAssistantCompletion,
+      runWeatherProvider,
+      runWeatherWithGeolocation,
     ],
   )
 
@@ -1256,6 +1556,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       updateAppearance,
       updateDeveloper,
       sendMessage,
+      handleWeatherUiAction,
       regenerateAssistant,
     }),
     [
@@ -1279,6 +1580,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       updateAppearance,
       updateDeveloper,
       sendMessage,
+      handleWeatherUiAction,
       regenerateAssistant,
     ],
   )

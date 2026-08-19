@@ -14,6 +14,7 @@ import { MessageActions } from './MessageActions'
 import { StreamingRenderer } from './StreamingRenderer'
 import { CitationSources } from './CitationSources'
 import { TypingAnimation } from './TypingAnimation'
+import { WeatherUi } from './WeatherUi'
 import './MessageBubble.css'
 
 interface MessageBubbleProps {
@@ -27,6 +28,8 @@ interface MessageBubbleProps {
   showVisionSearch?: boolean
   visionSearchLabel?: string
   onVisionSearch?: (messageId: string) => void
+  /** #317 — Weather location chips / card actions. */
+  onWeatherAction?: (actionId: string) => void
   /**
    * #290 — when true, a native text selection is active in message prose.
    * Suppresses whole-message long-press action pinning to avoid overlay conflicts.
@@ -69,6 +72,7 @@ function MessageBubbleComponent({
   showVisionSearch = false,
   visionSearchLabel = 'Search',
   onVisionSearch,
+  onWeatherAction,
   selectionActive = false,
 }: MessageBubbleProps) {
   const isAssistant = message.role === 'assistant'
@@ -222,6 +226,9 @@ function MessageBubbleComponent({
                 ) : null}
                 {message.content ? (
                   <StreamingRenderer content={message.content} isStreaming={isStreaming} />
+                ) : null}
+                {!isStreaming && message.weatherUi && onWeatherAction ? (
+                  <WeatherUi weatherUi={message.weatherUi} onAction={onWeatherAction} />
                 ) : null}
                 {!isStreaming && message.citations?.length ? (
                   <CitationSources citations={message.citations} />
