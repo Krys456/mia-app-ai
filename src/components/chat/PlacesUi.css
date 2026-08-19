@@ -1,0 +1,36 @@
+.places-ui {
+  margin-top: 0.65rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.places-ui__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: none; /* list already in prose; keep chips primary */
+}
+
+.places-ui__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.places-ui__btn {
+  appearance: none;
+  border: 1px solid color-mix(in srgb, var(--color-border, #c9c2b8) 80%, transparent);
+  background: color-mix(in srgb, var(--color-surface, #fff) 92%, var(--color-accent, #2f5d50) 8%);
+  color: inherit;
+  border-radius: 0.55rem;
+  padding: 0.4rem 0.7rem;
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.places-ui__btn:focus-visible {
+  outline: 2px solid var(--color-accent, #2f5d50);
+  outline-offset: 2px;
+}

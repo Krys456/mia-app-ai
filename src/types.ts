@@ -54,6 +54,31 @@ export interface ChatMessage {
     type: 'created' | 'updated' | 'removed'
     displayText?: string
   }
+  /**
+   * #316 — optional Places UI actions / compact results (session-only).
+   * Never sent back as model input.
+   */
+  placesUi?: PlacesUiState | null
+}
+
+/** #316 — compact Places action / result UI on an assistant message. */
+export type PlacesUiAction = {
+  id: string
+  label: string
+}
+
+export type PlacesUiState = {
+  kind: 'location_permission' | 'results' | 'place_actions'
+  actions?: PlacesUiAction[]
+  placeId?: string
+  places?: Array<{
+    id: string
+    name: string
+    address?: string | null
+    distanceMeters?: number | null
+    openNow?: boolean | null
+    rating?: number | null
+  }>
 }
 
 /** #291 normalized citation from provider url_citation annotations. */

@@ -40,7 +40,10 @@ assert.equal(detectPhoneActionIntent('Apri Google Maps').kind, 'open_app')
 assert.equal(detectPhoneActionIntent('Apri Maps').target, 'google_maps')
 assert.equal(detectPhoneActionIntent('Portami a Roma Termini').kind, 'navigate')
 assert.match(detectPhoneActionIntent('Portami a Roma Termini').destination || '', /Roma Termini/i)
-assert.equal(detectPhoneActionIntent('Chiama +393331234567').kind, 'call')
+// #316 — deictic "lì" must not become a Maps destination
+assert.equal(detectPhoneActionIntent('Portami lì.').kind, 'none')
+assert.equal(detectPhoneActionIntent('Portami there.').kind, 'none')
+assert.equal(detectPhoneActionIntent('Open YouTube').kind, 'open_app')
 assert.equal(detectPhoneActionIntent('Chiama +393331234567').phone, '+393331234567')
 assert.equal(detectPhoneActionIntent('Scrivi un SMS a +393331234567').kind, 'sms')
 assert.equal(

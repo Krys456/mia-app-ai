@@ -26,7 +26,7 @@ function MessageListComponent({
   isStreaming,
   selectionActive = false,
 }: MessageListProps) {
-  const { regenerateAssistant, sendMessage } = useChat()
+  const { regenerateAssistant, sendMessage, handlePlacesUiAction } = useChat()
   const last = messages[messages.length - 1]
   const streamingId =
     isStreaming && last?.role === 'assistant' ? last.id : null
@@ -83,6 +83,7 @@ function MessageListComponent({
             showVisionSearch={showVisionSearch}
             visionSearchLabel={searchLabel}
             onVisionSearch={onVisionSearch}
+            onPlacesAction={handlePlacesUiAction}
           />
         )
       })}

@@ -83,6 +83,12 @@ function extractNavigateDestination(text) {
   return null
 }
 
+/** #316 — pronouns must not become Maps destinations. */
+export function isDeicticNavigateDestination(dest) {
+  const d = fold(dest)
+  return /^(li|la|lo|là|qui|qua|there|here|it|that|this|quello|quella|quelli|quelle)$/i.test(d)
+}
+
 /**
  * Extract SMS phone + body from natural phrases including:
  * Scrivi "Ciao Krys" a +39 3761165503
@@ -566,7 +572,8 @@ export function detectPhoneActionIntent(raw, opts = {}) {
   // --- Navigate
   if (/\b(portami|naviga|indicazioni|directions|navigate)\b/.test(text)) {
     const dest = extractNavigateDestination(raw)
-    if (dest) {
+    // #316 — never navigate to deictic "lì"/"there" without Places context
+    if (dest && !isDeicticNavigateDestination(dest)) {
       return { kind: 'navigate', language, destination: dest, target: 'google_maps' }
     }
   }

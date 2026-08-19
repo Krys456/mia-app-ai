@@ -11,6 +11,7 @@ import type { ChatFileAttachment, ChatImageAttachment, ChatMessage } from '../..
 import { documentBadgeFor, formatDocumentSize, truncateFilename } from '../../lib/documentAttachment'
 import { MemoryMessageIndicator } from '../MemoryMessageIndicator'
 import { MessageActions } from './MessageActions'
+import { PlacesUi } from './PlacesUi'
 import { StreamingRenderer } from './StreamingRenderer'
 import { CitationSources } from './CitationSources'
 import { TypingAnimation } from './TypingAnimation'
@@ -27,6 +28,8 @@ interface MessageBubbleProps {
   showVisionSearch?: boolean
   visionSearchLabel?: string
   onVisionSearch?: (messageId: string) => void
+  /** #316 — Places action chips. */
+  onPlacesAction?: (actionId: string) => void
   /**
    * #290 — when true, a native text selection is active in message prose.
    * Suppresses whole-message long-press action pinning to avoid overlay conflicts.
@@ -69,6 +72,7 @@ function MessageBubbleComponent({
   showVisionSearch = false,
   visionSearchLabel = 'Search',
   onVisionSearch,
+  onPlacesAction,
   selectionActive = false,
 }: MessageBubbleProps) {
   const isAssistant = message.role === 'assistant'
@@ -222,6 +226,9 @@ function MessageBubbleComponent({
                 ) : null}
                 {message.content ? (
                   <StreamingRenderer content={message.content} isStreaming={isStreaming} />
+                ) : null}
+                {!isStreaming && message.placesUi && onPlacesAction ? (
+                  <PlacesUi placesUi={message.placesUi} onAction={onPlacesAction} />
                 ) : null}
                 {!isStreaming && message.citations?.length ? (
                   <CitationSources citations={message.citations} />

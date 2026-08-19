@@ -51,6 +51,24 @@ import {
   saveMessagingContext,
   shouldClearMessagingOnUserText,
 } from '../lib/phoneAction'
+import {
+  applyPlacesFollowUp,
+  buildPlacesDiag,
+  buildPlacesSuccessExchange,
+  clearPlacesContext,
+  detectPlacesLanguage,
+  geoFailureCopy,
+  getBrowserPosition,
+  isPlacesDiagEnabled,
+  loadPendingPlacesRequest,
+  loadPlacesContext,
+  logPlacesSafe,
+  PLACES_ENTER_AREA_TRIGGER,
+  PLACES_USE_LOCATION_TRIGGER,
+  rememberPlacesDiag,
+  requestPlacesSearch,
+  savePlacesContext,
+} from '../lib/places'
 import { deriveDictationLangFromMessages } from '../lib/dictationLanguage'
 import {
   finalizeConversationLearning,
@@ -98,6 +116,7 @@ import {
   type ChatMessage,
   type DeveloperSettings,
   type PersonalizationSettings,
+  type PlacesUiState,
   type ThemeSettings,
   type V2DebugInfo,
   type WebCitation,
@@ -243,7 +262,12 @@ type Action =
   | { type: 'UPDATE_DEVELOPER'; payload: Partial<DeveloperSettings> }
   | { type: 'SEND_USER'; content: string; attachments?: ChatAttachment[] }
   /** #314 — local user+assistant exchange (timer / alarm honesty); no model call. */
-  | { type: 'LOCAL_EXCHANGE'; userContent: string; assistantContent: string }
+  | {
+      type: 'LOCAL_EXCHANGE'
+      userContent: string
+      assistantContent: string
+      placesUi?: import('../types').PlacesUiState | null
+    }
   | { type: 'ASSISTANT_START'; id: string; memoryEvent?: MemoryFeedbackEvent | null }
   | { type: 'ASSISTANT_PROGRESS'; id: string; content: string }
   | {
@@ -254,6 +278,7 @@ type Action =
       memoryEvent?: MemoryFeedbackEvent | null
       citations?: WebCitation[]
       v2Debug?: V2DebugInfo | null
+      placesUi?: import('../types').PlacesUiState | null
     }
   | { type: 'ASSISTANT_FAIL'; error: string }
   | { type: 'TRIM_TO'; count: number; thinking?: boolean }
@@ -367,6 +392,7 @@ function reducer(state: AppState, action: Action): AppState {
         role: 'assistant',
         content: action.assistantContent,
         createdAt: Date.now(),
+        ...(action.placesUi ? { placesUi: action.placesUi } : {}),
       }
       return {
         ...state,
@@ -425,10 +451,12 @@ function reducer(state: AppState, action: Action): AppState {
           ...(action.v2Debug ? { v2Debug: action.v2Debug } : {}),
           ...(action.attachments?.length ? { attachments: action.attachments } : {}),
           ...(action.citations?.length ? { citations: action.citations } : {}),
+          ...(action.placesUi ? { placesUi: action.placesUi } : {}),
         }
         if (memoryEvent) next.memoryEvent = memoryEvent
         else delete next.memoryEvent
         if (!action.citations?.length) delete next.citations
+        if (!action.placesUi) delete next.placesUi
         return next
       })
       return {
@@ -492,6 +520,8 @@ interface ChatContextValue {
   updateDeveloper: (patch: Partial<DeveloperSettings>) => void
   /** Returns true when the user turn was accepted into the thread. */
   sendMessage: (content: string, attachments?: ChatAttachment[]) => boolean
+  /** #316 — Places UI action chips (location grant / Maps). */
+  handlePlacesUiAction: (actionId: string) => void
   /** Re-run the completion for an assistant message (drops that reply and regenerates). */
   regenerateAssistant: (assistantId: string) => void
 }
@@ -748,6 +778,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     inFlightRef.current = false
     suppressDocReuseRef.current = false
     setActiveDocument(null)
+    clearPlacesContext()
     abortActiveCompletion()
     // Close the conversation: keep preference/mistake signals, drop turn noise.
     // Invisible — never surfaces in UI; never writes factual memory.
@@ -1019,6 +1050,153 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     [abortActiveCompletion],
   )
 
+  const runPlacesWithGeolocation = useCallback(
+    async (langHint: 'it' | 'en' = 'it') => {
+      if (inFlightRef.current) return
+      const pending = loadPendingPlacesRequest()
+      const lang = pending?.language === 'en' ? 'en' : langHint
+      inFlightRef.current = true
+      dispatch({
+        type: 'LOCAL_EXCHANGE',
+        userContent: lang === 'en' ? 'Use my location' : 'Usa la mia posizione',
+        assistantContent: lang === 'en' ? 'Getting your location…' : 'Sto usando la tua posizione…',
+      })
+      try {
+        const pos = await getBrowserPosition()
+        if (!pos.ok) {
+          dispatch({
+            type: 'LOCAL_EXCHANGE',
+            userContent: ' ',
+            assistantContent: geoFailureCopy(pos.code, lang as 'it' | 'en'),
+            placesUi: {
+              kind: 'location_permission' as const,
+              actions: [
+                { id: 'enter_area', label: lang === 'en' ? 'Enter area' : 'Inserisci zona' },
+              ],
+            },
+          })
+          logPlacesSafe({ status: 'location_denied', failureCode: pos.code })
+          if (isPlacesDiagEnabled()) {
+            rememberPlacesDiag(
+              buildPlacesDiag({
+                placesIntent: 'places',
+                locationPermissionRequested: true,
+                locationAcquired: false,
+                failureCode: pos.code,
+                status: 'location_denied',
+              }),
+            )
+          }
+          return
+        }
+        if (!pending?.query) {
+          dispatch({
+            type: 'LOCAL_EXCHANGE',
+            userContent: ' ',
+            assistantContent:
+              lang === 'en'
+                ? 'Tell me what to find nearby (e.g. “Find a pharmacy near me”).'
+                : 'Dimmi cosa cercare vicino a te (es. «Trova una farmacia vicino a me»).',
+          })
+          return
+        }
+        const result = await requestPlacesSearch({
+          query: pending.query,
+          operation: 'nearby',
+          latitude: pos.latitude,
+          longitude: pos.longitude,
+          openNowRequested: Boolean(pending.openNowRequested),
+          sort: pending.sort || 'nearest',
+          language: lang,
+        })
+        const built = buildPlacesSuccessExchange({
+          status: result.status,
+          places: result.places,
+          query: pending.query,
+          language: lang,
+          originProvided: true,
+        })
+        if (built.placesContext) savePlacesContext(built.placesContext)
+        dispatch({
+          type: 'LOCAL_EXCHANGE',
+          userContent: ' ',
+          assistantContent: built.reply,
+          placesUi: (built.placesUi as import('../types').PlacesUiState | null) || null,
+        })
+        logPlacesSafe({
+          status: built.status,
+          resultCount: result.places?.length,
+          failureCode: result.failureCode,
+        })
+        if (isPlacesDiagEnabled()) {
+          rememberPlacesDiag(
+            buildPlacesDiag({
+              placesIntent: 'places',
+              operation: 'nearby',
+              locationPermissionRequested: true,
+              locationAcquired: true,
+              provider: result.provider,
+              providerRequestReached: result.providerRequestReached,
+              providerHttpStatus: result.providerHttpStatus,
+              resultCount: result.places?.length,
+              distancesCalculated: result.distancesCalculated,
+              activePlacesContextCreated: Boolean(built.placesContext),
+              status: built.status,
+              failureCode: result.failureCode,
+              requestId: result.requestId,
+            }),
+          )
+        }
+      } finally {
+        inFlightRef.current = false
+      }
+    },
+    [],
+  )
+
+  const handlePlacesUiAction = useCallback(
+    (actionId: string) => {
+      if (actionId === 'use_location') {
+        void runPlacesWithGeolocation(detectPlacesLanguage('', 'it') as 'it' | 'en')
+        return
+      }
+      if (actionId === 'enter_area') {
+        const follow = applyPlacesFollowUp({
+          text: PLACES_ENTER_AREA_TRIGGER,
+          languageHint: 'it',
+          placesContext: loadPlacesContext(),
+        })
+        if (follow.handled && follow.reply) {
+          dispatch({
+            type: 'LOCAL_EXCHANGE',
+            userContent: follow.placesUi ? 'Inserisci zona' : 'Inserisci zona',
+            assistantContent: follow.reply,
+          })
+        }
+        return
+      }
+      if (actionId === 'navigate' || actionId === 'maps') {
+        const follow = applyPlacesFollowUp({
+          text: 'Portami lì',
+          languageHint: 'it',
+          placesContext: loadPlacesContext(),
+        })
+        if (follow.handled && follow.reply) {
+          if (follow.placesContext) savePlacesContext(follow.placesContext)
+          dispatch({
+            type: 'LOCAL_EXCHANGE',
+            userContent: actionId === 'maps' ? 'Aprila su Maps' : 'Portami lì',
+            assistantContent: follow.reply,
+          })
+          if (isPlacesDiagEnabled()) {
+            rememberPlacesDiag(buildPlacesDiag(follow.diag || {}))
+          }
+        }
+      }
+    },
+    [runPlacesWithGeolocation],
+  )
+
   const sendMessage = useCallback(
     (raw: string, attachments: ChatAttachment[] = []): boolean => {
       const content = raw.trim()
@@ -1084,6 +1262,151 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             )
           }
           return true
+        }
+      }
+
+      // #316 — Places / Nearby (before Phone Actions so "Portami lì" resolves place context).
+      if (content && wireAtts.length === 0) {
+        const sticky = deriveDictationLangFromMessages(state.messages)
+        let langHint: 'it' | 'en' = 'it'
+        if (sticky === 'en') langHint = 'en'
+        else if (sticky === 'it') langHint = 'it'
+        else {
+          const detected = detectPlacesLanguage(
+            content,
+            detectTimerLanguage(content, 'it') === 'en' ? 'en' : 'it',
+          )
+          langHint = detected === 'en' ? 'en' : 'it'
+        }
+
+        // Internal chip triggers → handled via handlePlacesUiAction path when possible;
+        // still accept typed/sent triggers for robustness.
+        if (content === PLACES_USE_LOCATION_TRIGGER) {
+          void runPlacesWithGeolocation(langHint)
+          return true
+        }
+        if (content === PLACES_ENTER_AREA_TRIGGER) {
+          const follow = applyPlacesFollowUp({
+            text: content,
+            languageHint: langHint,
+            placesContext: loadPlacesContext(),
+          })
+          if (follow.handled && follow.reply) {
+            dispatch({
+              type: 'LOCAL_EXCHANGE',
+              userContent: content,
+              assistantContent: follow.reply,
+            })
+            return true
+          }
+        }
+
+        const placesCtx = loadPlacesContext()
+        const places = applyPlacesFollowUp({
+          text: content,
+          languageHint: langHint,
+          placesContext: placesCtx,
+        })
+
+        if (places.handled && places.reply && !(places as { needsProvider?: boolean }).needsProvider) {
+          if (places.placesContext) savePlacesContext(places.placesContext)
+          else if (places.status === 'invalid_query') clearPlacesContext()
+          dispatch({
+            type: 'LOCAL_EXCHANGE',
+            userContent: content,
+            assistantContent: places.reply,
+            placesUi: (places.placesUi as PlacesUiState | null) || null,
+          })
+          logPlacesSafe({
+            status: places.status,
+            operation: places.diag?.operation,
+            failureCode: places.diag?.failureCode,
+            mapsHandoffAttempted: Boolean(
+              (places.diag as { mapsHandoffAttempted?: boolean } | undefined)?.mapsHandoffAttempted,
+            ),
+          })
+          if (isPlacesDiagEnabled()) {
+            rememberPlacesDiag(buildPlacesDiag(places.diag || {}))
+          }
+          return true
+        }
+
+        if (
+          places.handled &&
+          (places as { needsProvider?: boolean }).needsProvider &&
+          (places as { intent?: Record<string, unknown> }).intent
+        ) {
+          const intent = (places as { intent: Record<string, any> }).intent
+          // Text / area search — no GPS
+          if (intent.explicitLocationText || !intent.requiresCurrentLocation) {
+            inFlightRef.current = true
+            const assistantId = uid()
+            dispatch({ type: 'SEND_USER', content })
+            dispatch({ type: 'ASSISTANT_START', id: assistantId })
+            void (async () => {
+              try {
+                const result = await requestPlacesSearch({
+                  query: String(intent.query || ''),
+                  operation: intent.explicitLocationText ? 'text_search' : 'nearby',
+                  explicitLocationText: (intent.explicitLocationText as string) || null,
+                  openNowRequested: Boolean(intent.openNowRequested),
+                  sort: (intent.sort as 'nearest' | 'relevance') || 'relevance',
+                  language: (intent.language as 'it' | 'en') || langHint,
+                })
+                const built = buildPlacesSuccessExchange({
+                  status: result.status,
+                  places: result.places,
+                  query: String(intent.query || ''),
+                  explicitLocationText: (intent.explicitLocationText as string) || null,
+                  language: (intent.language as 'it' | 'en') || langHint,
+                  originProvided: false,
+                })
+                if (built.placesContext) savePlacesContext(built.placesContext)
+                dispatch({
+                  type: 'ASSISTANT_FINISH',
+                  id: assistantId,
+                  content: built.reply,
+                  placesUi: (built.placesUi as PlacesUiState | null) || null,
+                })
+                logPlacesSafe({
+                  status: built.status,
+                  operation: intent.operation,
+                  resultCount: result.places?.length,
+                  failureCode: result.failureCode,
+                })
+                if (isPlacesDiagEnabled()) {
+                  rememberPlacesDiag(
+                    buildPlacesDiag({
+                      placesIntent: 'places',
+                      operation: intent.operation,
+                      explicitLocationProvided: Boolean(intent.explicitLocationText),
+                      provider: result.provider,
+                      providerRequestReached: result.providerRequestReached,
+                      providerHttpStatus: result.providerHttpStatus,
+                      resultCount: result.places?.length,
+                      distancesCalculated: result.distancesCalculated,
+                      activePlacesContextCreated: Boolean(built.placesContext),
+                      status: built.status,
+                      failureCode: result.failureCode,
+                      requestId: result.requestId,
+                    }),
+                  )
+                }
+              } catch {
+                dispatch({
+                  type: 'ASSISTANT_FINISH',
+                  id: assistantId,
+                  content:
+                    langHint === 'en'
+                      ? 'Places search failed. Try again or specify an area.'
+                      : 'La ricerca luoghi non è riuscita. Riprova o specifica una zona.',
+                })
+              } finally {
+                inFlightRef.current = false
+              }
+            })()
+            return true
+          }
         }
       }
 
@@ -1256,6 +1579,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       updateAppearance,
       updateDeveloper,
       sendMessage,
+      handlePlacesUiAction,
       regenerateAssistant,
     }),
     [
@@ -1279,6 +1603,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       updateAppearance,
       updateDeveloper,
       sendMessage,
+      handlePlacesUiAction,
       regenerateAssistant,
     ],
   )
