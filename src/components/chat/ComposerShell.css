@@ -158,6 +158,11 @@
   outline-offset: 1px;
 }
 
+.composer-file-chip--active {
+  border-style: dashed;
+  opacity: 0.95;
+}
+
 .composer-attach-error {
   margin: 0;
   padding: 0.55rem 0.7rem;

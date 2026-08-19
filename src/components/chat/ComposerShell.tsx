@@ -21,6 +21,10 @@ import {
   truncateFilename,
 } from '../../lib/documentAttachment'
 import { DocumentUploadError, uploadDocumentAttachment } from '../../lib/documentUpload'
+import {
+  isActiveDocumentExpired,
+  truncateActiveDocumentName,
+} from '../../lib/activeDocumentContext'
 import type { ChatAttachment } from '../../types'
 import { ComposerAttachMenu } from './ComposerAttachMenu'
 import { ComposerMicrophoneButton } from './ComposerMicrophoneButton'
@@ -84,7 +88,8 @@ export type ComposerShellProps = {
  * Extensible composer shell (#271 + #272 image + #273 dictation + #275 PDF).
  */
 export function ComposerShell({ onMessageSent }: ComposerShellProps) {
-  const { sendMessage, messages, isThinking, isStreaming, settingsOpen } = useChat()
+  const { sendMessage, messages, isThinking, isStreaming, settingsOpen, activeDocument, clearActiveDocument } =
+    useChat()
   const {
     draft,
     setText,
@@ -109,6 +114,12 @@ export function ComposerShell({ onMessageSent }: ComposerShellProps) {
   const image = attachment?.kind === 'image' ? attachment : null
   const document = attachment?.kind === 'file' ? attachment : null
   const documentBadge = document ? documentBadgeFor(document.mimeType, document.name) : null
+  const showActiveDocChip =
+    Boolean(activeDocument) &&
+    !document &&
+    !image &&
+    !isActiveDocumentExpired(activeDocument) &&
+    !voice.active
 
   const focusInput = useCallback(() => {
     requestAnimationFrame(() => {
@@ -381,7 +392,7 @@ export function ComposerShell({ onMessageSent }: ComposerShellProps) {
               : dictation.statusAnnouncement || undefined
 
   const tray =
-    voice.active || image || document || attachError || dictation.error ? (
+    voice.active || image || document || showActiveDocChip || attachError || dictation.error ? (
       <div className="composer-tray-inner">
         {voice.active ? (
           <VoiceModeBar
@@ -434,6 +445,31 @@ export function ComposerShell({ onMessageSent }: ComposerShellProps) {
                 removeAttachment(document.id)
                 setAttachError(null)
               }}
+            >
+              ×
+            </button>
+          </div>
+        ) : null}
+        {showActiveDocChip && activeDocument ? (
+          <div
+            className="composer-file-chip composer-file-chip--active"
+            aria-label={`Documento attivo ${activeDocument.filename}`}
+          >
+            <span className="composer-file-chip__icon" aria-hidden="true">
+              📄
+            </span>
+            <span className="composer-file-chip__meta">
+              <span className="composer-file-chip__name">
+                {truncateActiveDocumentName(activeDocument.filename)}
+              </span>
+              <span className="composer-file-chip__size">documento attivo</span>
+            </span>
+            <button
+              type="button"
+              className="composer-file-chip__remove"
+              aria-label="Rimuovi documento attivo"
+              title="Rimuovi"
+              onClick={() => clearActiveDocument()}
             >
               ×
             </button>

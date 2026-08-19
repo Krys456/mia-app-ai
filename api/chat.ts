@@ -65,6 +65,22 @@ import {
   buildVisionSearchDiagPayload,
   isVisionSearchDiagEnabled,
 } from '../lib/server/vision-search-diag.js'
+import {
+  fileIdBelongsToConversation,
+  isDocumentFileExpired,
+  selectLatestActiveDocument,
+  summarizeActiveDocumentForLog,
+} from '../lib/server/document-chat-context.js'
+import { detectDocumentReferenceIntent } from '../lib/server/document-chat-intent.js'
+import {
+  buildDocumentChatAppendix,
+  documentExpiredUserMessage,
+} from '../lib/server/document-chat-appendix.js'
+import {
+  buildDocumentChatDiagPayload,
+  isDocumentChatDiagEnabled,
+} from '../lib/server/document-chat-diag.js'
+import { resolveVisionStickyLang } from '../lib/server/vision-task-shortcuts.js'
 
 export const config = {
   runtime: 'nodejs',
@@ -85,6 +101,7 @@ interface ChatApiFileAttachment {
   name: string
   mimeType: string
   size: number
+  expiresAt?: number
 }
 
 interface ChatApiMessage {
@@ -116,6 +133,10 @@ interface ChatApiRequestBody {
   learningSignals?: unknown
   /** #312 — opt-in Vision × Search diagnostics (Preview). */
   visionSearchDiag?: boolean | 1 | '1'
+  /** #313 — opt-in document-chat diagnostics (Preview). */
+  documentDiag?: boolean | 1 | '1'
+  /** #313 — client dismissed active document until next upload. */
+  suppressActiveDocumentReuse?: boolean
   /** Optional browser locale — final language fallback only when turn+sticky are uncertain. */
   browserLocale?: string
   locale?: string
@@ -600,6 +621,85 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           })
         : ''
 
+    // #313 — Active document continuity: reuse file_id on document-referring follow-ups.
+    const browserLocale =
+      (typeof body.browserLocale === 'string' && body.browserLocale) ||
+      (typeof body.locale === 'string' && body.locale) ||
+      ''
+    const documentDiagOn = isDocumentChatDiagEnabled(req, body as Record<string, unknown>)
+    const activeDoc = selectLatestActiveDocument(
+      messages.map((m) => ({
+        role: m.role,
+        content: typeof m.content === 'string' ? m.content : '',
+        attachments: m.attachments,
+      })),
+    )
+    const suppressDocReuse = body.suppressActiveDocumentReuse === true
+    const docIntent = detectDocumentReferenceIntent(lastUserCaption || '', {
+      hasActiveDocument: Boolean(activeDoc) && !suppressDocReuse,
+    })
+    let documentReuse: { fileId: string; mimeType?: string } | null = null
+    let documentAttachedThisTurn = lastUserHasFile
+    let activeDocumentReused = false
+    let activeFileExpired = false
+    let documentFailure: string | null = null
+    let documentReferenceDetected = docIntent.refersToDocument
+    let fileIncludedInModelInput = lastUserHasFile
+
+    if (
+      !lastUserHasFile &&
+      !lastUserHasImage &&
+      activeDoc &&
+      !suppressDocReuse &&
+      docIntent.shouldReuseDocument
+    ) {
+      if (isDocumentFileExpired(activeDoc.expiresAt)) {
+        activeFileExpired = true
+        documentFailure = 'active_file_expired'
+        const stickyLang = resolveVisionStickyLang(
+          messages.map((m) => ({
+            role: m.role,
+            content: typeof m.content === 'string' ? m.content : '',
+          })),
+          browserLocale,
+        )
+        return sendJson(
+          res,
+          200,
+          {
+            content: documentExpiredUserMessage(stickyLang),
+            runtime: 'core',
+            model,
+            memoryEvent: null,
+            ...(documentDiagOn
+              ? {
+                  documentDiag: buildDocumentChatDiagPayload({
+                    documentAttachedThisTurn: false,
+                    activeDocumentFound: true,
+                    activeDocumentReused: false,
+                    activeFilename: activeDoc.filename,
+                    activeFileExpired: true,
+                    documentReferenceDetected: true,
+                    fileIncludedInModelInput: false,
+                    modelRequestReached: false,
+                    modelResponseReceived: true,
+                    failureCode: 'active_file_expired',
+                  }),
+                }
+              : {}),
+          },
+          req,
+        )
+      }
+      if (!fileIdBelongsToConversation(messages, activeDoc.fileId)) {
+        documentFailure = 'foreign_file_id'
+      } else {
+        documentReuse = { fileId: activeDoc.fileId, mimeType: activeDoc.mimeType }
+        activeDocumentReused = true
+        fileIncludedInModelInput = true
+      }
+    }
+
     // #312 — Vision AI × Search: resolve visual context + NL/button intent, then
     // force the *existing* hosted web_search pipeline (no reverse-image upload).
     const visionDiagOn = isVisionSearchDiagEnabled(req, body as Record<string, unknown>)
@@ -625,6 +725,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ),
       model,
     )
+
+    if (lastUserHasFile || activeDocumentReused) {
+      const docAppendix = buildDocumentChatAppendix({
+        filename: activeDoc?.filename || '',
+        reused: activeDocumentReused,
+      })
+      if (docAppendix) {
+        instructionsWithVision = `${instructionsWithVision}\n\n${docAppendix}`
+      }
+    }
 
     if (visionRoute.intent === 'vision_search') {
       visionSearchKind = visionRoute.kind
@@ -661,6 +771,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const OpenAI = (await import('openai')).default
     const client = new OpenAI({ apiKey })
 
+    const mapInputOpts = {
+      browserLocale,
+      ...(documentReuse ? { reuseDocument: documentReuse } : {}),
+    }
+
     const { tools: hostedTools, toolChoice } = resolveHostedToolsForTurn(
       model,
       lastUserCaption || '',
@@ -670,19 +785,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let searchResultCount = 0
     let finalResponseReceived = false
     let webSearchUsed: boolean | null = null
+    let modelRequestReached = false
     let response: Awaited<ReturnType<typeof client.responses.create>>
     try {
+      modelRequestReached = true
       response = await client.responses.create(
         buildCoreResponsesCreateParams({
           model,
           instructions,
           maxOutputTokens: modality === 'voice' ? 700 : 4096,
-          input: mapMessagesToResponsesInput(messages, {
-            browserLocale:
-              (typeof body.browserLocale === 'string' && body.browserLocale) ||
-              (typeof body.locale === 'string' && body.locale) ||
-              '',
-          }),
+          input: mapMessagesToResponsesInput(messages, mapInputOpts),
           ...(hostedTools.length ? { tools: hostedTools } : {}),
           ...(toolChoice != null ? { toolChoice } : {}),
         }),
@@ -709,12 +821,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               model,
             ),
             maxOutputTokens: modality === 'voice' ? 700 : 4096,
-            input: mapMessagesToResponsesInput(messages, {
-              browserLocale:
-                (typeof body.browserLocale === 'string' && body.browserLocale) ||
-                (typeof body.locale === 'string' && body.locale) ||
-                '',
-            }),
+            input: mapMessagesToResponsesInput(messages, mapInputOpts),
             ...(buildImageGenerationTools(model).length
               ? { tools: buildImageGenerationTools(model) }
               : {}),
@@ -787,7 +894,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       !lastUserCaption ||
       isPersonalMemoryProbe(lastUserCaption) ||
       isVisionTaskShortcut(lastUserCaption) ||
-      images.length > 0
+      images.length > 0 ||
+      lastUserHasFile ||
+      activeDocumentReused
 
     if (lastUserCaption && !skipExtractionForInspection) {
       const write = await runMemoryIfEnabled(
@@ -858,6 +967,55 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         failureCode: diag.failureCode,
         generatedSearchQueryPreview: diag.generatedSearchQueryPreview,
       })
+    }
+
+    if (
+      documentDiagOn ||
+      documentAttachedThisTurn ||
+      activeDocumentReused ||
+      documentFailure ||
+      documentReferenceDetected
+    ) {
+      const docDiag = buildDocumentChatDiagPayload({
+        requestId:
+          typeof (req as { headers?: Record<string, string> }).headers?.['x-request-id'] === 'string'
+            ? (req as { headers: Record<string, string> }).headers['x-request-id']
+            : null,
+        documentAttachedThisTurn,
+        activeDocumentFound: Boolean(activeDoc),
+        activeDocumentReused,
+        activeFilename: activeDoc?.filename ?? null,
+        activeFileExpired,
+        documentReferenceDetected,
+        fileIncludedInModelInput,
+        modelRequestReached,
+        modelResponseReceived: finalResponseReceived,
+        failureCode: documentFailure,
+      })
+      if (documentDiagOn) {
+        payload.documentDiag = docDiag
+      }
+      console.info('[api/chat] document-chat', {
+        route: docDiag.route,
+        buildId: docDiag.buildId,
+        ...summarizeActiveDocumentForLog(activeDoc),
+        activeDocumentReused: docDiag.activeDocumentReused,
+        documentReferenceDetected: docDiag.documentReferenceDetected,
+        fileIncludedInModelInput: docDiag.fileIncludedInModelInput,
+        failureCode: docDiag.failureCode,
+      })
+    }
+
+    // Echo safe active-document metadata for client UI (no bytes).
+    if (activeDoc && !suppressDocReuse && !activeFileExpired) {
+      payload.activeDocument = {
+        fileId: activeDoc.fileId,
+        filename: activeDoc.filename,
+        mimeType: activeDoc.mimeType,
+        size: activeDoc.size,
+        expiresAt: activeDoc.expiresAt,
+        sourceTurnId: activeDoc.sourceTurnId,
+      }
     }
 
     return sendJson(res, 200, payload, req)

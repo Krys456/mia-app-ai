@@ -18,6 +18,7 @@ import {
 } from './apiError'
 import { visionSearchDiagRequested } from './visionSearchDiag'
 import { rememberVisionSearchDiag } from './visionSearchDiag'
+import { isDocumentDiagClientEnabled, rememberDocumentDiag } from './documentDiag'
 
 export type { MemoryFeedbackEvent } from './memoryFeedback'
 
@@ -43,6 +44,7 @@ export interface ChatApiFileAttachment {
     | 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     | string
   size: number
+  expiresAt?: number
 }
 
 export interface ChatApiMessage {
@@ -89,6 +91,10 @@ export interface ChatApiRequest {
   conversationPreferenceProfile?: Record<string, unknown> | null
   /** #312 — opt-in Vision × Search diagnostics. */
   visionSearchDiag?: boolean
+  /** #313 — opt-in document-chat diagnostics. */
+  documentDiag?: boolean
+  /** #313 — client dismissed active document until next upload. */
+  suppressActiveDocumentReuse?: boolean
   /** Browser / UI locale — Language Awareness final fallback (#312A Vision). */
   browserLocale?: string
   locale?: string
@@ -124,6 +130,17 @@ export interface ChatApiSuccess {
   v2Debug?: V2DebugInfo | null
   /** #312 — Vision × Search diagnostics when requested. */
   visionSearchDiag?: Record<string, unknown> | null
+  /** #313 — document-chat diagnostics when requested. */
+  documentDiag?: Record<string, unknown> | null
+  /** #313 — safe active document metadata echo. */
+  activeDocument?: {
+    fileId: string
+    filename: string
+    mimeType: string
+    size: number
+    expiresAt?: number | null
+    sourceTurnId?: string | null
+  } | null
 }
 
 /** Server-authored image artifact from /api/chat (#289). */
@@ -204,6 +221,11 @@ export async function requestChatCompletion(
     if (visionDiag) {
       headers['X-Shinkaido-Vision-Search-Diag'] = '1'
     }
+    // #313 — Preview document diagnostics (?document_diag=1).
+    const documentDiagOn = payload.documentDiag === true || isDocumentDiagClientEnabled()
+    if (documentDiagOn) {
+      headers['X-Shinkaido-Document-Diag'] = '1'
+    }
 
     // #298A — paid /api/chat requires Bearer; do not call without a session token.
     const auth = await resolveChatAuthForRequest()
@@ -222,6 +244,10 @@ export async function requestChatCompletion(
         userId: payload.userId,
         memoryEnabled: payload.memoryEnabled !== false,
         ...(visionDiag ? { visionSearchDiag: true } : {}),
+        ...(documentDiagOn ? { documentDiag: true } : {}),
+        ...(payload.suppressActiveDocumentReuse
+          ? { suppressActiveDocumentReuse: true }
+          : {}),
         ...(payload.browserLocale ? { browserLocale: payload.browserLocale } : {}),
         ...(payload.locale ? { locale: payload.locale } : {}),
         ...(payload.learningSignals ? { learningSignals: payload.learningSignals } : {}),
@@ -321,6 +347,9 @@ export async function requestChatCompletion(
   if (data.visionSearchDiag && typeof data.visionSearchDiag === 'object') {
     rememberVisionSearchDiag(data.visionSearchDiag)
   }
+  if (data.documentDiag && typeof data.documentDiag === 'object') {
+    rememberDocumentDiag(data.documentDiag)
+  }
 
   return {
     content,
@@ -354,6 +383,14 @@ export async function requestChatCompletion(
     v2Debug,
     ...(data.visionSearchDiag && typeof data.visionSearchDiag === 'object'
       ? { visionSearchDiag: data.visionSearchDiag as Record<string, unknown> }
+      : {}),
+    ...(data.documentDiag && typeof data.documentDiag === 'object'
+      ? { documentDiag: data.documentDiag as Record<string, unknown> }
+      : {}),
+    ...(data.activeDocument && typeof data.activeDocument === 'object'
+      ? {
+          activeDocument: data.activeDocument as ChatApiSuccess['activeDocument'],
+        }
       : {}),
   }
 }
