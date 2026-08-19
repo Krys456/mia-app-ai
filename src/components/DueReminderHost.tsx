@@ -19,7 +19,7 @@ import './DueReminderHost.css'
 
 /**
  * #303A — Deterministic in-app / next-open delivery.
- * No OpenAI. No Web Push.
+ * #303C — Still no delivered-on-fetch; Push may have set push_sent_at server-side.
  * Marks delivered only after the user acknowledges the sheet (never on fetch).
  */
 export function DueReminderHost() {
@@ -27,6 +27,7 @@ export function DueReminderHost() {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const deliveringRef = useRef<Set<string>>(new Set())
+  const deepLinkHandled = useRef<string | null>(null)
   const enabled = isRemindersUiEnabled()
   const auth = useAuthBootstrap()
 
@@ -45,6 +46,23 @@ export function DueReminderHost() {
       if (shouldMarkDeliveredOnFetch()) return
       setQueue((prev) => mergeDueIntoQueue(prev, result.reminders, deliveringRef.current))
       setError(null)
+
+      // notificationclick deep-link: /?reminder=<id>
+      try {
+        const params = new URLSearchParams(window.location.search)
+        const deepId = params.get('reminder')
+        if (deepId && deepLinkHandled.current !== deepId) {
+          deepLinkHandled.current = deepId
+          setQueue((prev) => {
+            const hit = prev.find((r) => r.id === deepId) || result.reminders.find((r) => r.id === deepId)
+            if (!hit) return prev
+            const rest = prev.filter((r) => r.id !== deepId)
+            return [hit, ...rest]
+          })
+        }
+      } catch {
+        /* ignore */
+      }
     } catch (err) {
       if (err instanceof ReminderApiError && err.status === 401) return
       setError(err instanceof ReminderApiError ? err.message : null)
@@ -122,8 +140,8 @@ export function DueReminderHost() {
         {current.body ? <p className="due-reminder__body">{current.body}</p> : null}
         {wasMissed ? (
           <p className="due-reminder__note">
-            Questo promemoria è scaduto mentre ShinkAIdo era chiuso. Nessuna notifica push è stata
-            inviata in questa fase.
+            Questo promemoria è scaduto mentre ShinkAIdo era chiuso. Se le notifiche push non erano
+            attive o non sono arrivate, lo rivedi qui al prossimo accesso.
           </p>
         ) : null}
         {error ? (

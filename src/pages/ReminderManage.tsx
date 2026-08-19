@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { PageHeader } from '../components/PageHeader'
+import { PushOptInPrompt, shouldOfferPushOptIn } from '../components/PushOptInPrompt'
 import {
   ReminderApiError,
   buildManualReminderProposal,
@@ -29,6 +30,7 @@ export function ReminderManage({ onBack }: ReminderManageProps) {
   const [proposal, setProposal] = useState<ReminderProposal | null>(null)
   const [editing, setEditing] = useState<Reminder | null>(null)
   const [busy, setBusy] = useState(false)
+  const [pushOptInOpen, setPushOptInOpen] = useState(false)
 
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
@@ -94,6 +96,9 @@ export function ReminderManage({ onBack }: ReminderManageProps) {
       await createReminderFromProposal(proposal)
       resetForm()
       await refresh()
+      if (shouldOfferPushOptIn()) {
+        setPushOptInOpen(true)
+      }
     } catch (err) {
       setError(err instanceof ReminderApiError ? err.message : 'Creazione non riuscita.')
     } finally {
@@ -185,8 +190,8 @@ export function ReminderManage({ onBack }: ReminderManageProps) {
       <PageHeader title="Promemoria" onBack={onBack} />
       <div className="reminder-manage__body scroll-surface">
         <p className="reminder-manage__lead">
-          Crea e gestisci promemoria espliciti. Vengono consegnati in app o al prossimo
-          accesso — non come notifiche push in questa fase.
+          Crea e gestisci promemoria espliciti. Restano disponibili in app e al prossimo accesso.
+          Le notifiche push sono opzionali e si attivano solo se le consenti.
         </p>
 
         {error ? (
@@ -328,6 +333,7 @@ export function ReminderManage({ onBack }: ReminderManageProps) {
           </ul>
         </section>
       </div>
+      <PushOptInPrompt open={pushOptInOpen} onClose={() => setPushOptInOpen(false)} />
     </main>
   )
 }
