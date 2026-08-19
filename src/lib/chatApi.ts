@@ -219,6 +219,36 @@ export async function requestChatCompletion(
       if (clientSupabaseHost) headers['X-Shinkaido-Supabase-Host'] = clientSupabaseHost
     }
 
+    const lastOutboundUser = [...payload.messages].reverse().find((m) => m.role === 'user')
+    // Visible UI caption = last user content in the outbound messages[] (ChatContext
+    // already trims once in sendMessage before building history).
+    const outboundText =
+      lastOutboundUser && typeof lastOutboundUser.content === 'string'
+        ? lastOutboundUser.content
+        : ''
+    const outboundPreview =
+      outboundText.length > 80 ? `${outboundText.slice(0, 80)}…` : outboundText
+
+    if (calendarDiagRequested) {
+      try {
+        const { writeCalendarDiagSnapshot, CALENDAR_DIAG_CHAT_KEY } = await import(
+          './calendarDiagClient.ts'
+        )
+        // Pre-response breadcrumb so the panel shows outbound text even if chat fails.
+        writeCalendarDiagSnapshot(CALENDAR_DIAG_CHAT_KEY, {
+          phase: 'client_outbound',
+          visibleUiLastUserLen: outboundText.length,
+          visibleUiLastUserPreview: outboundPreview,
+          clientOutboundLastUserLen: outboundText.length,
+          clientOutboundLastUserPreview: outboundPreview,
+          detectorInput: '(pending server)',
+          detectorNormalized: '(pending server)',
+        })
+      } catch {
+        /* soft */
+      }
+    }
+
     response = await fetch(endpoint, {
       method: 'POST',
       headers,
@@ -258,6 +288,14 @@ export async function requestChatCompletion(
             : {}),
         ...(calendarDiagRequested ? { calendarDiag: true } : {}),
         ...(clientSupabaseHost ? { clientSupabaseHost } : {}),
+        ...(calendarDiagRequested
+          ? {
+              visibleUiLastUserLen: outboundText.length,
+              visibleUiLastUserPreview: outboundPreview,
+              clientOutboundLastUserLen: outboundText.length,
+              clientOutboundLastUserPreview: outboundPreview,
+            }
+          : {}),
       }),
       signal: init?.signal,
     })

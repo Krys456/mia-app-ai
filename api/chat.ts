@@ -58,6 +58,7 @@ import {
   appendCalendarPackToInstructions,
   maybeBuildCalendarChatEnrichment,
 } from '../lib/server/calendar-chat-pack.js'
+import { inspectCalendarChatIntent, safeDiagTextPreview } from '../lib/server/calendar-chat-intent.js'
 import {
   buildChatCalendarDiagPayload,
   isCalendarDiagEnvAllowed,
@@ -123,6 +124,12 @@ interface ChatApiRequestBody {
   calendarDiag?: boolean | number | string
   /** #310C — client VITE_SUPABASE_URL hostname only (no keys). */
   clientSupabaseHost?: string
+  /** #310F — safe outbound last-user preview from browser (≤80). */
+  clientOutboundLastUserPreview?: string
+  clientOutboundLastUserLen?: number
+  /** #310F — visible UI caption (same hop as outbound messages[] last user). */
+  visibleUiLastUserPreview?: string
+  visibleUiLastUserLen?: number
   /** Legacy V1/V2 flags — ignored by the new core. */
   developerMode?: boolean
   engine?: 'v1' | 'v2'
@@ -610,15 +617,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             timeZone: body.timeZone || body.timezone,
             requestId: calendarRequestId,
           })
-        : {
-            used: false,
-            intent: 'none' as const,
-            pack: '',
-            skipMemoryExtraction: false,
-            status: null,
-            tokenDecrypt: 'NOT_REACHED' as const,
-            preGoogleFailureCode: lastUserCaption ? 'missing_owner' : 'empty_caption',
-          }
+        : (() => {
+            const inspected = inspectCalendarChatIntent(lastUserCaption || '')
+            return {
+              used: false,
+              intent: 'none' as const,
+              pack: '',
+              skipMemoryExtraction: false,
+              status: null,
+              tokenDecrypt: 'NOT_REACHED' as const,
+              preGoogleFailureCode: lastUserCaption ? 'missing_owner' : 'empty_caption',
+              enrichmentSelectedLen: inspected.rawLen,
+              enrichmentSelectedPreview: inspected.rawPreview,
+              detectorRawLen: inspected.rawLen,
+              detectorInput: inspected.rawPreview,
+              detectorNormalized: inspected.normalizedPreview,
+              detectorResult: inspected.intent,
+            }
+          })()
+
+    // #310F — prove which messages[] item fed the Calendar detector (most recent USER).
+    const calendarMessageSource =
+      'messages[] → reverse find role=user → visibleUserText(content) → maybeBuildCalendarChatEnrichment.userMessage → detectCalendarChatIntent'
 
     const instructions = appendCalendarPackToInstructions(
       appendWebSearchGuidance(
@@ -735,7 +755,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         : {}),
     }
 
-    // #310C / #310C3 — temporary Preview opt-in Calendar live trace (safe fields only).
+    // #310C / #310F — temporary Preview opt-in Calendar live trace (safe fields only).
     if (isCalendarDiagEnvAllowed(process.env) && isCalendarDiagRequested(req, body as unknown as Record<string, unknown>)) {
       const clientHost =
         typeof body.clientSupabaseHost === 'string'
@@ -748,10 +768,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         authUserId: memoryOwnerUserId,
         clientSupabaseHost: clientHost,
         enrichment: calendarEnrichment,
+        messageSource: calendarMessageSource,
+        selectedMessageRole: lastUserMessage?.role || null,
+        apiParsedLastUserLen: lastUserCaption.length,
+        apiParsedLastUserPreview: safeDiagTextPreview(lastUserCaption, 80),
+        visibleUiLastUserLen:
+          typeof body.visibleUiLastUserLen === 'number'
+            ? body.visibleUiLastUserLen
+            : typeof body.clientOutboundLastUserLen === 'number'
+              ? body.clientOutboundLastUserLen
+              : null,
+        visibleUiLastUserPreview:
+          typeof body.visibleUiLastUserPreview === 'string'
+            ? body.visibleUiLastUserPreview.slice(0, 80)
+            : typeof body.clientOutboundLastUserPreview === 'string'
+              ? body.clientOutboundLastUserPreview.slice(0, 80)
+              : null,
+        clientOutboundLastUserLen:
+          typeof body.clientOutboundLastUserLen === 'number'
+            ? body.clientOutboundLastUserLen
+            : null,
+        clientOutboundLastUserPreview:
+          typeof body.clientOutboundLastUserPreview === 'string'
+            ? body.clientOutboundLastUserPreview.slice(0, 80)
+            : null,
       })
       try {
         res.setHeader('X-Shinkaido-Calendar-Diag', '1')
-        res.setHeader('X-Shinkaido-Calendar-Diag-Build', '310E-1')
+        res.setHeader('X-Shinkaido-Calendar-Diag-Build', '310F-1')
       } catch {
         /* soft */
       }

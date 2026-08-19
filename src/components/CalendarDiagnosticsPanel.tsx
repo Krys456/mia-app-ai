@@ -74,6 +74,53 @@ export function CalendarDiagnosticsPanel() {
       { label: 'chat intent', value: asText(chat?.intent) },
       { label: 'chat used', value: asText(chat?.used) },
       {
+        label: 'visible UI last-user len',
+        value: asText(
+          chat?.visibleUiLastUserLen ?? chat?.clientOutboundLastUserLen,
+        ),
+      },
+      {
+        label: 'visible UI last-user preview',
+        value: asText(
+          chat?.visibleUiLastUserPreview ?? chat?.clientOutboundLastUserPreview,
+        ),
+      },
+      {
+        label: 'frontend outbound len',
+        value: asText(chat?.clientOutboundLastUserLen),
+      },
+      {
+        label: 'frontend outbound preview',
+        value: asText(chat?.clientOutboundLastUserPreview),
+      },
+      {
+        label: 'api parsed last-user len',
+        value: asText(chat?.apiParsedLastUserLen),
+      },
+      {
+        label: 'api parsed last-user preview',
+        value: asText(chat?.apiParsedLastUserPreview),
+      },
+      {
+        label: 'enrichment selected len',
+        value: asText(chat?.enrichmentSelectedLen),
+      },
+      {
+        label: 'enrichment selected preview',
+        value: asText(chat?.enrichmentSelectedPreview),
+      },
+      { label: 'detectorInput', value: asText(chat?.detectorInput) },
+      { label: 'detectorNormalized', value: asText(chat?.detectorNormalized) },
+      { label: 'detectorResult', value: asText(chat?.detectorResult || chat?.intent) },
+      {
+        label: 'messageSource',
+        value: asText(chat?.messageSource),
+      },
+      {
+        label: 'selectedMessageRole',
+        value: asText(chat?.selectedMessageRole),
+      },
+      {
         label: 'connection row found (chat)',
         value: asText(chat?.rowFound),
       },

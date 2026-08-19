@@ -13,7 +13,7 @@ export const CALENDAR_DIAG_OAUTH_KEY = 'shinkaido.calendar.lastOauthStartDiag'
 export const CALENDAR_DIAG_CONNECTION_KEY = 'shinkaido.calendar.lastConnectionDiag'
 export const CALENDAR_DIAG_CHAT_KEY = 'shinkaido.calendar.lastChatDiag'
 export const CALENDAR_DIAG_META_KEY = 'shinkaido.calendar.diagMeta'
-export const CALENDAR_DIAG_CLIENT_BUILD = '310E-1'
+export const CALENDAR_DIAG_CLIENT_BUILD = '310F-1'
 
 function canUseStorage(): boolean {
   return typeof window !== 'undefined'
