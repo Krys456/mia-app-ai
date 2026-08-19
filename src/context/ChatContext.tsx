@@ -38,6 +38,15 @@ import {
   type ActiveTimerContext,
   type PendingTimerReplace,
 } from '../lib/timer'
+import {
+  applyPhoneAction,
+  buildPhoneActionDiag,
+  detectPhoneLanguage,
+  isPhoneActionDiagEnabled,
+  logPhoneActionSafe,
+  rememberPhoneActionDiag,
+  requestAppNavigate,
+} from '../lib/phoneAction'
 import { deriveDictationLangFromMessages } from '../lib/dictationLanguage'
 import {
   finalizeConversationLearning,
@@ -1069,6 +1078,53 @@ export function ChatProvider({ children }: { children: ReactNode }) {
                 notificationAttempted: false,
               }),
             )
+          }
+          return true
+        }
+      }
+
+      // #315 — deterministic Phone Actions (same user-gesture turn; never LLM-owned).
+      if (content && wireAtts.length === 0) {
+        const sticky = deriveDictationLangFromMessages(state.messages)
+        const langHint =
+          sticky === 'en'
+            ? 'en'
+            : sticky === 'it'
+              ? 'it'
+              : detectPhoneLanguage(content, detectTimerLanguage(content, 'it'))
+        let lastAssistantText = ''
+        for (let i = state.messages.length - 1; i >= 0; i -= 1) {
+          const m = state.messages[i]
+          if (m?.role === 'assistant' && m.kind !== 'error' && String(m.content || '').trim()) {
+            lastAssistantText = String(m.content).trim()
+            break
+          }
+        }
+        const phone = applyPhoneAction({
+          text: content,
+          lastAssistantText,
+          languageHint: langHint,
+          env: {
+            navigateApp: (view: string) => {
+              requestAppNavigate(view)
+            },
+          },
+        })
+        if (phone.handled && phone.reply) {
+          dispatch({
+            type: 'LOCAL_EXCHANGE',
+            userContent: content,
+            assistantContent: phone.reply,
+          })
+          logPhoneActionSafe({
+            action: phone.action,
+            target: phone.target,
+            safetyClass: phone.safetyClass,
+            handoffAttempted: Boolean(phone.diag.handoffAttempted),
+            failureCode: phone.diag.failureCode ?? null,
+          })
+          if (isPhoneActionDiagEnabled()) {
+            rememberPhoneActionDiag(buildPhoneActionDiag(phone.diag))
           }
           return true
         }
