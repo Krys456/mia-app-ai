@@ -7,6 +7,7 @@ export function phoneCopy(key, lang, vars = {}) {
     open_spotify: 'Ti apro Spotify.',
     open_youtube: 'Ti apro YouTube.',
     open_maps: 'Ti apro Google Maps.',
+    open_gmail: 'Ti apro Gmail.',
     navigate: `Ho aperto le indicazioni per «${vars.destination || ''}» in Maps.`,
     call: `Ti apro il dialer con il numero ${vars.phone || ''} pronto.`,
     call_needs_number:
@@ -33,6 +34,7 @@ export function phoneCopy(key, lang, vars = {}) {
     open_spotify: 'Opening Spotify for you.',
     open_youtube: 'Opening YouTube for you.',
     open_maps: 'Opening Google Maps for you.',
+    open_gmail: 'Opening Gmail for you.',
     navigate: `I've opened directions to “${vars.destination || ''}” in Maps.`,
     call: `Opening the dialer with ${vars.phone || ''} ready.`,
     call_needs_number:

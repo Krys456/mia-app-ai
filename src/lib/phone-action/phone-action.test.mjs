@@ -41,6 +41,53 @@ assert.equal(detectPhoneActionIntent('Copy the last answer').kind, 'copy')
 assert.equal(detectPhoneActionIntent('Apri la fotocamera').kind, 'open_vision')
 assert.equal(detectPhoneActionIntent('Open the camera').kind, 'open_vision')
 
+// --- #315A live Preview phrase regressions ---
+assert.equal(detectPhoneActionIntent('Apri Gmail').kind, 'open_app')
+assert.equal(detectPhoneActionIntent('Apri Gmail').target, 'gmail')
+assert.equal(detectPhoneActionIntent('Aprimi Gmail').target, 'gmail')
+assert.equal(detectPhoneActionIntent('Vai su Gmail').target, 'gmail')
+assert.equal(detectPhoneActionIntent('Open Gmail').target, 'gmail')
+assert.equal(detectPhoneActionIntent('Go to Gmail').target, 'gmail')
+assert.equal(isAllowedHttpsUrl('https://mail.google.com/'), true)
+
+{
+  const liveSms = 'Scrivi "Ciao Krys" a +39 3761165503'
+  const sms = detectPhoneActionIntent(liveSms)
+  assert.equal(sms.kind, 'sms')
+  assert.equal(sms.phone, '+393761165503')
+  assert.equal(sms.body, 'Ciao Krys')
+  assert.equal(extractPhoneNumber('+39 3761165503'), '+393761165503')
+  assert.equal(detectPhoneActionIntent('Scrivi Ciao Krys a +39 3761165503').kind, 'sms')
+  assert.match(detectPhoneActionIntent('Scrivi Ciao Krys a +39 3761165503').body || '', /Ciao Krys/i)
+  assert.equal(
+    detectPhoneActionIntent('Manda un SMS a +39 3761165503 dicendo Ciao Krys').kind,
+    'sms',
+  )
+  assert.equal(
+    detectPhoneActionIntent('Invia un messaggio a +39 3761165503 con scritto Ciao Krys').kind,
+    'sms',
+  )
+}
+
+assert.equal(
+  detectPhoneActionIntent('Ok, allora copia il messaggio precedente').kind,
+  'copy',
+)
+assert.equal(
+  detectPhoneActionIntent('Ok,allora copia il messaggio precedente').kind,
+  'copy',
+)
+assert.equal(detectPhoneActionIntent('Copia il messaggio precedente').kind, 'copy')
+assert.equal(detectPhoneActionIntent("Copia l'ultimo messaggio").kind, 'copy')
+assert.equal(detectPhoneActionIntent('Allora copialo').kind, 'copy')
+assert.equal(detectPhoneActionIntent('Copia quello che hai appena scritto').kind, 'copy')
+assert.equal(detectPhoneActionIntent('Copy the previous message').kind, 'copy')
+assert.equal(detectPhoneActionIntent('Copy what you just wrote').kind, 'copy')
+
+// Negatives: writing requests must not become SMS
+assert.equal(detectPhoneActionIntent('Scrivi un articolo sulle telefonate').kind, 'none')
+assert.equal(detectPhoneActionIntent('Scrivi una storia su Gmail').kind, 'none')
+
 // --- Negatives / meta ---
 assert.equal(detectPhoneActionIntent("Cos'è Spotify?").kind, 'none')
 assert.equal(detectPhoneActionIntent('Parlami di YouTube').kind, 'none')
@@ -107,6 +154,37 @@ assert.equal(buildMapsDirectionsUrl('javascript:alert(1)'), null)
   assert.equal(spotify.handled, true)
   assert.equal(opened[0], 'https://open.spotify.com/')
   assert.match(spotify.reply || '', /Spotify/i)
+
+  const gmail = applyPhoneAction({ text: 'Apri Gmail', env })
+  assert.equal(gmail.handled, true)
+  assert.equal(gmail.target, 'gmail')
+  assert.ok(opened.includes('https://mail.google.com/'))
+  assert.match(gmail.reply || '', /Gmail/i)
+
+  const liveSmsAction = applyPhoneAction({
+    text: 'Scrivi "Ciao Krys" a +39 3761165503',
+    env,
+  })
+  assert.equal(liveSmsAction.handled, true)
+  assert.equal(liveSmsAction.action, 'sms')
+  assert.ok(String(assigned.at(-1)).startsWith('sms:+393761165503'))
+  assert.ok(String(assigned.at(-1)).includes('Ciao'))
+  assert.doesNotMatch(liveSmsAction.reply || '', /inviato/i)
+
+  let copiedLive = ''
+  env.copyTextSync = (t) => {
+    copiedLive = t
+    return true
+  }
+  const copyLive = applyPhoneAction({
+    text: 'Ok, allora copia il messaggio precedente',
+    lastAssistantText: 'Messaggio assistente precedente',
+    env,
+  })
+  assert.equal(copyLive.handled, true)
+  assert.equal(copyLive.action, 'copy')
+  assert.equal(copiedLive, 'Messaggio assistente precedente')
+  assert.match(copyLive.reply || '', /copiat/i)
 
   const nav = applyPhoneAction({ text: 'Portami a Roma Termini', env })
   assert.equal(nav.handled, true)

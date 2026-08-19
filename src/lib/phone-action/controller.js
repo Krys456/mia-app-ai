@@ -177,7 +177,9 @@ export function applyPhoneAction(input) {
         ? 'open_spotify'
         : intent.target === 'youtube'
           ? 'open_youtube'
-          : 'open_maps'
+          : intent.target === 'gmail'
+            ? 'open_gmail'
+            : 'open_maps'
     return {
       handled: true,
       reply: hop.ok ? phoneCopy(replyKey, lang) : phoneCopy('failed', lang),

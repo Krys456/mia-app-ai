@@ -23,8 +23,8 @@ export function fold(raw) {
  */
 export function extractPhoneNumber(raw) {
   const text = String(raw || '')
-  // Prefer +international
-  const intl = text.match(/\+(\d[\d\s().-]{7,22}\d)/)
+  // Prefer +international (spaces/dashes/parens allowed between digits)
+  const intl = text.match(/\+\s*(\d[\d\s().-]{6,28}\d)/)
   if (intl) {
     const digits = ('+' + intl[1]).replace(/[^\d+]/g, '')
     if (isValidPhone(digits)) return digits

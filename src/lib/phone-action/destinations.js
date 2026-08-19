@@ -22,6 +22,13 @@ export const OPEN_APP_TARGETS = Object.freeze({
     labelIt: 'Google Maps',
     labelEn: 'Google Maps',
   },
+  /** Browser/app handoff only — not #311 Gmail API integration. */
+  gmail: {
+    id: 'gmail',
+    url: 'https://mail.google.com/',
+    labelIt: 'Gmail',
+    labelEn: 'Gmail',
+  },
 })
 
 export function getOpenAppTarget(id) {
@@ -52,9 +59,10 @@ export function isAllowedHttpsUrl(url) {
       'maps.google.com',
       'www.google.com',
       'google.com',
+      'mail.google.com',
     ])
     if (!allowed.has(host)) return false
-    // google.com maps path only
+    // google.com maps path only (not arbitrary google.com)
     if (host === 'www.google.com' || host === 'google.com') {
       return u.pathname.startsWith('/maps')
     }

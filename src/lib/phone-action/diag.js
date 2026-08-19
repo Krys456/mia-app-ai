@@ -2,7 +2,7 @@
  * #315 — Safe phone-action diagnostics (?phone_action_diag=1).
  */
 
-export const PHONE_ACTION_DIAG_BUILD = '315-1'
+export const PHONE_ACTION_DIAG_BUILD = '315A-1'
 
 export function isPhoneActionDiagEnabled(search) {
   try {
