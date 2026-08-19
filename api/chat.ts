@@ -751,7 +751,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       })
       try {
         res.setHeader('X-Shinkaido-Calendar-Diag', '1')
-        res.setHeader('X-Shinkaido-Calendar-Diag-Build', '310D-1')
+        res.setHeader('X-Shinkaido-Calendar-Diag-Build', '310E-1')
       } catch {
         /* soft */
       }
