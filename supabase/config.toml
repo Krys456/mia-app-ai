@@ -13,3 +13,9 @@
 # missing/wrong worker secret -> 401. Do NOT disable verify_jwt globally.
 [functions.reminder-push-dispatch]
 verify_jwt = false
+
+# #304A1 — Google redirects here without a Supabase user JWT. Ownership is enforced
+# via HMAC-signed OAuth state + pending nonce bound to auth.uid() at start.
+# Do NOT disable verify_jwt for calendar-oauth-start or calendar-connection.
+[functions.calendar-oauth-callback]
+verify_jwt = false
