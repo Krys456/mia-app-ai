@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Header } from './components/Header'
 import { ChatContainer } from './components/chat'
 import { SettingsDrawer } from './components/SettingsDrawer'
@@ -11,6 +11,7 @@ import { ChatProvider, useChat } from './context/ChatContext'
 import { ThemeProvider } from './context/ThemeContext'
 import { useAuthBootstrap } from './hooks/useAuthBootstrap'
 import { useVisualViewportHeight } from './hooks/useVisualViewportHeight'
+import { setAppNavigateHandler } from './lib/appNavigation'
 import { isMemoryManageUiEnabled } from './lib/memoryManageUi'
 import { isRemindersUiEnabled } from './lib/remindersUi'
 import type { AppView } from './types'
@@ -37,6 +38,24 @@ function AppShell() {
     // Leaving chat / opening another view must never leave Settings covering the page.
     if (next !== 'chat') closeSettings()
   }
+  const navigateRef = useRef(navigate)
+  navigateRef.current = navigate
+
+  // #315 — Phone Action "Apri fotocamera" → Vision
+  useEffect(() => {
+    setAppNavigateHandler((next: string) => {
+      if (
+        next === 'vision' ||
+        next === 'chat' ||
+        next === 'memory' ||
+        next === 'privacy' ||
+        next === 'reminders'
+      ) {
+        navigateRef.current(next)
+      }
+    })
+    return () => setAppNavigateHandler(null)
+  }, [])
 
   const openMemoryManage = (fromSettings = true) => {
     if (!isMemoryManageUiEnabled()) return

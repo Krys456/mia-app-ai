@@ -76,6 +76,7 @@ import {
   buildDocumentChatAppendix,
   documentExpiredUserMessage,
 } from '../lib/server/document-chat-appendix.js'
+import { buildPhoneActionCapabilityAppendix } from '../lib/server/phone-action-capability-appendix.js'
 import {
   buildDocumentChatDiagPayload,
   isDocumentChatDiagEnabled,
@@ -229,6 +230,12 @@ function buildInstructions(body: ChatApiRequestBody, messages: ChatApiMessage[] 
   const expressionAppendix = buildCoreExpressionAppendix()
   if (expressionAppendix) {
     parts.push(expressionAppendix)
+  }
+
+  // #315B — Phone Action capability truth (info only; never triggers actions).
+  const phoneCapabilityAppendix = buildPhoneActionCapabilityAppendix()
+  if (phoneCapabilityAppendix) {
+    parts.push(phoneCapabilityAppendix)
   }
 
   // Ephemeral LANGUAGE appendix — reply-language only; not persisted; no second LLM.
