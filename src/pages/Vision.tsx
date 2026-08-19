@@ -1,4 +1,14 @@
-import { useCallback, useEffect, useId, useRef, useState, type ChangeEvent } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+  type KeyboardEvent,
+} from 'react'
 import { PageHeader } from '../components/PageHeader'
 import { useChat } from '../context/ChatContext'
 import {
@@ -7,8 +17,10 @@ import {
   summarizeImageForLog,
 } from '../lib/imageAttachment'
 import {
-  captionForVisionAction,
   resolveVisionActionLang,
+  resolveVisionSubmitCaption,
+  visionActionLabel,
+  visionPromptPlaceholder,
   type VisionAction,
 } from '../lib/visionActions'
 import {
@@ -27,6 +39,8 @@ interface VisionProps {
 
 type VisionPhase = 'empty' | 'camera' | 'ready' | 'sending'
 
+const QUICK_ACTIONS: VisionAction[] = ['analyze', 'explain', 'identify', 'read', 'search']
+
 function uid(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`
 }
@@ -37,25 +51,40 @@ function blobToImageFile(blob: Blob, name: string): File {
 }
 
 /**
- * LAIfe Vision / Lens — capture or choose a photo, then hand off to Core chat (#274).
+ * LAIfe Vision / Lens — capture or choose a photo, then hand off to Core chat (#274 / #312A).
+ * Preview first → custom prompt / quick action → explicit submit (no auto-analyze).
  */
 export function Vision({ onBack, onHandoffToChat }: VisionProps) {
   const { sendMessage, messages } = useChat()
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const promptInputRef = useRef<HTMLInputElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const previewUrlRef = useRef<string | null>(null)
   const fileInputId = useId()
+  const promptInputId = useId()
 
   const [phase, setPhase] = useState<VisionPhase>('empty')
   const [attachment, setAttachment] = useState<ChatImageAttachment | null>(null)
+  /** #312A — preserved while preview is open / quick actions change. */
+  const [customPrompt, setCustomPrompt] = useState('')
   const [cameraError, setCameraError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [status, setStatus] = useState<string | null>(null)
   const [videoReady, setVideoReady] = useState(false)
   /** Bumps when a new MediaStream is acquired so the attach effect re-runs. */
   const [cameraSession, setCameraSession] = useState(0)
+
+  const visionLang = useMemo(
+    () =>
+      resolveVisionActionLang({
+        messages,
+        navigatorLanguage: typeof navigator !== 'undefined' ? navigator.language : 'it',
+      }),
+    [messages],
+  )
+  const promptPlaceholder = visionPromptPlaceholder(visionLang)
 
   const stopCameraTracks = useCallback(() => {
     streamRef.current?.getTracks().forEach((track) => track.stop())
@@ -83,7 +112,6 @@ export function Vision({ onBack, onHandoffToChat }: VisionProps) {
   }, [])
 
   // Attach stream AFTER the <video> mounts (phase === 'camera').
-  // Starting getUserMedia before mount left videoRef null → black captures.
   useEffect(() => {
     if (phase !== 'camera') return
     const video = videoRef.current
@@ -121,10 +149,15 @@ export function Vision({ onBack, onHandoffToChat }: VisionProps) {
       revokePreview()
       previewUrlRef.current = previewUrl
       setAttachment({ ...next, previewUrl })
+      // Stay on ready — do NOT auto-submit. Keep any in-progress custom text only if
+      // replacing image mid-edit; new capture clears previous prompt association.
+      setCustomPrompt('')
       setPhase('ready')
       setError(null)
       setCameraError(null)
       setStatus(null)
+      // Focus prompt on next paint for mobile typing.
+      window.setTimeout(() => promptInputRef.current?.focus(), 50)
     },
     [revokePreview],
   )
@@ -186,7 +219,6 @@ export function Vision({ onBack, onHandoffToChat }: VisionProps) {
         audio: false,
       })
       streamRef.current = stream
-      // Mount video first; effect attaches stream + waits for a real frame.
       setCameraSession((n) => n + 1)
       setPhase('camera')
       setStatus('Fotocamera attiva')
@@ -212,7 +244,6 @@ export function Vision({ onBack, onHandoffToChat }: VisionProps) {
     }
 
     try {
-      // Keep stream alive until drawImage + toBlob complete.
       const { blob, width, height } = await captureVideoFrameToJpegBlob(video, canvas, stream)
       console.info(
         '[vision] frame captured',
@@ -233,7 +264,6 @@ export function Vision({ onBack, onHandoffToChat }: VisionProps) {
         err instanceof Error ? err.message.slice(0, 80) : 'unknown',
       )
       setError('Acquisizione foto non riuscita. Riprova o scegli una foto dalla galleria.')
-      // Do not stop stream on failed capture — user can retry.
     }
   }
 
@@ -247,6 +277,7 @@ export function Vision({ onBack, onHandoffToChat }: VisionProps) {
   const clearImage = () => {
     revokePreview()
     setAttachment(null)
+    setCustomPrompt('')
     setError(null)
     setStatus(null)
     setPhase('empty')
@@ -258,48 +289,93 @@ export function Vision({ onBack, onHandoffToChat }: VisionProps) {
     setPhase(attachment ? 'ready' : 'empty')
   }
 
-  const runAction = (action: VisionAction) => {
+  const submitVision = useCallback(
+    (action: VisionAction | null) => {
+      if (!attachment || phase === 'sending') return
+
+      const effectiveAction: VisionAction = action ?? 'analyze'
+      const finalCaption = resolveVisionSubmitCaption({
+        customText: customPrompt,
+        action: effectiveAction,
+        lang: visionLang,
+      })
+
+      stopCameraTracks()
+
+      setPhase('sending')
+      setError(null)
+      setStatus(
+        effectiveAction === 'search' && !customPrompt.trim()
+          ? visionLang === 'it'
+            ? 'Ricerca…'
+            : 'Searching…'
+          : effectiveAction === 'read' && !customPrompt.trim()
+            ? visionLang === 'it'
+              ? 'Lettura testo…'
+              : 'Reading text…'
+            : visionLang === 'it'
+              ? 'Invio a ShinkAIdo…'
+              : 'Sending to ShinkAIdo…',
+      )
+
+      const wire: ChatImageAttachment = {
+        id: attachment.id,
+        kind: 'image',
+        mimeType: attachment.mimeType,
+        dataUrl: attachment.dataUrl,
+        previewUrl: attachment.dataUrl,
+        width: attachment.width,
+        height: attachment.height,
+      }
+
+      const accepted = sendMessage(finalCaption, [wire])
+      if (!accepted) {
+        setPhase('ready')
+        setStatus(null)
+        setError(
+          visionLang === 'it'
+            ? 'Impossibile inviare ora. Riprova tra un momento.'
+            : 'Could not send right now. Try again in a moment.',
+        )
+        return
+      }
+
+      revokePreview()
+      setAttachment(null)
+      setCustomPrompt('')
+      onHandoffToChat()
+    },
+    [
+      attachment,
+      phase,
+      customPrompt,
+      visionLang,
+      stopCameraTracks,
+      sendMessage,
+      revokePreview,
+      onHandoffToChat,
+    ],
+  )
+
+  const onPromptSubmit = (event: FormEvent) => {
+    event.preventDefault()
     if (!attachment || phase === 'sending') return
-
-    const lang = resolveVisionActionLang({
-      messages,
-      navigatorLanguage: typeof navigator !== 'undefined' ? navigator.language : '',
-    })
-    const caption = captionForVisionAction(action, lang)
-
-    stopCameraTracks()
-
-    setPhase('sending')
-    setError(null)
-    setStatus(
-      action === 'analyze'
-        ? 'Invio a ShinkAIdo…'
-        : action === 'read'
-          ? 'Lettura testo…'
-          : 'Spiegazione…',
-    )
-
-    const wire: ChatImageAttachment = {
-      id: attachment.id,
-      kind: 'image',
-      mimeType: attachment.mimeType,
-      dataUrl: attachment.dataUrl,
-      previewUrl: attachment.dataUrl,
-      width: attachment.width,
-      height: attachment.height,
-    }
-
-    const accepted = sendMessage(caption, [wire])
-    if (!accepted) {
-      setPhase('ready')
-      setStatus(null)
-      setError('Impossibile inviare ora. Riprova tra un momento.')
+    // Keyboard submit: require custom text OR treat as Analyze — never accidental empty mid-capture.
+    if (phase !== 'ready') return
+    const trimmed = customPrompt.trim()
+    if (trimmed) {
+      submitVision(null)
       return
     }
+    // Empty field + Send → Analizza (explicit affordance, not auto-capture).
+    submitVision('analyze')
+  }
 
-    revokePreview()
-    setAttachment(null)
-    onHandoffToChat()
+  const onPromptKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault()
+      onPromptSubmit(event)
+    }
   }
 
   const previewSrc = attachment?.previewUrl || attachment?.dataUrl || null
@@ -307,6 +383,7 @@ export function Vision({ onBack, onHandoffToChat }: VisionProps) {
   const canCapture = phase === 'camera' && videoReady && !busy
   const immersive = phase === 'camera' || Boolean(previewSrc)
   const showIdleStart = phase === 'empty' || (phase !== 'camera' && !previewSrc)
+  const sendLabel = visionLang === 'it' ? 'Invia' : 'Send'
 
   return (
     <main className={`laife-vision${immersive ? ' laife-vision--immersive' : ' laife-vision--idle'}`}>
@@ -315,7 +392,7 @@ export function Vision({ onBack, onHandoffToChat }: VisionProps) {
       <div className="laife-vision__body scroll-surface">
         {!immersive ? (
           <p className="laife-vision__lead">
-            Inquadra o scegli una foto. ShinkAIdo la analizza nella chat normale — stesso Core.
+            Inquadra o scegli una foto. Scrivi una domanda, oppure usa un’azione rapida — stesso Core.
           </p>
         ) : null}
 
@@ -389,43 +466,79 @@ export function Vision({ onBack, onHandoffToChat }: VisionProps) {
             ) : null}
 
             {phase !== 'camera' && previewSrc ? (
-              <div className="laife-vision__actions" role="group" aria-label="Azioni Vision">
-                <button
-                  type="button"
-                  className="laife-vision__primary"
-                  onClick={() => runAction('analyze')}
-                  disabled={busy}
+              <>
+                <form className="laife-vision__prompt" onSubmit={onPromptSubmit}>
+                  <label className="sr-only" htmlFor={promptInputId}>
+                    {promptPlaceholder}
+                  </label>
+                  <input
+                    id={promptInputId}
+                    ref={promptInputRef}
+                    type="text"
+                    className="laife-vision__prompt-input"
+                    value={customPrompt}
+                    onChange={(e) => setCustomPrompt(e.target.value)}
+                    onKeyDown={onPromptKeyDown}
+                    placeholder={promptPlaceholder}
+                    disabled={busy}
+                    autoComplete="off"
+                    enterKeyHint="send"
+                    aria-label={promptPlaceholder}
+                  />
+                  <button
+                    type="submit"
+                    className="laife-vision__prompt-send"
+                    disabled={busy}
+                    aria-label={sendLabel}
+                    title={sendLabel}
+                  >
+                    <span aria-hidden="true">➤</span>
+                  </button>
+                </form>
+
+                <div
+                  className="laife-vision__actions laife-vision__actions--quick"
+                  role="group"
+                  aria-label={visionLang === 'it' ? 'Azioni rapide Vision' : 'Vision quick actions'}
                 >
-                  Analizza
-                </button>
-                <button
-                  type="button"
-                  className="laife-vision__ghost"
-                  onClick={() => runAction('read')}
-                  disabled={busy}
-                >
-                  Leggi testo
-                </button>
-                <button
-                  type="button"
-                  className="laife-vision__ghost"
-                  onClick={() => runAction('explain')}
-                  disabled={busy}
-                >
-                  Spiega
-                </button>
-                <button type="button" className="laife-vision__ghost" onClick={clearImage} disabled={busy}>
-                  Rimuovi
-                </button>
-                <button
-                  type="button"
-                  className="laife-vision__ghost"
-                  onClick={() => void startCamera()}
-                  disabled={busy}
-                >
-                  Scatta di nuovo
-                </button>
-              </div>
+                  {QUICK_ACTIONS.map((action) => (
+                    <button
+                      key={action}
+                      type="button"
+                      className={
+                        action === 'analyze' ? 'laife-vision__primary' : 'laife-vision__ghost'
+                      }
+                      onClick={() => submitVision(action)}
+                      disabled={busy}
+                      title={visionActionLabel(action, visionLang)}
+                    >
+                      {visionActionLabel(action, visionLang)}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="laife-vision__secondary" role="group" aria-label="Gestione foto">
+                  <button type="button" className="laife-vision__ghost" onClick={clearImage} disabled={busy}>
+                    Rimuovi
+                  </button>
+                  <button
+                    type="button"
+                    className="laife-vision__ghost"
+                    onClick={() => void startCamera()}
+                    disabled={busy}
+                  >
+                    Scatta di nuovo
+                  </button>
+                  <button
+                    type="button"
+                    className="laife-vision__ghost"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={busy}
+                  >
+                    Scegli foto
+                  </button>
+                </div>
+              </>
             ) : null}
 
             {showIdleStart ? (
@@ -438,19 +551,6 @@ export function Vision({ onBack, onHandoffToChat }: VisionProps) {
                 >
                   Apri fotocamera
                 </button>
-                <button
-                  type="button"
-                  className="laife-vision__ghost"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={busy}
-                >
-                  Scegli foto
-                </button>
-              </div>
-            ) : null}
-
-            {phase === 'ready' || phase === 'sending' ? (
-              <div className="laife-vision__secondary">
                 <button
                   type="button"
                   className="laife-vision__ghost"

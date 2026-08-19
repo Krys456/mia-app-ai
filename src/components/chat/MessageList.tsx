@@ -1,8 +1,14 @@
-import { memo, useCallback } from 'react'
+import { memo, useCallback, useMemo } from 'react'
 import { useChat } from '../../context/ChatContext'
 import type { ChatMessage } from '../../types'
 import { MessageBubble } from './MessageBubble'
 import { TypingAnimation } from './TypingAnimation'
+import {
+  resolveVisionSearchUiLang,
+  shouldShowVisionSearchAction,
+  visionSearchActionLabel,
+  visionSearchButtonTrigger,
+} from '../../lib/visionSearchActions'
 import './MessageList.css'
 import './MessageBubble.css'
 
@@ -20,11 +26,21 @@ function MessageListComponent({
   isStreaming,
   selectionActive = false,
 }: MessageListProps) {
-  const { regenerateAssistant } = useChat()
+  const { regenerateAssistant, sendMessage } = useChat()
   const last = messages[messages.length - 1]
   const streamingId =
     isStreaming && last?.role === 'assistant' ? last.id : null
   const canRegenerate = !isThinking && !isStreaming
+
+  const searchLang = useMemo(
+    () =>
+      resolveVisionSearchUiLang({
+        messages,
+        navigatorLanguage: typeof navigator !== 'undefined' ? navigator.language : 'it',
+      }),
+    [messages],
+  )
+  const searchLabel = visionSearchActionLabel(searchLang)
 
   const onRegenerate = useCallback(
     (messageId: string) => {
@@ -33,10 +49,22 @@ function MessageListComponent({
     [regenerateAssistant],
   )
 
+  const onVisionSearch = useCallback(
+    (_messageId: string) => {
+      // Generic lookup intent — server resolves the Vision turn + forces web_search.
+      sendMessage(visionSearchButtonTrigger(searchLang))
+    },
+    [sendMessage, searchLang],
+  )
+
   return (
     <div className="message-list">
       {messages.map((message) => {
         const isThisStreaming = message.id === streamingId
+        const showVisionSearch =
+          message.role === 'assistant' &&
+          !isThisStreaming &&
+          shouldShowVisionSearchAction(messages, message.id)
         return (
           <MessageBubble
             key={message.id}
@@ -52,6 +80,9 @@ function MessageListComponent({
             }
             canRegenerate={canRegenerate}
             onRegenerate={onRegenerate}
+            showVisionSearch={showVisionSearch}
+            visionSearchLabel={searchLabel}
+            onVisionSearch={onVisionSearch}
           />
         )
       })}

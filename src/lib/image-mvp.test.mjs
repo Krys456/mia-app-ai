@@ -123,8 +123,8 @@ assert.match(shell, /summarizeImageForLog\(prepared\)/)
 assert.doesNotMatch(shell, /console\.(log|info|warn|error)\([^)]*dataUrl/)
 assert.doesNotMatch(chatContext, /console\.(log|info|warn|error)\([\s\S]{0,80}dataUrl/)
 
-// One responses.create + maxDuration + no AutoScrollController edits for images
-assert.equal((apiChat.match(/\.responses\.create\(/g) || []).length, 1)
+// One primary responses.create (+ optional #312 Vision×Search soft-fail retry)
+assert.ok((apiChat.match(/\.responses\.create\(/g) || []).length >= 1)
 assert.match(apiChat, /maxDuration:\s*120/)
 assert.doesNotMatch(autoScroll, /attachment|dataUrl|ComposerAttach|image_url/)
 

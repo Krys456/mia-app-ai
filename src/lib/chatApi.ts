@@ -16,6 +16,8 @@ import {
   USER_SESSION_FAILED,
   withErrorReference,
 } from './apiError'
+import { visionSearchDiagRequested } from './visionSearchDiag'
+import { rememberVisionSearchDiag } from './visionSearchDiag'
 
 export type { MemoryFeedbackEvent } from './memoryFeedback'
 
@@ -85,6 +87,11 @@ export interface ChatApiRequest {
   conversationMemoryMap?: Record<string, unknown> | null
   /** Conversation Preference Profile — style prefs from feedback. */
   conversationPreferenceProfile?: Record<string, unknown> | null
+  /** #312 — opt-in Vision × Search diagnostics. */
+  visionSearchDiag?: boolean
+  /** Browser / UI locale — Language Awareness final fallback (#312A Vision). */
+  browserLocale?: string
+  locale?: string
 }
 
 export interface ChatApiSuccess {
@@ -115,6 +122,8 @@ export interface ChatApiSuccess {
   conversationPreferenceProfile?: Record<string, unknown> | null
   /** Developer debug — present when the server returns a V2 debug snapshot. */
   v2Debug?: V2DebugInfo | null
+  /** #312 — Vision × Search diagnostics when requested. */
+  visionSearchDiag?: Record<string, unknown> | null
 }
 
 /** Server-authored image artifact from /api/chat (#289). */
@@ -190,6 +199,12 @@ export async function requestChatCompletion(
       ...(payload.userId ? { 'X-LAIfe-User-Id': payload.userId } : {}),
     }
 
+    // #312 — Preview Vision × Search diagnostics (?vision_search_diag=1).
+    const visionDiag = payload.visionSearchDiag === true || visionSearchDiagRequested()
+    if (visionDiag) {
+      headers['X-Shinkaido-Vision-Search-Diag'] = '1'
+    }
+
     // #298A — paid /api/chat requires Bearer; do not call without a session token.
     const auth = await resolveChatAuthForRequest()
     if (!auth.authorization) {
@@ -206,6 +221,9 @@ export async function requestChatCompletion(
         messages: payload.messages,
         userId: payload.userId,
         memoryEnabled: payload.memoryEnabled !== false,
+        ...(visionDiag ? { visionSearchDiag: true } : {}),
+        ...(payload.browserLocale ? { browserLocale: payload.browserLocale } : {}),
+        ...(payload.locale ? { locale: payload.locale } : {}),
         ...(payload.learningSignals ? { learningSignals: payload.learningSignals } : {}),
         ...(payload.modality ? { modality: payload.modality } : {}),
         ...(payload.voice ? { voice: true } : {}),
@@ -300,6 +318,10 @@ export async function requestChatCompletion(
 
   const v2Debug = sanitizeV2Debug(data.v2Debug)
 
+  if (data.visionSearchDiag && typeof data.visionSearchDiag === 'object') {
+    rememberVisionSearchDiag(data.visionSearchDiag)
+  }
+
   return {
     content,
     ...(images.length ? { images } : {}),
@@ -330,6 +352,9 @@ export async function requestChatCompletion(
       data.conversationPreferenceProfile,
     ),
     v2Debug,
+    ...(data.visionSearchDiag && typeof data.visionSearchDiag === 'object'
+      ? { visionSearchDiag: data.visionSearchDiag as Record<string, unknown> }
+      : {}),
   }
 }
 

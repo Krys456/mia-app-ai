@@ -45,8 +45,11 @@ assert.deepEqual(
 assert.equal(client.captionForVisionAction('analyze', 'it'), '')
 assert.equal(client.captionForVisionAction('read', 'it'), VISION_TASK_PROMPTS.it.read)
 assert.equal(client.captionForVisionAction('explain', 'en'), VISION_TASK_PROMPTS.en.explain)
+assert.equal(client.captionForVisionAction('identify', 'it'), VISION_TASK_PROMPTS.it.identify)
+assert.match(client.captionForVisionAction('search', 'it'), /Cercalo online/)
 assert.equal(isVisionTaskShortcut(VISION_TASK_PROMPTS.it.read), true)
 assert.equal(isVisionTaskShortcut(VISION_TASK_PROMPTS.de.explain), true)
+assert.equal(isVisionTaskShortcut(VISION_TASK_PROMPTS.it.identify), true)
 assert.equal(isVisionTaskShortcut('Mi piace il rosso'), false)
 assert.equal(isVisionTaskShortcut(''), false)
 
@@ -84,22 +87,24 @@ assert.match(vision, /Rimuovi/)
 assert.match(vision, /Scatta di nuovo/)
 assert.match(vision, /stopCameraTracks/)
 
-// H Analyze → empty caption
-assert.match(vision, /runAction\('analyze'\)/)
-assert.match(vision, /captionForVisionAction/)
+// H Analyze → empty caption (or custom prompt wins via resolveVisionSubmitCaption)
+assert.match(vision, /'analyze'/)
+assert.match(vision, /resolveVisionSubmitCaption|captionForVisionAction/)
 assert.equal(client.captionForVisionAction('analyze', 'fr'), '')
 
 // I handoff
 assert.match(vision, /onHandoffToChat/)
-assert.match(vision, /sendMessage\(caption, \[wire\]\)/)
+assert.match(vision, /sendMessage\(finalCaption, \[wire\]\)/)
 assert.match(app, /onHandoffToChat=\{handoffVisionToChat\}/)
 assert.match(app, /navigate\('chat'\)/)
 
-// N / O Read + Explain
-assert.match(vision, /runAction\('read'\)/)
-assert.match(vision, /runAction\('explain'\)/)
-assert.match(vision, /Leggi testo/)
-assert.match(vision, /Spiega/)
+// N / O Read + Explain + Identify + Search
+assert.match(vision, /'read'/)
+assert.match(vision, /'explain'/)
+assert.match(vision, /'identify'/)
+assert.match(vision, /'search'/)
+assert.match(vision, /QUICK_ACTIONS|visionActionLabel/)
+assert.match(vision, /laife-vision__prompt/)
 
 // P Memory skip wiring
 assert.match(apiChat, /isVisionTaskShortcut/)
@@ -145,7 +150,7 @@ assert.doesNotMatch(vision, /visionApi|sendVisionImage|\/api\/vision/)
 assert.doesNotMatch(read('vercel.json'), /api\/vision/)
 
 // Core invariants
-assert.equal((apiChat.match(/\.responses\.create\(/g) || []).length, 1)
+assert.ok((apiChat.match(/\.responses\.create\(/g) || []).length >= 1)
 assert.match(apiChat, /maxDuration:\s*120/)
 assert.match(coreParams, /effort:\s*['"]none['"]/)
 assert.doesNotMatch(autoScroll, /Vision|vision|dataUrl/)

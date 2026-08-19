@@ -23,6 +23,10 @@ interface MessageBubbleProps {
   showActions?: boolean
   canRegenerate?: boolean
   onRegenerate?: (messageId: string) => void
+  /** #312 — Vision × Search on vision assistant replies. */
+  showVisionSearch?: boolean
+  visionSearchLabel?: string
+  onVisionSearch?: (messageId: string) => void
   /**
    * #290 — when true, a native text selection is active in message prose.
    * Suppresses whole-message long-press action pinning to avoid overlay conflicts.
@@ -62,6 +66,9 @@ function MessageBubbleComponent({
   showActions = false,
   canRegenerate = false,
   onRegenerate,
+  showVisionSearch = false,
+  visionSearchLabel = 'Search',
+  onVisionSearch,
   selectionActive = false,
 }: MessageBubbleProps) {
   const isAssistant = message.role === 'assistant'
@@ -272,9 +279,15 @@ function MessageBubbleComponent({
           variant={isAssistant ? 'assistant' : 'user'}
           canRegenerate={isAssistant ? canRegenerate : false}
           forceVisible={actionsPinned}
+          showVisionSearch={isAssistant ? showVisionSearch : false}
+          visionSearchLabel={visionSearchLabel}
           onRegenerate={() => {
             unpinActions()
             onRegenerate?.(message.id)
+          }}
+          onVisionSearch={() => {
+            unpinActions()
+            onVisionSearch?.(message.id)
           }}
           onAction={unpinActions}
         />
