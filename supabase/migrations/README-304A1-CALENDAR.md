@@ -56,13 +56,14 @@ supabase secrets set \
   GOOGLE_OAUTH_CLIENT_SECRET='…' \
   CALENDAR_TOKEN_ENCRYPTION_KEY='…' \
   CALENDAR_OAUTH_REDIRECT_URI='https://<project-ref>.supabase.co/functions/v1/calendar-oauth-callback' \
-  CALENDAR_RETURN_URL='https://<your-preview-or-prod-app>.vercel.app'
+  CALENDAR_RETURN_URL='https://mia-app-ai-git-cursor-ca-b86c6c-cristiansolinas9-3530s-projects.vercel.app,https://mia-app-ai.vercel.app'
 ```
+
+`CALENDAR_RETURN_URL` is the **fallback** allowlist base (comma-separated OK). OAuth start also HMAC-binds the initiating browser origin (`returnOrigin`) so Preview callbacks return to the **same** origin/session. Only allowlisted Vercel Preview/Production hosts are accepted (no open redirects).
 
 `CALENDAR_TOKEN_ENCRYPTION_KEY`: 32 raw bytes as **base64** or **64-char hex**. Generate offline; never commit.
 
 Also ensure Edge has `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` (usually present).
-
 ## 3) Deploy Edge Functions (manual)
 
 ```bash
@@ -111,7 +112,7 @@ Do not couple to `REMINDERS_ENABLED` / `PUSH_ENABLED`.
 - PKCE S256 + `prompt=consent` + `access_type=offline`
 - AES-256-GCM versioned ciphertext; fail closed
 - RLS ENABLE + zero policies; service-role Edge only
-- No open redirects (`CALENDAR_RETURN_URL` allowlist)
+- No open redirects (`CALENDAR_RETURN_URL` allowlist + HMAC-signed initiating origin)
 - No token logging; client never sees tokens
 
 ## Refresh token behavior

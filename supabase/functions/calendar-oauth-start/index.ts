@@ -26,6 +26,8 @@ import {
   generateCodeVerifier,
   generateOAuthNonce,
   GOOGLE_OAUTH_SCOPES,
+  isAllowedCalendarReturnOrigin,
+  normalizeReturnOrigin,
 } from '../_shared/calendar-oauth.ts'
 
 Deno.serve(async (req) => {
@@ -65,6 +67,8 @@ Deno.serve(async (req) => {
   }
 
   // Reject if client secret somehow appears in request (defense).
+  // Capture optional returnOrigin so callback returns to the SAME Preview/app origin.
+  let bodyReturnOrigin: string | null = null
   try {
     if (req.method === 'POST') {
       const text = await req.text()
@@ -73,10 +77,23 @@ Deno.serve(async (req) => {
         if (body.client_secret || body.refresh_token || body.access_token) {
           return json(400, { error: 'forbidden_fields', code: 'secret_relay_forbidden', runId }, cors)
         }
+        if (typeof body.returnOrigin === 'string') {
+          bodyReturnOrigin = body.returnOrigin
+        }
       }
     }
   } catch {
     return json(400, { error: 'invalid_json', runId }, cors)
+  }
+
+  const returnBase = env('CALENDAR_RETURN_URL')
+  const headerOrigin = normalizeReturnOrigin(req.headers.get('Origin'))
+  const requestedOrigin =
+    normalizeReturnOrigin(bodyReturnOrigin) || headerOrigin || normalizeReturnOrigin(returnBase)
+
+  if (!requestedOrigin || !isAllowedCalendarReturnOrigin(requestedOrigin, returnBase)) {
+    logSafe('calendar-oauth-start', { runId, code: 'return_origin_invalid', ok: false })
+    return json(400, { error: 'return_origin_invalid', code: 'return_origin_invalid', runId }, cors)
   }
 
   try {
@@ -87,7 +104,7 @@ Deno.serve(async (req) => {
     const codeChallenge = await generateCodeChallenge(codeVerifier)
     const nonce = generateOAuthNonce()
     const signed = await createSignedOAuthState(
-      { userId, nonce, codeVerifier },
+      { userId, nonce, codeVerifier, returnOrigin: requestedOrigin },
       encKey,
     )
     if (!signed.ok) {
@@ -128,6 +145,13 @@ Deno.serve(async (req) => {
       runId,
       ok: true,
       userId,
+      returnHost: (() => {
+        try {
+          return new URL(requestedOrigin).hostname
+        } catch {
+          return null
+        }
+      })(),
       durationMs: Date.now() - started,
     })
 

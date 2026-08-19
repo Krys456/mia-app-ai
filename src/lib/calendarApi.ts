@@ -95,7 +95,10 @@ export async function startGoogleCalendarOAuth(): Promise<{
   const res = await fetch(`${base}/functions/v1/calendar-oauth-start`, {
     method: 'POST',
     headers,
-    body: '{}',
+    // Bind callback return to THIS browser origin (HMAC-signed server-side).
+    body: JSON.stringify({
+      returnOrigin: typeof window !== 'undefined' ? window.location.origin : '',
+    }),
   })
   if (res.status === 404) return { ok: false, code: 'calendar_disabled' }
   if (!res.ok) {

@@ -1,6 +1,8 @@
 /**
  * #304A1 — Deno shared: PKCE + signed OAuth state.
  * Mirrors lib/server/calendar-oauth.js — keep algorithms in sync.
+ *
+ * State payload: { u, n, e, v, o? } where o is the initiating return origin.
  */
 
 import { parseEncryptionKey } from './calendar-token-crypto.ts'
@@ -65,8 +67,72 @@ async function importHmacKey(keyEnv: string | null | undefined) {
   return { ok: true as const, key }
 }
 
+export function normalizeReturnOrigin(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null
+  const trimmed = raw.trim()
+  if (!trimmed) return null
+  try {
+    const url = new URL(trimmed)
+    if (url.username || url.password) return null
+    if (url.protocol === 'https:') return url.origin
+    if (
+      url.protocol === 'http:' &&
+      (url.hostname === 'localhost' || url.hostname === '127.0.0.1')
+    ) {
+      return url.origin
+    }
+    return null
+  } catch {
+    return null
+  }
+}
+
+export function parseAllowedReturnBases(raw: string | null | undefined): string[] {
+  return String(raw || '')
+    .split(',')
+    .map((s) => normalizeReturnOrigin(s.trim()))
+    .filter((s): s is string => typeof s === 'string' && s.length > 0)
+}
+
+export function isAllowedCalendarReturnOrigin(
+  originCandidate: unknown,
+  allowedBase: string | null | undefined,
+): boolean {
+  const origin = normalizeReturnOrigin(originCandidate)
+  if (!origin) return false
+
+  let host: string
+  try {
+    host = new URL(origin).hostname.toLowerCase()
+  } catch {
+    return false
+  }
+
+  for (const base of parseAllowedReturnBases(allowedBase)) {
+    if (base === origin) return true
+  }
+
+  if (host === 'mia-app-ai.vercel.app') return true
+  if (host === 'localhost' || host === '127.0.0.1') return true
+
+  if (
+    host.endsWith('-cristiansolinas9-3530s-projects.vercel.app') &&
+    host.startsWith('mia-app')
+  ) {
+    return true
+  }
+
+  return false
+}
+
 export async function createSignedOAuthState(
-  input: { userId: string; nonce: string; codeVerifier: string; expiresAtUnix?: number },
+  input: {
+    userId: string
+    nonce: string
+    codeVerifier: string
+    expiresAtUnix?: number
+    returnOrigin?: string | null
+  },
   keyEnv: string | null | undefined,
 ) {
   const userId = typeof input.userId === 'string' ? input.userId.trim() : ''
@@ -83,11 +149,19 @@ export async function createSignedOAuthState(
       ? Math.floor(input.expiresAtUnix)
       : Math.floor(Date.now() / 1000) + OAUTH_STATE_TTL_SECONDS
 
-  const payload = { u: userId, n: nonce, e: exp, v: codeVerifier }
+  const payload: Record<string, string | number> = { u: userId, n: nonce, e: exp, v: codeVerifier }
+  const returnOrigin = normalizeReturnOrigin(input.returnOrigin)
+  if (returnOrigin) payload.o = returnOrigin
+
   const body = toB64Url(utf8(JSON.stringify(payload)))
   const sigBuf = await crypto.subtle.sign('HMAC', imported.key, utf8(body))
   const sig = toB64Url(new Uint8Array(sigBuf))
-  return { ok: true as const, state: `${body}.${sig}`, expiresAtUnix: exp }
+  return {
+    ok: true as const,
+    state: `${body}.${sig}`,
+    expiresAtUnix: exp,
+    returnOrigin: returnOrigin || null,
+  }
 }
 
 export async function verifySignedOAuthState(
@@ -114,7 +188,7 @@ export async function verifySignedOAuthState(
   }
   if (!valid) return { ok: false as const, code: 'oauth_state_tampered' }
 
-  let payload: { u?: string; n?: string; e?: number; v?: string }
+  let payload: { u?: string; n?: string; e?: number; v?: string; o?: string }
   try {
     payload = JSON.parse(new TextDecoder().decode(fromB64Url(body)))
   } catch {
@@ -148,6 +222,7 @@ export async function verifySignedOAuthState(
     nonce,
     codeVerifier,
     expiresAtUnix: exp,
+    returnOrigin: normalizeReturnOrigin(payload?.o),
   }
 }
 
@@ -166,7 +241,9 @@ export function assertReadOnlyCalendarScopes(scopeString: string) {
 }
 
 export function resolveSafeReturnUrl(candidate: string | null | undefined, allowedBase: string) {
-  const base = typeof allowedBase === 'string' ? allowedBase.trim().replace(/\/+$/, '') : ''
+  const bases = parseAllowedReturnBases(allowedBase)
+  const base =
+    bases[0] || (typeof allowedBase === 'string' ? allowedBase.trim().replace(/\/+$/, '') : '')
   if (!base) return { ok: false as const, code: 'return_url_not_configured' }
 
   let baseUrl: URL
@@ -175,7 +252,11 @@ export function resolveSafeReturnUrl(candidate: string | null | undefined, allow
   } catch {
     return { ok: false as const, code: 'return_url_not_configured' }
   }
-  if (baseUrl.protocol !== 'https:' && baseUrl.hostname !== 'localhost') {
+  if (
+    baseUrl.protocol !== 'https:' &&
+    baseUrl.hostname !== 'localhost' &&
+    baseUrl.hostname !== '127.0.0.1'
+  ) {
     return { ok: false as const, code: 'return_url_insecure' }
   }
 
@@ -190,10 +271,44 @@ export function resolveSafeReturnUrl(candidate: string | null | undefined, allow
   } catch {
     return { ok: true as const, url: fallback }
   }
-  if (next.origin !== baseUrl.origin || !next.pathname.startsWith('/')) {
+  if (next.origin !== baseUrl.origin) {
+    if (isAllowedCalendarReturnOrigin(next.origin, allowedBase)) {
+      if (!next.pathname.startsWith('/')) return { ok: true as const, url: fallback }
+      return {
+        ok: true as const,
+        url: `${next.origin}${next.pathname}${next.search}${next.hash}`,
+      }
+    }
+    return { ok: true as const, url: fallback }
+  }
+  if (!next.pathname.startsWith('/')) {
     return { ok: true as const, url: fallback }
   }
   return { ok: true as const, url: next.toString() }
+}
+
+export function resolveOAuthCallbackReturnUrl(input: {
+  signedReturnOrigin?: string | null
+  allowedBase: string
+  pathQuery?: string
+}) {
+  const allowedBase = input.allowedBase
+  const bases = parseAllowedReturnBases(allowedBase)
+  const fallbackBase = bases[0] || ''
+
+  const signed = normalizeReturnOrigin(input.signedReturnOrigin)
+  if (signed) {
+    if (!isAllowedCalendarReturnOrigin(signed, allowedBase)) {
+      return { ok: false as const, code: 'return_origin_rejected' }
+    }
+    const flag = typeof input.pathQuery === 'string' ? input.pathQuery : 'calendar=connected'
+    return { ok: true as const, url: `${signed}/?${flag}`, origin: signed }
+  }
+
+  if (!fallbackBase) return { ok: false as const, code: 'return_url_not_configured' }
+  const safe = resolveSafeReturnUrl(null, fallbackBase)
+  if (!safe.ok) return safe
+  return { ...safe, origin: fallbackBase }
 }
 
 export function buildGoogleAuthorizeUrl(p: {

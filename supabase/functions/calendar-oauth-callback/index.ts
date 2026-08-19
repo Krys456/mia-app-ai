@@ -20,6 +20,7 @@ import {
 import { encryptToken } from '../_shared/calendar-token-crypto.ts'
 import {
   GOOGLE_OAUTH_SCOPES,
+  resolveOAuthCallbackReturnUrl,
   resolveSafeReturnUrl,
   verifySignedOAuthState,
 } from '../_shared/calendar-oauth.ts'
@@ -251,16 +252,25 @@ Deno.serve(async (req) => {
       userId,
       status: refreshResolved.status,
       hasRefresh: Boolean(refreshResolved.refreshTokenEnc),
+      // origin host only — never tokens
+      returnHost: (() => {
+        try {
+          return verified.returnOrigin ? new URL(verified.returnOrigin).hostname : null
+        } catch {
+          return null
+        }
+      })(),
     })
 
-    const safe = resolveSafeReturnUrl(null, returnBase)
-    if (!safe.ok) return failRedirect(returnBase, 'return_url_not_configured')
-    const dest = new URL(safe.url)
-    dest.searchParams.set(
-      'calendar',
-      refreshResolved.status === 'connected' ? 'connected' : 'reconnect_required',
-    )
-    return redirect(dest.toString())
+    const calendarFlag =
+      refreshResolved.status === 'connected' ? 'connected' : 'reconnect_required'
+    const safe = resolveOAuthCallbackReturnUrl({
+      signedReturnOrigin: verified.returnOrigin,
+      allowedBase: returnBase,
+      pathQuery: `calendar=${calendarFlag}`,
+    })
+    if (!safe.ok) return failRedirect(returnBase, safe.code || 'return_url_not_configured')
+    return redirect(safe.url)
   } catch (err) {
     const code =
       err instanceof Error && err.message === 'supabase_service_misconfigured'
