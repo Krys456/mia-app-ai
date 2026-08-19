@@ -12,3 +12,4 @@ vapid.json
 .vscode/*
 !.vscode/extensions.json
 deno.lock
+supabase/.temp/

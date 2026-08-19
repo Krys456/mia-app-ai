@@ -13,6 +13,7 @@ import type { AppearanceFontFamily, AppearanceFontSize, PersonalizationSettings 
 import { ThemeSettings } from './ThemeSettings'
 import { NotificationsSettings } from './NotificationsSettings'
 import { CalendarIntegrationsSettings } from './CalendarIntegrationsSettings'
+import { EmailIntegrationsSettings } from './EmailIntegrationsSettings'
 import './SettingsDrawer.css'
 import './MemoryToggle.css'
 
@@ -216,6 +217,15 @@ export function SettingsDrawer({ onOpenMemory, onOpenPrivacy, onOpenReminders }:
           <div className="settings-divider" role="separator" />
 
           <CalendarIntegrationsSettings />
+
+          <div className="settings-divider" role="separator" />
+
+          <section className="settings-integrations" aria-labelledby="email-integrations-title">
+            <h3 id="email-integrations-title" className="settings-section-title">
+              Email
+            </h3>
+            <EmailIntegrationsSettings />
+          </section>
 
           <div className="settings-divider" role="separator" />
 

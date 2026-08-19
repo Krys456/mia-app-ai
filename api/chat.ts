@@ -39,6 +39,16 @@ import {
 import { summarizePdfForLog } from '../lib/server/chat-pdf-files.js'
 import { isVisionTaskShortcut } from '../lib/server/vision-task-shortcuts.js'
 import {
+  appendEmailPackToInstructions,
+  maybeBuildEmailChatEnrichment,
+} from '../lib/server/email-chat-pack.js'
+import {
+  buildChatEmailDiagPayload,
+  isEmailDiagEnvAllowed,
+  isEmailDiagRequested,
+} from '../lib/server/email-diag.js'
+import { getRequestContext } from '../lib/server/request-id.js'
+import {
   buildImageGenerationAppendix,
   buildImageGenerationTools,
   contentClaimsImageWithoutPayload,
@@ -106,6 +116,10 @@ interface ChatApiRequestBody {
   /** Optional browser locale — final language fallback only when turn+sticky are uncertain. */
   browserLocale?: string
   locale?: string
+  timeZone?: string
+  timezone?: string
+  /** #311 — Preview opt-in Email diagnostics. */
+  emailDiag?: boolean | number | string
   /** Legacy V1/V2 flags — ignored by the new core. */
   developerMode?: boolean
   engine?: 'v1' | 'v2'
@@ -581,12 +595,45 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           })
         : ''
 
-    const instructions = appendWebSearchGuidance(
-      appendImageGenerationGuidance(
-        appendMemoryPackToInstructions(buildInstructions(body, messages), memoryPack),
+    // #311 — Email enrichment ONLY on relevant turns (after auth/rate-limit).
+    // Soft-fail; never breaks Core. Exactly one responses.create follows.
+    const emailRequestId = getRequestContext(req as unknown as { [key: string]: unknown })
+      ?.requestId
+    const emailEnrichment =
+      lastUserCaption && memoryOwnerUserId
+        ? await maybeBuildEmailChatEnrichment({
+            userMessage: lastUserCaption,
+            userId: memoryOwnerUserId,
+            timeZone: body.timeZone || body.timezone,
+            requestId: emailRequestId,
+          })
+        : {
+            used: false,
+            intent: 'none' as const,
+            operation: 'none' as const,
+            pack: '',
+            skipMemoryExtraction: false,
+            status: null,
+            packStatus: null,
+            tokenDecrypt: 'NOT_REACHED' as const,
+            tokenRefreshAttempted: false,
+            googleRequestReached: false,
+            googleHttpStatus: null,
+            resultCount: null,
+            emailContextSent: false,
+            rowFound: null,
+            preGoogleFailureCode: lastUserCaption ? 'missing_owner' : 'empty_caption',
+          }
+
+    const instructions = appendEmailPackToInstructions(
+      appendWebSearchGuidance(
+        appendImageGenerationGuidance(
+          appendMemoryPackToInstructions(buildInstructions(body, messages), memoryPack),
+          model,
+        ),
         model,
       ),
-      model,
+      emailEnrichment.pack,
     )
     const OpenAI = (await import('openai')).default
     const client = new OpenAI({ apiKey })
@@ -646,12 +693,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Vision Lens Read/Explain shortcuts are ephemeral task instructions — not user facts.
     // Forget early-return already forces memoryEvent: null (assistant reply is authoritative).
     // Transient image-edit captions are still subject to existing Memory rules (no bytes stored).
+    // #311 — Email pack turns are ephemeral inbox DATA; skip auto-extraction.
     const skipExtractionForInspection =
       overviewHandled ||
       !lastUserCaption ||
       isPersonalMemoryProbe(lastUserCaption) ||
       isVisionTaskShortcut(lastUserCaption) ||
-      images.length > 0
+      images.length > 0 ||
+      emailEnrichment.skipMemoryExtraction
 
     if (lastUserCaption && !skipExtractionForInspection) {
       const write = await runMemoryIfEnabled(
@@ -689,6 +738,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ...(body.pendingAutomation !== undefined
         ? { pendingAutomation: body.pendingAutomation }
         : {}),
+    }
+
+    // #311 — temporary Preview opt-in Email live trace (safe fields only).
+    if (
+      isEmailDiagEnvAllowed(process.env) &&
+      isEmailDiagRequested(req, body as unknown as Record<string, unknown>)
+    ) {
+      payload.emailDiag = buildChatEmailDiagPayload({
+        correlationId: emailRequestId || null,
+        authUserId: memoryOwnerUserId,
+        enrichment: emailEnrichment as unknown as Record<string, unknown>,
+      })
+      try {
+        res.setHeader('X-Shinkaido-Email-Diag', '1')
+        res.setHeader('X-Shinkaido-Email-Diag-Build', '311-1')
+      } catch {
+        /* soft */
+      }
     }
 
     return sendJson(res, 200, payload, req)

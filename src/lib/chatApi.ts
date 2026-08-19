@@ -197,6 +197,31 @@ export async function requestChatCompletion(
     }
     headers.Authorization = auth.authorization
 
+    let emailDiagRequested = false
+    try {
+      if (typeof window !== 'undefined') {
+        const q = new URLSearchParams(window.location.search)
+        emailDiagRequested =
+          q.get('email_diag') === '1' ||
+          sessionStorage.getItem('shinkaido_email_diag') === '1'
+        if (q.get('email_diag') === '1') {
+          sessionStorage.setItem('shinkaido_email_diag', '1')
+        }
+      }
+    } catch {
+      /* soft */
+    }
+    if (emailDiagRequested) {
+      headers['X-Shinkaido-Email-Diag'] = '1'
+    }
+
+    let timeZone: string | undefined
+    try {
+      timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+    } catch {
+      /* soft */
+    }
+
     response = await fetch(endpoint, {
       method: 'POST',
       headers,
@@ -228,6 +253,8 @@ export async function requestChatCompletion(
         ...(payload.conversationPreferenceProfile
           ? { conversationPreferenceProfile: payload.conversationPreferenceProfile }
           : {}),
+        ...(timeZone ? { timeZone } : {}),
+        ...(emailDiagRequested ? { emailDiag: true } : {}),
       }),
       signal: init?.signal,
     })
@@ -299,6 +326,14 @@ export async function requestChatCompletion(
   const memoryEvent = parseMemoryFeedbackEvent(data.memoryEvent)
 
   const v2Debug = sanitizeV2Debug(data.v2Debug)
+
+  if (data && typeof data === 'object' && 'emailDiag' in data && (data as { emailDiag?: unknown }).emailDiag) {
+    try {
+      console.info('[emailDiag]', (data as { emailDiag?: unknown }).emailDiag)
+    } catch {
+      /* soft */
+    }
+  }
 
   return {
     content,

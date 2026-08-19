@@ -19,3 +19,9 @@ verify_jwt = false
 # Do NOT disable verify_jwt for calendar-oauth-start or calendar-connection.
 [functions.calendar-oauth-callback]
 verify_jwt = false
+
+# #311 — Google redirects here without a Supabase user JWT. Ownership is enforced
+# via HMAC-signed OAuth state + pending nonce bound to auth.uid() at start.
+# Do NOT disable verify_jwt for email-oauth-start or email-connection.
+[functions.email-oauth-callback]
+verify_jwt = false
