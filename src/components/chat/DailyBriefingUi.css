@@ -1,0 +1,19 @@
+.briefing-ui {
+  margin-top: 0.55rem;
+}
+
+.briefing-ui__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.briefing-ui__chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, currentColor 16%, transparent);
+  font-size: 0.78rem;
+  opacity: 0.92;
+}

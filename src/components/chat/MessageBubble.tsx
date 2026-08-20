@@ -18,6 +18,7 @@ import { WeatherUi } from './WeatherUi'
 import { CalculatorUi } from './CalculatorUi'
 import { UnitConversionUi } from './UnitConversionUi'
 import { EnergyMathUi } from './EnergyMathUi'
+import { DailyBriefingUi } from './DailyBriefingUi'
 import './MessageBubble.css'
 
 interface MessageBubbleProps {
@@ -253,6 +254,9 @@ function MessageBubbleComponent({
                 ) : null}
                 {!isStreaming && message.energyMathUi && onEnergyMathAction ? (
                   <EnergyMathUi energyMathUi={message.energyMathUi} onAction={onEnergyMathAction} />
+                ) : null}
+                {!isStreaming && message.dailyBriefingUi ? (
+                  <DailyBriefingUi dailyBriefingUi={message.dailyBriefingUi} />
                 ) : null}
                 {!isStreaming && message.citations?.length ? (
                   <CitationSources citations={message.citations} />
