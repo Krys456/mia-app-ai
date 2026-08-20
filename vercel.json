@@ -40,6 +40,10 @@
     "api/weather.ts": {
       "includeFiles": "lib/server/**",
       "maxDuration": 30
+    },
+    "api/daily-briefing.ts": {
+      "includeFiles": "lib/server/**",
+      "maxDuration": 20
     }
   },
   "rewrites": [

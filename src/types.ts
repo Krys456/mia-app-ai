@@ -62,6 +62,19 @@ export interface ChatMessage {
   unitConversionUi?: UnitConversionUiState | null
   /** #320 — compact Energy Math result chip on an assistant message. */
   energyMathUi?: EnergyMathUiState | null
+  /** #321 — compact Daily Briefing chips on an assistant message. */
+  dailyBriefingUi?: DailyBriefingUiState | null
+}
+
+/** #321 — compact Daily Briefing summary chips. */
+export type DailyBriefingUiChip = {
+  id: string
+  label: string
+}
+
+export type DailyBriefingUiState = {
+  kind: 'summary'
+  chips: DailyBriefingUiChip[]
 }
 
 /** #320 — compact Energy Math result UI on an assistant message. */

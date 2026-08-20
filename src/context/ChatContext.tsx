@@ -108,6 +108,18 @@ import {
   rememberEnergyMathDiag,
   saveEnergyMathContext,
 } from '../lib/energyMath'
+import {
+  applyDailyBriefingIntent,
+  buildDailyBriefingDiag,
+  clearBriefingContext,
+  detectBriefingLanguage,
+  detectDailyBriefingIntent,
+  isDailyBriefingDiagEnabled,
+  loadBriefingContext,
+  logDailyBriefingSafe,
+  rememberDailyBriefingDiag,
+  saveBriefingContext,
+} from '../lib/dailyBriefing'
 import { deriveDictationLangFromMessages } from '../lib/dictationLanguage'
 import {
   finalizeConversationLearning,
@@ -308,6 +320,7 @@ type Action =
       calculatorUi?: import('../types').CalculatorUiState | null
       unitConversionUi?: import('../types').UnitConversionUiState | null
       energyMathUi?: import('../types').EnergyMathUiState | null
+      dailyBriefingUi?: import('../types').DailyBriefingUiState | null
     }
   | { type: 'ASSISTANT_START'; id: string; memoryEvent?: MemoryFeedbackEvent | null }
   | { type: 'ASSISTANT_PROGRESS'; id: string; content: string }
@@ -436,6 +449,7 @@ function reducer(state: AppState, action: Action): AppState {
         ...(action.calculatorUi ? { calculatorUi: action.calculatorUi } : {}),
         ...(action.unitConversionUi ? { unitConversionUi: action.unitConversionUi } : {}),
         ...(action.energyMathUi ? { energyMathUi: action.energyMathUi } : {}),
+        ...(action.dailyBriefingUi ? { dailyBriefingUi: action.dailyBriefingUi } : {}),
       }
       return {
         ...state,
@@ -857,6 +871,11 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     }
     try {
       clearEnergyMathContext()
+    } catch {
+      /* ignore */
+    }
+    try {
+      clearBriefingContext()
     } catch {
       /* ignore */
     }
@@ -1554,6 +1573,68 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         }
         if (shouldClearMessagingOnUserText(content)) {
           clearMessagingContext()
+        }
+      }
+
+      // #321 — Daily Briefing before Energy Math / Unit / Calc / Weather.
+      if (content && wireAtts.length === 0) {
+        const sticky = deriveDictationLangFromMessages(state.messages)
+        const langHint =
+          sticky === 'en'
+            ? 'en'
+            : sticky === 'it'
+              ? 'it'
+              : detectBriefingLanguage(content, detectTimerLanguage(content, 'it'))
+        const briefingCtx = loadBriefingContext()
+        const briefingIntent = detectDailyBriefingIntent(content, {
+          languageHint: langHint,
+          hasBriefingContext: Boolean(briefingCtx),
+        })
+        if (briefingIntent.intent === 'daily-briefing') {
+          void (async () => {
+            try {
+              const brief = await applyDailyBriefingIntent({
+                text: content,
+                languageHint: langHint,
+                briefingContext: briefingCtx,
+                weatherContext: loadWeatherContext(),
+              })
+              const reply =
+                brief.handled && brief.reply
+                  ? brief.reply
+                  : langHint === 'en'
+                    ? 'I couldn’t build the briefing right now. Try again shortly.'
+                    : 'Non riesco a costruire il briefing in questo momento. Riprova tra poco.'
+              if (brief.briefingContext) saveBriefingContext(brief.briefingContext)
+              dispatch({
+                type: 'LOCAL_EXCHANGE',
+                userContent: content,
+                assistantContent: reply,
+                dailyBriefingUi:
+                  (brief.briefingUi as import('../types').DailyBriefingUiState | null) || null,
+              })
+              logDailyBriefingSafe({
+                calendarStatus: (brief.diag?.calendarStatus as string) || null,
+                reminderStatus: (brief.diag?.reminderStatus as string) || null,
+                weatherStatus: (brief.diag?.weatherStatus as string) || null,
+                partialSuccess: Boolean(brief.diag?.partialSuccess),
+                failureCode: (brief.diag?.failureCode as string) || null,
+              })
+              if (isDailyBriefingDiagEnabled()) {
+                rememberDailyBriefingDiag(buildDailyBriefingDiag(brief.diag || {}))
+              }
+            } catch {
+              dispatch({
+                type: 'LOCAL_EXCHANGE',
+                userContent: content,
+                assistantContent:
+                  langHint === 'en'
+                    ? 'I couldn’t build the briefing right now. Try again shortly.'
+                    : 'Non riesco a costruire il briefing in questo momento. Riprova tra poco.',
+              })
+            }
+          })()
+          return true
         }
       }
 
