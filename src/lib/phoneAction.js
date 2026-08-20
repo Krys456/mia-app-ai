@@ -21,6 +21,7 @@ export {
   buildTelUri,
   extractEmail,
   extractPhoneNumber,
+  extractPhoneNumberLocal,
   isValidEmail,
   isValidPhone,
   maskEmail,

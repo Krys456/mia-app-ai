@@ -216,10 +216,12 @@ for (const q of [
   assert.equal(detectTranslationIntent(q).intent, 'translation', `safety intent: ${q}`)
 }
 
-// Prove underlying action detectors WOULD still fire (why outer guard is required)
+// Prove some action detectors can still fire inside Traduci quotes (why #322 outer
+// guard remains first). #330A2 Phone now also refuses — defense in depth.
 assert.equal(detectTimerIntent('Traduci "Timer di 10 minuti" in inglese.').kind, 'start')
-assert.equal(detectPhoneActionIntent('Traduci "Apri Spotify" in inglese.').kind, 'open_app')
-assert.equal(detectPhoneActionIntent('Traduci "Apri WhatsApp" in francese.').kind, 'open_app')
+assert.equal(detectPhoneActionIntent('Traduci "Apri Spotify" in inglese.').kind, 'none')
+assert.equal(detectPhoneActionIntent('Traduci "Apri WhatsApp" in francese.').kind, 'none')
+assert.equal(detectPhoneActionIntent('Apri Spotify').kind, 'open_app')
 assert.equal(
   detectDailyBriefingIntent('Traduci "Fammi il briefing" in inglese.').intent,
   'daily-briefing',

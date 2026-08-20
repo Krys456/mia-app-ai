@@ -2,7 +2,7 @@
  * #315 — Safe phone-action diagnostics (?phone_action_diag=1).
  */
 
-export const PHONE_ACTION_DIAG_BUILD = '315B-1'
+export const PHONE_ACTION_DIAG_BUILD = '330A2-1'
 
 export function isPhoneActionDiagEnabled(search) {
   try {
@@ -54,6 +54,13 @@ export function buildPhoneActionDiag(partial = {}) {
     failureCode: partial.failureCode ?? null,
     maskedPhone: partial.maskedPhone ?? null,
     maskedEmail: partial.maskedEmail ?? null,
+    outerIntentMatched: partial.outerIntentMatched ?? null,
+    negationBlocked: Boolean(partial.negationBlocked),
+    metaBlocked: Boolean(partial.metaBlocked),
+    quotedOrCodeBlocked: Boolean(partial.quotedOrCodeBlocked),
+    localPhoneCandidate: Boolean(partial.localPhoneCandidate),
+    phoneDigitsCount:
+      typeof partial.phoneDigitsCount === 'number' ? partial.phoneDigitsCount : null,
   }
 }
 
