@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useChat } from '../../context/ChatContext'
 import { HomeHero } from '../HomeHero'
 import { ComposerShell } from './ComposerShell'
+import { CopyToast } from './CopyToast'
 import { MessageList } from './MessageList'
 import { ScrollToBottomButton } from './ScrollToBottomButton'
 import { SelectionActionBar } from './SelectionActionBar'
@@ -116,6 +117,9 @@ export function ChatContainer() {
           onRetry={insight.error ? retryInsight : undefined}
         />
       ) : null}
+
+      {/* #331 — copy feedback for code / prompt / long quote blocks */}
+      <CopyToast />
     </div>
   )
 }
