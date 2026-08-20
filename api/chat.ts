@@ -19,8 +19,6 @@ import {
 import { applyCors, sendCorsPreflight, sendJson, SAFE_UPSTREAM_ERROR, SAFE_INTERNAL_ERROR } from '../lib/server/http.js'
 import { safeErrorSnippet } from '../lib/server/safe-log.js'
 import { buildCoreContinuityAppendix } from '../lib/server/conversation-continuity.js'
-import { buildCoreExpressionAppendix } from '../lib/server/conversation-expression.js'
-import { buildCoreProactiveIntelligenceAppendix } from '../lib/server/proactive-conversation.js'
 import { buildCoreConversationalUnderstandingAppendix } from '../lib/server/conversational-understanding.js'
 import { buildCoreAdaptiveResponseReasoningAppendix } from '../lib/server/adaptive-response-reasoning.js'
 import { LAIFE_BASE_SYSTEM_PROMPT } from '../lib/server/laife-base-system-prompt.js'
@@ -30,6 +28,11 @@ import {
   buildConversationWorkingStateAppendix,
   deriveConversationWorkingState,
 } from '../lib/server/core-working-state.js'
+import {
+  buildNaturalResponsePolicyAppendix,
+  isNaturalResponseDiagEnabled,
+  buildNaturalResponseDiagPayload,
+} from '../lib/server/natural-response-policy.js'
 import {
   mapMessagesToResponsesInput,
   modelSupportsFileInput,
@@ -147,6 +150,8 @@ interface ChatApiRequestBody {
   documentDiag?: boolean | 1 | '1'
   /** #324 — opt-in Conversation State diagnostics (Preview / development). */
   conversationStateDiag?: boolean | 1 | '1'
+  /** #325 — opt-in Natural Response Policy diagnostics (Preview / development). */
+  naturalResponseDiag?: boolean | 1 | '1'
   /** #313 — client dismissed active document until next upload. */
   suppressActiveDocumentReuse?: boolean
   /** Optional browser locale — final language fallback only when turn+sticky are uncertain. */
@@ -172,13 +177,6 @@ const PERSONALITY_BIAS: Record<string, string> = {
     'Bias di stile: slancio. Lean verso energia concreta e next step realistici quando calza. Mai slogan.',
 }
 
-const LENGTH_BIAS: Record<string, string> = {
-  concise: 'Preferenza lunghezza: concisa. Bias verso brevità; resta diretto.',
-  balanced: 'Preferenza lunghezza: bilanciata. Default equilibrato; segui il filo.',
-  detailed:
-    'Preferenza lunghezza: dettagliata. Bias verso profondità; se emerge voglia di sintesi, avvicinati gradualmente.',
-}
-
 /** Caption-only view for Memory control helpers that expect string history. */
 function toTextOnlyMessages(messages: ChatApiMessage[]): Array<{ role: ChatRole; content: string }> {
   return messages.map((m) => ({ role: m.role, content: m.content }))
@@ -199,6 +197,13 @@ interface CoreInstructionBundle {
   instructions: string
   conversationState: ReturnType<typeof computeConversationState>
   conversationStateAppendixChars: number
+  naturalResponsePolicyChars: number
+  expressionInjected: boolean
+  proactiveInjected: boolean
+  continuityChars: number
+  understandingChars: number
+  adaptiveChars: number
+  phoneCapabilityInjected: boolean
 }
 
 function buildInstructions(body: ChatApiRequestBody, messages: ChatApiMessage[] = []): CoreInstructionBundle {
@@ -221,7 +226,7 @@ function buildInstructions(body: ChatApiRequestBody, messages: ChatApiMessage[] 
   const latestUser = [...messages].reverse().find((m) => m.role === 'user')
   const latestUserText = visibleUserText(latestUser)
 
-  // #324 — Conversation State (deterministic, Core-only). Explicit turn overrides beat LENGTH_BIAS.
+  // #324/#325 — Conversation State consumes settings; do not also inject LENGTH/emoji prose.
   const textMessages = toTextOnlyMessages(messages)
   const workingState = deriveConversationWorkingState(textMessages)
   const conversationState = computeConversationState({
@@ -233,26 +238,6 @@ function buildInstructions(body: ChatApiRequestBody, messages: ChatApiMessage[] 
     },
     workingState,
   })
-  const hasExplicitDepth = conversationState.explicitOverrides.some((o) =>
-    String(o).startsWith('depth:'),
-  )
-
-  const lengthKey =
-    typeof body.replyLength === 'string' ? body.replyLength.trim().toLowerCase() : ''
-  // Soft preference only when the current turn did not explicitly set depth.
-  if (!hasExplicitDepth && lengthKey && LENGTH_BIAS[lengthKey]) {
-    parts.push(LENGTH_BIAS[lengthKey])
-  }
-
-  if (body.useEmojis === true) {
-    parts.push(
-      'Preferenza emoji: le emoji sono benvenute quando migliorano naturalmente tono o leggibilità. Usale in modo selettivo e contestuale; non aggiungerle in modo meccanico.',
-    )
-  } else if (body.useEmojis === false) {
-    parts.push(
-      "Preferenza emoji: non introdurre emoji solo per stile. Non usarle nel corpo della risposta, salvo che l'utente le usi per primo.",
-    )
-  }
 
   const custom =
     typeof body.customInstructions === 'string'
@@ -262,27 +247,29 @@ function buildInstructions(body: ChatApiRequestBody, messages: ChatApiMessage[] 
     parts.push(`Istruzioni personalizzate dell'utente (rispettale quando possibili):\n${custom}`)
   }
 
-  // #324 — compact Conversation State after identity/settings, before large contracts.
+  // #324 — Conversation State (authoritative for current-turn presentation).
   const conversationStateAppendix = buildConversationStateAppendix(conversationState)
   if (conversationStateAppendix) {
     parts.push(conversationStateAppendix)
   }
 
-  // Ephemeral ADAPTIVE EXPRESSION appendix (#284) — after personalization, before LANGUAGE.
-  // Model-led presentation only; no classifiers / emoji engines / second LLM.
-  const expressionAppendix = buildCoreExpressionAppendix()
-  if (expressionAppendix) {
-    parts.push(expressionAppendix)
+  // #325 — Natural Response Policy (consumes State; replaces Expression + Proactive style).
+  const naturalResponsePolicyAppendix = buildNaturalResponsePolicyAppendix()
+  if (naturalResponsePolicyAppendix) {
+    parts.push(naturalResponsePolicyAppendix)
   }
 
-  // #315B — Phone Action capability truth (info only; never triggers actions).
-  const phoneCapabilityAppendix = buildPhoneActionCapabilityAppendix()
+  // #315B — Phone capability truth (conditional after #325).
+  const phoneCapabilityAppendix = buildPhoneActionCapabilityAppendix({
+    userMessage: latestUserText,
+    recentMessages: textMessages,
+  })
+  const phoneCapabilityInjected = Boolean(phoneCapabilityAppendix)
   if (phoneCapabilityAppendix) {
     parts.push(phoneCapabilityAppendix)
   }
 
-  // Ephemeral LANGUAGE appendix — reply-language only; not persisted; no second LLM.
-  // Caption text only — never data URLs / image bytes.
+  // Ephemeral LANGUAGE appendix — reply-language only.
   const languageAppendix = buildCoreLanguageAppendix({
     userMessage: latestUserText,
     messages: textMessages,
@@ -295,55 +282,49 @@ function buildInstructions(body: ChatApiRequestBody, messages: ChatApiMessage[] 
     parts.push(languageAppendix)
   }
 
-  // Ephemeral CONTINUITY appendix (#263) — after LANGUAGE, before Understanding / Reference / WS / Memory.
-  // No resolver / second LLM / DB; model reasons from thread + this contract.
+  // Continuity (#263, slimmed #325) — referents / repair / anti-fabrication.
   const continuityAppendix = buildCoreContinuityAppendix()
   if (continuityAppendix) {
     parts.push(continuityAppendix)
   }
 
-  // Ephemeral CONVERSATIONAL UNDERSTANDING appendix (#286) — after CONTINUITY, before Adaptive Reasoning.
-  // Model-led multi-part / ambiguity / distant context / corrections / thread>Memory.
-  // No classifiers, no new state, no LANGUAGE changes, no second LLM.
+  // Understanding (#286) — multi-part / ambiguity / corrections.
   const understandingAppendix = buildCoreConversationalUnderstandingAppendix()
   if (understandingAppendix) {
     parts.push(understandingAppendix)
   }
 
-  // Ephemeral ADAPTIVE REASONING / RESPONSE QUALITY appendix (#288) — after Understanding, before Reference.
-  // Model-led evidence-updating / repair discipline; no attempt DB, no hypothesis engine, no CoT dump.
+  // Adaptive Reasoning (#288) — epistemic honesty / evidence updates.
   const adaptiveReasoningAppendix = buildCoreAdaptiveResponseReasoningAppendix()
   if (adaptiveReasoningAppendix) {
     parts.push(adaptiveReasoningAppendix)
   }
 
-  // Temporary Reference Context (#279) — ordered-option + artifact evidence hints.
-  // After Understanding / Adaptive Reasoning, before Working State. Request-scoped only; keep attachments
-  // so evidenceAvailable reflects multimodal caps honestly. No persistence / second LLM.
+  // Reference Context (#279) — conditional.
   const referenceContextAppendix = buildReferenceContextAppendix(messages)
   if (referenceContextAppendix) {
     parts.push(referenceContextAppendix)
   }
 
-  // Temporary Conversation Working State (#278) — deterministic, request-scoped.
-  // Derived only from the same sanitized/selected messages for THIS request.
-  // After CONTINUITY / Reference Context, before Proactive Intelligence / Memory.
+  // Working State (#278) — conditional.
   const workingStateAppendix = buildConversationWorkingStateAppendix(textMessages)
   if (workingStateAppendix) {
     parts.push(workingStateAppendix)
   }
 
-  // Ephemeral PROACTIVE INTELLIGENCE appendix (#285) — after Working State, before Memory.
-  // Model-led when-to-contribute; no classifiers / next-step engines / second LLM.
-  const proactiveAppendix = buildCoreProactiveIntelligenceAppendix()
-  if (proactiveAppendix) {
-    parts.push(proactiveAppendix)
-  }
+  // Expression (#284) and Proactive (#285) are no longer injected — migrated into NRP (#325).
 
   return {
     instructions: parts.join('\n\n'),
     conversationState,
     conversationStateAppendixChars: conversationStateAppendix.length,
+    naturalResponsePolicyChars: naturalResponsePolicyAppendix.length,
+    expressionInjected: false,
+    proactiveInjected: false,
+    continuityChars: continuityAppendix ? continuityAppendix.length : 0,
+    understandingChars: understandingAppendix ? understandingAppendix.length : 0,
+    adaptiveChars: adaptiveReasoningAppendix ? adaptiveReasoningAppendix.length : 0,
+    phoneCapabilityInjected,
   }
 }
 
@@ -1042,6 +1023,38 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     })
     if (conversationStateDiagOn) {
       payload.conversationStateDiag = conversationStateDiag
+    }
+
+    const naturalResponseDiagOn = isNaturalResponseDiagEnabled(
+      req,
+      body as Record<string, unknown>,
+    )
+    const naturalResponseDiag = buildNaturalResponseDiagPayload({
+      policyChars: coreBundle.naturalResponsePolicyChars,
+      expressionInjected: coreBundle.expressionInjected,
+      proactiveInjected: coreBundle.proactiveInjected,
+      continuityChars: coreBundle.continuityChars,
+      understandingChars: coreBundle.understandingChars,
+      adaptiveChars: coreBundle.adaptiveChars,
+      phoneCapabilityInjected: coreBundle.phoneCapabilityInjected,
+      totalInstructionChars: coreBundle.instructions.length,
+      questionNeeded: coreBundle.conversationState.questionNeeded,
+      desiredDepth: coreBundle.conversationState.desiredDepth,
+      emojiLevel: coreBundle.conversationState.emojiLevel,
+      initiativeLevel: coreBundle.conversationState.initiativeLevel,
+      structurePreference: coreBundle.conversationState.structurePreference,
+    })
+    console.info('[api/chat] natural-response', {
+      route: naturalResponseDiag.route,
+      buildId: naturalResponseDiag.buildId,
+      policyChars: naturalResponseDiag.policyChars,
+      totalInstructionChars: naturalResponseDiag.totalInstructionChars,
+      expressionInjected: naturalResponseDiag.expressionInjected,
+      proactiveInjected: naturalResponseDiag.proactiveInjected,
+      phoneCapabilityInjected: naturalResponseDiag.phoneCapabilityInjected,
+    })
+    if (naturalResponseDiagOn) {
+      payload.naturalResponseDiag = naturalResponseDiag
     }
 
     if (
