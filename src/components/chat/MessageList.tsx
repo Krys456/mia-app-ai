@@ -26,7 +26,7 @@ function MessageListComponent({
   isStreaming,
   selectionActive = false,
 }: MessageListProps) {
-  const { regenerateAssistant, sendMessage, handleWeatherUiAction, handleCalculatorUiAction } =
+  const { regenerateAssistant, sendMessage, handleWeatherUiAction, handleCalculatorUiAction, handleUnitConversionUiAction } =
     useChat()
   const last = messages[messages.length - 1]
   const streamingId =
@@ -86,6 +86,7 @@ function MessageListComponent({
             onVisionSearch={onVisionSearch}
             onWeatherAction={handleWeatherUiAction}
             onCalculatorAction={handleCalculatorUiAction}
+            onUnitConversionAction={handleUnitConversionUiAction}
           />
         )
       })}

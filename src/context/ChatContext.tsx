@@ -84,6 +84,18 @@ import {
   rememberCalculatorDiag,
   saveCalculationContext,
 } from '../lib/calculator'
+import {
+  applyUnitConversionIntent,
+  buildUnitConversionDiag,
+  clearConversionContext,
+  detectUnitConversionIntent,
+  detectUnitConversionLanguage,
+  isUnitConversionDiagEnabled,
+  loadConversionContext,
+  logUnitConversionSafe,
+  rememberUnitConversionDiag,
+  saveConversionContext,
+} from '../lib/unitConversion'
 import { deriveDictationLangFromMessages } from '../lib/dictationLanguage'
 import {
   finalizeConversationLearning,
@@ -282,6 +294,7 @@ type Action =
       assistantContent: string
       weatherUi?: import('../types').WeatherUiState | null
       calculatorUi?: import('../types').CalculatorUiState | null
+      unitConversionUi?: import('../types').UnitConversionUiState | null
     }
   | { type: 'ASSISTANT_START'; id: string; memoryEvent?: MemoryFeedbackEvent | null }
   | { type: 'ASSISTANT_PROGRESS'; id: string; content: string }
@@ -408,6 +421,7 @@ function reducer(state: AppState, action: Action): AppState {
         createdAt: Date.now(),
         ...(action.weatherUi ? { weatherUi: action.weatherUi } : {}),
         ...(action.calculatorUi ? { calculatorUi: action.calculatorUi } : {}),
+        ...(action.unitConversionUi ? { unitConversionUi: action.unitConversionUi } : {}),
       }
       return {
         ...state,
@@ -537,6 +551,8 @@ interface ChatContextValue {
   handleWeatherUiAction: (actionId: string) => void
   /** #318 — Calculator result chip actions (copy). */
   handleCalculatorUiAction: (actionId: string) => void
+  /** #319 — Unit Conversion result chip actions (copy). */
+  handleUnitConversionUiAction: (actionId: string) => void
   /** Re-run the completion for an assistant message (drops that reply and regenerates). */
   regenerateAssistant: (assistantId: string) => void
 }
@@ -815,6 +831,11 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     }
     try {
       clearCalculationContext()
+    } catch {
+      /* ignore */
+    }
+    try {
+      clearConversionContext()
     } catch {
       /* ignore */
     }
@@ -1310,6 +1331,43 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  const handleUnitConversionUiAction = useCallback((actionId: string) => {
+    if (actionId !== 'copy_result') return
+    const unit = applyUnitConversionIntent({
+      text: 'Copia il risultato',
+      languageHint: 'it',
+      conversionContext: loadConversionContext(),
+      env: {
+        copyTextSync: (text: string) => {
+          try {
+            const area = document.createElement('textarea')
+            area.value = text
+            area.setAttribute('readonly', '')
+            area.style.position = 'fixed'
+            area.style.opacity = '0'
+            document.body.appendChild(area)
+            area.select()
+            const ok = document.execCommand('copy')
+            document.body.removeChild(area)
+            return ok
+          } catch {
+            return false
+          }
+        },
+      },
+    })
+    if (unit.handled && unit.reply) {
+      dispatch({
+        type: 'LOCAL_EXCHANGE',
+        userContent: 'Copia',
+        assistantContent: unit.reply,
+      })
+      if (isUnitConversionDiagEnabled()) {
+        rememberUnitConversionDiag(buildUnitConversionDiag(unit.diag || {}))
+      }
+    }
+  }, [])
+
   const sendMessage = useCallback(
     (raw: string, attachments: ChatAttachment[] = []): boolean => {
       const content = raw.trim()
@@ -1436,6 +1494,70 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         }
         if (shouldClearMessagingOnUserText(content)) {
           clearMessagingContext()
+        }
+      }
+
+      // #319 — Unit Conversion before Calculator + Weather (protects "25 gradi… in °F").
+      if (content && wireAtts.length === 0) {
+        const sticky = deriveDictationLangFromMessages(state.messages)
+        const langHint =
+          sticky === 'en'
+            ? 'en'
+            : sticky === 'it'
+              ? 'it'
+              : detectUnitConversionLanguage(content, detectTimerLanguage(content, 'it'))
+        const convCtx = loadConversionContext()
+        const unitIntent = detectUnitConversionIntent(content, {
+          languageHint: langHint,
+          hasConversionContext: Boolean(convCtx),
+        })
+        if (unitIntent.intent === 'unit-conversion') {
+          const unit = applyUnitConversionIntent({
+            text: content,
+            languageHint: langHint,
+            conversionContext: convCtx,
+            env: {
+              copyTextSync: (text: string) => {
+                try {
+                  const area = document.createElement('textarea')
+                  area.value = text
+                  area.setAttribute('readonly', '')
+                  area.style.position = 'fixed'
+                  area.style.opacity = '0'
+                  document.body.appendChild(area)
+                  area.select()
+                  const ok = document.execCommand('copy')
+                  document.body.removeChild(area)
+                  return ok
+                } catch {
+                  return false
+                }
+              },
+            },
+          })
+          if (unit.handled && unit.reply) {
+            if (unit.conversionContext) saveConversionContext(unit.conversionContext)
+            dispatch({
+              type: 'LOCAL_EXCHANGE',
+              userContent: content,
+              assistantContent: unit.reply,
+              unitConversionUi:
+                (unit.unitUi as import('../types').UnitConversionUiState | null) || null,
+            })
+            logUnitConversionSafe({
+              operation: String(unit.diag.operation || ''),
+              dimension: (unit.diag.dimension as string) || null,
+              sourceUnit: (unit.diag.sourceUnit as string) || null,
+              targetUnit: (unit.diag.targetUnit as string) || null,
+              parserStatus: (unit.diag.parserStatus as string) || null,
+              failureCode: (unit.diag.failureCode as string) || null,
+              contextReused: Boolean(unit.diag.contextReused),
+            })
+            if (isUnitConversionDiagEnabled()) {
+              rememberUnitConversionDiag(buildUnitConversionDiag(unit.diag || {}))
+            }
+            return true
+          }
         }
       }
 
@@ -1687,6 +1809,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       sendMessage,
       handleWeatherUiAction,
       handleCalculatorUiAction,
+      handleUnitConversionUiAction,
       regenerateAssistant,
     }),
     [
@@ -1712,6 +1835,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       sendMessage,
       handleWeatherUiAction,
       handleCalculatorUiAction,
+      handleUnitConversionUiAction,
       regenerateAssistant,
     ],
   )
