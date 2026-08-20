@@ -77,6 +77,32 @@ function hasConversionCue(t) {
 }
 
 /**
+ * #320 — Multi-quantity Energy Math compositions must not be claimed as Unit Conversion.
+ * Pure convert pairs (same dimension) still proceed.
+ */
+function looksEnergyMathComposition(t) {
+  const hasPower = /\b(\d+(?:[.,]\d+)?)\s*(kw|mw|w|watt|kilowatt|megawatt)\b/.test(t)
+  const hasEnergy = /\b(\d+(?:[.,]\d+)?)\s*(kwh|mwh|wh|joule|joules|mj|kj)\b/.test(t)
+  const hasTime = /\b(\d+(?:[.,]\d+)?)\s*(h|hr|hrs|ore|ora|min|minuti|minute|minutes|secondi|seconds|giorni|days?)\b/.test(
+    t,
+  )
+  const dims = [hasPower, hasEnergy, hasTime].filter(Boolean).length
+  if (dims < 2) return false
+  // Composition / average-power / runtime cues
+  if (
+    /\b(per|for|potenza\s+media|average\s+power|quanto\s+dura|how\s+long|batteria|battery|carico|load|consuma|produce|acceso|accesa)\b/.test(
+      t,
+    )
+  ) {
+    return true
+  }
+  // "12 kWh in 6 ore" — energy + time with "in/over" is average power, not unit conversion
+  if (hasEnergy && hasTime && /\b(in|over|su)\b/.test(t)) return true
+  if (hasPower && hasTime && /[×*]/.test(t)) return true
+  return false
+}
+
+/**
  * Extract number + unit from a fragment like "10 km" or "25 °C" or "gradi celsius" after number.
  * @param {string} folded
  * @returns {{ value: number, unit: import('./registry.js').UnitDef, rest: string } | null}
@@ -292,6 +318,11 @@ export function detectUnitConversionIntent(raw, opts = {}) {
   const t = foldAlias(text)
   if (isMetaOrNonConversion(t)) {
     return { intent: 'none', language, failureCode: 'meta_or_non_conversion' }
+  }
+
+  // #320 — defer Energy Math compositions (power×time, average power, runtime)
+  if (looksEnergyMathComposition(t)) {
+    return { intent: 'none', language, failureCode: 'deferred_energy_math' }
   }
 
   // Follow-ups only when context available (caller sets hasConversionContext)
