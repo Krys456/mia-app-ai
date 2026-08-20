@@ -32,6 +32,26 @@ function IconVision() {
   )
 }
 
+function IconPlans() {
+  // Subtle sparkle / ✦ — Plans entry (#332A). Not crown, card, or badge.
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M12 3.2 13.35 9.1 19 10.5 13.35 11.9 12 17.8 10.65 11.9 5 10.5 10.65 9.1 12 3.2Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M18.2 4.4v2.2M17.1 5.5h2.2"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
 function IconSettings() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -105,6 +125,16 @@ export function Header({ onNavigate }: HeaderProps) {
             title="Vision AI"
           >
             <IconVision />
+          </button>
+          <button
+            type="button"
+            className="header-btn header-btn--plans"
+            onClick={() => onNavigate('plans')}
+            aria-label="Piani ShinkAIdo"
+            title="Piani ShinkAIdo"
+            data-testid="header-plans"
+          >
+            <IconPlans />
           </button>
           <button
             type="button"

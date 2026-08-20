@@ -7,6 +7,7 @@ import { MemoryManage } from './pages/MemoryManage'
 import { PrivacyData } from './pages/PrivacyData'
 import { ReminderManage } from './pages/ReminderManage'
 import { Vision } from './pages/Vision'
+import { Plans } from './pages/Plans'
 import { ChatProvider, useChat } from './context/ChatContext'
 import { ThemeProvider } from './context/ThemeContext'
 import { useAuthBootstrap } from './hooks/useAuthBootstrap'
@@ -14,6 +15,7 @@ import { useVisualViewportHeight } from './hooks/useVisualViewportHeight'
 import { setAppNavigateHandler } from './lib/appNavigation'
 import { isMemoryManageUiEnabled } from './lib/memoryManageUi'
 import { isRemindersUiEnabled } from './lib/remindersUi'
+import { UI_FOUNDATION_CURRENT_PLAN_ID } from './lib/planCatalog'
 import type { AppView } from './types'
 import './App.css'
 
@@ -49,7 +51,8 @@ function AppShell() {
         next === 'chat' ||
         next === 'memory' ||
         next === 'privacy' ||
-        next === 'reminders'
+        next === 'reminders' ||
+        next === 'plans'
       ) {
         navigateRef.current(next)
       }
@@ -101,10 +104,15 @@ function AppShell() {
       previous === 'vision' ||
         previous === 'privacy' ||
         previous === 'memory' ||
-        previous === 'reminders'
+        previous === 'reminders' ||
+        previous === 'plans'
         ? 'chat'
         : previous,
     )
+  }
+
+  const backFromPlans = () => {
+    navigate('chat')
   }
 
   const handoffVisionToChat = () => {
@@ -145,6 +153,12 @@ function AppShell() {
       {view === 'vision' ? (
         <div className="app-view app-view--vision" key="vision">
           <Vision onBack={backFromVision} onHandoffToChat={handoffVisionToChat} />
+        </div>
+      ) : null}
+
+      {view === 'plans' ? (
+        <div className="app-view" key="plans" data-view="plans">
+          <Plans onBack={backFromPlans} currentPlanId={UI_FOUNDATION_CURRENT_PLAN_ID} />
         </div>
       ) : null}
 
