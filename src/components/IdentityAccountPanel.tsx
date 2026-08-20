@@ -8,6 +8,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
+  changeEmailForCurrentUser,
   linkEmailToCurrentUser,
   linkGoogleToCurrentUser,
   loadIdentitySnapshot,
@@ -22,7 +23,7 @@ import {
 } from '../lib/durableIdentity'
 import './IdentityAccountPanel.css'
 
-type Mode = 'status' | 'link' | 'signin'
+type Mode = 'status' | 'link' | 'signin' | 'change-email'
 
 type IdentityAccountPanelProps = {
   /** Compact copy for Plans Upgrade gate */
@@ -125,8 +126,22 @@ export function IdentityAccountPanel({
     }
   }
 
+  const onChangeEmail = async () => {
+    setBusy(true)
+    try {
+      await applyResult(await changeEmailForCurrentUser(email))
+      // Stay on change-email form so pending copy remains visible; clear input.
+      setEmail('')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const durable = status?.durable === true
   const anonymous = status?.anonymous !== false && !durable
+  const emailLinked =
+    durable &&
+    (status?.providers?.includes('email') === true || Boolean(status?.emailMasked))
 
   return (
     <section
@@ -153,6 +168,13 @@ export function IdentityAccountPanel({
             ? `Account collegato${status?.emailMasked ? ` (${status.emailMasked})` : ''}`
             : 'Sessione anonima — non recuperabile su altri dispositivi'}
       </p>
+
+      {durable && status?.emailChangePending && status.pendingEmailMasked ? (
+        <p className="identity-panel__note" role="status">
+          Cambio email in corso verso {status.pendingEmailMasked}. Controlla la posta (e, se
+          richiesto, conferma anche l’indirizzo attuale).
+        </p>
+      ) : null}
 
       {loadError ? (
         <p className="identity-panel__note" role="alert">
@@ -187,6 +209,20 @@ export function IdentityAccountPanel({
               disabled={busy}
             >
               Collega account
+            </button>
+          ) : null}
+          {emailLinked ? (
+            <button
+              type="button"
+              className="identity-panel__btn"
+              onClick={() => {
+                setMode('change-email')
+                setEmail('')
+                setNote(null)
+              }}
+              disabled={busy}
+            >
+              Cambia email
             </button>
           ) : null}
           <button
@@ -302,6 +338,54 @@ export function IdentityAccountPanel({
               className="identity-panel__btn"
               onClick={() => {
                 setMode('status')
+                setNote(null)
+              }}
+              disabled={busy}
+            >
+              Annulla
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {mode === 'change-email' ? (
+        <div className="identity-panel__form">
+          <p className="identity-panel__hint">
+            Email attuale: {status?.emailMasked || '—'}. Il cambio mantiene lo stesso account (stesso
+            ID). Nessun addebito. Nessuna unione con altri account.
+          </p>
+          <p className="identity-panel__meta">
+            Supabase invia un link di conferma al nuovo indirizzo. Se Secure Email Change è attivo,
+            conferma anche dalla email attuale prima che il cambio sia definitivo.
+          </p>
+          <label className="identity-panel__label" htmlFor={`identity-email-change-${variant}`}>
+            Nuova email
+          </label>
+          <input
+            id={`identity-email-change-${variant}`}
+            className="identity-panel__input"
+            type="email"
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            disabled={busy}
+            placeholder="nuova@email.com"
+          />
+          <div className="identity-panel__actions">
+            <button
+              type="button"
+              className="identity-panel__btn identity-panel__btn--primary"
+              onClick={() => void onChangeEmail()}
+              disabled={busy}
+            >
+              Invia conferma
+            </button>
+            <button
+              type="button"
+              className="identity-panel__btn"
+              onClick={() => {
+                setMode('status')
+                setEmail('')
                 setNote(null)
               }}
               disabled={busy}

@@ -11,11 +11,16 @@ export type IdentityStatus = {
   emailMasked: string | null
   providers: string[]
   emailConfirmed: boolean
+  /** Masked pending email while Supabase email-change confirmation is outstanding. */
+  pendingEmailMasked: string | null
+  emailChangePending: boolean
 }
 
 type AuthUserLike = {
   id?: string
   email?: string | null
+  new_email?: string | null
+  email_change_sent_at?: string | null
   is_anonymous?: boolean
   email_confirmed_at?: string | null
   identities?: Array<{ provider?: string } | null> | null
@@ -76,8 +81,14 @@ export function resolveIdentityStatus(user: AuthUserLike): IdentityStatus {
       emailMasked: null,
       providers: [],
       emailConfirmed: false,
+      pendingEmailMasked: null,
+      emailChangePending: false,
     }
   }
+
+  const pendingEmailMasked = maskEmail(user?.new_email)
+  const emailChangePending =
+    Boolean(pendingEmailMasked) || Boolean(user?.email_change_sent_at && user?.new_email)
 
   return {
     authenticated: true,
@@ -87,6 +98,8 @@ export function resolveIdentityStatus(user: AuthUserLike): IdentityStatus {
     emailMasked: maskEmail(user?.email),
     providers: listAuthProviders(user),
     emailConfirmed: Boolean(user?.email_confirmed_at),
+    pendingEmailMasked,
+    emailChangePending,
   }
 }
 
@@ -105,7 +118,9 @@ export function identityStatusEquals(
     a.anonymous !== b.anonymous ||
     a.durable !== b.durable ||
     a.emailMasked !== b.emailMasked ||
-    a.emailConfirmed !== b.emailConfirmed
+    a.emailConfirmed !== b.emailConfirmed ||
+    a.pendingEmailMasked !== b.pendingEmailMasked ||
+    a.emailChangePending !== b.emailChangePending
   ) {
     return false
   }
