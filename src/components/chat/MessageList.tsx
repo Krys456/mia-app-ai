@@ -26,7 +26,8 @@ function MessageListComponent({
   isStreaming,
   selectionActive = false,
 }: MessageListProps) {
-  const { regenerateAssistant, sendMessage, handleWeatherUiAction } = useChat()
+  const { regenerateAssistant, sendMessage, handleWeatherUiAction, handleCalculatorUiAction } =
+    useChat()
   const last = messages[messages.length - 1]
   const streamingId =
     isStreaming && last?.role === 'assistant' ? last.id : null
@@ -84,6 +85,7 @@ function MessageListComponent({
             visionSearchLabel={searchLabel}
             onVisionSearch={onVisionSearch}
             onWeatherAction={handleWeatherUiAction}
+            onCalculatorAction={handleCalculatorUiAction}
           />
         )
       })}

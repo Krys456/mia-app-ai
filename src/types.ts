@@ -56,6 +56,21 @@ export interface ChatMessage {
   }
   /** #317 — compact Weather card / location chips on an assistant message. */
   weatherUi?: WeatherUiState | null
+  /** #318 — compact Calculator result chip on an assistant message. */
+  calculatorUi?: CalculatorUiState | null
+}
+
+/** #318 — compact Calculator result UI on an assistant message. */
+export type CalculatorUiAction = {
+  id: string
+  label: string
+}
+
+export type CalculatorUiState = {
+  kind: 'result'
+  expression: string
+  result: string
+  actions?: CalculatorUiAction[]
 }
 
 /** #317 — compact Weather action / card UI on an assistant message. */
