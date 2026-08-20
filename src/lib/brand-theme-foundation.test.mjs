@@ -182,6 +182,8 @@ for (const id of [
 // M / N — header / hero keep functional wiring
 assert.match(header, /newChat|Nuova chat/)
 assert.match(header, /onNavigate\('vision'\)/)
+assert.match(header, /onNavigate\('plans'\)/)
+assert.match(header, /Piani ShinkAIdo/)
 assert.match(header, /toggleSettings/)
 assert.match(hero, /home-hero/)
 

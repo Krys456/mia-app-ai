@@ -118,4 +118,19 @@
 
 /* Vision entry — real Lens (#274); no Coming-soon badge. */
 
+/* #332A — four action controls on narrow phones: tighten gaps only. */
+@media (max-width: 380px) {
+  .app-header__inner {
+    gap: 0.4rem;
+  }
+
+  .app-header__actions {
+    gap: 0.15rem;
+  }
+
+  .header-btn--brand {
+    padding-right: 0.3rem;
+  }
+}
+
 /* Brand wordmark styles live in BrandWordmark.css (#293A). */
