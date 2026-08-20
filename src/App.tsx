@@ -15,7 +15,7 @@ import { useVisualViewportHeight } from './hooks/useVisualViewportHeight'
 import { setAppNavigateHandler } from './lib/appNavigation'
 import { isMemoryManageUiEnabled } from './lib/memoryManageUi'
 import { isRemindersUiEnabled } from './lib/remindersUi'
-import { UI_FOUNDATION_CURRENT_PLAN_ID } from './lib/planCatalog'
+import { getCurrentPlanId } from './lib/entitlementsUi'
 import type { AppView } from './types'
 import './App.css'
 
@@ -158,7 +158,7 @@ function AppShell() {
 
       {view === 'plans' ? (
         <div className="app-view" key="plans" data-view="plans">
-          <Plans onBack={backFromPlans} currentPlanId={UI_FOUNDATION_CURRENT_PLAN_ID} />
+          <Plans onBack={backFromPlans} currentPlanId={getCurrentPlanId()} />
         </div>
       ) : null}
 
