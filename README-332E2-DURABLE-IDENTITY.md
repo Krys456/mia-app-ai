@@ -7,11 +7,24 @@ No schema migration. No billing. Enforcement remains OFF.
 - Server: `isDurableIdentity` / `requireDurableIdentity` / `resolveIdentityStatus`
 - Client: Plans Upgrade identity gate + Privacy account panel
 - Email **link** via `updateUser({ email })` — preserves `auth.uid()`
+- Email **change** (#332E2B) via `updateUser({ email })` on durable accounts — same `auth.uid`
 - Email **sign-in** via `signInWithOtp({ shouldCreateUser: false })` — explicit switch, **no merge**
 - Google linking code path behind `VITE_AUTH_GOOGLE_LINKING_ENABLED` (default off)
 - Apple deferred
 - `public.users` email sync via `syncPublicUserProfile` (same id)
-- **No new Vercel function** (still 11 / 12)
+- **No new Vercel function**
+
+## #332E2B — Change email
+
+1. Open Privacy → Account (or Plans identity panel after durable).
+2. Tap **Cambia email**.
+3. Enter the new address → **Invia conferma**.
+4. Confirm via Supabase email link(s).
+   - Default Supabase **Secure Email Change**: confirm **new** email; often also confirm **current** email.
+5. Refresh → masked new email shown; account remains durable; **same auth user id**.
+6. Next authenticated chat syncs `public.users.email` for that same id.
+
+Conflict: if the new email belongs to another account → clear error, no merge, session kept.
 
 ## Manual Supabase provisioning
 

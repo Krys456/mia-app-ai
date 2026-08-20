@@ -19,9 +19,12 @@ export type AccountActionResult = {
     | 'ok'
     | 'not_configured'
     | 'email_sent'
+    | 'email_change_pending'
     | 'redirecting'
     | 'already_linked'
     | 'identity_conflict'
+    | 'same_email'
+    | 'not_durable'
     | 'cancelled'
     | 'provider_unavailable'
     | 'invalid_email'
@@ -34,12 +37,11 @@ export type AccountActionResult = {
 function mapAuthError(error: { message?: string; code?: string; status?: number } | null): AccountActionResult {
   const message = error?.message || 'Operazione non riuscita'
   const lower = message.toLowerCase()
-  if (/already|registered|exists|identity.*linked|conflict/i.test(lower)) {
+  if (/already|registered|exists|identity.*linked|conflict|taken|duplicate/i.test(lower)) {
     return {
       ok: false,
       code: 'identity_conflict',
-      message:
-        'Questo account esiste già. Non uniamo automaticamente le identità. Resta sulla sessione attuale; i tuoi dati anonimi non sono stati cancellati.',
+      message: 'Questa email è già associata a un altro account.',
     }
   }
   if (/popup|closed|cancelled|canceled/i.test(lower)) {
@@ -89,7 +91,18 @@ export async function linkEmailToCurrentUser(email: string): Promise<AccountActi
     { emailRedirectTo: `${redirectOrigin()}/` },
   )
 
-  if (error) return mapAuthError(error)
+  if (error) {
+    const mapped = mapAuthError(error)
+    // Keep prior link-flow wording for anonymous→email conflicts.
+    if (mapped.code === 'identity_conflict') {
+      return {
+        ...mapped,
+        message:
+          'Questo account esiste già. Non uniamo automaticamente le identità. Resta sulla sessione attuale; i tuoi dati anonimi non sono stati cancellati.',
+      }
+    }
+    return mapped
+  }
 
   const afterId = data.user?.id ?? beforeId
   if (beforeId && afterId && beforeId !== afterId) {
@@ -108,6 +121,90 @@ export async function linkEmailToCurrentUser(email: string): Promise<AccountActi
       'Ti abbiamo inviato un’email di conferma. Apri il link per collegare l’account. L’ID utente resta lo stesso.',
     userId: afterId,
     identity: resolveIdentityStatus(data.user ?? null),
+  }
+}
+
+/**
+ * CHANGE EMAIL for a durable account (same auth.uid).
+ * Uses updateUser({ email }) — never signInWithOtp / never creates a second user.
+ *
+ * Supabase default Secure Email Change: confirmation may be required on both
+ * the current and the new address before the change is applied.
+ */
+export async function changeEmailForCurrentUser(newEmail: string): Promise<AccountActionResult> {
+  const trimmed = newEmail.trim().toLowerCase()
+  if (!trimmed || !trimmed.includes('@') || trimmed.startsWith('@') || trimmed.endsWith('@')) {
+    return { ok: false, code: 'invalid_email', message: 'Inserisci un’email valida.' }
+  }
+  // Basic shape: local@domain.tld
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+    return { ok: false, code: 'invalid_email', message: 'Inserisci un’email valida.' }
+  }
+  if (!isSupabaseConfigured()) {
+    return { ok: false, code: 'not_configured', message: 'Autenticazione non configurata.' }
+  }
+
+  await bootstrapLaifeAuth()
+  const client = getSupabase()
+  const before = await client.auth.getUser()
+  const beforeUser = before.data.user
+  const beforeId = beforeUser?.id ?? null
+  if (!beforeId || !beforeUser) {
+    return { ok: false, code: 'error', message: 'Sessione non valida. Ricarica e riprova.' }
+  }
+
+  const beforeStatus = resolveIdentityStatus(beforeUser)
+  if (!beforeStatus.durable) {
+    return {
+      ok: false,
+      code: 'not_durable',
+      message: 'Collega prima un account, poi potrai cambiare email.',
+      userId: beforeId,
+      identity: beforeStatus,
+    }
+  }
+
+  const currentEmail =
+    typeof beforeUser.email === 'string' ? beforeUser.email.trim().toLowerCase() : ''
+  if (currentEmail && currentEmail === trimmed) {
+    return {
+      ok: false,
+      code: 'same_email',
+      message: 'Questa è già l’email attuale.',
+      userId: beforeId,
+      identity: beforeStatus,
+    }
+  }
+
+  const { data, error } = await client.auth.updateUser(
+    { email: trimmed },
+    { emailRedirectTo: `${redirectOrigin()}/` },
+  )
+
+  if (error) return mapAuthError(error)
+
+  const afterUser = data.user ?? null
+  const afterId = afterUser?.id ?? beforeId
+  if (beforeId !== afterId) {
+    return {
+      ok: false,
+      code: 'error',
+      message: 'L’identità è cambiata in modo inatteso. Operazione interrotta.',
+      userId: afterId,
+    }
+  }
+
+  const identity = resolveIdentityStatus(afterUser)
+  const pending = identity.emailChangePending || Boolean(afterUser && 'new_email' in afterUser)
+
+  return {
+    ok: true,
+    code: pending ? 'email_change_pending' : 'email_sent',
+    message: pending
+      ? 'Ti abbiamo inviato un link di conferma al nuovo indirizzo. Se il progetto ha Secure Email Change attivo, conferma anche dalla email attuale. L’ID account non cambia.'
+      : 'Richiesta di cambio email inviata. Controlla la casella di posta. L’ID account non cambia.',
+    userId: afterId,
+    identity,
   }
 }
 
@@ -133,7 +230,17 @@ export async function signInExistingWithEmailOtp(email: string): Promise<Account
     },
   })
 
-  if (error) return mapAuthError(error)
+  if (error) {
+    const mapped = mapAuthError(error)
+    if (mapped.code === 'identity_conflict') {
+      return {
+        ...mapped,
+        message:
+          'Questo account esiste già. Non uniamo automaticamente le identità. Resta sulla sessione attuale; i tuoi dati anonimi non sono stati cancellati.',
+      }
+    }
+    return mapped
+  }
 
   return {
     ok: true,
