@@ -91,8 +91,11 @@ import { resolveVisionStickyLang } from '../lib/server/vision-task-shortcuts.js'
 import {
   buildConversationStateAppendix,
   buildConversationStateDiagPayload,
+  buildStyleAvoidAppendix,
+  buildStyleVarietyDiagPayload,
   computeConversationState,
   isConversationStateDiagEnabled,
+  sanitizeSessionStyleState,
 } from '../lib/server/conversation-state.js'
 
 export const config = {
@@ -144,6 +147,10 @@ interface ChatApiRequestBody {
   conversationPreferenceProfile?: Record<string, unknown> | null
   conversationId?: string
   learningSignals?: unknown
+  /** #326 — session-only recent Core presentation fingerprints (never Memory). */
+  sessionStyle?: Record<string, unknown> | null
+  /** #326 — opt-in style variety diagnostics (Preview). */
+  styleVarietyDiag?: boolean | 1 | '1'
   /** #312 — opt-in Vision × Search diagnostics (Preview). */
   visionSearchDiag?: boolean | 1 | '1'
   /** #313 — opt-in document-chat diagnostics (Preview). */
@@ -197,6 +204,8 @@ interface CoreInstructionBundle {
   instructions: string
   conversationState: ReturnType<typeof computeConversationState>
   conversationStateAppendixChars: number
+  styleAvoidAppendixChars: number
+  sessionStyleReceived: boolean
   naturalResponsePolicyChars: number
   expressionInjected: boolean
   proactiveInjected: boolean
@@ -229,6 +238,8 @@ function buildInstructions(body: ChatApiRequestBody, messages: ChatApiMessage[] 
   // #324/#325 — Conversation State consumes settings; do not also inject LENGTH/emoji prose.
   const textMessages = toTextOnlyMessages(messages)
   const workingState = deriveConversationWorkingState(textMessages)
+  const sessionStyleReceived = body.sessionStyle != null && typeof body.sessionStyle === 'object'
+  const sessionStyle = sanitizeSessionStyleState(body.sessionStyle)
   const conversationState = computeConversationState({
     userMessage: latestUserText,
     recentMessages: textMessages,
@@ -237,6 +248,7 @@ function buildInstructions(body: ChatApiRequestBody, messages: ChatApiMessage[] 
       useEmojis: typeof body.useEmojis === 'boolean' ? body.useEmojis : null,
     },
     workingState,
+    sessionStyle,
   })
 
   const custom =
@@ -251,6 +263,12 @@ function buildInstructions(body: ChatApiRequestBody, messages: ChatApiMessage[] 
   const conversationStateAppendix = buildConversationStateAppendix(conversationState)
   if (conversationStateAppendix) {
     parts.push(conversationStateAppendix)
+  }
+
+  // #326 — Recent style soft avoid (never outranks State / emotion / explicit user).
+  const styleAvoidAppendix = buildStyleAvoidAppendix(sessionStyle, conversationState)
+  if (styleAvoidAppendix) {
+    parts.push(styleAvoidAppendix)
   }
 
   // #325 — Natural Response Policy (consumes State; replaces Expression + Proactive style).
@@ -318,6 +336,8 @@ function buildInstructions(body: ChatApiRequestBody, messages: ChatApiMessage[] 
     instructions: parts.join('\n\n'),
     conversationState,
     conversationStateAppendixChars: conversationStateAppendix.length,
+    styleAvoidAppendixChars: styleAvoidAppendix ? styleAvoidAppendix.length : 0,
+    sessionStyleReceived,
     naturalResponsePolicyChars: naturalResponsePolicyAppendix.length,
     expressionInjected: false,
     proactiveInjected: false,
@@ -1023,6 +1043,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     })
     if (conversationStateDiagOn) {
       payload.conversationStateDiag = conversationStateDiag
+    }
+
+    const styleVarietyDiagOn =
+      (body.styleVarietyDiag === true ||
+        body.styleVarietyDiag === 1 ||
+        body.styleVarietyDiag === '1' ||
+        (typeof req.url === 'string' &&
+          /[?&](?:style_variety_diag|conversation_state_diag)=1(?:&|$)/i.test(req.url))) &&
+      (process.env.VERCEL_ENV === 'preview' ||
+        process.env.VERCEL_ENV === 'development' ||
+        process.env.STYLE_VARIETY_DIAG === '1' ||
+        process.env.STYLE_VARIETY_DIAG === 'true' ||
+        process.env.CONVERSATION_STATE_DIAG === '1')
+    const styleVarietyDiag = buildStyleVarietyDiagPayload(
+      sanitizeSessionStyleState(body.sessionStyle),
+      {
+        sessionStyleReceived: coreBundle.sessionStyleReceived,
+        styleAvoidChars: coreBundle.styleAvoidAppendixChars,
+      },
+    )
+    console.info('[api/chat] style-variety', {
+      route: styleVarietyDiag.route,
+      sessionStyleReceived: styleVarietyDiag.sessionStyleReceived,
+      styleAvoidChars: styleVarietyDiag.styleAvoidChars,
+      recentFirstPhraseCount: styleVarietyDiag.recentFirstPhraseCount,
+      recentEmojiCount: styleVarietyDiag.recentEmojiCount,
+    })
+    if (styleVarietyDiagOn) {
+      payload.styleVarietyDiag = styleVarietyDiag
     }
 
     const naturalResponseDiagOn = isNaturalResponseDiagEnabled(
