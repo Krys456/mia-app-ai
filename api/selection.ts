@@ -9,6 +9,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { buildCoreResponsesCreateParams } from '../lib/server/core-responses-params.js'
 import { applyCors, sendCorsPreflight, sendJson, SAFE_UPSTREAM_ERROR } from '../lib/server/http.js'
 import { requirePaidApiAccess } from '../lib/server/paid-api-guard.js'
+import { decideRouteEntitlement } from '../lib/server/entitlement-gates.js'
 import { safeErrorSnippet } from '../lib/server/safe-log.js'
 import {
   buildSelectionInput,
@@ -223,6 +224,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const model = resolveChatModel(process.env)
   const isSearch = sanitized.operation === 'search'
+
+  // #332C — Search uses hosted web_search; gate before OpenAI (rollout OFF by default).
+  // Define/Explain/Translate remain ungated here.
+  if (isSearch) {
+    const decision = decideRouteEntitlement({
+      userId: access.userId,
+      entitlement: 'webSearch',
+    })
+    if (decision.allowed === false && 'body' in decision) {
+      return sendJson(res, 403, decision.body, req)
+    }
+  }
 
   if (isSearch && !modelSupportsWebSearchTool(model)) {
     return sendJson(res, 503, {

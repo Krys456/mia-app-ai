@@ -37,7 +37,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   // #298A — auth + durable rate limit before OpenAI Files upload.
-  const access = await requirePaidApiAccess(req, res, { bucket: 'files' })
+  // #332C — documents entitlement between auth and rate-limit (OFF by default).
+  const access = await requirePaidApiAccess(req, res, {
+    bucket: 'files',
+    entitlement: 'documents',
+  })
   if (!access) return
 
   const apiKey = process.env.OPENAI_API_KEY
