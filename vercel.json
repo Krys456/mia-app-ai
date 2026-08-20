@@ -44,12 +44,13 @@
     "api/daily-briefing.ts": {
       "includeFiles": "lib/server/**",
       "maxDuration": 20
-    },
-    "api/translation.ts": {
-      "maxDuration": 30
     }
   },
   "rewrites": [
+    {
+      "source": "/api/translation",
+      "destination": "/api/selection"
+    },
     {
       "source": "/((?!api/).*)",
       "destination": "/index.html"
