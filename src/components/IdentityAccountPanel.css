@@ -1,0 +1,93 @@
+/* #332E2 — Identity account panel (calm, compact). */
+
+.identity-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding: 0.85rem 0.95rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--surface-2) 80%, transparent);
+  box-sizing: border-box;
+  max-width: 36rem;
+}
+
+.identity-panel__title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.identity-panel__lead,
+.identity-panel__state,
+.identity-panel__hint,
+.identity-panel__meta,
+.identity-panel__note {
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.identity-panel__hint--warn {
+  color: var(--text);
+}
+
+.identity-panel__note {
+  color: var(--text);
+  padding: 0.55rem 0.65rem;
+  border-radius: var(--radius-sm, 6px);
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
+}
+
+.identity-panel__form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.identity-panel__label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.identity-panel__input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.55rem 0.65rem;
+  border-radius: var(--radius-sm, 6px);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.identity-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  align-items: center;
+}
+
+.identity-panel__btn {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: var(--radius-sm, 6px);
+  padding: 0.45rem 0.7rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.identity-panel__btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.identity-panel__btn--primary {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+}

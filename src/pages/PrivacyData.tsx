@@ -1,4 +1,5 @@
 import { PageHeader } from '../components/PageHeader'
+import { IdentityAccountPanel } from '../components/IdentityAccountPanel'
 import {
   PRIVACY_DISCLOSURE,
   buildBetaContactLine,
@@ -86,6 +87,17 @@ export function PrivacyData({ onBack }: PrivacyDataProps) {
             Google Calendar
           </h2>
           <p>{PRIVACY_DISCLOSURE.googleCalendar}</p>
+        </section>
+
+        <section className="privacy-data__section" aria-labelledby="privacy-account-title">
+          <h2 id="privacy-account-title" className="privacy-data__heading">
+            Account recuperabile
+          </h2>
+          <p>
+            La sessione anonima è comoda ma fragile. Collega un’email per proteggere Memoria e futuri
+            acquisti sullo stesso account.
+          </p>
+          <IdentityAccountPanel variant="privacy" />
         </section>
 
         <section className="privacy-data__section" aria-labelledby="privacy-session-title">
