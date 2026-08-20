@@ -72,6 +72,18 @@ import {
   WEATHER_ENTER_AREA_TRIGGER,
   WEATHER_USE_LOCATION_TRIGGER,
 } from '../lib/weather'
+import {
+  applyCalculatorIntent,
+  buildCalculatorDiag,
+  clearCalculationContext,
+  detectCalculatorIntent,
+  detectCalculatorLanguage,
+  isCalculatorDiagEnabled,
+  loadCalculationContext,
+  logCalculatorSafe,
+  rememberCalculatorDiag,
+  saveCalculationContext,
+} from '../lib/calculator'
 import { deriveDictationLangFromMessages } from '../lib/dictationLanguage'
 import {
   finalizeConversationLearning,
@@ -263,12 +275,13 @@ type Action =
   | { type: 'UPDATE_APPEARANCE'; payload: Partial<AppearanceSettings> }
   | { type: 'UPDATE_DEVELOPER'; payload: Partial<DeveloperSettings> }
   | { type: 'SEND_USER'; content: string; attachments?: ChatAttachment[] }
-  /** #314/#315/#317 — local user+assistant exchange (timer / phone / weather); no model call. */
+  /** #314/#315/#317/#318 — local user+assistant exchange; no model call. */
   | {
       type: 'LOCAL_EXCHANGE'
       userContent: string
       assistantContent: string
       weatherUi?: import('../types').WeatherUiState | null
+      calculatorUi?: import('../types').CalculatorUiState | null
     }
   | { type: 'ASSISTANT_START'; id: string; memoryEvent?: MemoryFeedbackEvent | null }
   | { type: 'ASSISTANT_PROGRESS'; id: string; content: string }
@@ -394,6 +407,7 @@ function reducer(state: AppState, action: Action): AppState {
         content: action.assistantContent,
         createdAt: Date.now(),
         ...(action.weatherUi ? { weatherUi: action.weatherUi } : {}),
+        ...(action.calculatorUi ? { calculatorUi: action.calculatorUi } : {}),
       }
       return {
         ...state,
@@ -521,6 +535,8 @@ interface ChatContextValue {
   sendMessage: (content: string, attachments?: ChatAttachment[]) => boolean
   /** #317 — Weather UI action chips (location grant). */
   handleWeatherUiAction: (actionId: string) => void
+  /** #318 — Calculator result chip actions (copy). */
+  handleCalculatorUiAction: (actionId: string) => void
   /** Re-run the completion for an assistant message (drops that reply and regenerates). */
   regenerateAssistant: (assistantId: string) => void
 }
@@ -794,6 +810,11 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     try {
       clearWeatherContext()
       clearPendingWeatherRequest()
+    } catch {
+      /* ignore */
+    }
+    try {
+      clearCalculationContext()
     } catch {
       /* ignore */
     }
@@ -1252,6 +1273,43 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     [runWeatherWithGeolocation],
   )
 
+  const handleCalculatorUiAction = useCallback((actionId: string) => {
+    if (actionId !== 'copy_result') return
+    const calc = applyCalculatorIntent({
+      text: 'Copia il risultato',
+      languageHint: 'it',
+      calcContext: loadCalculationContext(),
+      env: {
+        copyTextSync: (text: string) => {
+          try {
+            const area = document.createElement('textarea')
+            area.value = text
+            area.setAttribute('readonly', '')
+            area.style.position = 'fixed'
+            area.style.opacity = '0'
+            document.body.appendChild(area)
+            area.select()
+            const ok = document.execCommand('copy')
+            document.body.removeChild(area)
+            return ok
+          } catch {
+            return false
+          }
+        },
+      },
+    })
+    if (calc.handled && calc.reply) {
+      dispatch({
+        type: 'LOCAL_EXCHANGE',
+        userContent: 'Copia',
+        assistantContent: calc.reply,
+      })
+      if (isCalculatorDiagEnabled()) {
+        rememberCalculatorDiag(buildCalculatorDiag(calc.diag || {}))
+      }
+    }
+  }, [])
+
   const sendMessage = useCallback(
     (raw: string, attachments: ChatAttachment[] = []): boolean => {
       const content = raw.trim()
@@ -1378,6 +1436,77 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         }
         if (shouldClearMessagingOnUserText(content)) {
           clearMessagingContext()
+        }
+      }
+
+      // #318 — clear Calculator intents before Weather so "Quanto fa 15%…"
+      // is not stolen by temperature heuristics (Weather module untouched).
+      if (content && wireAtts.length === 0) {
+        const sticky = deriveDictationLangFromMessages(state.messages)
+        const langHint =
+          sticky === 'en'
+            ? 'en'
+            : sticky === 'it'
+              ? 'it'
+              : detectCalculatorLanguage(content, detectTimerLanguage(content, 'it'))
+        const calcCtxEarly = loadCalculationContext()
+        const earlyIntent = detectCalculatorIntent(content, {
+          languageHint: langHint,
+          hasCalcContext: Boolean(calcCtxEarly),
+        })
+        const clearCalc =
+          earlyIntent.intent === 'calculator' &&
+          (earlyIntent.percentHit ||
+            earlyIntent.followUp ||
+            earlyIntent.operation === 'expression' ||
+            earlyIntent.operation === 'copy_result' ||
+            earlyIntent.operation === 'explain' ||
+            /[\+\-\*\/×÷^√%]/.test(content) ||
+            /\bsqrt\s*\(/i.test(content) ||
+            /\d\s*%/.test(content))
+        if (clearCalc) {
+          const calc = applyCalculatorIntent({
+            text: content,
+            languageHint: langHint,
+            calcContext: calcCtxEarly,
+            env: {
+              copyTextSync: (text: string) => {
+                try {
+                  const area = document.createElement('textarea')
+                  area.value = text
+                  area.setAttribute('readonly', '')
+                  area.style.position = 'fixed'
+                  area.style.opacity = '0'
+                  document.body.appendChild(area)
+                  area.select()
+                  const ok = document.execCommand('copy')
+                  document.body.removeChild(area)
+                  return ok
+                } catch {
+                  return false
+                }
+              },
+            },
+          })
+          if (calc.handled && calc.reply) {
+            if (calc.calcContext) saveCalculationContext(calc.calcContext)
+            dispatch({
+              type: 'LOCAL_EXCHANGE',
+              userContent: content,
+              assistantContent: calc.reply,
+              calculatorUi: (calc.calcUi as import('../types').CalculatorUiState | null) || null,
+            })
+            logCalculatorSafe({
+              operation: String(calc.diag.operation || ''),
+              parserStatus: (calc.diag.parserStatus as string) || null,
+              failureCode: (calc.diag.failureCode as string) || null,
+              contextReused: Boolean(calc.diag.contextReused),
+            })
+            if (isCalculatorDiagEnabled()) {
+              rememberCalculatorDiag(buildCalculatorDiag(calc.diag || {}))
+            }
+            return true
+          }
         }
       }
 
@@ -1557,6 +1686,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       updateDeveloper,
       sendMessage,
       handleWeatherUiAction,
+      handleCalculatorUiAction,
       regenerateAssistant,
     }),
     [
@@ -1581,6 +1711,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       updateDeveloper,
       sendMessage,
       handleWeatherUiAction,
+      handleCalculatorUiAction,
       regenerateAssistant,
     ],
   )
