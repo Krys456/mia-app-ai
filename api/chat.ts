@@ -1039,6 +1039,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       depth: conversationStateDiag.depth,
       emojiLevel: conversationStateDiag.emojiLevel,
       questionNeeded: conversationStateDiag.questionNeeded,
+      initiativeLevel: conversationStateDiag.initiativeLevel,
+      shortFollowUpDetected: conversationStateDiag.shortFollowUpDetected,
+      stopSignalDetected: conversationStateDiag.stopSignalDetected,
+      decisionSignalDetected: conversationStateDiag.decisionSignalDetected,
+      priorModeInherited: conversationStateDiag.priorModeInherited,
       appendixChars: conversationStateDiag.appendixChars,
     })
     if (conversationStateDiagOn) {
@@ -1097,6 +1102,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       route: naturalResponseDiag.route,
       buildId: naturalResponseDiag.buildId,
       policyChars: naturalResponseDiag.policyChars,
+      momentumPolicyChars: naturalResponseDiag.momentumPolicyChars,
       totalInstructionChars: naturalResponseDiag.totalInstructionChars,
       expressionInjected: naturalResponseDiag.expressionInjected,
       proactiveInjected: naturalResponseDiag.proactiveInjected,
