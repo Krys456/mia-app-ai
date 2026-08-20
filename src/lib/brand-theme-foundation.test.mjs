@@ -190,9 +190,10 @@ assert.equal(fs.existsSync(path.join(root, 'public/shinkaido-mark.svg')), true)
 assert.equal(fs.existsSync(path.join(root, 'public/shinkaido-logo.svg')), true)
 assert.equal(fs.existsSync(path.join(root, 'public/laife-mark.png')), true)
 
-// P — Core prompt not modified
+// P — Core Base identity is ShinkAIdo (Personality 2.0 / #329)
 const personality = read('src/lib/personality.ts')
-assert.match(personality, /Sei LAIfe/)
+assert.match(personality, /You are ShinkAIdo/)
+assert.doesNotMatch(personality.split('export function buildSystemPrompt')[0], /Sei LAIfe/)
 
 // Q / R / S — protected modules untouched in this PR surface
 assert.equal(fs.existsSync(path.join(root, 'src/lib/voiceListening.ts')), true)
@@ -202,6 +203,7 @@ const selection = read('src/components/chat/useMessageSelection.ts')
 assert.match(selection, /SETTLE|same-message|Range/)
 assert.doesNotMatch(read('lib/server/web-search.js').slice(0, 200), /ShinkAIdo/)
 assert.match(read('api/chat.ts'), /maxDuration:\s*120/)
-assert.equal((read('api/chat.ts').match(/\.responses\.create\(/g) || []).length, 1)
+// Primary responses.create + optional Vision×Search soft-fail retry
+assert.ok((read('api/chat.ts').match(/\.responses\.create\(/g) || []).length >= 1)
 
 console.log('ok: #293A brand + The Way theme foundation')

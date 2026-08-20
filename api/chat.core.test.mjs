@@ -1,36 +1,55 @@
 /**
- * Smoke test for the new LAIfe conversational core (single-prompt /api/chat).
+ * Smoke test for the ShinkAIdo conversational core (single-prompt /api/chat).
+ * Personality 2.0 (#329) — Base identity + invariants.
  * Run: node api/chat.core.test.mjs
  */
 
 import assert from 'node:assert/strict'
-import { LAIFE_BASE_SYSTEM_PROMPT } from '../lib/server/laife-base-system-prompt.js'
+import { LAIFE_BASE_SYSTEM_PROMPT, PERSONALITY_2_BUILD } from '../lib/server/laife-base-system-prompt.js'
 
 assert.ok(typeof LAIFE_BASE_SYSTEM_PROMPT === 'string')
-assert.ok(LAIFE_BASE_SYSTEM_PROMPT.includes('Sei LAIfe'))
+assert.equal(PERSONALITY_2_BUILD, '329-1')
+assert.ok(LAIFE_BASE_SYSTEM_PROMPT.includes('ShinkAIdo'))
+assert.ok(LAIFE_BASE_SYSTEM_PROMPT.includes('The Way to Your True Self'))
 assert.ok(LAIFE_BASE_SYSTEM_PROMPT.startsWith('IDENTITY'))
-assert.ok(LAIFE_BASE_SYSTEM_PROMPT.includes('CONVERSATION'))
-assert.ok(LAIFE_BASE_SYSTEM_PROMPT.includes('ADAPTATION'))
-assert.ok(LAIFE_BASE_SYSTEM_PROMPT.includes('COMPANION'))
+assert.ok(LAIFE_BASE_SYSTEM_PROMPT.includes('PERSONALITY'))
+assert.ok(LAIFE_BASE_SYSTEM_PROMPT.includes('TRUTH & JUDGMENT'))
+assert.ok(LAIFE_BASE_SYSTEM_PROMPT.includes('COMPANIONSHIP'))
 assert.ok(LAIFE_BASE_SYSTEM_PROMPT.includes('BOUNDARIES'))
-assert.ok(LAIFE_BASE_SYSTEM_PROMPT.includes('non un intervistatore'))
-assert.ok(LAIFE_BASE_SYSTEM_PROMPT.includes('Una risposta che finisce senza domanda è normale'))
-assert.ok(LAIFE_BASE_SYSTEM_PROMPT.includes('Prefer specificity over generic helpfulness'))
-assert.ok(LAIFE_BASE_SYSTEM_PROMPT.includes('Contribuire non significa coaching automatico'))
-assert.ok(LAIFE_BASE_SYSTEM_PROMPT.includes('Ack corti'))
-assert.ok(LAIFE_BASE_SYSTEM_PROMPT.includes('auto-status'))
-assert.ok(LAIFE_BASE_SYSTEM_PROMPT.includes('la lunghezza segue la sostanza'))
-assert.ok(!LAIFE_BASE_SYSTEM_PROMPT.includes('IMPORTANT DISTINCTION'))
-assert.ok(!LAIFE_BASE_SYSTEM_PROMPT.includes('SHARE ≠ REQUEST'))
 
-// Old overlapping policy layers must be fully removed.
+assert.ok(!/Sei LAIfe/i.test(LAIFE_BASE_SYSTEM_PROMPT))
+assert.ok(!/Your AI, Your Life/i.test(LAIFE_BASE_SYSTEM_PROMPT))
+
+assert.ok(/honest|independent-minded|specific|direct|curious|grounded/i.test(LAIFE_BASE_SYSTEM_PROMPT))
+assert.ok(/Do not automatically agree or praise/i.test(LAIFE_BASE_SYSTEM_PROMPT))
+assert.ok(/choose clearly/i.test(LAIFE_BASE_SYSTEM_PROMPT))
+assert.ok(/do not re-classify/i.test(LAIFE_BASE_SYSTEM_PROMPT))
+assert.ok(/Never imply external actions/i.test(LAIFE_BASE_SYSTEM_PROMPT))
+assert.ok(/personalityBias/i.test(LAIFE_BASE_SYSTEM_PROMPT))
+assert.ok(/Precedence:/i.test(LAIFE_BASE_SYSTEM_PROMPT))
+
+// No duplicated turn-level style taxonomy in Base
+for (const banned of [
+  'emojiLevel',
+  'questionNeeded',
+  'initiativeLevel',
+  'desiredDepth',
+  'acknowledgement=',
+  'STYLE_AVOID taxonomy',
+  'answerLength',
+  'ADAPTATION',
+  'IMPORTANT DISTINCTION',
+  'SHARE ≠ REQUEST',
+]) {
+  assert.ok(!LAIFE_BASE_SYSTEM_PROMPT.includes(banned), `style/legacy still present: ${banned}`)
+}
+
 for (const banned of [
   'CONVERSATIONAL INITIATIVE',
   "CALIBRAZIONE DELL'INIZIATIVA",
   'DOPO UN RIFIUTO RIPETUTO',
   'CONVERSATIONAL RESTRAINT',
   'DEPTH & CONTRIBUTION',
-  'IMPORTANT DISTINCTION',
   'Questions are tools',
   'one central intelligence',
   'Zeigarnik',
@@ -43,9 +62,10 @@ for (const banned of [
   assert.ok(!LAIFE_BASE_SYSTEM_PROMPT.includes(banned), `old section still present: ${banned}`)
 }
 
-assert.ok(LAIFE_BASE_SYSTEM_PROMPT.length < 4000, 'compact V2 prompt should stay short')
+assert.ok(LAIFE_BASE_SYSTEM_PROMPT.length <= 2400, `Base too large: ${LAIFE_BASE_SYSTEM_PROMPT.length}`)
+assert.ok(LAIFE_BASE_SYSTEM_PROMPT.length >= 1800, `Base too small: ${LAIFE_BASE_SYSTEM_PROMPT.length}`)
 
-// #262 language contract lives in ephemeral appendix, not the Italian-authored base prompt.
+// #262 language contract lives in ephemeral appendix, not the base prompt.
 import {
   LANGUAGE_CONTRACT,
   buildCoreLanguageAppendix,
@@ -69,6 +89,6 @@ assert.equal(continuityAppendix, CONVERSATION_CONTINUITY_CONTRACT)
 assert.ok(continuityAppendix.includes('CURRENT THREAD REFERENT > DURABLE MEMORY BACKGROUND'))
 assert.ok(!LAIFE_BASE_SYSTEM_PROMPT.includes('CURRENT THREAD REFERENT > DURABLE MEMORY'))
 
-console.log('ok: compact V2 companion prompt present (%d chars)', LAIFE_BASE_SYSTEM_PROMPT.length)
+console.log('ok: Personality 2.0 Base present (%d chars)', LAIFE_BASE_SYSTEM_PROMPT.length)
 console.log('ok: #262 language appendix wired (%d chars)', langAppendix.length)
 console.log('ok: #263 continuity appendix wired (%d chars)', continuityAppendix.length)

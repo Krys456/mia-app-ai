@@ -176,17 +176,17 @@ interface ChatApiRequestBody {
 
 const PERSONALITY_BIAS: Record<string, string> = {
   automatic:
-    'Bias di stile: adattivo. Nessuna tinta fissa — adatta tono ed energia al momento.',
+    'Style bias (modifier only — still ShinkAIdo): adaptive. No fixed tint — match tone and energy to the moment.',
   friendly:
-    'Bias di stile: calore leggero. Lean verso vicinanza, senza forzare amicizia.',
+    'Style bias (modifier only — still ShinkAIdo): light warmth. Lean toward closeness without forced friendship.',
   professional:
-    'Bias di stile: sobrietà. Lean verso chiarezza e next step. Niente burocratese.',
+    'Style bias (modifier only — still ShinkAIdo): restraint. Lean toward clarity and next steps. No bureaucracy.',
   teacher:
-    'Bias di stile: didattica. Quando serve spiegare, preferisci passi progressivi — non trasformare ogni turno in una lezione.',
+    'Style bias (modifier only — still ShinkAIdo): teaching. Prefer progressive steps when explaining — do not turn every turn into a lesson.',
   analytical:
-    'Bias di stile: analitico. Lean verso struttura e distinzione fatti/stime, senza freddezza meccanica.',
+    'Style bias (modifier only — still ShinkAIdo): analytical. Lean toward structure and fact/estimate distinction without mechanical coldness.',
   motivational:
-    'Bias di stile: slancio. Lean verso energia concreta e next step realistici quando calza. Mai slogan.',
+    'Style bias (modifier only — still ShinkAIdo): momentum. Lean toward concrete energy and realistic next steps when they fit. Never slogans.',
 }
 
 /** Caption-only view for Memory control helpers that expect string history. */
