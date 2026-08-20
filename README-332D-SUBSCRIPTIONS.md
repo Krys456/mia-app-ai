@@ -22,6 +22,11 @@ No new env vars for #332D.
 
 Keep `ENTITLEMENT_ENFORCEMENT_ENABLED` **unset/false** in Preview and Production.
 
+## Vercel Hobby function budget
+
+Vite `api/` routes map 1:1 to serverless functions. Hobby allows **12** per deployment.
+`.vercelignore` excludes `api/*.test.mjs` probes so `GET /api/subscription` fits under the ceiling.
+
 ## Rollback (manual)
 
 ```sql

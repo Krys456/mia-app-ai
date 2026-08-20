@@ -1,4 +1,7 @@
-# Dev-only Memory probe — keep in repo for tests, do not deploy as a 9th serverless function.
+# Dev-only / unit probes — keep in repo for tests, do not deploy as serverless functions.
+# Hobby plan: max 12 functions per deployment. Real API routes must fit under that ceiling.
 api/memory-test.ts
 api/memory-test.prod.test.mjs
 api/memories.phase0.test.mjs
+api/chat.core.test.mjs
+api/resolve-chat-model.test.mjs
