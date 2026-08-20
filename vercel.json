@@ -46,7 +46,6 @@
       "maxDuration": 20
     },
     "api/translation.ts": {
-      "includeFiles": "lib/server/**",
       "maxDuration": 30
     }
   },
