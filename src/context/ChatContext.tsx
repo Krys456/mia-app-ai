@@ -12,6 +12,15 @@ import {
 } from 'react'
 import { applyAppearanceToDocument, normalizeAppearance } from '../lib/appearance'
 import { requestChatCompletion, type ChatApiMessage } from '../lib/chatApi'
+import {
+  applyCoreAssistantStyleUpdate,
+  applyRegenerateStyleRollback,
+  clearSessionStyleStorage,
+  createEmptySessionStyleState,
+  loadSessionStyleFromStorage,
+  saveSessionStyleToStorage,
+  type SessionStyleState,
+} from '../lib/sessionStyle'
 import type { MemoryFeedbackEvent } from '../lib/memoryFeedback'
 import {
   deriveActiveDocumentFromMessages,
@@ -311,6 +320,8 @@ interface AppState {
   isThinking: boolean
   isStreaming: boolean
   topicMemory: TopicMemory
+  /** #326 — session-only Core presentation fingerprints (never Memory). */
+  sessionStyle: SessionStyleState
 }
 
 type Action =
@@ -347,7 +358,7 @@ type Action =
       v2Debug?: V2DebugInfo | null
     }
   | { type: 'ASSISTANT_FAIL'; error: string }
-  | { type: 'TRIM_TO'; count: number; thinking?: boolean }
+  | { type: 'TRIM_TO'; count: number; thinking?: boolean; rollbackSessionStyle?: boolean }
 
 function createInitialState(): AppState {
   return {
@@ -357,6 +368,7 @@ function createInitialState(): AppState {
     isThinking: false,
     isStreaming: false,
     topicMemory: createEmptyMemory(),
+    sessionStyle: loadSessionStyleFromStorage(),
   }
 }
 
@@ -370,6 +382,7 @@ function reducer(state: AppState, action: Action): AppState {
         isStreaming: false,
         settingsOpen: false,
         topicMemory: createEmptyMemory(),
+        sessionStyle: createEmptySessionStyleState(),
       }
     case 'OPEN_SETTINGS':
       return { ...state, settingsOpen: true }
@@ -534,6 +547,8 @@ function reducer(state: AppState, action: Action): AppState {
         isThinking: false,
         isStreaming: false,
         topicMemory: rememberAssistantMessage(state.topicMemory, action.content),
+        // #326 — Core-only style update (ASSISTANT_FINISH is never used by capability routes).
+        sessionStyle: applyCoreAssistantStyleUpdate(state.sessionStyle, action.content),
       }
     }
     case 'ASSISTANT_FAIL': {
@@ -558,6 +573,10 @@ function reducer(state: AppState, action: Action): AppState {
         messages: state.messages.slice(0, count),
         isThinking: action.thinking === true,
         isStreaming: false,
+        sessionStyle:
+          action.rollbackSessionStyle === true
+            ? applyRegenerateStyleRollback(state.sessionStyle)
+            : state.sessionStyle,
       }
     }
     default:
@@ -697,6 +716,13 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const abortRef = useRef<AbortController | null>(null)
   const topicMemoryRef = useRef(state.topicMemory)
   topicMemoryRef.current = state.topicMemory
+  const sessionStyleRef = useRef(state.sessionStyle)
+  sessionStyleRef.current = state.sessionStyle
+
+  // #326 — mirror session style to sessionStorage (same-tab refresh).
+  useEffect(() => {
+    saveSessionStyleToStorage(state.sessionStyle)
+  }, [state.sessionStyle])
   /** #313 — user dismissed active document until next file upload. */
   const suppressDocReuseRef = useRef(false)
   const [activeDocument, setActiveDocument] = useState<ActiveDocumentContext | null>(null)
@@ -900,6 +926,11 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     } catch {
       /* ignore */
     }
+    try {
+      clearSessionStyleStorage()
+    } catch {
+      /* ignore */
+    }
     dispatch({ type: 'NEW_CHAT' })
   }, [abortActiveCompletion])
   const openSettings = useCallback(() => dispatch({ type: 'OPEN_SETTINGS' }), [])
@@ -979,6 +1010,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
               conversationMemoryMap: getConversationMemoryMap() || undefined,
               conversationPreferenceProfile:
                 getConversationPreferenceProfile() || undefined,
+              sessionStyle: sessionStyleRef.current as unknown as Record<string, unknown>,
               browserLocale:
                 typeof navigator !== 'undefined' && navigator.language
                   ? navigator.language
@@ -2116,7 +2148,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       const history: ChatApiMessage[] = toApiMessages(kept)
 
       inFlightRef.current = true
-      dispatch({ type: 'TRIM_TO', count: kept.length, thinking: true })
+      dispatch({ type: 'TRIM_TO', count: kept.length, thinking: true, rollbackSessionStyle: true })
       runAssistantCompletion(
         history,
         state.settings.personalization,

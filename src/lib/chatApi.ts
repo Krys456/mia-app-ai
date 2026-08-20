@@ -89,10 +89,14 @@ export interface ChatApiRequest {
   conversationMemoryMap?: Record<string, unknown> | null
   /** Conversation Preference Profile — style prefs from feedback. */
   conversationPreferenceProfile?: Record<string, unknown> | null
+  /** #326 — session-only Core presentation fingerprints (never Memory). */
+  sessionStyle?: Record<string, unknown> | null
   /** #312 — opt-in Vision × Search diagnostics. */
   visionSearchDiag?: boolean
   /** #313 — opt-in document-chat diagnostics. */
   documentDiag?: boolean
+  /** #326 — opt-in style variety diagnostics. */
+  styleVarietyDiag?: boolean
   /** #313 — client dismissed active document until next upload. */
   suppressActiveDocumentReuse?: boolean
   /** Browser / UI locale — Language Awareness final fallback (#312A Vision). */
@@ -272,6 +276,8 @@ export async function requestChatCompletion(
         ...(payload.conversationPreferenceProfile
           ? { conversationPreferenceProfile: payload.conversationPreferenceProfile }
           : {}),
+        ...(payload.sessionStyle ? { sessionStyle: payload.sessionStyle } : {}),
+        ...(payload.styleVarietyDiag ? { styleVarietyDiag: true } : {}),
       }),
       signal: init?.signal,
     })
