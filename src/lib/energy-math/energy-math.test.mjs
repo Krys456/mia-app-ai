@@ -154,6 +154,87 @@ assert.equal(detectPhoneActionIntent('Portami a Milano').kind, 'navigate')
 assert.equal(detectEnergyMathIntent('Portami a Milano').intent, 'none')
 assert.equal(detectEnergyMathIntent("Cos'è un kWh?").intent, 'none')
 
+// --- #330A — Long generic chat must NOT be claimed by Energy Math ---
+{
+  const HEALTH_REPRO = `Sono a 22 ore di digiuno adesso e sto facendo il mio solito digiuno
+prolungato. È possibile, secondo te, avere fame dopo le 24 ore di
+digiuno? O passa completamente, io mi nutro prevalentemente in una
+dieta carnivora e tuorli crudi? Le mie analisi sono perfette. Sono
+quindi in chetosi. Ho il diabete di tipo 1. Digiunando ho potuto
+guarire molto meglio, grazie anche ovviamente alla dieta che seguo.`
+
+  const APP_DESIGN = `Sto progettando una nuova applicazione e vorrei ragionare
+sull'interfaccia, sulle funzioni principali, sulla navigazione,
+sull'identità visiva, sulle impostazioni, sulla schermata principale,
+sulla gestione delle conversazioni e su come organizzare tutte queste
+parti senza rendere l'esperienza troppo complicata. Vorrei inoltre
+capire quali elementi conviene inserire nella prima versione e quali
+rimandare agli aggiornamenti successivi.`
+
+  const pad = (n, seed = 'Ciao, vorrei parlarti di qualcosa di importante nella mia giornata. ') =>
+    (seed + 'parola '.repeat(Math.ceil(n / 7))).replace(/\s+/g, ' ').trim().slice(0, n)
+
+  const CODE_LONG = (
+    'Sto debuggando questo errore TypeError in produzione. ' +
+    '```js\nfunction broken(x) {\n  return x.foo.bar;\n}\n```\n'.repeat(40) +
+    'Come posso trovare la causa radice senza riscrivere tutto?'
+  ).slice(0, 2000)
+
+  const UNICODE_LONG = (
+    'Café, naïve, 日本語, emoji 🚀💡, perché digiuno e chetosi non c\'entrano. ' +
+    'Vorrei una spiegazione lunga su produttività e abitudini. '
+  ).repeat(20)
+
+  for (const [label, text] of [
+    ['generic280', pad(280)],
+    ['generic281', pad(281)],
+    ['generic500', pad(500)],
+    ['generic2k', pad(2000)],
+    ['generic5k', pad(5000)],
+    ['generic10k', pad(10000)],
+    ['health', HEALTH_REPRO],
+    ['app_design', APP_DESIGN],
+    ['code', CODE_LONG],
+    ['unicode', UNICODE_LONG],
+  ]) {
+    assert.ok(text.length >= 280 || label.startsWith('generic280') || label === 'health', label)
+    const em = detectEnergyMathIntent(text)
+    assert.equal(em.intent, 'none', `#330A Energy Math must not claim ${label} (len=${text.length})`)
+    assert.notEqual(em.failureCode, 'input_too_long', label)
+    const applied = applyEnergyMathIntent({ text, languageHint: 'it' })
+    assert.equal(applied.handled, false, `#330A apply must not handle ${label}`)
+    assert.notEqual(applied.reply, 'Richiesta troppo lunga.')
+  }
+
+  // Exact cliff: pure filler
+  assert.equal(detectEnergyMathIntent('x'.repeat(280)).intent, 'none')
+  assert.equal(detectEnergyMathIntent('x'.repeat(281)).intent, 'none')
+  assert.equal(detectEnergyMathIntent('x'.repeat(1000)).intent, 'none')
+
+  // True Energy Math still works under limit
+  {
+    const a = applyEnergyMathIntent({ text: '2 kW per 3 ore', languageHint: 'it' })
+    assert.equal(a.status, 'ok')
+    approx(a.result, 6)
+  }
+
+  // True Energy Math ABOVE limit → capability-specific too_long (Option A), not Core fallthrough
+  {
+    const longTrue = ('2 kW per 3 ore. ' + 'dettaglio '.repeat(40)).slice(0, 320)
+    assert.ok(longTrue.length > 280)
+    assert.ok(/2\s*kW/i.test(longTrue) && /3\s*ore/i.test(longTrue))
+    const intent = detectEnergyMathIntent(longTrue)
+    assert.equal(intent.intent, 'energy-math', 'shaped long EM must still claim')
+    assert.equal(intent.failureCode, 'input_too_long')
+    const a = applyEnergyMathIntent({ text: longTrue, languageHint: 'it' })
+    assert.equal(a.handled, true)
+    assert.equal(a.status, 'error')
+    assert.equal(a.diag?.failureCode, 'input_too_long')
+    assert.match(a.reply, /troppo lunga.*calcolo energetico|too long.*energy/i)
+    assert.doesNotMatch(a.reply, /^Richiesta troppo lunga\.$/)
+  }
+}
+
 // --- Follow-ups ---
 {
   const mem = new Map()

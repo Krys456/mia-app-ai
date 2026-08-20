@@ -6,6 +6,8 @@ export {
   looksQuotedOrInjectedEnergy,
   extractEnergyQuantities,
   parseEnergyMathComposition,
+  classifyEnergyMathComposition,
+  looksEnergyMathShaped,
 } from './energy-math/intent.js'
 export {
   createEnergyMathContext,

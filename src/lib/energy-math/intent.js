@@ -81,7 +81,8 @@ function pickByDim(list, dim) {
 }
 
 /**
- * Classify operation from quantities + cues.
+ * Classify Energy Math operation from quantities + cues (no length gate).
+ * #330A — shape evidence must come BEFORE capability-specific validation.
  * @returns {null | {
  *   operation: 'power_times_time'|'energy_over_time'|'energy_over_power'
  *   power?: import('./quantity.js').Quantity
@@ -90,12 +91,9 @@ function pickByDim(list, dim) {
  *   assumptionMode?: string
  * }}
  */
-export function parseEnergyMathComposition(raw) {
+export function classifyEnergyMathComposition(raw) {
   const original = String(raw || '').trim()
   if (!original) return null
-  if (original.length > ENERGY_MATH_LIMITS.maxRawLength) {
-    return { errorCode: ENERGY_MATH_ERROR.too_long }
-  }
 
   const t = foldAlias(original)
   const qs = extractEnergyQuantities(original)
@@ -193,6 +191,41 @@ export function parseEnergyMathComposition(raw) {
   }
 
   return null
+}
+
+/**
+ * True when utterance has credible Energy Math shape (quantities + cues).
+ * Does not enforce length — used so long generic chat never becomes energy-math.
+ */
+export function looksEnergyMathShaped(raw) {
+  return Boolean(classifyEnergyMathComposition(raw)?.operation)
+}
+
+/**
+ * Classify operation from quantities + cues.
+ * #330A: length / parser limits apply ONLY after positive Energy Math shape.
+ * @returns {null | {
+ *   operation: 'power_times_time'|'energy_over_time'|'energy_over_power'
+ *   power?: import('./quantity.js').Quantity
+ *   energy?: import('./quantity.js').Quantity
+ *   time?: import('./quantity.js').Quantity
+ *   assumptionMode?: string
+ *   errorCode?: string
+ * }}
+ */
+export function parseEnergyMathComposition(raw) {
+  const original = String(raw || '').trim()
+  if (!original) return null
+
+  const shaped = classifyEnergyMathComposition(original)
+  if (!shaped || !shaped.operation) return null
+
+  // Option A: clearly Energy Math but over deterministic parser budget → capability error
+  if (original.length > ENERGY_MATH_LIMITS.maxRawLength) {
+    return { errorCode: ENERGY_MATH_ERROR.too_long }
+  }
+
+  return shaped
 }
 
 function detectAssumptionMode(t) {
@@ -320,8 +353,11 @@ export function detectEnergyMathIntent(raw, opts = {}) {
     return { intent: 'none', language, failureCode: 'no_context' }
   }
 
+  // #330A — never claim energy-math merely because a length/parser check failed.
+  // Intent evidence (shape) must precede capability-specific validation.
   const parsed = parseEnergyMathComposition(text)
   if (parsed && parsed.errorCode) {
+    // errorCode is only returned after positive shape match
     return {
       intent: 'energy-math',
       language,
