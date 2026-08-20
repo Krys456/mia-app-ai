@@ -5,6 +5,7 @@
 
 import { parseNumberish } from '../calculator/percent.js'
 import { UNIT_ERROR, UNIT_LIMITS } from './limits.js'
+import { analyzeOuterUserRequest } from '../outer-content-gate.js'
 import {
   ALIAS_LIST,
   findUnitInText,
@@ -336,6 +337,12 @@ export function detectUnitConversionIntent(raw, opts = {}) {
   if (!text) return { intent: 'none', language: 'it' }
 
   const language = detectUnitConversionLanguage(text, opts.languageHint === 'en' ? 'en' : 'it')
+
+  // #330A3 — CONTENT IS NOT AUTHORIZATION
+  const outer = analyzeOuterUserRequest(text)
+  if (outer.contentIsData) {
+    return { intent: 'none', language, failureCode: 'content_is_data' }
+  }
 
   if (looksQuotedOrInjectedUnit(text)) {
     return { intent: 'none', language, failureCode: 'quoted_or_injected' }

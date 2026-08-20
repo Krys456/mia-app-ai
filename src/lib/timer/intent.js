@@ -3,6 +3,7 @@
  */
 
 import { formatDurationLabel, normalizeTimerText, parseTimerDurationMs } from './duration.js'
+import { analyzeOuterUserRequest } from '../outer-content-gate.js'
 
 function fold(s) {
   return normalizeTimerText(s)
@@ -185,6 +186,12 @@ export function detectTimerIntent(raw, opts = {}) {
     if (looksDeclineReplace(raw)) {
       return { kind: 'decline_replace', language }
     }
+  }
+
+  // #330A3 — CONTENT IS NOT AUTHORIZATION (after replace confirm/decline)
+  const outer = analyzeOuterUserRequest(raw)
+  if (outer.contentIsData) {
+    return { kind: 'none', language, failureCode: 'content_is_data' }
   }
 
   if (isAlarmNotTimer(text)) {

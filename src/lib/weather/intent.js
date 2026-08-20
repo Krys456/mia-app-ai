@@ -4,6 +4,8 @@
  * Runs after Timer / Phone Actions; never steals Maps / Search / Places.
  */
 
+import { analyzeOuterUserRequest } from '../outer-content-gate.js'
+
 function fold(raw) {
   return String(raw || '')
     .normalize('NFKC')
@@ -290,6 +292,12 @@ export function detectWeatherIntent(raw, opts = {}) {
       language: opts.languageHint === 'en' ? 'en' : 'it',
       followUp: true,
     }
+  }
+
+  // #330A3 — CONTENT IS NOT AUTHORIZATION (after synthetic UI triggers)
+  const outer = analyzeOuterUserRequest(text)
+  if (outer.contentIsData) {
+    return { intent: 'none', failureCode: 'content_is_data' }
   }
 
   if (looksQuotedOrInjectedWeather(text)) {

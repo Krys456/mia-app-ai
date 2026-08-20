@@ -4,6 +4,7 @@
  */
 
 import { extractLanguageMention, foldLang, normalizeTargetLanguage } from './languages.js'
+import { analyzeOuterUserRequest } from '../outer-content-gate.js'
 
 export const TRANSLATION_MAX_INPUT_CHARS = 4000
 
@@ -155,6 +156,12 @@ export function detectTranslationIntent(raw, opts = {}) {
   const language = detectTranslationLanguage(text, opts.languageHint === 'en' ? 'en' : 'it')
   if (!text) {
     return { intent: 'none', language }
+  }
+
+  // #330A3 — CONTENT IS NOT AUTHORIZATION
+  const outer = analyzeOuterUserRequest(text)
+  if (outer.contentIsData) {
+    return { intent: 'none', language, failureCode: 'content_is_data' }
   }
 
   const t = fold(text)

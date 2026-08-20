@@ -1,15 +1,19 @@
 /**
- * #330A2 — Outer direct-command proof for Phone Actions.
+ * #330A2 / #330A3 — Outer direct-command proof for Phone Actions.
  *
  * Invariant: Phone Actions execute only from an explicit direct action request
  * in the user's outer utterance. Quoted, negated, explanatory, technical,
  * example, or code content is data — not authorization.
+ *
+ * #330A3 — also honors shared CONTENT IS NOT AUTHORIZATION gate
+ * (data framing + document-like pastes; fixes first-line-only hole).
  *
  * Deterministic only. No LLM / network.
  */
 
 import { fold, normalizeTimerText } from './parse.js'
 import { stripDiscoursePrefix } from './intent-discourse.js'
+import { analyzeOuterUserRequest } from '../outer-content-gate.js'
 
 /** Imperative / action starters (IT + EN) for outer-clause proof. */
 export const DIRECT_ACTION_STARTER_RE =
@@ -146,8 +150,12 @@ export function looksQuotedOrCodeData(raw) {
   // Classic prompt-injection
   if (/\b(ignore\s+(all\s+)?instructions|ignora\s+le\s+istruzioni)\b/i.test(t)) return true
 
-  // Entire message is a fenced code block
-  if (/^```[\s\S]*```\s*$/m.test(trimmed)) return true
+  // Entire message is a fenced code block (no /m — $ must be end of string)
+  if (/^```[\s\S]*```\s*$/.test(trimmed)) return true
+
+  // Action only lives inside fences / quotes after stripping data regions
+  const stripped = stripDataRegions(t).replace(/\s+/g, ' ').trim()
+  if (!stripped) return true
 
   // Function-call / detector example as the primary content
   if (
@@ -155,7 +163,6 @@ export function looksQuotedOrCodeData(raw) {
     /detectPhoneActionIntent\s*\(\s*["'`]/.test(t)
   ) {
     // Allow only if there is also a short bare imperative outside code/quotes
-    const stripped = stripDataRegions(t)
     const surface = getOuterActionSurface(stripped)
     if (!hasDirectActionStarter(surface) || !isShortDirectCommand(surface)) {
       return true
@@ -186,6 +193,12 @@ export function evaluateOuterPhoneIntent(raw, opts = {}) {
     return { ok: false, failureCode: 'empty' }
   }
 
+  // #330A3 — shared content/data gate (framing + document-like; first-line hole)
+  const outer = analyzeOuterUserRequest(raw)
+  if (outer.contentIsData || outer.localRoutersSuppressed) {
+    return { ok: false, failureCode: 'content_is_data', outer }
+  }
+
   if (looksQuotedOrCodeData(raw)) {
     return { ok: false, failureCode: 'quoted_or_code' }
   }
@@ -210,5 +223,18 @@ export function evaluateOuterPhoneIntent(raw, opts = {}) {
     return { ok: false, failureCode: 'no_outer_direct_command' }
   }
 
-  return { ok: true, surface, failureCode: null }
+  // Multiline softener ("Chiama …\nper favore") ok; long non-short commands blocked
+  // when more than a brief discourse tail (document-like already handled above).
+  const lines = String(raw || '')
+    .split(/\n/)
+    .map((l) => l.trim())
+    .filter(Boolean)
+  if (!follow && lines.length > 2 && !isShortDirectCommand(surface)) {
+    const joined = normalizeTimerText(lines.join(' '))
+    if (joined.length > 160) {
+      return { ok: false, failureCode: 'not_short_direct_command' }
+    }
+  }
+
+  return { ok: true, surface, failureCode: null, outer }
 }

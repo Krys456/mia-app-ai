@@ -3,6 +3,8 @@
  * Does NOT steal "Cosa ho oggi?" (Calendar/agenda).
  */
 
+import { analyzeOuterUserRequest } from '../outer-content-gate.js'
+
 function fold(raw) {
   return String(raw || '')
     .normalize('NFKC')
@@ -72,6 +74,13 @@ export function detectDailyBriefingIntent(raw, opts = {}) {
   if (!text) return { intent: 'none', language: 'it' }
 
   const language = detectBriefingLanguage(text, opts.languageHint === 'en' ? 'en' : 'it')
+
+  // #330A3 — CONTENT IS NOT AUTHORIZATION
+  const outer = analyzeOuterUserRequest(text)
+  if (outer.contentIsData) {
+    return { intent: 'none', language, failureCode: 'content_is_data' }
+  }
+
   if (looksQuotedOrInjectedBriefing(text)) {
     return { intent: 'none', language, failureCode: 'quoted_or_injected' }
   }

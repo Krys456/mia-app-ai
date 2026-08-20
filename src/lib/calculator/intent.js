@@ -5,6 +5,7 @@
 
 import { tryPercentageTemplate } from './percent.js'
 import { stripCalcCue } from './parser.js'
+import { analyzeOuterUserRequest } from '../outer-content-gate.js'
 
 function fold(raw) {
   return String(raw || '')
@@ -176,6 +177,12 @@ export function detectCalculatorIntent(raw, opts = {}) {
   if (!text) return { intent: 'none', language: 'it' }
 
   const language = detectCalculatorLanguage(text, opts.languageHint === 'en' ? 'en' : 'it')
+
+  // #330A3 — CONTENT IS NOT AUTHORIZATION
+  const outer = analyzeOuterUserRequest(text)
+  if (outer.contentIsData) {
+    return { intent: 'none', language, failureCode: 'content_is_data' }
+  }
 
   if (looksQuotedOrInjectedCalc(text)) {
     return { intent: 'none', language, failureCode: 'quoted_or_injected' }

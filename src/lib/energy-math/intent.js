@@ -7,6 +7,7 @@ import { parseNumberish } from '../calculator/percent.js'
 import { foldAlias, matchUnitAtStart, resolveUnit } from '../unit-conversion/registry.js'
 import { ENERGY_MATH_ERROR, ENERGY_MATH_LIMITS } from './limits.js'
 import { makeQuantity } from './quantity.js'
+import { analyzeOuterUserRequest } from '../outer-content-gate.js'
 
 export function detectEnergyMathLanguage(text, fallback = 'it') {
   const t = foldAlias(text)
@@ -324,6 +325,12 @@ export function detectEnergyMathIntent(raw, opts = {}) {
   if (!text) return { intent: 'none', language: 'it' }
 
   const language = detectEnergyMathLanguage(text, opts.languageHint === 'en' ? 'en' : 'it')
+
+  // #330A3 — CONTENT IS NOT AUTHORIZATION
+  const outer = analyzeOuterUserRequest(text)
+  if (outer.contentIsData) {
+    return { intent: 'none', language, failureCode: 'content_is_data' }
+  }
 
   if (looksQuotedOrInjectedEnergy(text)) {
     return { intent: 'none', language, failureCode: 'quoted_or_injected' }

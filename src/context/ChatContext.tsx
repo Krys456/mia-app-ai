@@ -141,6 +141,7 @@ import {
   rememberTranslationDiag,
   saveTranslationContext,
 } from '../lib/translation'
+import { analyzeOuterUserRequest } from '../lib/outer-content-gate'
 import { deriveDictationLangFromMessages } from '../lib/dictationLanguage'
 import {
   finalizeConversationLearning,
@@ -1562,9 +1563,26 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         suppressDocReuseRef.current = false
       }
 
+      // #330A3 — CONTENT IS NOT AUTHORIZATION: shared outer-content gate.
+      // When the user is explaining/analyzing/pasting/documenting, embedded
+      // capability phrases must not authorize LOCAL_EXCHANGE routers.
+      const outerContent =
+        content && wireAtts.length === 0
+          ? analyzeOuterUserRequest(content)
+          : {
+              contentIsData: false,
+              localRoutersSuppressed: false,
+              outerContentMode: 'direct' as const,
+              outerFrame: 'none',
+              outerSurface: '',
+              reason: null as string | null,
+            }
+      const allowLocalRouters =
+        Boolean(content) && wireAtts.length === 0 && !outerContent.localRoutersSuppressed
+
       // #322 — Translation OUTER GUARD before Timer / Phone / all action routers.
       // Text-only only: attachments keep Document / Vision pipelines authoritative.
-      if (content && wireAtts.length === 0) {
+      if (allowLocalRouters) {
         const sticky = deriveDictationLangFromMessages(state.messages)
         const langHint =
           sticky === 'en'
@@ -1647,7 +1665,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       }
 
       // #314 — deterministic timer / alarm honesty (no attachments). Never LLM-owned time.
-      if (content && wireAtts.length === 0) {
+      if (allowLocalRouters) {
         const sticky = deriveDictationLangFromMessages(state.messages)
         const langHint =
           sticky === 'en' ? 'en' : sticky === 'it' ? 'it' : detectTimerLanguage(content, 'it')
@@ -1692,7 +1710,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       }
 
       // #315 — deterministic Phone Actions (same user-gesture turn; never LLM-owned).
-      if (content && wireAtts.length === 0) {
+      if (allowLocalRouters) {
         const sticky = deriveDictationLangFromMessages(state.messages)
         const langHint =
           sticky === 'en'
@@ -1753,7 +1771,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       }
 
       // #321 — Daily Briefing before Energy Math / Unit / Calc / Weather.
-      if (content && wireAtts.length === 0) {
+      if (allowLocalRouters) {
         const sticky = deriveDictationLangFromMessages(state.messages)
         const langHint =
           sticky === 'en'
@@ -1815,7 +1833,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       }
 
       // #320 — Energy Math before Unit Conversion (composition vs convert).
-      if (content && wireAtts.length === 0) {
+      if (allowLocalRouters) {
         const sticky = deriveDictationLangFromMessages(state.messages)
         const langHint =
           sticky === 'en'
@@ -1878,7 +1896,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       }
 
       // #319 — Unit Conversion before Calculator + Weather (protects "25 gradi… in °F").
-      if (content && wireAtts.length === 0) {
+      if (allowLocalRouters) {
         const sticky = deriveDictationLangFromMessages(state.messages)
         const langHint =
           sticky === 'en'
@@ -1943,7 +1961,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
       // #318 — clear Calculator intents before Weather so "Quanto fa 15%…"
       // is not stolen by temperature heuristics (Weather module untouched).
-      if (content && wireAtts.length === 0) {
+      if (allowLocalRouters) {
         const sticky = deriveDictationLangFromMessages(state.messages)
         const langHint =
           sticky === 'en'
@@ -2013,7 +2031,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       }
 
       // #317 — deterministic Weather (after Phone Actions so "Portami a Milano" stays Maps).
-      if (content && wireAtts.length === 0) {
+      if (allowLocalRouters) {
         const sticky = deriveDictationLangFromMessages(state.messages)
         const langHint =
           sticky === 'en'
