@@ -7,6 +7,8 @@ export {
   extractWhatsAppCompose,
   looksWhatsAppIntent,
   looksWhatsAppCapabilityQuestion,
+  evaluateOuterPhoneIntent,
+  looksNegatedOuter,
 } from './phone-action/intent.js'
 export {
   buildMapsDirectionsUrl,
