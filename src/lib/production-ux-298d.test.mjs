@@ -24,11 +24,12 @@ import {
 const root = join(dirname(fileURLToPath(import.meta.url)), '../..')
 const read = (rel) => readFileSync(join(root, rel), 'utf8')
 
-// --- First-run hint (no tour) ---
+// --- First-run hint constant preserved; #333A Kami hero uses ma (no secondary hint) ---
 assert.match(FIRST_RUN_HINT, /Scrivi liberamente/)
 assert.match(FIRST_RUN_HINT, /Impostazioni/)
 const hero = read('src/components/HomeHero.tsx')
-assert.match(hero, /FIRST_RUN_HINT/)
+assert.doesNotMatch(hero, /FIRST_RUN_HINT/)
+assert.match(hero, /BRAND\.emptyPromptIt|Dove vuoi andare oggi/)
 assert.doesNotMatch(hero, /tour|coach|modal|wizard|onboarding/i)
 
 // --- New Chat Memory clarification ---

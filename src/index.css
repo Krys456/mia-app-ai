@@ -1,22 +1,24 @@
 :root {
-  /* Default semantic tokens = The Way — Washi (overridden at runtime by ThemeProvider) */
-  --theme-bg: #F6F1E8;
-  --theme-surface: #FFFCF7;
-  --theme-surface-2: #EFE8DC;
+  /* #333A Kami — authoritative static defaults = The Way — Washi
+     (runtime ThemeProvider / applyThemeToDocument remains source of truth after hydrate) */
+  --theme-bg: #F5F0E6;
+  --theme-surface: #FFFBF5;
+  --theme-surface-2: #EDE6DA;
   --theme-text: #1C1916;
-  --theme-text-muted: #6E675F;
+  --theme-text-muted: #6B645C;
   --theme-accent: #C23B2A;
   --theme-accent-2: #9E2F22;
   --theme-accent-3: #D45A4A;
   --theme-accent-4: #A67C52;
 
   --bg: var(--theme-bg);
-  --surface: color-mix(in srgb, var(--theme-surface) 82%, transparent);
+  --surface: color-mix(in srgb, var(--theme-surface) 92%, transparent);
   --surface-solid: var(--theme-surface);
   --surface-2: var(--theme-surface-2);
   --surface-elevated: var(--theme-surface-2);
-  --border: rgba(0, 0, 0, 0.12);
-  --border-glow: color-mix(in srgb, var(--theme-accent) 16%, transparent);
+  /* Hairline paper border — not glass outline */
+  --border: rgba(28, 25, 22, 0.1);
+  --border-glow: color-mix(in srgb, var(--theme-accent) 14%, transparent);
   --text: var(--theme-text);
   --text-muted: var(--theme-text-muted);
   --accent: var(--theme-accent);
@@ -25,48 +27,57 @@
   --accent-pink: var(--theme-accent-3);
   --accent-soft: color-mix(in srgb, var(--theme-accent) 70%, white);
   --on-accent: #ffffff;
-  --strong-text: #0a0a0a;
-  --code-bg: rgba(0, 0, 0, 0.06);
-  --shadow-lift: rgba(15, 23, 42, 0.12);
-  --scrim: rgba(20, 24, 32, 0.35);
-  --atmosphere-1: rgba(194, 59, 42, 0.06);
-  --atmosphere-2: rgba(166, 124, 82, 0.05);
-  --atmosphere-3: rgba(212, 90, 74, 0.04);
+  --strong-text: #1C1916;
+  --code-bg: rgba(28, 25, 22, 0.055);
+  --shadow-lift: rgba(28, 25, 22, 0.07);
+  --scrim: rgba(28, 25, 22, 0.32);
+  --atmosphere-1: rgba(194, 59, 42, 0.045);
+  --atmosphere-2: rgba(166, 124, 82, 0.04);
+  --atmosphere-3: rgba(212, 90, 74, 0.03);
   --bubble-user-bg: linear-gradient(
     135deg,
-    rgba(194, 59, 42, 0.12),
-    rgba(158, 47, 34, 0.08)
+    rgba(194, 59, 42, 0.09),
+    rgba(158, 47, 34, 0.05)
   );
 
+  /* Kami: quiet vermilion wash — not neon multi-stop brand energy */
   --gradient-brand: linear-gradient(
     115deg,
     var(--theme-accent) 0%,
-    var(--theme-accent-2) 55%,
-    var(--theme-accent-3) 100%
+    var(--theme-accent-2) 100%
   );
   --gradient-brand-soft: linear-gradient(
     135deg,
-    color-mix(in srgb, var(--theme-accent) 14%, transparent),
-    color-mix(in srgb, var(--theme-accent-2) 8%, transparent)
+    color-mix(in srgb, var(--theme-accent) 10%, transparent),
+    color-mix(in srgb, var(--theme-accent-2) 5%, transparent)
   );
-  --glow-cyan: 0 0 14px color-mix(in srgb, var(--theme-accent) 14%, transparent);
-  --glow-pink: 0 0 14px color-mix(in srgb, var(--theme-accent-3) 10%, transparent);
-  --glow-brand: 0 0 16px color-mix(in srgb, var(--theme-accent) 12%, transparent);
+
+  /*
+   * Legacy glow aliases — Washi/Sumi defaults are inert (no neon).
+   * Non-official themes may still override via applyThemeToDocument.
+   */
+  --glow-cyan: none;
+  --glow-pink: none;
+  --glow-brand: none;
+  --accent-ring: 0 0 0 1px color-mix(in srgb, var(--theme-accent) 22%, transparent);
 
   --danger: #ff6b84;
   --danger-soft: color-mix(in srgb, #ff6b84 14%, transparent);
   --danger-border: color-mix(in srgb, #ff6b84 40%, var(--border));
   --danger-text: #ffb3bd;
 
-  --shadow-card: 0 10px 28px var(--shadow-lift);
-  --shadow-dock: 0 -10px 36px var(--shadow-lift);
-  --shadow-sheet: 0 12px 32px var(--shadow-lift);
+  /* Paper depth — minimal floating-card feel */
+  --shadow-card: 0 1px 2px var(--shadow-lift), 0 6px 18px var(--shadow-lift);
+  --shadow-dock: 0 -6px 24px var(--shadow-lift);
+  --shadow-sheet: 0 8px 24px var(--shadow-lift);
+  --shadow-soft: 0 1px 2px rgba(28, 25, 22, 0.04);
 
-  --radius-xs: 0.4rem;
-  --radius-sm: 0.75rem;
-  --radius-md: 1.1rem;
-  --radius-lg: 1.5rem;
-  --radius-xl: 1.85rem;
+  /* Medium-small radii; composer may still use xl */
+  --radius-xs: 0.35rem;
+  --radius-sm: 0.65rem;
+  --radius-md: 0.95rem;
+  --radius-lg: 1.2rem;
+  --radius-xl: 1.55rem;
   --radius-pill: 999px;
 
   --btn-icon: 2.75rem;
@@ -79,8 +90,8 @@
   --page-gutter: 1rem; /* ~px-4 */
   --space-page-y: 1rem;
   --app-height: 100dvh;
-  --header-h: 3.85rem;
-  --header-pad-y: 0.7rem;
+  --header-h: 3.65rem;
+  --header-pad-y: 0.55rem;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-right: env(safe-area-inset-right, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -97,7 +108,8 @@
   --duration-drawer: 300ms;
   --duration-bubble: 320ms;
 
-  color-scheme: dark;
+  /* Washi is light — match browser/system controls before hydrate */
+  color-scheme: light;
   font-family: var(--font-sans);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -162,7 +174,7 @@ select {
 }
 
 ::selection {
-  background: color-mix(in srgb, var(--accent) 35%, transparent);
+  background: color-mix(in srgb, var(--accent) 28%, transparent);
   color: var(--strong-text);
 }
 
@@ -203,8 +215,8 @@ select {
 @media (min-width: 768px) {
   :root {
     --page-gutter: 1.25rem;
-    --header-h: 3.75rem;
-    --header-pad-y: 0.65rem;
+    --header-h: 3.55rem;
+    --header-pad-y: 0.5rem;
     --btn-icon: 2.55rem;
     --btn-send: 2.6rem;
     --content-max: 46rem;
