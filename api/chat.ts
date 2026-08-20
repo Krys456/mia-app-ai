@@ -14,7 +14,7 @@ import {
   decideImageGenerationTools,
   decideVisionEntitlement,
   decideWebSearchTools,
-  loadUserEntitlements,
+  loadUserEntitlementsAsync,
 } from '../lib/server/entitlement-gates.js'
 import { ensureAuthUserRow } from '../lib/server/brain-memory.js'
 import { getServiceSupabase } from '../lib/server/supabase.js'
@@ -388,7 +388,7 @@ function resolveHostedToolsForTurn(
   lastUserCaption: string,
   options: {
     forceWebSearch?: boolean
-    entitlements?: ReturnType<typeof loadUserEntitlements>['entitlements']
+    entitlements?: Parameters<typeof decideVisionEntitlement>[0]['entitlements']
     enforcementEnabled?: boolean
   } = {},
 ) {
@@ -503,7 +503,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const access = await requirePaidApiAccess(req, res, { bucket: 'chat' })
   if (!access) return undefined
 
-  const { entitlements } = loadUserEntitlements(access.userId)
+  // #332D — async load; DB hit only when ENTITLEMENT_ENFORCEMENT_ENABLED is ON.
+  const { entitlements } = await loadUserEntitlementsAsync(access.userId)
 
   const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) {
