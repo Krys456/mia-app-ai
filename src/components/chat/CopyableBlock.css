@@ -1,0 +1,121 @@
+.copyable-block {
+  position: relative;
+  margin: 0.75em 0 1.05em;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--code-bg) 88%, var(--bg));
+  overflow: hidden;
+  max-width: 100%;
+}
+
+.copyable-block--quote {
+  background: color-mix(in srgb, var(--surface-2) 28%, transparent);
+  border-left: 2.5px solid color-mix(in srgb, var(--accent) 42%, transparent);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.copyable-block--prompt {
+  background: color-mix(in srgb, var(--code-bg) 70%, var(--surface-2));
+}
+
+[data-theme='the-way-washi'] .copyable-block:not(.copyable-block--quote) {
+  border-color: color-mix(in srgb, var(--border) 90%, transparent);
+  background: color-mix(in srgb, var(--code-bg) 92%, #f3eee6);
+}
+
+[data-theme='the-way-sumi'] .copyable-block:not(.copyable-block--quote) {
+  border-color: color-mix(in srgb, var(--text) 10%, transparent);
+  background: color-mix(in srgb, var(--code-bg) 70%, #0a0908);
+}
+
+.copyable-block__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0 0.25rem 0 0.85rem;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface-2) 55%, transparent);
+}
+
+.copyable-block--quote .copyable-block__bar {
+  background: color-mix(in srgb, var(--surface-2) 40%, transparent);
+  border-bottom-color: color-mix(in srgb, var(--border) 70%, transparent);
+}
+
+.copyable-block__caption {
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ≥44×44 thumb target — icon visually top-right */
+.copyable-block__copy {
+  margin: 0;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    color var(--duration, 160ms) var(--ease-out, ease),
+    background var(--duration, 160ms) var(--ease-out, ease),
+    transform var(--duration-press, 100ms) var(--ease-out, ease);
+}
+
+.copyable-block__copy:hover {
+  color: var(--text);
+  background: color-mix(in srgb, var(--surface-solid) 55%, transparent);
+}
+
+.copyable-block__copy:active {
+  transform: scale(0.96);
+}
+
+.copyable-block__copy:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.copyable-block__copy--done {
+  color: var(--accent);
+}
+
+.copyable-block__copy-icon {
+  display: inline-flex;
+  width: 18px;
+  height: 18px;
+}
+
+.copyable-block__body {
+  margin: 0;
+}
+
+.copyable-block--quote .copyable-block__body {
+  padding: 0.55em 0.9em 0.7em;
+  color: var(--text-muted);
+}
+
+.copyable-block--quote .copyable-block__body > :first-child {
+  margin-top: 0;
+}
+
+.copyable-block--quote .copyable-block__body > :last-child {
+  margin-bottom: 0;
+}

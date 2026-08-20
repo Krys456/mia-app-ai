@@ -2,6 +2,12 @@ import { memo, type ReactNode } from 'react'
 import ReactMarkdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { CodeBlock } from './CodeBlock'
+import {
+  CopyableBlock,
+  LONG_QUOTE_COPY_CHARS,
+  plainTextFromNode,
+  plainTextLength,
+} from './CopyableBlock'
 import './StreamingRenderer.css'
 
 interface StreamingRendererProps {
@@ -34,6 +40,19 @@ const markdownComponents: Components = {
     }
 
     return <CodeBlock code={text} language={match?.[1]} />
+  },
+  blockquote({ children }) {
+    const text = plainTextFromNode(children).replace(/\n{3,}/g, '\n\n').trim()
+    const len = plainTextLength(children)
+    // #331 — long quoted / prompt-like blockquotes get a dedicated copy control
+    if (text.length >= LONG_QUOTE_COPY_CHARS || len >= LONG_QUOTE_COPY_CHARS) {
+      return (
+        <CopyableBlock text={text} variant="quote" caption="quote">
+          <blockquote className="md-blockquote md-blockquote--copyable">{children}</blockquote>
+        </CopyableBlock>
+      )
+    }
+    return <blockquote className="md-blockquote">{children}</blockquote>
   },
   a({ href, children }) {
     return (

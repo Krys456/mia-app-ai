@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useMemo } from 'react'
 import hljs from 'highlight.js/lib/core'
 import javascript from 'highlight.js/lib/languages/javascript'
 import typescript from 'highlight.js/lib/languages/typescript'
@@ -16,7 +16,7 @@ import csharp from 'highlight.js/lib/languages/csharp'
 import php from 'highlight.js/lib/languages/php'
 import ruby from 'highlight.js/lib/languages/ruby'
 import yaml from 'highlight.js/lib/languages/yaml'
-import { copyText } from '../../lib/clipboard'
+import { CopyableBlock } from './CopyableBlock'
 import './CodeBlock.css'
 
 hljs.registerLanguage('javascript', javascript)
@@ -52,6 +52,8 @@ interface CodeBlockProps {
   language?: string
 }
 
+const PROMPT_LANGS = new Set(['prompt', 'prompts', 'plaintext', 'text', 'txt'])
+
 function detectLanguage(code: string, hinted?: string): { lang: string; html: string } {
   const hint = hinted?.trim().toLowerCase()
   if (hint && hljs.getLanguage(hint)) {
@@ -84,50 +86,33 @@ function escapeHtml(value: string): string {
     .replaceAll('"', '&quot;')
 }
 
+function isPromptLanguage(lang: string): boolean {
+  return PROMPT_LANGS.has(lang.trim().toLowerCase())
+}
+
 function CodeBlockComponent({ code, language }: CodeBlockProps) {
-  const [copied, setCopied] = useState(false)
-  const copiedTimerRef = useRef<number | null>(null)
   const { lang, html } = useMemo(() => detectLanguage(code, language), [code, language])
-  const label = lang && lang !== 'text' ? lang : 'code'
-
-  useEffect(
-    () => () => {
-      if (copiedTimerRef.current != null) window.clearTimeout(copiedTimerRef.current)
-    },
-    [],
-  )
-
-  const onCopy = useCallback(async () => {
-    const ok = await copyText(code)
-    if (!ok) return
-    setCopied(true)
-    if (copiedTimerRef.current != null) window.clearTimeout(copiedTimerRef.current)
-    copiedTimerRef.current = window.setTimeout(() => {
-      copiedTimerRef.current = null
-      setCopied(false)
-    }, 1600)
-  }, [code])
+  const promptLike = isPromptLanguage(lang) || isPromptLanguage(language || '')
+  const label = promptLike
+    ? 'prompt'
+    : lang && lang !== 'text'
+      ? lang
+      : 'code'
 
   return (
-    <div className="code-block">
-      <div className="code-block__bar">
-        <span className="code-block__lang">{label}</span>
-        <button
-          type="button"
-          className={`code-block__copy${copied ? ' code-block__copy--done' : ''}`}
-          onClick={() => void onCopy()}
-          aria-label={copied ? 'Copiato' : 'Copia codice'}
-        >
-          {copied ? 'Copiato' : 'Copia'}
-        </button>
-      </div>
+    <CopyableBlock
+      text={code}
+      variant={promptLike ? 'prompt' : 'code'}
+      caption={label}
+      className="code-block"
+    >
       <pre className="code-block__pre scroll-surface">
         <code
           className={`hljs language-${lang}`}
           dangerouslySetInnerHTML={{ __html: html }}
         />
       </pre>
-    </div>
+    </CopyableBlock>
   )
 }
 

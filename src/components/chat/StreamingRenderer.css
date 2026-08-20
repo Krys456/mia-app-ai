@@ -117,7 +117,8 @@
   pointer-events: none;
 }
 
-.md-body blockquote {
+.md-body blockquote,
+.md-blockquote {
   margin: 0.6em 0 0.9em;
   padding: 0.32em 0 0.32em 0.9em;
   border-left: 2.5px solid color-mix(in srgb, var(--accent) 42%, transparent);
@@ -126,17 +127,36 @@
   border-radius: 0 var(--radius-xs) var(--radius-xs) 0;
 }
 
-[data-theme='the-way-washi'] .md-body blockquote {
+/* Nested inside CopyableBlock — chrome owns border/background */
+.md-blockquote--copyable,
+.copyable-block--quote .md-blockquote {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  border-radius: 0;
+  color: inherit;
+}
+
+[data-theme='the-way-washi'] .md-body blockquote,
+[data-theme='the-way-washi'] .md-blockquote {
   border-left-color: color-mix(in srgb, var(--accent) 36%, transparent);
   background: color-mix(in srgb, var(--surface-2) 35%, transparent);
 }
 
-[data-theme='the-way-sumi'] .md-body blockquote {
+[data-theme='the-way-sumi'] .md-body blockquote,
+[data-theme='the-way-sumi'] .md-blockquote {
   border-left-color: color-mix(in srgb, var(--accent) 40%, transparent);
   background: color-mix(in srgb, var(--surface-2) 55%, transparent);
 }
 
-.md-body blockquote p {
+[data-theme='the-way-washi'] .copyable-block--quote .md-blockquote,
+[data-theme='the-way-sumi'] .copyable-block--quote .md-blockquote {
+  background: transparent;
+}
+
+.md-body blockquote p,
+.md-blockquote p {
   margin: 0.32em 0;
 }
 
