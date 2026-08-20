@@ -64,8 +64,8 @@
   opacity: 0.9;
 }
 
-/* Narrow phones: keep product name; hide tagline to protect header spacing */
-@media (max-width: 380px) {
+/* Narrow / typical phones: keep product name; hide tagline to protect header spacing */
+@media (max-width: 430px) {
   .brand-wordmark--md .brand-wordmark__tag {
     display: none;
   }

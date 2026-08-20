@@ -142,7 +142,7 @@ assert.doesNotMatch(heroCss, /home-hero__hint/)
 // —— Brand: seal plate, no heavy drop shadow ——
 assert.doesNotMatch(brandLogoCss, /drop-shadow/)
 assert.match(wordmarkCss, /brand-wordmark__ai/)
-assert.match(wordmarkCss, /@media \(max-width:\s*380px\)/)
+assert.match(wordmarkCss, /@media \(max-width:\s*430px\)/)
 
 // —— A11y: pinch zoom allowed ——
 assert.doesNotMatch(indexHtml, /maximum-scale\s*=\s*1/)
