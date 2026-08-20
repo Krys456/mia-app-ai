@@ -44,6 +44,10 @@
     "api/daily-briefing.ts": {
       "includeFiles": "lib/server/**",
       "maxDuration": 20
+    },
+    "api/translation.ts": {
+      "includeFiles": "lib/server/**",
+      "maxDuration": 30
     }
   },
   "rewrites": [

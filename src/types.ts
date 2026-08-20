@@ -64,6 +64,20 @@ export interface ChatMessage {
   energyMathUi?: EnergyMathUiState | null
   /** #321 — compact Daily Briefing chips on an assistant message. */
   dailyBriefingUi?: DailyBriefingUiState | null
+  /** #322 — compact Translation chip on an assistant message. */
+  translationUi?: TranslationUiState | null
+}
+
+/** #322 — compact Translation result UI. */
+export type TranslationUiAction = {
+  id: string
+  label: string
+}
+
+export type TranslationUiState = {
+  kind: 'result'
+  chip?: string
+  actions?: TranslationUiAction[]
 }
 
 /** #321 — compact Daily Briefing summary chips. */

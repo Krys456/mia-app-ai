@@ -1,0 +1,35 @@
+.translation-ui {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.translation-ui__chip {
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+  opacity: 0.75;
+  font-variant-numeric: tabular-nums;
+}
+
+.translation-ui__actions {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.translation-ui__btn {
+  appearance: none;
+  border: 1px solid color-mix(in srgb, currentColor 22%, transparent);
+  background: color-mix(in srgb, currentColor 6%, transparent);
+  color: inherit;
+  font: inherit;
+  font-size: 0.8rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 0.4rem;
+  cursor: pointer;
+}
+
+.translation-ui__btn:hover {
+  background: color-mix(in srgb, currentColor 12%, transparent);
+}

@@ -120,6 +120,18 @@ import {
   rememberDailyBriefingDiag,
   saveBriefingContext,
 } from '../lib/dailyBriefing'
+import {
+  applyTranslationIntent,
+  buildTranslationDiag,
+  clearTranslationContext,
+  detectTranslationIntent,
+  detectTranslationLanguage,
+  isTranslationDiagEnabled,
+  loadTranslationContext,
+  logTranslationSafe,
+  rememberTranslationDiag,
+  saveTranslationContext,
+} from '../lib/translation'
 import { deriveDictationLangFromMessages } from '../lib/dictationLanguage'
 import {
   finalizeConversationLearning,
@@ -321,6 +333,7 @@ type Action =
       unitConversionUi?: import('../types').UnitConversionUiState | null
       energyMathUi?: import('../types').EnergyMathUiState | null
       dailyBriefingUi?: import('../types').DailyBriefingUiState | null
+      translationUi?: import('../types').TranslationUiState | null
     }
   | { type: 'ASSISTANT_START'; id: string; memoryEvent?: MemoryFeedbackEvent | null }
   | { type: 'ASSISTANT_PROGRESS'; id: string; content: string }
@@ -450,6 +463,7 @@ function reducer(state: AppState, action: Action): AppState {
         ...(action.unitConversionUi ? { unitConversionUi: action.unitConversionUi } : {}),
         ...(action.energyMathUi ? { energyMathUi: action.energyMathUi } : {}),
         ...(action.dailyBriefingUi ? { dailyBriefingUi: action.dailyBriefingUi } : {}),
+        ...(action.translationUi ? { translationUi: action.translationUi } : {}),
       }
       return {
         ...state,
@@ -583,6 +597,8 @@ interface ChatContextValue {
   handleUnitConversionUiAction: (actionId: string) => void
   /** #320 — Energy Math result chip actions (copy / show calculation). */
   handleEnergyMathUiAction: (actionId: string) => void
+  /** #322 — Translation result chip actions (copy). */
+  handleTranslationUiAction: (actionId: string) => void
   /** Re-run the completion for an assistant message (drops that reply and regenerates). */
   regenerateAssistant: (assistantId: string) => void
 }
@@ -876,6 +892,11 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     }
     try {
       clearBriefingContext()
+    } catch {
+      /* ignore */
+    }
+    try {
+      clearTranslationContext()
     } catch {
       /* ignore */
     }
@@ -1447,6 +1468,45 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  const handleTranslationUiAction = useCallback((actionId: string) => {
+    if (actionId !== 'copy') return
+    void (async () => {
+      const result = await applyTranslationIntent({
+        text: 'Copia la traduzione',
+        languageHint: 'it',
+        translationContext: loadTranslationContext(),
+        env: {
+          copyTextSync: (t: string) => {
+            try {
+              const area = document.createElement('textarea')
+              area.value = t
+              area.setAttribute('readonly', '')
+              area.style.position = 'fixed'
+              area.style.opacity = '0'
+              document.body.appendChild(area)
+              area.select()
+              const ok = document.execCommand('copy')
+              document.body.removeChild(area)
+              return ok
+            } catch {
+              return false
+            }
+          },
+        },
+      })
+      if (result.handled && result.reply) {
+        dispatch({
+          type: 'LOCAL_EXCHANGE',
+          userContent: 'Copia',
+          assistantContent: result.reply,
+        })
+        if (isTranslationDiagEnabled()) {
+          rememberTranslationDiag(buildTranslationDiag(result.diag || {}))
+        }
+      }
+    })()
+  }, [])
+
   const sendMessage = useCallback(
     (raw: string, attachments: ChatAttachment[] = []): boolean => {
       const content = raw.trim()
@@ -1468,6 +1528,90 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       // #313 — new file upload becomes the active document (clears dismiss).
       if (files.length) {
         suppressDocReuseRef.current = false
+      }
+
+      // #322 — Translation OUTER GUARD before Timer / Phone / all action routers.
+      // Text-only only: attachments keep Document / Vision pipelines authoritative.
+      if (content && wireAtts.length === 0) {
+        const sticky = deriveDictationLangFromMessages(state.messages)
+        const langHint =
+          sticky === 'en'
+            ? 'en'
+            : sticky === 'it'
+              ? 'it'
+              : detectTranslationLanguage(content, detectTimerLanguage(content, 'it'))
+        const translationCtx = loadTranslationContext()
+        const translationIntent = detectTranslationIntent(content, {
+          languageHint: langHint,
+          hasTranslationContext: Boolean(translationCtx),
+        })
+        if (translationIntent.intent === 'translation') {
+          void (async () => {
+            try {
+              const result = await applyTranslationIntent({
+                text: content,
+                languageHint: langHint,
+                translationContext: translationCtx,
+                messages: state.messages.map((m) => ({
+                  role: m.role,
+                  content: String(m.content || ''),
+                })),
+                env: {
+                  copyTextSync: (text: string) => {
+                    try {
+                      const area = document.createElement('textarea')
+                      area.value = text
+                      area.setAttribute('readonly', '')
+                      area.style.position = 'fixed'
+                      area.style.opacity = '0'
+                      document.body.appendChild(area)
+                      area.select()
+                      const ok = document.execCommand('copy')
+                      document.body.removeChild(area)
+                      return ok
+                    } catch {
+                      return false
+                    }
+                  },
+                },
+              })
+              const reply =
+                result.handled && result.reply
+                  ? result.reply
+                  : langHint === 'en'
+                    ? 'I couldn’t complete the translation right now.'
+                    : 'Non riesco a completare la traduzione in questo momento.'
+              if (result.translationContext) saveTranslationContext(result.translationContext)
+              dispatch({
+                type: 'LOCAL_EXCHANGE',
+                userContent: content,
+                assistantContent: reply,
+                translationUi:
+                  (result.translationUi as import('../types').TranslationUiState | null) || null,
+              })
+              logTranslationSafe({
+                operation: (result.diag?.operation as string) || null,
+                targetLanguage: (result.diag?.targetLanguage as string) || null,
+                contextReused: Boolean(result.diag?.contextReused),
+                status: (result.diag?.status as string) || null,
+                failureCode: (result.diag?.failureCode as string) || null,
+              })
+              if (isTranslationDiagEnabled()) {
+                rememberTranslationDiag(buildTranslationDiag(result.diag || {}))
+              }
+            } catch {
+              dispatch({
+                type: 'LOCAL_EXCHANGE',
+                userContent: content,
+                assistantContent:
+                  langHint === 'en'
+                    ? 'I couldn’t complete the translation right now.'
+                    : 'Non riesco a completare la traduzione in questo momento.',
+              })
+            }
+          })()
+          return true
+        }
       }
 
       // #314 — deterministic timer / alarm honesty (no attachments). Never LLM-owned time.
@@ -2015,6 +2159,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       handleCalculatorUiAction,
       handleUnitConversionUiAction,
       handleEnergyMathUiAction,
+      handleTranslationUiAction,
       regenerateAssistant,
     }),
     [
@@ -2042,6 +2187,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       handleCalculatorUiAction,
       handleUnitConversionUiAction,
       handleEnergyMathUiAction,
+      handleTranslationUiAction,
       regenerateAssistant,
     ],
   )
