@@ -13,3 +13,4 @@ vapid.json
 !.vscode/extensions.json
 deno.lock
 supabase/.temp/
+.vercel
