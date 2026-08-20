@@ -55,9 +55,28 @@ export function userFacingEntitlementMessage(input: {
   entitlement?: string | null
   requiredPlan?: string | null
 }): string {
+  const entitlement =
+    typeof input.entitlement === 'string' ? input.entitlement.trim() : ''
   const plan = typeof input.requiredPlan === 'string' ? input.requiredPlan.trim().toLowerCase() : ''
+
+  if (entitlement === 'webSearch') {
+    return 'La ricerca web è inclusa nel piano Base. Vedi i piani ShinkAIdo.'
+  }
+  if (entitlement === 'documents') {
+    return 'I documenti sono inclusi nel piano Base. Vedi i piani ShinkAIdo.'
+  }
+  if (entitlement === 'voice') {
+    return 'La voce è inclusa nel piano Base. Vedi i piani ShinkAIdo.'
+  }
+  if (entitlement === 'vision') {
+    return 'Vision è disponibile con ShinkAIdo Pro. Vedi i piani.'
+  }
+  if (entitlement === 'imageGeneration') {
+    return 'La generazione immagini è disponibile con ShinkAIdo Pro. Vedi i piani.'
+  }
+
   const planLabel =
     plan === 'pro' ? 'Pro' : plan === 'base' ? 'Base' : plan ? plan : 'un piano superiore'
 
-  return `Questa funzione richiede ${planLabel}. Apri Piani ShinkAIdo per i dettagli.`
+  return `Questa funzione richiede ${planLabel}. Vedi i piani ShinkAIdo.`
 }

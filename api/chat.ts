@@ -9,6 +9,13 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { buildCoreResponsesCreateParams } from '../lib/server/core-responses-params.js'
 import { requirePaidApiAccess } from '../lib/server/paid-api-guard.js'
+import {
+  decideDocumentsEntitlement,
+  decideImageGenerationTools,
+  decideVisionEntitlement,
+  decideWebSearchTools,
+  loadUserEntitlements,
+} from '../lib/server/entitlement-gates.js'
 import { ensureAuthUserRow } from '../lib/server/brain-memory.js'
 import { getServiceSupabase } from '../lib/server/supabase.js'
 import {
@@ -374,25 +381,61 @@ function appendWebSearchGuidance(instructions: string, model: string): string {
  * Build hosted tool list + optional tool_choice for this turn.
  * Narrow explicit search / no-search detector only — not a freshness classifier.
  * #312 — `forceWebSearch` bridges Vision context into the same hosted web_search tool.
+ * #332C — when enforcement ON: explicit webSearch require denies; optional tools soft-omit.
  */
 function resolveHostedToolsForTurn(
   model: string,
   lastUserCaption: string,
-  options: { forceWebSearch?: boolean } = {},
+  options: {
+    forceWebSearch?: boolean
+    entitlements?: ReturnType<typeof loadUserEntitlements>['entitlements']
+    enforcementEnabled?: boolean
+  } = {},
 ) {
   const intent = detectExplicitWebSearchIntent(lastUserCaption)
   const forceWebSearch = options.forceWebSearch === true
   const omitWebSearch = intent === 'forbid' && !forceWebSearch
-  const webTools = omitWebSearch ? [] : buildWebSearchTools(model)
-  const imageTools = buildImageGenerationTools(model)
-  const tools = [...webTools, ...imageTools]
+  let webTools: unknown[] = omitWebSearch ? [] : buildWebSearchTools(model)
+  let imageTools: unknown[] = buildImageGenerationTools(model)
   /** @type {unknown | undefined} */
   let toolChoice: unknown | undefined
   if ((intent === 'require' || forceWebSearch) && webTools.length > 0) {
     // Force hosted web_search for explicit "Cerca sul web…" / Vision×Search (#312).
     toolChoice = { type: 'web_search' }
   }
-  return { tools, toolChoice, intent, forceWebSearch }
+
+  let denial: { error: string; code: 'entitlement_required'; entitlement: string; requiredPlan?: string } | null =
+    null
+  if (options.entitlements) {
+    const webDecision = decideWebSearchTools({
+      intent: intent || 'optional',
+      forceWebSearch,
+      webTools,
+      entitlements: options.entitlements,
+      enforcementEnabled: options.enforcementEnabled,
+    })
+    if (webDecision.mode === 'deny' && webDecision.decision && !webDecision.decision.allowed) {
+      return {
+        tools: [] as unknown[],
+        toolChoice: undefined as unknown,
+        intent,
+        forceWebSearch,
+        denial: webDecision.decision.body,
+      }
+    }
+    webTools = webDecision.webTools
+    if (webTools.length === 0) toolChoice = undefined
+
+    const imageDecision = decideImageGenerationTools({
+      imageTools,
+      entitlements: options.entitlements,
+      enforcementEnabled: options.enforcementEnabled,
+    })
+    imageTools = imageDecision.imageTools
+  }
+
+  const tools = [...webTools, ...imageTools]
+  return { tools, toolChoice, intent, forceWebSearch, denial }
 }
 
 function resolveChatModel(env: NodeJS.ProcessEnv = process.env): string {
@@ -456,8 +499,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   // #298A — auth + durable rate limit BEFORE OpenAI / body work.
+  // Chat itself stays Free (coreChat); premium tools gated later (#332C).
   const access = await requirePaidApiAccess(req, res, { bucket: 'chat' })
   if (!access) return undefined
+
+  const { entitlements } = loadUserEntitlements(access.userId)
 
   const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) {
@@ -546,6 +592,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           'Questo modello non supporta le immagini. Invia solo testo, oppure configura un modello con vision (es. GPT-5.6 Sol / GPT-4o).',
         code: 'image_unsupported_model',
       }, req)
+    }
+
+    // #332C — Vision entitlement (image turns only). Text Core chat stays Free.
+    {
+      const visionDecision = decideVisionEntitlement({
+        hasImage: lastUserHasImage,
+        entitlements,
+      })
+      if (visionDecision.allowed === false && 'body' in visionDecision) {
+        return sendJson(res, 403, visionDecision.body, req)
+      }
     }
 
     if (lastUserHasFile && !modelSupportsFileInput(model)) {
@@ -764,6 +821,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
+    // #332C — Documents entitlement for attach + continuity reuse (rollout OFF by default).
+    {
+      const docsDecision = decideDocumentsEntitlement({
+        hasDocument: lastUserHasFile || Boolean(documentReuse),
+        entitlements,
+      })
+      if (docsDecision.allowed === false && 'body' in docsDecision) {
+        return sendJson(res, 403, docsDecision.body, req)
+      }
+    }
+
     // #312 — Vision AI × Search: resolve visual context + NL/button intent, then
     // force the *existing* hosted web_search pipeline (no reverse-image upload).
     const visionDiagOn = isVisionSearchDiagEnabled(req, body as Record<string, unknown>)
@@ -845,11 +913,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ...(documentReuse ? { reuseDocument: documentReuse } : {}),
     }
 
-    const { tools: hostedTools, toolChoice } = resolveHostedToolsForTurn(
-      model,
-      lastUserCaption || '',
-      { forceWebSearch: visionSearchActive },
-    )
+    const hosted = resolveHostedToolsForTurn(model, lastUserCaption || '', {
+      forceWebSearch: visionSearchActive,
+      entitlements,
+    })
+    if (hosted.denial) {
+      return sendJson(res, 403, hosted.denial, req)
+    }
+    const hostedTools = hosted.tools
+    const toolChoice = hosted.toolChoice
     let existingSearchInvoked = false
     let searchResultCount = 0
     let finalResponseReceived = false
@@ -879,6 +951,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           safeErrorSnippet(upstreamErr),
         )
         // Soft-fail: keep Vision answer path by retrying without forced search.
+        const retryImageTools = decideImageGenerationTools({
+          imageTools: buildImageGenerationTools(model),
+          entitlements,
+        }).imageTools
         response = await client.responses.create(
           buildCoreResponsesCreateParams({
             model,
@@ -891,9 +967,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             ),
             maxOutputTokens: modality === 'voice' ? 700 : 4096,
             input: mapMessagesToResponsesInput(messages, mapInputOpts),
-            ...(buildImageGenerationTools(model).length
-              ? { tools: buildImageGenerationTools(model) }
-              : {}),
+            ...(retryImageTools.length ? { tools: retryImageTools } : {}),
           }),
         )
         finalResponseReceived = true

@@ -43,7 +43,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   // #298A — auth + durable rate limit before OpenAI.
-  const access = await requirePaidApiAccess(req, res, { bucket: 'tts' })
+  // #332C — voice entitlement between auth and rate-limit (OFF by default).
+  const access = await requirePaidApiAccess(req, res, { bucket: 'tts', entitlement: 'voice' })
   if (!access) return
 
   const apiKey = process.env.OPENAI_API_KEY
