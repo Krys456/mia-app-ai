@@ -26,7 +26,10 @@ import { buildCoreAdaptiveResponseReasoningAppendix } from '../lib/server/adapti
 import { LAIFE_BASE_SYSTEM_PROMPT } from '../lib/server/laife-base-system-prompt.js'
 import { buildCoreLanguageAppendix } from '../lib/server/language-awareness.js'
 import { buildReferenceContextAppendix } from '../lib/server/core-reference-context.js'
-import { buildConversationWorkingStateAppendix } from '../lib/server/core-working-state.js'
+import {
+  buildConversationWorkingStateAppendix,
+  deriveConversationWorkingState,
+} from '../lib/server/core-working-state.js'
 import {
   mapMessagesToResponsesInput,
   modelSupportsFileInput,
@@ -82,6 +85,12 @@ import {
   isDocumentChatDiagEnabled,
 } from '../lib/server/document-chat-diag.js'
 import { resolveVisionStickyLang } from '../lib/server/vision-task-shortcuts.js'
+import {
+  buildConversationStateAppendix,
+  buildConversationStateDiagPayload,
+  computeConversationState,
+  isConversationStateDiagEnabled,
+} from '../lib/server/conversation-state.js'
 
 export const config = {
   runtime: 'nodejs',
@@ -136,6 +145,8 @@ interface ChatApiRequestBody {
   visionSearchDiag?: boolean | 1 | '1'
   /** #313 — opt-in document-chat diagnostics (Preview). */
   documentDiag?: boolean | 1 | '1'
+  /** #324 — opt-in Conversation State diagnostics (Preview / development). */
+  conversationStateDiag?: boolean | 1 | '1'
   /** #313 — client dismissed active document until next upload. */
   suppressActiveDocumentReuse?: boolean
   /** Optional browser locale — final language fallback only when turn+sticky are uncertain. */
@@ -184,7 +195,13 @@ function parseBody(req: VercelRequest): ChatApiRequestBody {
   return {}
 }
 
-function buildInstructions(body: ChatApiRequestBody, messages: ChatApiMessage[] = []): string {
+interface CoreInstructionBundle {
+  instructions: string
+  conversationState: ReturnType<typeof computeConversationState>
+  conversationStateAppendixChars: number
+}
+
+function buildInstructions(body: ChatApiRequestBody, messages: ChatApiMessage[] = []): CoreInstructionBundle {
   const parts: string[] = [LAIFE_BASE_SYSTEM_PROMPT]
 
   const displayName =
@@ -201,9 +218,29 @@ function buildInstructions(body: ChatApiRequestBody, messages: ChatApiMessage[] 
     parts.push(PERSONALITY_BIAS[biasKey])
   }
 
+  const latestUser = [...messages].reverse().find((m) => m.role === 'user')
+  const latestUserText = visibleUserText(latestUser)
+
+  // #324 — Conversation State (deterministic, Core-only). Explicit turn overrides beat LENGTH_BIAS.
+  const textMessages = toTextOnlyMessages(messages)
+  const workingState = deriveConversationWorkingState(textMessages)
+  const conversationState = computeConversationState({
+    userMessage: latestUserText,
+    recentMessages: textMessages,
+    settings: {
+      replyLength: body.replyLength ?? null,
+      useEmojis: typeof body.useEmojis === 'boolean' ? body.useEmojis : null,
+    },
+    workingState,
+  })
+  const hasExplicitDepth = conversationState.explicitOverrides.some((o) =>
+    String(o).startsWith('depth:'),
+  )
+
   const lengthKey =
     typeof body.replyLength === 'string' ? body.replyLength.trim().toLowerCase() : ''
-  if (lengthKey && LENGTH_BIAS[lengthKey]) {
+  // Soft preference only when the current turn did not explicitly set depth.
+  if (!hasExplicitDepth && lengthKey && LENGTH_BIAS[lengthKey]) {
     parts.push(LENGTH_BIAS[lengthKey])
   }
 
@@ -225,6 +262,12 @@ function buildInstructions(body: ChatApiRequestBody, messages: ChatApiMessage[] 
     parts.push(`Istruzioni personalizzate dell'utente (rispettale quando possibili):\n${custom}`)
   }
 
+  // #324 — compact Conversation State after identity/settings, before large contracts.
+  const conversationStateAppendix = buildConversationStateAppendix(conversationState)
+  if (conversationStateAppendix) {
+    parts.push(conversationStateAppendix)
+  }
+
   // Ephemeral ADAPTIVE EXPRESSION appendix (#284) — after personalization, before LANGUAGE.
   // Model-led presentation only; no classifiers / emoji engines / second LLM.
   const expressionAppendix = buildCoreExpressionAppendix()
@@ -240,10 +283,9 @@ function buildInstructions(body: ChatApiRequestBody, messages: ChatApiMessage[] 
 
   // Ephemeral LANGUAGE appendix — reply-language only; not persisted; no second LLM.
   // Caption text only — never data URLs / image bytes.
-  const latestUser = [...messages].reverse().find((m) => m.role === 'user')
   const languageAppendix = buildCoreLanguageAppendix({
-    userMessage: visibleUserText(latestUser),
-    messages: toTextOnlyMessages(messages),
+    userMessage: latestUserText,
+    messages: textMessages,
     browserLocale:
       (typeof body.browserLocale === 'string' && body.browserLocale) ||
       (typeof body.locale === 'string' && body.locale) ||
@@ -286,7 +328,7 @@ function buildInstructions(body: ChatApiRequestBody, messages: ChatApiMessage[] 
   // Temporary Conversation Working State (#278) — deterministic, request-scoped.
   // Derived only from the same sanitized/selected messages for THIS request.
   // After CONTINUITY / Reference Context, before Proactive Intelligence / Memory.
-  const workingStateAppendix = buildConversationWorkingStateAppendix(toTextOnlyMessages(messages))
+  const workingStateAppendix = buildConversationWorkingStateAppendix(textMessages)
   if (workingStateAppendix) {
     parts.push(workingStateAppendix)
   }
@@ -298,7 +340,11 @@ function buildInstructions(body: ChatApiRequestBody, messages: ChatApiMessage[] 
     parts.push(proactiveAppendix)
   }
 
-  return parts.join('\n\n')
+  return {
+    instructions: parts.join('\n\n'),
+    conversationState,
+    conversationStateAppendixChars: conversationStateAppendix.length,
+  }
 }
 
 function appendImageGenerationGuidance(instructions: string, model: string): string {
@@ -725,9 +771,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let visionSearchKind: string | null = null
     let visionSearchFailure: string | null = null
     let visionSearchContextSent = false
+    const coreBundle = buildInstructions(body, messages)
+    const conversationStateDiagOn = isConversationStateDiagEnabled(
+      req,
+      body as Record<string, unknown>,
+    )
     let instructionsWithVision = appendWebSearchGuidance(
       appendImageGenerationGuidance(
-        appendMemoryPackToInstructions(buildInstructions(body, messages), memoryPack),
+        appendMemoryPackToInstructions(coreBundle.instructions, memoryPack),
         model,
       ),
       model,
@@ -822,7 +873,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             model,
             instructions: appendWebSearchGuidance(
               appendImageGenerationGuidance(
-                appendMemoryPackToInstructions(buildInstructions(body, messages), memoryPack),
+                appendMemoryPackToInstructions(coreBundle.instructions, memoryPack),
                 model,
               ),
               model,
@@ -974,6 +1025,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         failureCode: diag.failureCode,
         generatedSearchQueryPreview: diag.generatedSearchQueryPreview,
       })
+    }
+
+    const conversationStateDiag = buildConversationStateDiagPayload(coreBundle.conversationState, {
+      appendixChars: coreBundle.conversationStateAppendixChars,
+    })
+    console.info('[api/chat] conversation-state', {
+      route: conversationStateDiag.route,
+      buildId: conversationStateDiag.buildId,
+      mode: conversationStateDiag.mode,
+      purpose: conversationStateDiag.purpose,
+      depth: conversationStateDiag.depth,
+      emojiLevel: conversationStateDiag.emojiLevel,
+      questionNeeded: conversationStateDiag.questionNeeded,
+      appendixChars: conversationStateDiag.appendixChars,
+    })
+    if (conversationStateDiagOn) {
+      payload.conversationStateDiag = conversationStateDiag
     }
 
     if (
