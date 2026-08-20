@@ -90,6 +90,32 @@ export function resolveIdentityStatus(user: AuthUserLike): IdentityStatus {
   }
 }
 
+/**
+ * Structural equality for identity snapshots (avoids parent setState loops).
+ */
+export function identityStatusEquals(
+  a: IdentityStatus | null | undefined,
+  b: IdentityStatus | null | undefined,
+): boolean {
+  if (a === b) return true
+  if (!a || !b) return false
+  if (
+    a.authenticated !== b.authenticated ||
+    a.userId !== b.userId ||
+    a.anonymous !== b.anonymous ||
+    a.durable !== b.durable ||
+    a.emailMasked !== b.emailMasked ||
+    a.emailConfirmed !== b.emailConfirmed
+  ) {
+    return false
+  }
+  if (a.providers.length !== b.providers.length) return false
+  for (let i = 0; i < a.providers.length; i += 1) {
+    if (a.providers[i] !== b.providers[i]) return false
+  }
+  return true
+}
+
 /** Google linking UI — only when explicitly enabled (requires Supabase Manual Linking + Google provider). */
 export function isGoogleLinkingEnabled(
   env: Record<string, unknown> = (import.meta as ImportMeta & { env?: Record<string, unknown> })

@@ -1,9 +1,12 @@
 /**
- * #332E2 — Compact account identity panel (Plans gate + Privacy).
+ * #332E2 / #332E2A — Compact account identity panel (Plans gate + Privacy).
  * No billing. LINK current anonymous ≠ SIGN INTO existing account.
+ *
+ * #332E2A: parent notify only on material identity change; mount effect is
+ * one-shot (callback held in ref) to avoid Maximum update depth loops.
  */
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   linkEmailToCurrentUser,
   linkGoogleToCurrentUser,
@@ -13,6 +16,7 @@ import {
   type AccountActionResult,
 } from '../lib/accountLinking'
 import {
+  identityStatusEquals,
   isGoogleLinkingEnabled,
   type IdentityStatus,
 } from '../lib/durableIdentity'
@@ -24,36 +28,64 @@ type IdentityAccountPanelProps = {
   /** Compact copy for Plans Upgrade gate */
   variant?: 'plans' | 'privacy'
   onIdentityChange?: (status: IdentityStatus) => void
+  /** When true (Plans gate), scroll panel into view after mount. */
+  autoFocus?: boolean
 }
 
 export function IdentityAccountPanel({
   variant = 'privacy',
   onIdentityChange,
+  autoFocus = false,
 }: IdentityAccountPanelProps) {
   const [status, setStatus] = useState<IdentityStatus | null>(null)
   const [mode, setMode] = useState<Mode>('status')
   const [email, setEmail] = useState('')
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState<string | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const googleEnabled = isGoogleLinkingEnabled()
 
-  const refresh = useCallback(async () => {
-    const next = await loadIdentitySnapshot()
-    setStatus(next)
-    onIdentityChange?.(next)
-    return next
-  }, [onIdentityChange])
+  const onIdentityChangeRef = useRef(onIdentityChange)
+  onIdentityChangeRef.current = onIdentityChange
 
+  const lastReportedRef = useRef<IdentityStatus | null>(null)
+  const panelRef = useRef<HTMLElement | null>(null)
+
+  const reportIfChanged = useCallback((next: IdentityStatus) => {
+    if (identityStatusEquals(lastReportedRef.current, next)) return
+    lastReportedRef.current = next
+    onIdentityChangeRef.current?.(next)
+  }, [])
+
+  const refresh = useCallback(async () => {
+    try {
+      const next = await loadIdentitySnapshot()
+      setStatus(next)
+      setLoadError(null)
+      reportIfChanged(next)
+      return next
+    } catch {
+      setLoadError('Impossibile aggiornare lo stato account. Riprova.')
+      return null
+    }
+  }, [reportIfChanged])
+
+  // One-shot mount load — must NOT depend on parent callback identity.
   useEffect(() => {
     void refresh()
-  }, [refresh])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional mount-only
+  }, [])
+
+  useEffect(() => {
+    if (!autoFocus) return
+    const node = panelRef.current
+    if (!node) return
+    node.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  }, [autoFocus])
 
   const applyResult = async (result: AccountActionResult) => {
     setNote(result.message)
     await refresh()
-    if (result.ok && result.code === 'email_sent' && mode === 'link') {
-      // Stay on panel; user must confirm email.
-    }
   }
 
   const onLinkEmail = async () => {
@@ -98,8 +130,11 @@ export function IdentityAccountPanel({
 
   return (
     <section
+      ref={panelRef}
+      id={variant === 'plans' ? 'plans-identity-gate' : undefined}
       className={`identity-panel identity-panel--${variant}`}
       aria-labelledby={`identity-panel-title-${variant}`}
+      tabIndex={-1}
     >
       <h2 id={`identity-panel-title-${variant}`} className="identity-panel__title">
         Account
@@ -112,10 +147,26 @@ export function IdentityAccountPanel({
       ) : null}
 
       <p className="identity-panel__state" role="status">
-        {durable
-          ? `Account collegato${status?.emailMasked ? ` (${status.emailMasked})` : ''}`
-          : 'Sessione anonima — non recuperabile su altri dispositivi'}
+        {status == null && !loadError
+          ? 'Caricamento stato account…'
+          : durable
+            ? `Account collegato${status?.emailMasked ? ` (${status.emailMasked})` : ''}`
+            : 'Sessione anonima — non recuperabile su altri dispositivi'}
       </p>
+
+      {loadError ? (
+        <p className="identity-panel__note" role="alert">
+          {loadError}{' '}
+          <button
+            type="button"
+            className="identity-panel__btn"
+            onClick={() => void refresh()}
+            disabled={busy}
+          >
+            Riprova
+          </button>
+        </p>
+      ) : null}
 
       {note ? (
         <p className="identity-panel__note" role="status" aria-live="polite">

@@ -1,11 +1,13 @@
 /**
- * #332A/#332D/#332E2 — ShinkAIdo Plans page.
+ * #332A/#332D/#332E2/#332E2A — ShinkAIdo Plans page.
  * Catalog-driven. Current plan from verified /api/subscription when available;
  * display-only — never authorizes premium APIs.
  * Upgrade: anonymous → identity gate; durable → coming-soon (no billing yet).
+ *
+ * #332E2A: stable onIdentityChange + equality guard (no render loop).
  */
 
-import { useEffect, useId, useState } from 'react'
+import { useCallback, useEffect, useId, useState } from 'react'
 import { PageHeader } from '../components/PageHeader'
 import { IdentityAccountPanel } from '../components/IdentityAccountPanel'
 import {
@@ -16,7 +18,10 @@ import {
 } from '../lib/planCatalog'
 import { fetchVerifiedSubscription } from '../lib/subscriptionApi'
 import { loadIdentitySnapshot } from '../lib/accountLinking'
-import type { IdentityStatus } from '../lib/durableIdentity'
+import {
+  identityStatusEquals,
+  type IdentityStatus,
+} from '../lib/durableIdentity'
 import './Plans.css'
 
 interface PlansProps {
@@ -53,7 +58,18 @@ export function Plans({
   }, [])
 
   const activePlanId = verifiedPlanId
+  // While identity is still loading (null), treat as non-durable so Upgrade opens the gate.
   const durable = identity?.durable === true
+
+  const onIdentityChange = useCallback((next: IdentityStatus) => {
+    setIdentity((prev) => (identityStatusEquals(prev, next) ? prev : next))
+    if (next.durable) {
+      setUpgradeNote(
+        'Account collegato. I pagamenti saranno disponibili nella prossima fase.',
+      )
+      setShowIdentityGate(false)
+    }
+  }, [])
 
   const onUpgradeClick = (planId: PlanId) => {
     if (!durable) {
@@ -88,15 +104,8 @@ export function Plans({
         {showIdentityGate ? (
           <IdentityAccountPanel
             variant="plans"
-            onIdentityChange={(next) => {
-              setIdentity(next)
-              if (next.durable) {
-                setUpgradeNote(
-                  'Account collegato. I pagamenti saranno disponibili nella prossima fase.',
-                )
-                setShowIdentityGate(false)
-              }
-            }}
+            autoFocus
+            onIdentityChange={onIdentityChange}
           />
         ) : null}
 
