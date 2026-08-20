@@ -1,40 +1,40 @@
+/* #333A Kami HomeHero — ma: breathing room, less chrome */
+
 .home-hero {
   flex: 1;
   min-height: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  /* Balance around logo: less dead space above/below on phones */
   padding:
-    clamp(0.75rem, 3.5vh, 2rem)
+    clamp(1rem, 5vh, 2.75rem)
     var(--page-gutter)
-    clamp(0.5rem, 2vh, 1.25rem);
+    clamp(0.75rem, 3vh, 1.75rem);
   position: relative;
   overflow: hidden;
-  animation: hero-fade 520ms var(--ease-out) both;
+  animation: hero-fade 480ms var(--ease-out) both;
 }
 
 .home-hero__glow {
   position: absolute;
-  inset: 12% 8% auto;
-  height: 58%;
+  inset: 14% 10% auto;
+  height: 52%;
   border-radius: 50%;
   background:
     radial-gradient(circle at 35% 40%, var(--atmosphere-1), transparent 55%),
     radial-gradient(circle at 70% 45%, var(--atmosphere-2), transparent 50%);
-  filter: blur(18px);
+  filter: blur(22px);
   pointer-events: none;
-  /* #294D — static atmosphere; no continuous decorative pulse */
-  opacity: 0.88;
+  opacity: 0.78;
 }
 
 [data-theme='the-way-washi'] .home-hero__glow,
 [data-theme='the-way-sumi'] .home-hero__glow {
   background: var(--the-way-page-atmosphere, none);
-  filter: blur(22px);
-  inset: 8% 5% auto;
-  height: 62%;
-  opacity: 0.95;
+  filter: blur(26px);
+  inset: 10% 6% auto;
+  height: 56%;
+  opacity: 0.9;
 }
 
 .home-hero__stage {
@@ -44,114 +44,102 @@
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: 0.95rem;
-  max-width: 26rem;
+  gap: 1.15rem;
+  max-width: 24rem;
   width: 100%;
-  /* Slight optical lift so logo sits as the focal center above the composer */
-  transform: translateY(clamp(-1.25rem, -2.5vh, -0.35rem));
+  /* Optical lift above composer */
+  transform: translateY(clamp(-1rem, -2vh, -0.25rem));
 }
 
 .home-hero__mark {
-  /* Hero Ensō scale — continuity into first chat turn */
-  width: 5.75rem;
-  height: 5.75rem;
-  padding: 0.45rem;
-  border-radius: calc(var(--radius-md) + 2px);
-  animation: hero-rise 640ms var(--ease-out) both;
+  width: 4.85rem;
+  height: 4.85rem;
+  padding: 0.35rem;
+  border-radius: var(--radius-md);
+  animation: hero-rise 560ms var(--ease-out) both;
 }
 
 .home-hero__logo {
-  width: min(100%, 16rem);
-  animation: hero-rise 640ms var(--ease-out) both;
+  width: min(100%, 15rem);
+  animation: hero-rise 560ms var(--ease-out) both;
 }
 
 .home-hero__wordmark {
   align-items: center;
   text-align: center;
-  gap: 0.28rem;
-  animation: hero-rise 680ms var(--ease-out) 40ms both;
+  gap: 0.4rem;
+  animation: hero-rise 600ms var(--ease-out) 30ms both;
 }
 
 .home-hero__wordmark .brand-wordmark__tag {
   text-align: center;
-  margin-top: 0.12rem;
+  margin-top: 0.2rem;
 }
 
 .home-hero__lead {
-  margin: 0.4rem 0 0;
-  max-width: 20rem;
+  margin: 0.55rem 0 0;
+  max-width: 18.5rem;
   color: var(--text-muted);
-  font-size: 0.98rem;
-  line-height: 1.58;
+  font-size: 1rem;
+  font-weight: 450;
+  line-height: 1.55;
   letter-spacing: 0.01em;
-  animation: hero-rise 720ms var(--ease-out) 80ms both;
-}
-
-.home-hero__hint {
-  margin: 0.15rem 0 0;
-  max-width: 22rem;
-  color: var(--text-muted);
-  font-size: 0.82rem;
-  line-height: 1.5;
-  letter-spacing: 0.01em;
-  opacity: 0.92;
-  animation: hero-rise 760ms var(--ease-out) 100ms both;
+  animation: hero-rise 640ms var(--ease-out) 60ms both;
 }
 
 /* Align empty-state reading rhythm with chat typography */
 [data-theme='the-way-washi'] .home-hero__lead,
 [data-theme='the-way-sumi'] .home-hero__lead {
-  color: color-mix(in srgb, var(--text-muted) 92%, transparent);
-}
-
-[data-theme='the-way-washi'] .home-hero__hint,
-[data-theme='the-way-sumi'] .home-hero__hint {
-  color: color-mix(in srgb, var(--text-muted) 88%, transparent);
+  color: color-mix(in srgb, var(--text-muted) 94%, transparent);
 }
 
 @media (max-width: 480px) {
   .home-hero__mark {
-    width: 5.2rem;
-    height: 5.2rem;
-  }
-
-  .home-hero__logo {
-    width: min(100%, 16.25rem);
+    width: 4.4rem;
+    height: 4.4rem;
   }
 
   .home-hero__lead {
-    font-size: 0.94rem;
-    max-width: 18.5rem;
-  }
-
-  .home-hero__hint {
-    font-size: 0.78rem;
-    max-width: 19rem;
+    font-size: 0.95rem;
+    max-width: 17.5rem;
   }
 
   .home-hero__stage {
-    gap: 0.8rem;
+    gap: 1rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .home-hero {
+    padding-top: clamp(0.85rem, 4vh, 1.75rem);
+  }
+
+  .home-hero__mark {
+    width: 4.1rem;
+    height: 4.1rem;
   }
 }
 
 @media (min-width: 768px) {
   .home-hero {
-    padding: 1.5rem var(--page-gutter) 2rem;
+    padding: 2rem var(--page-gutter) 2.5rem;
   }
 
   .home-hero__stage {
-    gap: 1.1rem;
+    gap: 1.35rem;
     transform: none;
+    max-width: 26rem;
   }
 
   .home-hero__mark {
-    width: 6.3rem;
-    height: 6.3rem;
-    padding: 0.5rem;
+    width: 5.25rem;
+    height: 5.25rem;
+    padding: 0.4rem;
   }
 
-  .home-hero__logo {
-    width: min(100%, 17.5rem);
+  .home-hero__lead {
+    font-size: 1.05rem;
+    max-width: 20rem;
   }
 }
 
@@ -167,11 +155,11 @@
 @keyframes hero-rise {
   from {
     opacity: 0;
-    transform: translateY(12px) scale(0.98);
+    transform: translateY(10px);
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translateY(0);
   }
 }
 
@@ -181,7 +169,6 @@
   .home-hero__logo,
   .home-hero__wordmark,
   .home-hero__lead,
-  .home-hero__hint,
   .home-hero__glow {
     animation: none;
   }

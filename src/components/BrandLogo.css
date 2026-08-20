@@ -14,48 +14,47 @@
   width: min(100%, 17rem);
   height: auto;
   aspect-ratio: 1;
-  max-width: 5.5rem;
-  filter: drop-shadow(0 1px 2px rgba(26, 22, 18, 0.1));
-}
-
-[data-theme='the-way-sumi'] .brand-logo--full {
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35));
+  max-width: 5.25rem;
+  filter: none;
 }
 
 .brand-logo--mark {
-  width: 2.4rem;
-  height: 2.4rem;
+  width: 2.2rem;
+  height: 2.2rem;
   border-radius: var(--radius-sm);
   flex-shrink: 0;
-  padding: 0.18rem;
-  background: var(--enso-container-bg, color-mix(in srgb, var(--surface-solid) 92%, transparent));
+  padding: 0.14rem;
+  background: var(--enso-container-bg, color-mix(in srgb, var(--surface-solid) 94%, transparent));
   box-shadow: var(
     --enso-container-shadow,
-    0 1px 8px color-mix(in srgb, var(--accent) 10%, transparent)
+    0 0 0 1px color-mix(in srgb, var(--border) 90%, transparent)
   );
 }
 
 @media (min-width: 768px) {
   .brand-logo--mark {
-    width: 2.15rem;
-    height: 2.15rem;
+    width: 2.05rem;
+    height: 2.05rem;
   }
 }
 
-/* The Way — Washi: warm ivory container, soft paper depth only */
+/* The Way — Washi: paper seal plate, hairline only */
 [data-theme='the-way-washi'] .brand-logo--mark,
 [data-theme='the-way-washi'] .home-hero__mark.brand-logo--mark {
-  background: var(--enso-container-bg, #fffaf3);
-  box-shadow:
-    0 1px 3px rgba(28, 25, 22, 0.06),
-    0 4px 14px rgba(28, 25, 22, 0.05);
+  background: var(--enso-container-bg, #fffbf5);
+  box-shadow: 0 0 0 1px rgba(28, 25, 22, 0.07);
 }
 
-/* The Way — Sumi: warm near-black container, soft depth only */
+/* The Way — Sumi: ink plate, hairline ivory */
 [data-theme='the-way-sumi'] .brand-logo--mark,
 [data-theme='the-way-sumi'] .home-hero__mark.brand-logo--mark {
   background: var(--enso-container-bg, #1a1613);
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--text) 6%, transparent),
-    0 2px 10px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--text) 8%, transparent);
+}
+
+@media (max-width: 360px) {
+  .brand-logo--mark {
+    width: 2.05rem;
+    height: 2.05rem;
+  }
 }

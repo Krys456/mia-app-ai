@@ -121,7 +121,10 @@ assert.match(themesSrc, /--enso-sun/)
 assert.doesNotMatch(themesSrc, /setProperty\('--enso-fire-ambient'/)
 assert.match(themesSrc, /removeProperty\('--enso-fire-ambient'\)/)
 assert.match(themesSrc, /theme\.id === 'the-way-washi'/)
-assert.doesNotMatch(read('src/components/BrandLogo.css'), /fire glow|near fire/)
+assert.match(themesSrc, /setProperty\('--glow-cyan',\s*'none'\)/)
+assert.doesNotMatch(read('src/components/BrandLogo.css'), /fire glow|near fire|drop-shadow/)
+assert.match(read('src/index.css'), /color-scheme:\s*light/)
+assert.doesNotMatch(read('src/index.css'), /color-scheme:\s*dark/)
 
 // D — internal storage key unchanged
 const chatContext = read('src/context/ChatContext.tsx')
