@@ -60,6 +60,22 @@ export interface ChatMessage {
   calculatorUi?: CalculatorUiState | null
   /** #319 — compact Unit Conversion result chip on an assistant message. */
   unitConversionUi?: UnitConversionUiState | null
+  /** #320 — compact Energy Math result chip on an assistant message. */
+  energyMathUi?: EnergyMathUiState | null
+}
+
+/** #320 — compact Energy Math result UI on an assistant message. */
+export type EnergyMathUiAction = {
+  id: string
+  label: string
+}
+
+export type EnergyMathUiState = {
+  kind: 'result'
+  title?: string
+  expression: string
+  result: string
+  actions?: EnergyMathUiAction[]
 }
 
 /** #319 — compact Unit Conversion result UI on an assistant message. */

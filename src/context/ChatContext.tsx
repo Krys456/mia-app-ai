@@ -96,6 +96,18 @@ import {
   rememberUnitConversionDiag,
   saveConversionContext,
 } from '../lib/unitConversion'
+import {
+  applyEnergyMathIntent,
+  buildEnergyMathDiag,
+  clearEnergyMathContext,
+  detectEnergyMathIntent,
+  detectEnergyMathLanguage,
+  isEnergyMathDiagEnabled,
+  loadEnergyMathContext,
+  logEnergyMathSafe,
+  rememberEnergyMathDiag,
+  saveEnergyMathContext,
+} from '../lib/energyMath'
 import { deriveDictationLangFromMessages } from '../lib/dictationLanguage'
 import {
   finalizeConversationLearning,
@@ -295,6 +307,7 @@ type Action =
       weatherUi?: import('../types').WeatherUiState | null
       calculatorUi?: import('../types').CalculatorUiState | null
       unitConversionUi?: import('../types').UnitConversionUiState | null
+      energyMathUi?: import('../types').EnergyMathUiState | null
     }
   | { type: 'ASSISTANT_START'; id: string; memoryEvent?: MemoryFeedbackEvent | null }
   | { type: 'ASSISTANT_PROGRESS'; id: string; content: string }
@@ -422,6 +435,7 @@ function reducer(state: AppState, action: Action): AppState {
         ...(action.weatherUi ? { weatherUi: action.weatherUi } : {}),
         ...(action.calculatorUi ? { calculatorUi: action.calculatorUi } : {}),
         ...(action.unitConversionUi ? { unitConversionUi: action.unitConversionUi } : {}),
+        ...(action.energyMathUi ? { energyMathUi: action.energyMathUi } : {}),
       }
       return {
         ...state,
@@ -553,6 +567,8 @@ interface ChatContextValue {
   handleCalculatorUiAction: (actionId: string) => void
   /** #319 — Unit Conversion result chip actions (copy). */
   handleUnitConversionUiAction: (actionId: string) => void
+  /** #320 — Energy Math result chip actions (copy / show calculation). */
+  handleEnergyMathUiAction: (actionId: string) => void
   /** Re-run the completion for an assistant message (drops that reply and regenerates). */
   regenerateAssistant: (assistantId: string) => void
 }
@@ -836,6 +852,11 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     }
     try {
       clearConversionContext()
+    } catch {
+      /* ignore */
+    }
+    try {
+      clearEnergyMathContext()
     } catch {
       /* ignore */
     }
@@ -1368,6 +1389,45 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  const handleEnergyMathUiAction = useCallback((actionId: string) => {
+    if (actionId !== 'copy_result' && actionId !== 'show_calculation') return
+    const text = actionId === 'show_calculation' ? 'Spiegami il calcolo' : 'Copia il risultato'
+    const em = applyEnergyMathIntent({
+      text,
+      languageHint: 'it',
+      energyContext: loadEnergyMathContext(),
+      env: {
+        copyTextSync: (t: string) => {
+          try {
+            const area = document.createElement('textarea')
+            area.value = t
+            area.setAttribute('readonly', '')
+            area.style.position = 'fixed'
+            area.style.opacity = '0'
+            document.body.appendChild(area)
+            area.select()
+            const ok = document.execCommand('copy')
+            document.body.removeChild(area)
+            return ok
+          } catch {
+            return false
+          }
+        },
+      },
+    })
+    if (em.handled && em.reply) {
+      dispatch({
+        type: 'LOCAL_EXCHANGE',
+        userContent: actionId === 'show_calculation' ? 'Mostra calcolo' : 'Copia',
+        assistantContent: em.reply,
+        energyMathUi: (em.energyUi as import('../types').EnergyMathUiState | null) || null,
+      })
+      if (isEnergyMathDiagEnabled()) {
+        rememberEnergyMathDiag(buildEnergyMathDiag(em.diag || {}))
+      }
+    }
+  }, [])
+
   const sendMessage = useCallback(
     (raw: string, attachments: ChatAttachment[] = []): boolean => {
       const content = raw.trim()
@@ -1494,6 +1554,69 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         }
         if (shouldClearMessagingOnUserText(content)) {
           clearMessagingContext()
+        }
+      }
+
+      // #320 — Energy Math before Unit Conversion (composition vs convert).
+      if (content && wireAtts.length === 0) {
+        const sticky = deriveDictationLangFromMessages(state.messages)
+        const langHint =
+          sticky === 'en'
+            ? 'en'
+            : sticky === 'it'
+              ? 'it'
+              : detectEnergyMathLanguage(content, detectTimerLanguage(content, 'it'))
+        const energyCtx = loadEnergyMathContext()
+        const energyIntent = detectEnergyMathIntent(content, {
+          languageHint: langHint,
+          hasEnergyContext: Boolean(energyCtx),
+        })
+        if (energyIntent.intent === 'energy-math') {
+          const em = applyEnergyMathIntent({
+            text: content,
+            languageHint: langHint,
+            energyContext: energyCtx,
+            env: {
+              copyTextSync: (text: string) => {
+                try {
+                  const area = document.createElement('textarea')
+                  area.value = text
+                  area.setAttribute('readonly', '')
+                  area.style.position = 'fixed'
+                  area.style.opacity = '0'
+                  document.body.appendChild(area)
+                  area.select()
+                  const ok = document.execCommand('copy')
+                  document.body.removeChild(area)
+                  return ok
+                } catch {
+                  return false
+                }
+              },
+            },
+          })
+          if (em.handled && em.reply) {
+            if (em.energyContext) saveEnergyMathContext(em.energyContext)
+            dispatch({
+              type: 'LOCAL_EXCHANGE',
+              userContent: content,
+              assistantContent: em.reply,
+              energyMathUi: (em.energyUi as import('../types').EnergyMathUiState | null) || null,
+            })
+            logEnergyMathSafe({
+              operation: String(em.diag.operation || ''),
+              inputDimensions: em.diag.inputDimensions ?? null,
+              outputDimension: (em.diag.outputDimension as string) || null,
+              parserStatus: (em.diag.parserStatus as string) || null,
+              assumptionMode: (em.diag.assumptionMode as string) || null,
+              failureCode: (em.diag.failureCode as string) || null,
+              contextReused: Boolean(em.diag.contextReused),
+            })
+            if (isEnergyMathDiagEnabled()) {
+              rememberEnergyMathDiag(buildEnergyMathDiag(em.diag || {}))
+            }
+            return true
+          }
         }
       }
 
@@ -1810,6 +1933,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       handleWeatherUiAction,
       handleCalculatorUiAction,
       handleUnitConversionUiAction,
+      handleEnergyMathUiAction,
       regenerateAssistant,
     }),
     [
@@ -1836,6 +1960,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       handleWeatherUiAction,
       handleCalculatorUiAction,
       handleUnitConversionUiAction,
+      handleEnergyMathUiAction,
       regenerateAssistant,
     ],
   )
