@@ -1,11 +1,13 @@
 /**
- * #332A/#332D — ShinkAIdo Plans page.
+ * #332A/#332D/#332E2 — ShinkAIdo Plans page.
  * Catalog-driven. Current plan from verified /api/subscription when available;
  * display-only — never authorizes premium APIs.
+ * Upgrade: anonymous → identity gate; durable → coming-soon (no billing yet).
  */
 
 import { useEffect, useId, useState } from 'react'
 import { PageHeader } from '../components/PageHeader'
+import { IdentityAccountPanel } from '../components/IdentityAccountPanel'
 import {
   PLAN_CATALOG,
   UI_FOUNDATION_CURRENT_PLAN_ID,
@@ -13,6 +15,8 @@ import {
   type PlanId,
 } from '../lib/planCatalog'
 import { fetchVerifiedSubscription } from '../lib/subscriptionApi'
+import { loadIdentitySnapshot } from '../lib/accountLinking'
+import type { IdentityStatus } from '../lib/durableIdentity'
 import './Plans.css'
 
 interface PlansProps {
@@ -28,12 +32,20 @@ export function Plans({
   const titleId = useId()
   const [upgradeNote, setUpgradeNote] = useState<string | null>(null)
   const [verifiedPlanId, setVerifiedPlanId] = useState<PlanId>(currentPlanId)
+  const [identity, setIdentity] = useState<IdentityStatus | null>(null)
+  const [showIdentityGate, setShowIdentityGate] = useState(false)
 
   useEffect(() => {
     let cancelled = false
     void (async () => {
-      const state = await fetchVerifiedSubscription()
-      if (!cancelled) setVerifiedPlanId(state.planId)
+      const [state, idStatus] = await Promise.all([
+        fetchVerifiedSubscription(),
+        loadIdentitySnapshot(),
+      ])
+      if (!cancelled) {
+        setVerifiedPlanId(state.planId)
+        setIdentity(idStatus)
+      }
     })()
     return () => {
       cancelled = true
@@ -41,13 +53,22 @@ export function Plans({
   }, [])
 
   const activePlanId = verifiedPlanId
+  const durable = identity?.durable === true
 
   const onUpgradeClick = (planId: PlanId) => {
-    // Non-transactional foundation behavior — no checkout, no billing.
+    if (!durable) {
+      setShowIdentityGate(true)
+      setUpgradeNote(
+        'Crea o collega un account per proteggere e ripristinare il tuo acquisto. Nessun pagamento in questa fase.',
+      )
+      return
+    }
+
+    setShowIdentityGate(false)
     setUpgradeNote(
       planId === 'base'
-        ? 'Gli upgrade saranno disponibili a breve. Nessun addebito in questa Preview.'
-        : 'Gli upgrade Pro saranno disponibili a breve. Nessun addebito in questa Preview.',
+        ? 'Account collegato. I pagamenti Base saranno disponibili a breve. Nessun addebito ora.'
+        : 'Account collegato. I pagamenti Pro saranno disponibili a breve. Nessun addebito ora.',
     )
   }
 
@@ -61,6 +82,27 @@ export function Plans({
         {upgradeNote ? (
           <p className="plans-page__note" role="status" aria-live="polite">
             {upgradeNote}
+          </p>
+        ) : null}
+
+        {showIdentityGate ? (
+          <IdentityAccountPanel
+            variant="plans"
+            onIdentityChange={(next) => {
+              setIdentity(next)
+              if (next.durable) {
+                setUpgradeNote(
+                  'Account collegato. I pagamenti saranno disponibili nella prossima fase.',
+                )
+                setShowIdentityGate(false)
+              }
+            }}
+          />
+        ) : null}
+
+        {durable && identity?.emailMasked ? (
+          <p className="plans-page__footnote" role="status">
+            Account: {identity.emailMasked}
           </p>
         ) : null}
 
@@ -111,8 +153,12 @@ export function Plans({
                       type="button"
                       className="plan-card__btn plan-card__btn--upgrade"
                       onClick={() => onUpgradeClick(plan.planId)}
-                      aria-label={`Upgrade a ${plan.displayName} — disponibile a breve`}
-                      title="Disponibile a breve"
+                      aria-label={
+                        durable
+                          ? `Upgrade a ${plan.displayName} — pagamenti a breve`
+                          : `Upgrade a ${plan.displayName} — collega account`
+                      }
+                      title={durable ? 'Pagamenti a breve' : 'Collega account'}
                     >
                       Upgrade
                     </button>

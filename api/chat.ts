@@ -16,7 +16,7 @@ import {
   decideWebSearchTools,
   loadUserEntitlementsAsync,
 } from '../lib/server/entitlement-gates.js'
-import { ensureAuthUserRow } from '../lib/server/brain-memory.js'
+import { syncPublicUserProfile } from '../lib/server/brain-memory.js'
 import { getServiceSupabase } from '../lib/server/supabase.js'
 import {
   appendMemoryPackToInstructions,
@@ -559,10 +559,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         : undefined
 
   // #298A — memory ownership is the verified JWT user (never client userId).
+  // #332E2 — sync recoverable email onto public.users when durable (same id).
   let memoryOwnerUserId: string | null = null
   try {
     const supabase = await getServiceSupabase()
-    memoryOwnerUserId = await ensureAuthUserRow(supabase, access.userId)
+    memoryOwnerUserId = await syncPublicUserProfile(supabase, access.userId, {
+      email: access.email ?? null,
+    })
   } catch (error) {
     console.warn(
       '[api/chat] ensureAuthUserRow failed:',
