@@ -26,7 +26,8 @@ const autoScroll = read('src/components/chat/AutoScrollController.ts')
 const app = read('src/App.tsx')
 
 // A–E send behavior preserved in shell
-assert.match(shell, /e\.key === 'Enter' && !e\.shiftKey/)
+assert.match(shell, /composerEnterShouldSubmit/)
+assert.match(shell, /enterKeyHint=\{showKeyboardHint \? 'send' : 'enter'\}/)
 assert.match(shell, /sendMessage\(/)
 assert.match(shell, /composerDraftCanSend\(draft\) && !busy/)
 assert.match(shell, /Puoi scrivere il prossimo messaggio/)
@@ -117,7 +118,8 @@ assert.match(settings, /appearance-settings-title/)
 assert.match(apiChat, /maxDuration:\s*120/)
 assert.match(apiChat, /responses\.create/)
 const createCount = (apiChat.match(/\.responses\.create\(/g) || []).length
-assert.equal(createCount, 1, 'exactly one responses.create call site in api/chat.ts')
+// Primary turn + Vision×Search soft-fail retry path (no second conversational brain).
+assert.equal(createCount, 2, 'primary + vision soft-fail responses.create call sites')
 
 // No InputBar.css leftover dependency
 assert.equal(fs.existsSync(path.join(root, 'src/components/chat/InputBar.css')), false)

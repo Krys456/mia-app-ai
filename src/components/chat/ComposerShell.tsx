@@ -63,6 +63,18 @@ function useShowKeyboardHint() {
   return show
 }
 
+/**
+ * #331A — Enter submits only on fine-pointer (desktop) inputs.
+ * Touch / coarse pointers get native newline; Composer Send remains the send action.
+ * Same media query as the desktop keyboard hint — no UA sniffing.
+ */
+export function composerEnterShouldSubmit(
+  event: Pick<KeyboardEvent<HTMLTextAreaElement>, 'key' | 'shiftKey'>,
+  finePointer: boolean,
+): boolean {
+  return finePointer && event.key === 'Enter' && !event.shiftKey
+}
+
 /** Chat view hidden/inert (Settings / Memory / Vision) → release mic. */
 function useChatViewSuspended(): boolean {
   const [suspended, setSuspended] = useState(false)
@@ -340,7 +352,9 @@ export function ComposerShell({ onMessageSent }: ComposerShellProps) {
   }
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    // #331A — mobile/coarse: Enter inserts newline (do not submit).
+    // Desktop fine-pointer: Enter sends; Shift+Enter newline (unchanged).
+    if (composerEnterShouldSubmit(e, showKeyboardHint)) {
       e.preventDefault()
       void submit()
     }
@@ -575,7 +589,7 @@ export function ComposerShell({ onMessageSent }: ComposerShellProps) {
                     ? 'Aggiungi una didascalia (opzionale)…'
                     : 'Messaggio a ShinkAIdo…'
           }
-          enterKeyHint="send"
+          enterKeyHint={showKeyboardHint ? 'send' : 'enter'}
           autoComplete="off"
           autoCorrect="on"
           spellCheck
