@@ -58,6 +58,23 @@ export interface ChatMessage {
   weatherUi?: WeatherUiState | null
   /** #318 — compact Calculator result chip on an assistant message. */
   calculatorUi?: CalculatorUiState | null
+  /** #319 — compact Unit Conversion result chip on an assistant message. */
+  unitConversionUi?: UnitConversionUiState | null
+}
+
+/** #319 — compact Unit Conversion result UI on an assistant message. */
+export type UnitConversionUiAction = {
+  id: string
+  label: string
+}
+
+export type UnitConversionUiState = {
+  kind: 'result'
+  source: string
+  target: string
+  sourceSymbol?: string
+  targetSymbol?: string
+  actions?: UnitConversionUiAction[]
 }
 
 /** #318 — compact Calculator result UI on an assistant message. */

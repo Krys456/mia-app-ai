@@ -16,6 +16,7 @@ import { CitationSources } from './CitationSources'
 import { TypingAnimation } from './TypingAnimation'
 import { WeatherUi } from './WeatherUi'
 import { CalculatorUi } from './CalculatorUi'
+import { UnitConversionUi } from './UnitConversionUi'
 import './MessageBubble.css'
 
 interface MessageBubbleProps {
@@ -33,6 +34,8 @@ interface MessageBubbleProps {
   onWeatherAction?: (actionId: string) => void
   /** #318 — Calculator result chip actions. */
   onCalculatorAction?: (actionId: string) => void
+  /** #319 — Unit Conversion result chip actions. */
+  onUnitConversionAction?: (actionId: string) => void
   /**
    * #290 — when true, a native text selection is active in message prose.
    * Suppresses whole-message long-press action pinning to avoid overlay conflicts.
@@ -77,6 +80,7 @@ function MessageBubbleComponent({
   onVisionSearch,
   onWeatherAction,
   onCalculatorAction,
+  onUnitConversionAction,
   selectionActive = false,
 }: MessageBubbleProps) {
   const isAssistant = message.role === 'assistant'
@@ -236,6 +240,12 @@ function MessageBubbleComponent({
                 ) : null}
                 {!isStreaming && message.calculatorUi && onCalculatorAction ? (
                   <CalculatorUi calculatorUi={message.calculatorUi} onAction={onCalculatorAction} />
+                ) : null}
+                {!isStreaming && message.unitConversionUi && onUnitConversionAction ? (
+                  <UnitConversionUi
+                    unitConversionUi={message.unitConversionUi}
+                    onAction={onUnitConversionAction}
+                  />
                 ) : null}
                 {!isStreaming && message.citations?.length ? (
                   <CitationSources citations={message.citations} />
