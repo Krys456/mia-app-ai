@@ -15,7 +15,8 @@ export function unitConversionCopy(key, lang, vars = {}) {
     malformed: 'Non riesco a interpretare quella conversione.',
     invalid_number: 'Numero non valido.',
     overflow: 'Valore troppo grande per una conversione sicura.',
-    too_long: 'Richiesta troppo lunga.',
+    too_long:
+      'Questa richiesta è troppo lunga per la conversione automatica di unità.',
     ambiguous_storage:
       '“Giga/mega” è ambiguo: indica GB/MB (decimale, 1000) oppure GiB/MiB (binario, 1024).',
     no_context: 'Non ho una conversione recente su cui basarmi. Scrivi la conversione completa (es. 10 km in miglia).',
@@ -37,7 +38,7 @@ export function unitConversionCopy(key, lang, vars = {}) {
     malformed: "I can't parse that conversion.",
     invalid_number: 'Invalid number.',
     overflow: 'Value is too large for a safe conversion.',
-    too_long: 'Request is too long.',
+    too_long: 'This request is too long for automatic unit conversion.',
     ambiguous_storage:
       '“Giga/mega” is ambiguous: say GB/MB (decimal, 1000) or GiB/MiB (binary, 1024).',
     no_context: 'I don’t have a recent conversion to build on. Send the full conversion (e.g. 10 km to miles).',

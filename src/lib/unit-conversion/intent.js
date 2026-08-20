@@ -5,6 +5,7 @@
 
 import { parseNumberish } from '../calculator/percent.js'
 import { UNIT_ERROR, UNIT_LIMITS } from './limits.js'
+import { analyzeOuterUserRequest } from '../outer-content-gate.js'
 import {
   ALIAS_LIST,
   findUnitInText,
@@ -135,12 +136,22 @@ export function parseValueUnit(folded) {
  *   ambiguousStorage?: boolean
  * }}
  */
+/**
+ * #330A — Apply capability length limit only after a conversion pair is established.
+ * Parser rejection alone must never invent unit-conversion intent.
+ * @param {{ value: number, source: import('./registry.js').UnitDef, target: import('./registry.js').UnitDef, ambiguousStorage?: boolean }} pair
+ * @param {string} original
+ */
+function finalizeConversionPair(pair, original) {
+  if (String(original || '').trim().length > UNIT_LIMITS.maxRawLength) {
+    return { errorCode: UNIT_ERROR.too_long }
+  }
+  return pair
+}
+
 export function parseConversionPair(raw) {
   const original = String(raw || '').trim()
   if (!original) return null
-  if (original.length > UNIT_LIMITS.maxRawLength) {
-    return { errorCode: UNIT_ERROR.too_long }
-  }
 
   let t = foldAlias(original)
   t = t.replace(/[¿?¡!]+/g, ' ').replace(/\s+/g, ' ').trim()
@@ -153,10 +164,14 @@ export function parseConversionPair(raw) {
     .trim()
 
   // Ambiguous storage shorthand ("1 giga in mega") without explicit GB/GiB tokens
+  // Shape already established → length may still reject.
   if (
     isAmbiguousStoragePhrase(t) &&
     !/\b(gb|gib|mb|mib|kb|kib|tb|tib|gigabyte|gibibyte|megabyte|mebibyte)\b/.test(t)
   ) {
+    if (original.length > UNIT_LIMITS.maxRawLength) {
+      return { errorCode: UNIT_ERROR.too_long }
+    }
     return { errorCode: UNIT_ERROR.ambiguous_storage }
   }
 
@@ -167,7 +182,10 @@ export function parseConversionPair(raw) {
     const targetHit = matchUnitAtStart(howMany[1].trim())
     const srcHit = parseValueUnit(howMany[2].trim())
     if (targetHit && srcHit) {
-      return { value: srcHit.value, source: srcHit.unit, target: targetHit.unit }
+      return finalizeConversionPair(
+        { value: srcHit.value, source: srcHit.unit, target: targetHit.unit },
+        original,
+      )
     }
   }
 
@@ -177,7 +195,10 @@ export function parseConversionPair(raw) {
     const srcHit = parseValueUnit(daA[1].trim())
     const tgt = matchUnitAtStart(daA[2].trim())
     if (srcHit && tgt) {
-      return { value: srcHit.value, source: srcHit.unit, target: tgt.unit }
+      return finalizeConversionPair(
+        { value: srcHit.value, source: srcHit.unit, target: tgt.unit },
+        original,
+      )
     }
   }
 
@@ -204,7 +225,10 @@ export function parseConversionPair(raw) {
     }
     const tgt = matchUnitAtStart(right)
     if (src && tgt) {
-      return { value: src.value, source: src.unit, target: tgt.unit }
+      return finalizeConversionPair(
+        { value: src.value, source: src.unit, target: tgt.unit },
+        original,
+      )
     }
   }
 
@@ -227,7 +251,10 @@ export function parseConversionPair(raw) {
       if (u1) {
         const u2 = matchUnitAtStart(u1.rest)
         if (u2) {
-          return { value: n.value, source: u1.unit, target: u2.unit }
+          return finalizeConversionPair(
+            { value: n.value, source: u1.unit, target: u2.unit },
+            original,
+          )
         }
       }
     }
@@ -311,6 +338,12 @@ export function detectUnitConversionIntent(raw, opts = {}) {
 
   const language = detectUnitConversionLanguage(text, opts.languageHint === 'en' ? 'en' : 'it')
 
+  // #330A3 — CONTENT IS NOT AUTHORIZATION
+  const outer = analyzeOuterUserRequest(text)
+  if (outer.contentIsData) {
+    return { intent: 'none', language, failureCode: 'content_is_data' }
+  }
+
   if (looksQuotedOrInjectedUnit(text)) {
     return { intent: 'none', language, failureCode: 'quoted_or_injected' }
   }
@@ -352,6 +385,7 @@ export function detectUnitConversionIntent(raw, opts = {}) {
     }
   }
 
+  // #330A — errorCode (incl. too_long) only after positive conversion pair/shape.
   const pair = parseConversionPair(text)
   if (pair && pair.errorCode) {
     return {
@@ -373,9 +407,15 @@ export function detectUnitConversionIntent(raw, opts = {}) {
     }
   }
 
-  // Clear conversion-shaped utterance that failed to parse → still claim for honest error
+  // Clear conversion-shaped utterance that failed to parse → still claim for honest error.
+  // #330A — require STRONG conversion evidence. Bare Italian "in"/"a"/"da" + a time unit
+  // (e.g. "22 ore … in una dieta") must NOT steal generic chat.
+  const strongConvertCue =
+    /\b(converti|convert|trasforma|transform|quanto\s+sono|how\s+many)\b/.test(t)
+  const tempConvertShape =
+    /\b(gradi|celsius|fahrenheit|°\s*[cf])\b/.test(t) && /\b(in|to|into|a)\b/.test(t)
   if (
-    hasConversionCue(t) &&
+    (strongConvertCue || tempConvertShape) &&
     /\d/.test(t) &&
     (findUnitInText(t) || /\b(km|mi|kg|lb|celsius|fahrenheit|kwh|kw|mb|gb)\b/.test(t))
   ) {

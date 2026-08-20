@@ -1,9 +1,33 @@
 /**
- * #315 / #315A — Deterministic Phone Action intent (IT/EN).
- * Only explicit user action requests — not meta/educational talk.
+ * #315 / #315A / #315B — Deterministic Phone Action intent (IT/EN).
+ * #330A2 — Phone Actions execute only from an explicit direct action request
+ * in the user's outer utterance. Quoted, negated, explanatory, technical,
+ * example, or code content is data.
  */
 
-import { fold, extractPhoneNumber, extractEmail, normalizeTimerText } from './parse.js'
+import {
+  fold,
+  extractPhoneNumber,
+  extractPhoneNumberLocal,
+  extractEmail,
+  normalizeTimerText,
+} from './parse.js'
+import { stripDiscoursePrefix } from './intent-discourse.js'
+import {
+  evaluateOuterPhoneIntent,
+  getOuterActionSurface,
+  looksQuotedOrCodeData,
+  looksMetaOrInstructionalOuter,
+  looksNegatedOuter,
+} from './outer-intent.js'
+
+export { stripDiscoursePrefix } from './intent-discourse.js'
+export {
+  evaluateOuterPhoneIntent,
+  getOuterActionSurface,
+  looksNegatedOuter,
+  looksMetaOrInstructionalOuter,
+} from './outer-intent.js'
 
 export function detectPhoneLanguage(text, fallback = 'it') {
   const t = fold(text)
@@ -29,9 +53,7 @@ function isMetaTalk(t) {
     )
   ) {
     if (/\b(spotify|youtube|maps|google\s+maps|gmail|telefonat|chiamat|sms|whatsapp)\b/.test(t)) {
-      if (/\b(apri|aprimi|open|portami|naviga|chiama|call|condividi|share|copia|copy|vai\s+su|go\s+to)\b/.test(t)) {
-        return false
-      }
+      // #330A2 — do NOT clear meta just because an action verb appears later in prose
       return true
     }
   }
@@ -41,36 +63,16 @@ function isMetaTalk(t) {
 
 /** Quoted / instructional content that must NOT authorize actions. */
 export function looksQuotedOrInjected(raw) {
-  const t = String(raw || '')
-  // Whole message is a quote
-  if (/^["“«].*["”»]\s*$/s.test(t.trim())) return true
-  // Document/web style injection phrases
-  if (/\b(ignore\s+(all\s+)?instructions|ignora\s+le\s+istruzioni)\b/i.test(t)) return true
-  return false
-}
-
-/** Strip leading discourse markers so "Ok, allora copia…" still matches. */
-export function stripDiscoursePrefix(raw) {
-  let s = normalizeTimerText(raw)
-  // Allow missing space after comma: "Ok,allora"
-  s = s.replace(/,\s*/g, ', ')
-  for (let i = 0; i < 3; i += 1) {
-    const next = s.replace(
-      /^(ok|okay|va bene|bene|allora|quindi|perfetto|certo|right|well|so|then)[,.]?\s+/i,
-      '',
-    )
-    if (next === s) break
-    s = next
-  }
-  return s
+  return looksQuotedOrCodeData(raw)
 }
 
 function extractNavigateDestination(text) {
   const raw = normalizeTimerText(text)
   const patterns = [
-    /\b(?:portami|naviga|indicazioni(?:\s+per)?|directions?(?:\s+to)?|navigate(?:\s+to)?)\s+(?:a|verso|to|towards|per)\s+(.+)$/i,
+    /\b(?:portami|naviga|indicazioni(?:\s+per)?|directions?(?:\s+to)?|navigate(?:\s+to)?|take\s+me)\s+(?:a|verso|to|towards|per)\s+(.+)$/i,
     /\b(?:portami|naviga)\s+(.+)$/i,
     /\b(?:indicazioni\s+per)\s+(.+)$/i,
+    /\b(?:take\s+me\s+to)\s+(.+)$/i,
   ]
   for (const re of patterns) {
     const m = raw.match(re)
@@ -86,10 +88,11 @@ function extractNavigateDestination(text) {
 /**
  * Extract SMS phone + body from natural phrases including:
  * Scrivi "Ciao Krys" a +39 3761165503
+ * #330A2 — phone from local clause only.
  */
 export function extractSmsParts(text) {
   const raw = normalizeTimerText(text)
-  const phone = extractPhoneNumber(raw)
+  const phone = extractPhoneNumberLocal(raw, 160)
   if (!phone) return { phone: null, body: '' }
 
   let body = ''
@@ -204,7 +207,16 @@ function looksCopyIntent(raw) {
 function looksSmsIntent(raw, text) {
   if (/\bwhatsapp\b/.test(text)) return false
 
-  const phone = extractPhoneNumber(raw)
+  // #330A2 — authorship / test writing is not SMS
+  if (
+    /\b(scrivi|write)\s+(un\s+)?(test|tests|articolo|article|codice|code|prompt|esempio|example)\b/.test(
+      text,
+    )
+  ) {
+    return false
+  }
+
+  const phone = extractPhoneNumberLocal(raw, 160)
   if (!phone) {
     // Explicit SMS without number → needs number (caller handles)
     if (/\b(sms|manda\s+un\s+sms|scrivi\s+(un\s+)?sms|send\s+(an?\s+)?sms|text\s+message)\b/.test(text)) {
@@ -280,7 +292,7 @@ export function extractWhatsAppCompose(text) {
     // Injected URL without an explicit +number → reject
     return { phone: null, body: '' }
   }
-  const phone = extractPhoneNumber(raw)
+  const phone = extractPhoneNumberLocal(raw, 160)
   if (!phone) return { phone: null, body: '' }
 
   let body = ''
@@ -378,7 +390,7 @@ export function looksWhatsAppIntent(raw, text, opts = {}) {
     return false
   }
 
-  const phone = extractPhoneNumber(raw)
+  const phone = extractPhoneNumberLocal(raw, 160)
 
   if (/\b(scrivi|manda|invia|send|text)\b/.test(text)) {
     if (!phone) return 'needs_number'
@@ -416,18 +428,31 @@ export function looksWhatsAppIntent(raw, text, opts = {}) {
  */
 export function detectPhoneActionIntent(raw, opts = {}) {
   const language = detectPhoneLanguage(raw, opts.languageHint || 'it')
-  const text = fold(raw)
-  if (!text || text.length < 2) {
+  const fullText = fold(raw)
+  if (!fullText || fullText.length < 2) {
     return { kind: 'none', language }
   }
 
-  if (looksQuotedOrInjected(raw)) {
-    return { kind: 'none', language, failureCode: 'quoted_or_injected' }
+  // #330A2 — outer direct-command proof before any action claim
+  const gate = evaluateOuterPhoneIntent(raw, {
+    languageHint: language,
+    hasMessagingContext: Boolean(opts.hasMessagingContext),
+  })
+  if (!gate.ok) {
+    return { kind: 'none', language, failureCode: gate.failureCode || 'no_outer_direct_command' }
   }
 
-  if (isMetaTalk(text)) {
+  const surface = gate.surface || getOuterActionSurface(raw)
+  const text = fold(surface)
+
+  if (isMetaTalk(text) || looksMetaOrInstructionalOuter(raw, surface)) {
     return { kind: 'none', language, failureCode: 'meta_talk' }
   }
+  if (looksNegatedOuter(surface)) {
+    return { kind: 'none', language, failureCode: 'negation' }
+  }
+
+  // Matchers below use `surface` / `text` (outer clause), not the full paste.
 
   // --- Native required
   if (
@@ -461,7 +486,7 @@ export function detectPhoneActionIntent(raw, opts = {}) {
   }
 
   // --- WhatsApp (#315B) — before SMS so "su WhatsApp" / compose wins
-  const wa = looksWhatsAppIntent(raw, text, {
+  const wa = looksWhatsAppIntent(surface, text, {
     hasMessagingContext: Boolean(opts.hasMessagingContext),
   })
   if (wa === 'followup') {
@@ -474,7 +499,7 @@ export function detectPhoneActionIntent(raw, opts = {}) {
     return { kind: 'whatsapp_needs_number', language, failureCode: 'phone_required' }
   }
   if (wa === 'compose') {
-    const parts = extractWhatsAppCompose(raw)
+    const parts = extractWhatsAppCompose(surface)
     if (parts.phone) {
       return {
         kind: 'whatsapp',
@@ -507,7 +532,7 @@ export function detectPhoneActionIntent(raw, opts = {}) {
   }
   if (
     /^\s*(condividilo|condividila|share\s+it|share\s+that)\s*[.!]?\s*$/i.test(
-      stripDiscoursePrefix(raw),
+      stripDiscoursePrefix(surface),
     )
   ) {
     return { kind: 'share', language }
@@ -517,28 +542,33 @@ export function detectPhoneActionIntent(raw, opts = {}) {
   }
 
   // --- Copy (#315A conversational variants)
-  if (looksCopyIntent(raw)) {
+  if (looksCopyIntent(surface)) {
     return { kind: 'copy', language }
   }
 
-  // --- Call
-  if (/\b(chiama|call)\b/.test(text)) {
-    const phone = extractPhoneNumber(raw)
+  // --- Call (verb must be on the outer surface; phone from local clause only)
+  if (/^(chiama|call)\b/.test(text) || /\b(chiama|call)\b/.test(text)) {
+    // Require call verb near start of surface (already gated by starter, tighten phone locality)
+    const phone = extractPhoneNumberLocal(surface, 96)
     if (phone) {
       return { kind: 'call', language, phone }
     }
-    if (/\b(chiama|call)\s+[a-zàèéìòù]{2,}/i.test(text) && !/\d{6,}/.test(text)) {
+    if (
+      /\b(chiama|call)\s+[a-zàèéìòù]{2,}/i.test(text) &&
+      !/\d{6,}/.test(text) &&
+      !/\b(openai|model|llm|api|feature|tests?|support)\b/i.test(text)
+    ) {
       return { kind: 'call_needs_number', language, failureCode: 'contacts_unavailable' }
     }
   }
 
   // --- SMS (#315A natural phrasing)
-  const smsKind = looksSmsIntent(raw, text)
+  const smsKind = looksSmsIntent(surface, text)
   if (smsKind === 'needs_number') {
     return { kind: 'sms_needs_number', language, failureCode: 'phone_required' }
   }
   if (smsKind === 'sms') {
-    const parts = extractSmsParts(raw)
+    const parts = extractSmsParts(surface)
     if (parts.phone) {
       return { kind: 'sms', language, phone: parts.phone, body: parts.body || '' }
     }
@@ -550,7 +580,7 @@ export function detectPhoneActionIntent(raw, opts = {}) {
     /\b(scrivi|write|send)\b/.test(text) &&
     !/\bgmail\b/.test(text)
   ) {
-    const parts = extractEmailParts(raw)
+    const parts = extractEmailParts(surface)
     if (parts.email) {
       return {
         kind: 'email',
@@ -564,8 +594,8 @@ export function detectPhoneActionIntent(raw, opts = {}) {
   }
 
   // --- Navigate
-  if (/\b(portami|naviga|indicazioni|directions|navigate)\b/.test(text)) {
-    const dest = extractNavigateDestination(raw)
+  if (/\b(portami|naviga|indicazioni|directions|navigate|take\s+me)\b/.test(text)) {
+    const dest = extractNavigateDestination(surface)
     if (dest) {
       return { kind: 'navigate', language, destination: dest, target: 'google_maps' }
     }

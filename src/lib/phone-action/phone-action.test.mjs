@@ -407,4 +407,137 @@ assert.equal(shouldClearMessagingOnUserText('Apri Spotify'), true)
   )
 }
 
+// =============================================================================
+// #330A2 — Outer-intent / negation / meta / local phone extraction
+// Invariant: Phone Actions execute only from an explicit direct action request
+// in the user's outer utterance. Quoted, negated, explanatory, technical,
+// example, or code content is data.
+// =============================================================================
+
+{
+  // Minimal dialer false-positive repro
+  const minimal = 'OpenAI call\n280\n280\n1'
+  assert.equal(detectPhoneActionIntent(minimal).kind, 'none', 'OpenAI call + 280 280 1')
+  assert.equal(extractPhoneNumber(minimal), null)
+  assert.equal(extractPhoneNumber('280 280 1'), null)
+  assert.equal(
+    detectPhoneActionIntent('Do not make a real OpenAI call.\n280\n280\n1').kind,
+    'none',
+  )
+  const appliedBad = applyPhoneAction({
+    text: minimal,
+    languageHint: 'en',
+    env: { location: { assign() {} } },
+  })
+  assert.equal(appliedBad.handled, false)
+  assert.doesNotMatch(String(appliedBad.reply || ''), /2802801|Opening the dialer/i)
+}
+
+{
+  // Full #330A-style implementation prompt (facsimile)
+  const prompt = `# #330A — Long Input Support / Request Size Guard
+## IMPLEMENTATION TASK
+
+Do NOT add new LLM calls.
+Do not make a real OpenAI call in deterministic unit tests.
+Whether OpenAI is called.
+Extra model calls: 0.
+
+Energy Math maxRawLength = 280
+generic x280 → none
+generic x281 → none
+
+1. VERIFY CURRENT BRANCH
+`
+  assert.equal(detectPhoneActionIntent(prompt).kind, 'none', 'full #330A prompt')
+}
+
+// Negation — must beat action keywords
+for (const q of [
+  'Non chiamare +393331234567',
+  'Non chiama +393331234567',
+  "Don't call +15551234567",
+  'Do not call +15551234567',
+  'Non aprire Spotify',
+  'Non apri YouTube',
+  "Don't open Gmail",
+  'Do not open Spotify',
+  'Non mandare un messaggio a +393331234567',
+  "Don't text +15551234567",
+  'Non copiare il messaggio precedente',
+  'Do not copy it',
+  'Non aprire la fotocamera',
+  "Don't open the camera",
+  'Non portarmi a Roma',
+  'Do not take me to Rome',
+]) {
+  assert.equal(detectPhoneActionIntent(q).kind, 'none', `negation: ${q}`)
+}
+
+// Meta / implementation / examples
+for (const q of [
+  'Implementa il comando Chiama +393331234567',
+  'Spiegami come funziona Apri Spotify',
+  "Il testo 'Apri Gmail' deve essere riconosciuto",
+  "Nel test usa: Scrivi 'ciao' a +393331234567",
+  'Create tests for Call +15551234567',
+  'Explain how Open Gmail works',
+  'Do NOT call APIs',
+  'OpenAI calls responses.create once',
+  'Extra model calls: 0',
+  'Implement support for phone calls',
+  "Write tests for 'Portami a Roma Termini'",
+  "Scrivi un test per 'Apri Spotify'",
+  "The app should support 'Su WhatsApp'",
+  'Spiegami perché Chiama +393331234567 apre il dialer',
+]) {
+  assert.equal(detectPhoneActionIntent(q).kind, 'none', `meta: ${q}`)
+}
+
+// Quoted / code / data
+assert.equal(detectPhoneActionIntent('"Chiama +393331234567"').kind, 'none')
+assert.equal(detectPhoneActionIntent('`Chiama +393331234567`').kind, 'none')
+assert.equal(
+  detectPhoneActionIntent('detectPhoneActionIntent("Chiama +393331234567")').kind,
+  'none',
+)
+assert.equal(
+  detectPhoneActionIntent('```\nChiama +393331234567\n```').kind,
+  'none',
+)
+assert.equal(
+  detectPhoneActionIntent('The command "Chiama +393331234567" should work').kind,
+  'none',
+)
+
+// Long technical prose with call/open + numbers — no handoff
+for (const n of [500, 2000, 5000, 10000]) {
+  const long =
+    'Discussion of router safety. OpenAI call appears in docs. Section 280. Build 281. Item 1. ' +
+    'We also mention Chiama and Apri Spotify in examples only. ' +
+    'word '.repeat(Math.ceil(n / 5))
+  const text = long.slice(0, n)
+  assert.equal(detectPhoneActionIntent(text).kind, 'none', `long ${n}`)
+}
+
+// Direct positives still green
+assert.equal(detectPhoneActionIntent('Chiama +393761165503').kind, 'call')
+assert.equal(detectPhoneActionIntent('Call +14155551234').kind, 'call')
+assert.equal(detectPhoneActionIntent('Apri Spotify').kind, 'open_app')
+assert.equal(detectPhoneActionIntent('Apri Gmail').kind, 'open_app')
+assert.equal(detectPhoneActionIntent("Don't open Spotify").kind, 'none')
+assert.equal(detectPhoneActionIntent('Portami a Roma Termini').kind, 'navigate')
+assert.equal(detectPhoneActionIntent('Take me to Rome').kind, 'navigate')
+assert.equal(detectPhoneActionIntent('Apri la fotocamera').kind, 'open_vision')
+assert.equal(detectPhoneActionIntent('Open the camera').kind, 'open_vision')
+assert.equal(detectPhoneActionIntent('Copia il messaggio precedente').kind, 'copy')
+assert.equal(detectPhoneActionIntent('Ok, allora copia il messaggio precedente').kind, 'copy')
+assert.equal(detectPhoneActionIntent('Chiama Mario').kind, 'call_needs_number')
+
+// Local phone: real spaced numbers still work; section noise does not
+assert.equal(extractPhoneNumber('Chiama +39 376 116 5503'), '+393761165503')
+assert.equal(extractPhoneNumber('call me at 333 123 4567'), '3331234567')
+assert.equal(extractPhoneNumber('OpenAI call 280 280 1'), null)
+assert.equal(extractPhoneNumber('Section 280, build 281, test 1'), null)
+
 console.log('phone-action.test.mjs: all assertions passed')

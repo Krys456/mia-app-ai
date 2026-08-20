@@ -285,4 +285,67 @@ assert.equal(detectUnitConversionIntent("Cos'è un chilometro?").intent, 'none')
   approx(a.result, -4)
 }
 
+// --- #330A — Long generic chat must NOT be claimed by Unit Conversion ---
+{
+  const HEALTH_REPRO = `Sono a 22 ore di digiuno adesso e sto facendo il mio solito digiuno
+prolungato. È possibile, secondo te, avere fame dopo le 24 ore di
+digiuno? O passa completamente, io mi nutro prevalentemente in una
+dieta carnivora e tuorli crudi? Le mie analisi sono perfette. Sono
+quindi in chetosi. Ho il diabete di tipo 1. Digiunando ho potuto
+guarire molto meglio, grazie anche ovviamente alla dieta che seguo.`
+
+  const APP_DESIGN = `Sto progettando una nuova applicazione e vorrei ragionare
+sull'interfaccia, sulle funzioni principali, sulla navigazione,
+sull'identità visiva, sulle impostazioni, sulla schermata principale,
+sulla gestione delle conversazioni e su come organizzare tutte queste
+parti senza rendere l'esperienza troppo complicata. Vorrei inoltre
+capire quali elementi conviene inserire nella prima versione e quali
+rimandare agli aggiornamenti successivi.`
+
+  const pad = (n) =>
+    ('Discussione generica su produttività e abitudini quotidiane. ' + 'nota '.repeat(2000))
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, n)
+
+  for (const [label, text] of [
+    ['generic221', pad(221)],
+    ['generic281', pad(281)],
+    ['generic500', pad(500)],
+    ['generic2k', pad(2000)],
+    ['health', HEALTH_REPRO],
+    ['app_design', APP_DESIGN],
+  ]) {
+    const u = detectUnitConversionIntent(text)
+    assert.equal(u.intent, 'none', `#330A Unit Conversion must not claim ${label} (len=${text.length})`)
+    assert.notEqual(u.failureCode, 'input_too_long', label)
+    const applied = applyUnitConversionIntent({ text, languageHint: 'it' })
+    assert.equal(applied.handled, false, label)
+  }
+
+  // True conversion still works
+  {
+    const a = applyUnitConversionIntent({ text: '10 km in miglia', languageHint: 'it' })
+    assert.equal(a.status, 'ok')
+  }
+  {
+    const a = applyUnitConversionIntent({ text: '25 °C in °F', languageHint: 'it' })
+    assert.equal(a.status, 'ok')
+  }
+
+  // True conversion ABOVE limit → capability too_long only after shape
+  {
+    const longTrue = ('10 km in miglia. ' + 'dettaglio '.repeat(40)).slice(0, 250)
+    assert.ok(longTrue.length > 220)
+    const intent = detectUnitConversionIntent(longTrue)
+    assert.equal(intent.intent, 'unit-conversion')
+    assert.equal(intent.failureCode, 'input_too_long')
+    const a = applyUnitConversionIntent({ text: longTrue, languageHint: 'it' })
+    assert.equal(a.handled, true)
+    assert.equal(a.status, 'error')
+    assert.match(a.reply, /troppo lunga.*conversione|too long.*unit/i)
+    assert.doesNotMatch(a.reply, /^Richiesta troppo lunga\.$/)
+  }
+}
+
 console.log('unit-conversion.test.mjs: ok')

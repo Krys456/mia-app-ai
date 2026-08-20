@@ -26,7 +26,8 @@ export function energyMathCopy(key, lang, vars = {}) {
     zero_time: 'La durata non può essere zero per calcolare la potenza media.',
     zero_power: 'La potenza non può essere zero per calcolare la durata.',
     overflow: 'Valore troppo grande per un calcolo sicuro.',
-    too_long: 'Richiesta troppo lunga.',
+    too_long:
+      'Questa richiesta è troppo lunga per il calcolo energetico automatico.',
     no_context: 'Non ho un calcolo energetico recente. Scrivi la richiesta completa (es. 2 kW per 3 ore).',
     copy_ok: 'Risultato copiato negli appunti.',
     copy_fail: 'Non sono riuscito a copiare il risultato.',
@@ -56,7 +57,7 @@ export function energyMathCopy(key, lang, vars = {}) {
     zero_time: 'Duration can’t be zero when computing average power.',
     zero_power: 'Power can’t be zero when computing runtime.',
     overflow: 'Value is too large for a safe calculation.',
-    too_long: 'Request is too long.',
+    too_long: 'This request is too long for automatic energy calculation.',
     no_context: 'I don’t have a recent energy calculation. Send the full request (e.g. 2 kW for 3 hours).',
     copy_ok: 'Result copied to the clipboard.',
     copy_fail: "Couldn't copy the result.",
