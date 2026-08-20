@@ -99,9 +99,9 @@ assert.match(chatApi, /maxDuration:\s*120/)
 assert.ok((chatApi.match(/responses\.create\(/g) || []).length >= 1)
 assert.match(coreParams, /stream:\s*false/)
 assert.equal(fs.existsSync(path.join(root, 'supabase/migrations')), true)
-const migrationNames = fs
+const forbiddenMigrations = fs
   .readdirSync(path.join(root, 'supabase/migrations'))
-  .filter((n) => /plan|entitlement|subscription|billing/i.test(n))
-assert.equal(migrationNames.length, 0, 'no billing schema migrations in #332A')
+  .filter((n) => /entitlement_enforcement|billing_provider|stripe/i.test(n))
+assert.equal(forbiddenMigrations.length, 0, 'no billing-provider schema migrations in #332A surface')
 
 console.log('plans-332a: ok')

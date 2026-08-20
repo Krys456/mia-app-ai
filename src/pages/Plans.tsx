@@ -1,9 +1,10 @@
 /**
- * #332A — ShinkAIdo Plans page (UI foundation).
- * Catalog-driven. No purchases. Current plan is Free placeholder.
+ * #332A/#332D — ShinkAIdo Plans page.
+ * Catalog-driven. Current plan from verified /api/subscription when available;
+ * display-only — never authorizes premium APIs.
  */
 
-import { useId, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { PageHeader } from '../components/PageHeader'
 import {
   PLAN_CATALOG,
@@ -11,11 +12,12 @@ import {
   formatPlanPrice,
   type PlanId,
 } from '../lib/planCatalog'
+import { fetchVerifiedSubscription } from '../lib/subscriptionApi'
 import './Plans.css'
 
 interface PlansProps {
   onBack: () => void
-  /** Optional override for future paid state; defaults to Free foundation. */
+  /** Optional override; defaults to Free foundation until verified fetch returns. */
   currentPlanId?: PlanId
 }
 
@@ -25,6 +27,20 @@ export function Plans({
 }: PlansProps) {
   const titleId = useId()
   const [upgradeNote, setUpgradeNote] = useState<string | null>(null)
+  const [verifiedPlanId, setVerifiedPlanId] = useState<PlanId>(currentPlanId)
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      const state = await fetchVerifiedSubscription()
+      if (!cancelled) setVerifiedPlanId(state.planId)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const activePlanId = verifiedPlanId
 
   const onUpgradeClick = (planId: PlanId) => {
     // Non-transactional foundation behavior — no checkout, no billing.
@@ -50,7 +66,7 @@ export function Plans({
 
         <div className="plans-grid" role="list">
           {PLAN_CATALOG.map((plan) => {
-            const isCurrent = plan.planId === currentPlanId
+            const isCurrent = plan.planId === activePlanId
             return (
               <article
                 key={plan.planId}
