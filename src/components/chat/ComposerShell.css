@@ -7,13 +7,13 @@
   max-width: 100%;
   pointer-events: auto;
   padding:
-    0.65rem
+    0.55rem
     var(--page-gutter)
-    calc(0.55rem + var(--safe-bottom));
+    calc(0.5rem + var(--safe-bottom));
   background: linear-gradient(
     to top,
-    var(--bg) 52%,
-    color-mix(in srgb, var(--bg) 55%, transparent)
+    var(--bg) 58%,
+    color-mix(in srgb, var(--bg) 42%, transparent)
   );
 }
 
@@ -275,62 +275,56 @@
 .composer {
   display: flex;
   align-items: flex-end;
-  gap: 0.65rem;
+  gap: 0.55rem;
   width: 100%;
   /* Mobile-first: full width. Desktop column via --content-max from 768px up. */
   max-width: var(--content-max);
   margin: 0 auto;
   box-sizing: border-box;
-  padding: 0.5rem;
-  background: color-mix(in srgb, var(--surface-solid) 88%, transparent);
-  border: 1px solid color-mix(in srgb, var(--accent) 16%, var(--border));
-  border-radius: var(--radius-xl);
-  backdrop-filter: blur(14px) saturate(1.12);
-  -webkit-backdrop-filter: blur(14px) saturate(1.12);
-  box-shadow: var(--shadow-dock), var(--glow-brand);
+  padding: 0.45rem 0.5rem;
+  background: color-mix(in srgb, var(--surface-solid) 94%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 92%, transparent);
+  border-radius: var(--radius-lg);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: var(--shadow-soft, 0 1px 2px rgba(28, 25, 22, 0.04));
   transition: border-color var(--duration) var(--ease-out), box-shadow var(--duration) var(--ease-out);
 }
 
 .composer:focus-within {
-  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
-  box-shadow: var(--shadow-dock), 0 0 0 1px color-mix(in srgb, var(--accent) 10%, transparent),
-    var(--glow-brand);
+  border-color: color-mix(in srgb, var(--accent) 32%, var(--border));
+  box-shadow:
+    var(--shadow-soft, 0 1px 2px rgba(28, 25, 22, 0.04)),
+    0 0 0 1px color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
-/* The Way — opaque paper writing surface (#294D); dock geometry untouched */
+/* The Way — opaque paper writing surface */
 [data-theme='the-way-washi'] .composer {
   background: color-mix(in srgb, var(--surface-solid) 98%, #fff8ee);
-  border-color: color-mix(in srgb, var(--accent) 14%, var(--border));
+  border-color: color-mix(in srgb, var(--border) 95%, transparent);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
-  box-shadow:
-    0 1px 2px rgba(28, 25, 22, 0.04),
-    0 8px 22px rgba(28, 25, 22, 0.06);
+  box-shadow: 0 1px 2px rgba(28, 25, 22, 0.04);
 }
 
 [data-theme='the-way-washi'] .composer:focus-within {
-  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 34%, var(--border));
   box-shadow:
     0 1px 2px rgba(28, 25, 22, 0.04),
-    0 8px 24px rgba(28, 25, 22, 0.07),
-    0 0 0 1px color-mix(in srgb, var(--accent) 14%, transparent);
+    0 0 0 1px color-mix(in srgb, var(--accent) 12%, transparent);
 }
 
 [data-theme='the-way-sumi'] .composer {
-  background: color-mix(in srgb, var(--surface-solid) 96%, #0c0a09);
-  border-color: color-mix(in srgb, var(--text) 12%, transparent);
+  background: color-mix(in srgb, var(--surface-solid) 97%, #0c0a09);
+  border-color: color-mix(in srgb, var(--text) 10%, transparent);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--text) 4%, transparent),
-    0 10px 26px rgba(0, 0, 0, 0.36);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--text) 3%, transparent);
 }
 
 [data-theme='the-way-sumi'] .composer:focus-within {
-  border-color: color-mix(in srgb, var(--accent) 38%, transparent);
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--accent) 16%, transparent),
-    0 10px 26px rgba(0, 0, 0, 0.38);
+  border-color: color-mix(in srgb, var(--accent) 34%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 14%, transparent);
 }
 
 .composer__input {
@@ -367,19 +361,19 @@
   width: max(var(--btn-send), var(--touch-min));
   height: max(var(--btn-send), var(--touch-min));
   border: 0;
-  border-radius: var(--radius-md);
-  background: var(--gradient-brand);
+  border-radius: var(--radius-sm);
+  background: var(--accent);
   color: var(--on-accent);
   cursor: pointer;
   pointer-events: auto;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
-  box-shadow: var(--glow-brand);
+  box-shadow: none;
   transition: transform var(--duration-press) var(--ease-out), opacity var(--duration-press) var(--ease-out),
-    filter var(--duration-press) var(--ease-out);
+    filter var(--duration-press) var(--ease-out), background var(--duration) var(--ease-out);
 }
 
-/* Primary action stays clear; The Way drops neon send glow */
+/* Primary vermilion action — The Way and default alike */
 [data-theme='the-way-washi'] .composer__send,
 [data-theme='the-way-sumi'] .composer__send {
   background: var(--accent);
@@ -392,8 +386,8 @@
 }
 
 .composer__send:hover:not(:disabled) {
-  transform: scale(1.04);
-  filter: brightness(1.06);
+  transform: scale(1.03);
+  filter: brightness(1.05);
 }
 
 .composer__send:active:not(:disabled) {
@@ -401,15 +395,15 @@
 }
 
 .composer__send:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: not-allowed;
   box-shadow: none;
 }
 
 .composer__send--busy:disabled {
-  opacity: 0.85;
+  opacity: 0.8;
   cursor: default;
-  box-shadow: var(--glow-brand);
+  box-shadow: none;
 }
 
 .composer__send-pulse {

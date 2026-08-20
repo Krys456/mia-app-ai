@@ -191,15 +191,12 @@ function MessageBubbleComponent({
     >
       {isAssistant ? (
         <>
-          <div className="bubble__meta">
-            <span
-              className={`bubble__avatar bubble__avatar--assistant${isEmptyStream ? ' bubble__avatar--pulse' : ''}`}
-              aria-hidden="true"
-            >
-              <span className="bubble__avatar-mark">L</span>
-            </span>
-            <span className="bubble__label">{isError ? 'Errore' : 'ShinkAIdo'}</span>
-          </div>
+          {/* #333B Kami: no per-message avatar stamp — brand via typography/rhythm */}
+          {isError ? (
+            <div className="bubble__meta">
+              <span className="bubble__label bubble__label--error">Errore</span>
+            </div>
+          ) : null}
           {!isError && message.memoryEvent ? (
             <MemoryMessageIndicator event={message.memoryEvent} />
           ) : null}

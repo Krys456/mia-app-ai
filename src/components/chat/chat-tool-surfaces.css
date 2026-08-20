@@ -1,0 +1,73 @@
+/**
+ * #333B Kami — shared low-weight surfaces for chat tool results.
+ * Presentation only. Does not change tool behavior or routing.
+ */
+
+[data-theme='the-way-washi'] .weather-ui__card,
+[data-theme='the-way-washi'] .calc-ui__card,
+[data-theme='the-way-washi'] .unit-ui__card,
+[data-theme='the-way-washi'] .energy-ui__card,
+[data-theme='the-way-sumi'] .weather-ui__card,
+[data-theme='the-way-sumi'] .calc-ui__card,
+[data-theme='the-way-sumi'] .unit-ui__card,
+[data-theme='the-way-sumi'] .energy-ui__card {
+  background: color-mix(in srgb, var(--surface-solid) 94%, var(--surface-2));
+  border: 1px solid color-mix(in srgb, var(--border) 90%, transparent);
+  border-radius: var(--radius-md);
+  box-shadow: none;
+  max-width: min(100%, 20rem);
+}
+
+[data-theme='the-way-sumi'] .weather-ui__card,
+[data-theme='the-way-sumi'] .calc-ui__card,
+[data-theme='the-way-sumi'] .unit-ui__card,
+[data-theme='the-way-sumi'] .energy-ui__card {
+  background: color-mix(in srgb, var(--surface-2) 88%, transparent);
+  border-color: color-mix(in srgb, var(--text) 9%, transparent);
+}
+
+[data-theme='the-way-washi'] .weather-ui__btn,
+[data-theme='the-way-washi'] .calc-ui__btn,
+[data-theme='the-way-washi'] .unit-ui__btn,
+[data-theme='the-way-washi'] .energy-ui__btn,
+[data-theme='the-way-sumi'] .weather-ui__btn,
+[data-theme='the-way-sumi'] .calc-ui__btn,
+[data-theme='the-way-sumi'] .unit-ui__btn,
+[data-theme='the-way-sumi'] .energy-ui__btn {
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  color: var(--text);
+}
+
+[data-theme='the-way-washi'] .weather-ui__btn:hover,
+[data-theme='the-way-washi'] .calc-ui__btn:hover,
+[data-theme='the-way-washi'] .unit-ui__btn:hover,
+[data-theme='the-way-washi'] .energy-ui__btn:hover,
+[data-theme='the-way-sumi'] .weather-ui__btn:hover,
+[data-theme='the-way-sumi'] .calc-ui__btn:hover,
+[data-theme='the-way-sumi'] .unit-ui__btn:hover,
+[data-theme='the-way-sumi'] .energy-ui__btn:hover {
+  border-color: color-mix(in srgb, var(--accent) 28%, var(--border));
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+
+[data-theme='the-way-washi'] .briefing-ui__chip,
+[data-theme='the-way-sumi'] .briefing-ui__chip {
+  border-radius: var(--radius-sm);
+  border-color: color-mix(in srgb, var(--border) 88%, transparent);
+  background: color-mix(in srgb, var(--surface-2) 45%, transparent);
+}
+
+[data-theme='the-way-washi'] .translation-ui__btn,
+[data-theme='the-way-sumi'] .translation-ui__btn {
+  border-radius: var(--radius-sm);
+  border-color: color-mix(in srgb, var(--border) 88%, transparent);
+  background: transparent;
+}
+
+[data-theme='the-way-washi'] .composer-timer-chip,
+[data-theme='the-way-sumi'] .composer-timer-chip {
+  border-radius: var(--radius-sm);
+  box-shadow: none;
+}
