@@ -143,6 +143,16 @@ const FIXTURES = [
     expect: {
       conversationMode: 'decision_support',
       responsePurpose: 'recommend',
+      // Options not listed → clarifying question is appropriate
+      questionNeeded: true,
+    },
+  },
+  {
+    id: 'decision-names-with-options',
+    userMessage: 'Quale sceglieresti: Aurora o Nova?',
+    expect: {
+      conversationMode: 'decision_support',
+      responsePurpose: 'recommend',
       questionNeeded: false,
     },
   },
