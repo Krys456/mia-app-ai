@@ -23,7 +23,12 @@ import { buildCoreConversationalUnderstandingAppendix } from '../lib/server/conv
 import { buildCoreAdaptiveResponseReasoningAppendix } from '../lib/server/adaptive-response-reasoning.js'
 import { LAIFE_BASE_SYSTEM_PROMPT } from '../lib/server/laife-base-system-prompt.js'
 import { buildCoreLanguageAppendix } from '../lib/server/language-awareness.js'
-import { buildReferenceContextAppendix } from '../lib/server/core-reference-context.js'
+import {
+  buildReferenceContextAppendix,
+  buildReferenceContextDiagPayload,
+  deriveReferenceContext,
+  REFERENCE_CONTEXT_BUILD,
+} from '../lib/server/core-reference-context.js'
 import {
   buildConversationWorkingStateAppendix,
   deriveConversationWorkingState,
@@ -213,6 +218,8 @@ interface CoreInstructionBundle {
   understandingChars: number
   adaptiveChars: number
   phoneCapabilityInjected: boolean
+  referenceContextAppendixChars: number
+  referenceContext: ReturnType<typeof deriveReferenceContext>
 }
 
 function buildInstructions(body: ChatApiRequestBody, messages: ChatApiMessage[] = []): CoreInstructionBundle {
@@ -318,7 +325,8 @@ function buildInstructions(body: ChatApiRequestBody, messages: ChatApiMessage[] 
     parts.push(adaptiveReasoningAppendix)
   }
 
-  // Reference Context (#279) — conditional.
+  // Reference Context (#279/#328) — conditional.
+  const referenceContext = deriveReferenceContext(messages)
   const referenceContextAppendix = buildReferenceContextAppendix(messages)
   if (referenceContextAppendix) {
     parts.push(referenceContextAppendix)
@@ -345,6 +353,8 @@ function buildInstructions(body: ChatApiRequestBody, messages: ChatApiMessage[] 
     understandingChars: understandingAppendix ? understandingAppendix.length : 0,
     adaptiveChars: adaptiveReasoningAppendix ? adaptiveReasoningAppendix.length : 0,
     phoneCapabilityInjected,
+    referenceContextAppendixChars: referenceContextAppendix ? referenceContextAppendix.length : 0,
+    referenceContext,
   }
 }
 
@@ -1110,6 +1120,38 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     })
     if (naturalResponseDiagOn) {
       payload.naturalResponseDiag = naturalResponseDiag
+    }
+
+    const referenceContextDiag = buildReferenceContextDiagPayload(coreBundle.referenceContext, {
+      appendixChars: coreBundle.referenceContextAppendixChars,
+    })
+    console.info('[api/chat] reference-context', {
+      route: referenceContextDiag.route,
+      buildId: referenceContextDiag.buildId,
+      referenceContextInjected: referenceContextDiag.referenceContextInjected,
+      orderedOptionsCount: referenceContextDiag.orderedOptionsCount,
+      alternativesCount: referenceContextDiag.alternativesCount,
+      likelyReferentPresent: referenceContextDiag.likelyReferentPresent,
+      likelyReferentType: referenceContextDiag.likelyReferentType,
+      ordinalIndex: referenceContextDiag.ordinalIndex,
+      pivotDetected: referenceContextDiag.pivotDetected,
+      appendixChars: referenceContextDiag.appendixChars,
+      refBuild: REFERENCE_CONTEXT_BUILD,
+    })
+    const referenceDiagOn =
+      (body as { referenceContextDiag?: boolean | 1 | '1' }).referenceContextDiag === true ||
+      (body as { referenceContextDiag?: boolean | 1 | '1' }).referenceContextDiag === 1 ||
+      (body as { referenceContextDiag?: boolean | 1 | '1' }).referenceContextDiag === '1' ||
+      (typeof req.url === 'string' &&
+        /[?&](?:reference_context_diag|conversation_state_diag)=1(?:&|$)/i.test(req.url))
+    if (
+      referenceDiagOn &&
+      (process.env.VERCEL_ENV === 'preview' ||
+        process.env.VERCEL_ENV === 'development' ||
+        process.env.REFERENCE_CONTEXT_DIAG === '1' ||
+        process.env.CONVERSATION_STATE_DIAG === '1')
+    ) {
+      payload.referenceContextDiag = referenceContextDiag
     }
 
     if (
