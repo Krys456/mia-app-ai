@@ -48,6 +48,10 @@
   },
   "rewrites": [
     {
+      "source": "/api/translation",
+      "destination": "/api/selection"
+    },
+    {
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
