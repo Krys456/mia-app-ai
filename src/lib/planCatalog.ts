@@ -5,6 +5,9 @@
  * When billing is integrated, provider-derived prices (Play / App Store / Stripe)
  * should replace these static `priceLabel` strings — do not scatter prices in UI.
  *
+ * Presentation only. Authorization lives in `lib/server/entitlements.js` (#332B).
+ * Feature bullets here must never gate API access.
+ *
  * No entitlement enforcement. No purchase. No schema.
  */
 
@@ -36,8 +39,9 @@ export type PlanDefinition = {
 
 /**
  * #332A temporary UI source of truth for “current plan”.
- * Always Free until verified subscription state exists (#332B+).
+ * Always Free until verified subscription state exists.
  * Do not persist. Do not infer from client storage.
+ * Prefer `getCurrentPlanId()` from `entitlementsUi.ts` at call sites.
  */
 export const UI_FOUNDATION_CURRENT_PLAN_ID: PlanId = 'free'
 
