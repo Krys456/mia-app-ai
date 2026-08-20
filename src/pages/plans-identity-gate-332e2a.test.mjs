@@ -19,13 +19,17 @@ const clientId = read('src/lib/durableIdentity.ts')
 assert.match(plans, /onUpgradeClick/)
 assert.match(plans, /setShowIdentityGate\(true\)/)
 assert.match(plans, /!durable/)
-assert.match(plans, /onClick=\{\(\) => onUpgradeClick\(plan\.planId\)\}/)
+assert.match(plans, /onClick=\{\(\) => void onUpgradeClick\(plan\.planId\)\}/)
 assert.doesNotMatch(plans, /planId === 'base'[\s\S]*setShowIdentityGate\(true\)[\s\S]*planId === 'pro'/)
 
-// —— Durable skips gate ——
+// —— Durable skips gate for paid checkout; anonymous still opens gate ——
+assert.match(plans, /if \(!durable\)/)
+assert.match(plans, /createCheckoutSession/)
+assert.match(plans, /setShowIdentityGate\(true\)/)
+// Anonymous path opens gate before any checkout call
 assert.match(
   plans,
-  /setShowIdentityGate\(false\)[\s\S]*pagamenti Base saranno disponibili|Account collegato\. I pagamenti/,
+  /if \(!durable\) \{\s*setShowIdentityGate\(true\)/,
 )
 
 // —— Loop fix: stable callback + equality ——

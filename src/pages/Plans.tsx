@@ -1,13 +1,15 @@
 /**
- * #332A/#332D/#332E2/#332E2A — ShinkAIdo Plans page.
+ * #332A/#332D/#332E2/#332E2A/#332E3A — ShinkAIdo Plans page.
  * Catalog-driven. Current plan from verified /api/subscription when available;
  * display-only — never authorizes premium APIs.
- * Upgrade: anonymous → identity gate; durable → coming-soon (no billing yet).
  *
- * #332E2A: stable onIdentityChange + equality guard (no render loop).
+ * Upgrade:
+ * - anonymous → #332E2 identity gate
+ * - durable Free → Stripe TEST Checkout (#332E3A)
+ * - success URL → poll verified subscription (never local grant)
  */
 
-import { useCallback, useEffect, useId, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { PageHeader } from '../components/PageHeader'
 import { IdentityAccountPanel } from '../components/IdentityAccountPanel'
 import {
@@ -17,6 +19,11 @@ import {
   type PlanId,
 } from '../lib/planCatalog'
 import { fetchVerifiedSubscription } from '../lib/subscriptionApi'
+import {
+  clearCheckoutReturnQuery,
+  createCheckoutSession,
+  readCheckoutReturnMarker,
+} from '../lib/billingApi'
 import { loadIdentitySnapshot } from '../lib/accountLinking'
 import {
   identityStatusEquals,
@@ -30,6 +37,9 @@ interface PlansProps {
   currentPlanId?: PlanId
 }
 
+const ACTIVATION_POLL_MS = 2000
+const ACTIVATION_MAX_ATTEMPTS = 15
+
 export function Plans({
   onBack,
   currentPlanId = UI_FOUNDATION_CURRENT_PLAN_ID,
@@ -39,6 +49,15 @@ export function Plans({
   const [verifiedPlanId, setVerifiedPlanId] = useState<PlanId>(currentPlanId)
   const [identity, setIdentity] = useState<IdentityStatus | null>(null)
   const [showIdentityGate, setShowIdentityGate] = useState(false)
+  const [checkoutBusy, setCheckoutBusy] = useState(false)
+  const [activating, setActivating] = useState(false)
+  const pollCancelRef = useRef(false)
+
+  const refreshVerifiedPlan = useCallback(async () => {
+    const state = await fetchVerifiedSubscription()
+    setVerifiedPlanId(state.planId)
+    return state
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -57,6 +76,50 @@ export function Plans({
     }
   }, [])
 
+  // Stripe return: UX only — poll verified subscription; never grant from query.
+  useEffect(() => {
+    const marker = readCheckoutReturnMarker()
+    if (!marker) return
+
+    clearCheckoutReturnQuery()
+
+    if (marker === 'canceled') {
+      setUpgradeNote('Checkout annullato. Il piano attuale non è cambiato.')
+      return
+    }
+
+    setActivating(true)
+    setUpgradeNote('Attivazione del piano in corso…')
+    pollCancelRef.current = false
+
+    void (async () => {
+      for (let attempt = 0; attempt < ACTIVATION_MAX_ATTEMPTS; attempt += 1) {
+        if (pollCancelRef.current) return
+        const state = await fetchVerifiedSubscription()
+        setVerifiedPlanId(state.planId)
+        if (state.planId === 'base' || state.planId === 'pro') {
+          setActivating(false)
+          setUpgradeNote(
+            state.planId === 'base'
+              ? 'Piano Base attivo.'
+              : 'Piano Pro attivo.',
+          )
+          return
+        }
+        await new Promise((r) => setTimeout(r, ACTIVATION_POLL_MS))
+      }
+      if (pollCancelRef.current) return
+      setActivating(false)
+      setUpgradeNote(
+        'Attivazione ancora in corso. Riprova tra poco o aggiorna la pagina Plans.',
+      )
+    })()
+
+    return () => {
+      pollCancelRef.current = true
+    }
+  }, [])
+
   const activePlanId = verifiedPlanId
   // While identity is still loading (null), treat as non-durable so Upgrade opens the gate.
   const durable = identity?.durable === true
@@ -65,27 +128,62 @@ export function Plans({
     setIdentity((prev) => (identityStatusEquals(prev, next) ? prev : next))
     if (next.durable) {
       setUpgradeNote(
-        'Account collegato. I pagamenti saranno disponibili nella prossima fase.',
+        'Account collegato. Puoi procedere con l’upgrade.',
       )
       setShowIdentityGate(false)
     }
   }, [])
 
-  const onUpgradeClick = (planId: PlanId) => {
+  const onUpgradeClick = async (planId: PlanId) => {
+    if (planId !== 'base' && planId !== 'pro') return
+
     if (!durable) {
       setShowIdentityGate(true)
       setUpgradeNote(
-        'Crea o collega un account per proteggere e ripristinare il tuo acquisto. Nessun pagamento in questa fase.',
+        'Crea o collega un account per proteggere e ripristinare il tuo acquisto.',
       )
       return
     }
 
     setShowIdentityGate(false)
-    setUpgradeNote(
-      planId === 'base'
-        ? 'Account collegato. I pagamenti Base saranno disponibili a breve. Nessun addebito ora.'
-        : 'Account collegato. I pagamenti Pro saranno disponibili a breve. Nessun addebito ora.',
-    )
+    setCheckoutBusy(true)
+    setUpgradeNote('Apertura Checkout sicuro…')
+
+    try {
+      const result = await createCheckoutSession(planId)
+      if (!result.ok) {
+        if (result.code === 'durable_identity_required') {
+          setShowIdentityGate(true)
+          setUpgradeNote(
+            'Crea o collega un account per proteggere e ripristinare il tuo acquisto.',
+          )
+          return
+        }
+        if (result.code === 'subscription_already_active') {
+          setUpgradeNote('Questo piano è già attivo.')
+          await refreshVerifiedPlan()
+          return
+        }
+        if (result.code === 'billing_management_required') {
+          setUpgradeNote(
+            'La gestione del piano (upgrade/cambio) sarà disponibile a breve.',
+          )
+          return
+        }
+        if (result.code === 'billing_unavailable' || result.code === 'billing_configuration_error') {
+          setUpgradeNote(
+            'Pagamenti non configurati in questo ambiente. Riprova più tardi.',
+          )
+          return
+        }
+        setUpgradeNote(result.error || 'Impossibile avviare il checkout.')
+        return
+      }
+
+      window.location.assign(result.checkoutUrl)
+    } finally {
+      setCheckoutBusy(false)
+    }
   }
 
   return (
@@ -161,13 +259,14 @@ export function Plans({
                     <button
                       type="button"
                       className="plan-card__btn plan-card__btn--upgrade"
-                      onClick={() => onUpgradeClick(plan.planId)}
+                      onClick={() => void onUpgradeClick(plan.planId)}
+                      disabled={checkoutBusy || activating}
                       aria-label={
                         durable
-                          ? `Upgrade a ${plan.displayName} — pagamenti a breve`
+                          ? `Upgrade a ${plan.displayName}`
                           : `Upgrade a ${plan.displayName} — collega account`
                       }
-                      title={durable ? 'Pagamenti a breve' : 'Collega account'}
+                      title={durable ? 'Checkout sicuro' : 'Collega account'}
                     >
                       Upgrade
                     </button>
@@ -179,7 +278,7 @@ export function Plans({
         </div>
 
         <p className="plans-page__footnote">
-          Prezzi provvisori per valutazione prodotto. Non configurati su store o pagamenti.
+          Prezzi provvisori per valutazione prodotto. Checkout in modalità test.
         </p>
       </div>
     </main>

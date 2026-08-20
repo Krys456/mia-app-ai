@@ -48,6 +48,10 @@
     "api/subscription.ts": {
       "includeFiles": "lib/server/**",
       "maxDuration": 15
+    },
+    "api/billing.ts": {
+      "includeFiles": "lib/server/**",
+      "maxDuration": 30
     }
   },
   "rewrites": [

@@ -60,6 +60,18 @@ function AppShell() {
     return () => setAppNavigateHandler(null)
   }, [])
 
+  // #332E3A — Stripe Checkout return opens Plans (query is UX-only; never grants plan).
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search)
+      if (params.get('plans') === '1' || params.has('checkout')) {
+        navigateRef.current('plans')
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [])
+
   const openMemoryManage = (fromSettings = true) => {
     if (!isMemoryManageUiEnabled()) return
     memoryReturnToSettingsRef.current = fromSettings
