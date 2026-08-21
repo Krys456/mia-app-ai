@@ -1,0 +1,68 @@
+/* #334D1 — Morning briefing settings (Kami-quiet) */
+
+.morning-briefing {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  margin-top: 0.85rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+}
+
+.morning-briefing__title {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--text);
+}
+
+.morning-briefing__days {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-inline-size: 0;
+}
+
+.morning-briefing__day-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.4rem;
+}
+
+.morning-briefing__day {
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0.35rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--bg) 88%, var(--surface-solid));
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    border-color var(--duration) var(--ease-out),
+    background var(--duration) var(--ease-out),
+    color var(--duration) var(--ease-out),
+    box-shadow var(--duration) var(--ease-out);
+}
+
+.morning-briefing__day:focus-visible {
+  outline: none;
+  border-color: color-mix(in srgb, var(--accent) 42%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.morning-briefing__day--active {
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface-solid));
+}
+
+.morning-briefing__day:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}

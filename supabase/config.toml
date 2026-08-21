@@ -14,6 +14,12 @@
 [functions.reminder-push-dispatch]
 verify_jwt = false
 
+# #334D1 — morning-briefing-dispatch is a machine-to-machine cron worker.
+# Auth via MORNING_BRIEFING_WORKER_SECRET (or REMINDER_PUSH_WORKER_SECRET fallback).
+# Fail-closed when MORNING_BRIEFING_DISPATCH_ENABLED / PUSH_ENABLED are off.
+[functions.morning-briefing-dispatch]
+verify_jwt = false
+
 # #304A1 — Google redirects here without a Supabase user JWT. Ownership is enforced
 # via HMAC-signed OAuth state + pending nonce bound to auth.uid() at start.
 # Do NOT disable verify_jwt for calendar-oauth-start or calendar-connection.

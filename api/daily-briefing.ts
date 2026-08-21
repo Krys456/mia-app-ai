@@ -1,11 +1,21 @@
 /**
- * #321 /api/daily-briefing — authenticated Calendar + Reminders pack.
+ * #321/#334D1 /api/daily-briefing
+ * - POST (default): authenticated Calendar + Reminders pack
+ * - POST action morning_schedule_*: schedule CRUD (no new Vercel function)
+ * - GET ?morning_schedule=1: fetch schedule
+ *
  * Weather composed client-side via #317 (no silent GPS).
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { requireMemoryApiUser } from '../lib/server/memory-api-auth.js'
 import { buildDailyBriefingServerPayload } from '../lib/server/daily-briefing/orchestrate.js'
+import {
+  disableMorningBriefingSchedule,
+  getMorningBriefingSchedule,
+  morningBriefingScheduleOwnerScope,
+  upsertMorningBriefingSchedule,
+} from '../lib/server/morning-briefing-schedule.js'
 import {
   applyCors,
   parseJsonBody,
@@ -21,6 +31,23 @@ export const config = {
   maxDuration: 20,
 }
 
+function queryFlag(req: VercelRequest, key: string): boolean {
+  const raw = req.query[key]
+  if (raw === '1' || raw === 'true') return true
+  if (Array.isArray(raw) && (raw[0] === '1' || raw[0] === 'true')) return true
+  return false
+}
+
+function isMorningScheduleAction(
+  action: unknown,
+): action is 'morning_schedule_get' | 'morning_schedule_upsert' | 'morning_schedule_disable' {
+  return (
+    action === 'morning_schedule_get' ||
+    action === 'morning_schedule_upsert' ||
+    action === 'morning_schedule_disable'
+  )
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   applyCors(res, req)
   const obs = ensureRequestContext(req as any, res)
@@ -29,8 +56,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return sendCorsPreflight(res, req)
   }
 
-  if (req.method !== 'POST') {
-    res.setHeader('Allow', 'POST, OPTIONS')
+  if (req.method !== 'POST' && req.method !== 'GET') {
+    res.setHeader('Allow', 'GET, POST, OPTIONS')
     return sendJson(res, 405, { error: 'Method not allowed', code: 'method_not_allowed' }, req)
   }
 
@@ -57,6 +84,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     )
   }
 
+  const scope = morningBriefingScheduleOwnerScope(user.userId)
+
+  // --- #334D1 schedule get ---
+  if (req.method === 'GET' && queryFlag(req, 'morning_schedule')) {
+    try {
+      const schedule = await getMorningBriefingSchedule(scope)
+      return sendJson(res, 200, { schedule, requestId: obs.requestId }, req)
+    } catch (err) {
+      console.warn(
+        '[daily-briefing]',
+        JSON.stringify({
+          route: 'morning-schedule-get',
+          requestId: obs.requestId,
+          error: safeErrorSnippet(err),
+        }),
+      )
+      return sendJson(
+        res,
+        500,
+        { error: 'schedule_unavailable', code: 'schedule_unavailable', requestId: obs.requestId },
+        req,
+      )
+    }
+  }
+
+  if (req.method === 'GET') {
+    return sendJson(res, 400, { error: 'Unknown GET', code: 'invalid_query' }, req)
+  }
+
   let body: Record<string, unknown> = {}
   try {
     body = (parseJsonBody(req) as Record<string, unknown>) || {}
@@ -64,9 +120,57 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return sendJson(res, 400, { error: 'Invalid JSON body', code: 'invalid_body' }, req)
   }
 
-  const timeZone = typeof body.timeZone === 'string' ? body.timeZone : ''
-  const target = body.target === 'tomorrow' ? 'tomorrow' : 'today'
-  const language = body.language === 'en' ? 'en' : 'it'
+  // Never trust client ownership fields.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { user_id: _u, userId: _uc, ...safeBody } = body
+
+  if (isMorningScheduleAction(safeBody.action)) {
+    try {
+      if (safeBody.action === 'morning_schedule_get') {
+        const schedule = await getMorningBriefingSchedule(scope)
+        return sendJson(res, 200, { schedule, requestId: obs.requestId }, req)
+      }
+      if (safeBody.action === 'morning_schedule_disable') {
+        const result = await disableMorningBriefingSchedule(scope)
+        return sendJson(res, 200, { ...result, requestId: obs.requestId }, req)
+      }
+      // upsert
+      const result = await upsertMorningBriefingSchedule(safeBody, scope)
+      if (!result.ok) {
+        return sendJson(
+          res,
+          400,
+          {
+            error: 'Validation failed',
+            code: 'validation_failed',
+            errors: 'errors' in result ? result.errors : {},
+            requestId: obs.requestId,
+          },
+          req,
+        )
+      }
+      return sendJson(res, 200, { ...result, requestId: obs.requestId }, req)
+    } catch (err) {
+      console.warn(
+        '[daily-briefing]',
+        JSON.stringify({
+          route: 'morning-schedule-action',
+          requestId: obs.requestId,
+          error: safeErrorSnippet(err),
+        }),
+      )
+      return sendJson(
+        res,
+        500,
+        { error: 'schedule_unavailable', code: 'schedule_unavailable', requestId: obs.requestId },
+        req,
+      )
+    }
+  }
+
+  const timeZone = typeof safeBody.timeZone === 'string' ? safeBody.timeZone : ''
+  const target = safeBody.target === 'tomorrow' ? 'tomorrow' : 'today'
+  const language = safeBody.language === 'en' ? 'en' : 'it'
 
   try {
     const payload = await buildDailyBriefingServerPayload({
