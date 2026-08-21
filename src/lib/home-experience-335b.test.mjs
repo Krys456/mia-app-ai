@@ -84,40 +84,15 @@ assert.ok(fs.statSync(ensoPath).size <= 20 * 1024)
 assert.ok(fs.statSync(mtnPath).size <= 30 * 1024)
 assert.ok(fs.statSync(sunPath).size <= 6 * 1024)
 
-// Greeting uses displayName only
-assert.match(greeting, /personalization\.displayName/)
-assert.doesNotMatch(greeting, /memory|Memory|auth\.user/i)
+// Greeting / thought — #335B3 fixed English philosophy (no daypart / rotation)
+assert.match(greeting, /What will you improve today\?/)
+assert.doesNotMatch(greeting, /formatHomeGreeting|homeDayPart|displayName|Buongiorno|Buon pomeriggio/)
+assert.match(thought, /Improve every day\. Become better\. Find your true self\./)
+assert.doesNotMatch(thought, /dailyThoughtForDate|useMemo|DAILY_THOUGHTS/)
+assert.equal(fs.existsSync(path.join(root, 'src/lib/homeGreeting.ts')), false)
+assert.equal(fs.existsSync(path.join(root, 'src/lib/dailyThought.ts')), false)
 
-// Greeting + thought libs
-const greetMod = await loadTs('src/lib/homeGreeting.ts')
-const thoughtMod = await loadTs('src/lib/dailyThought.ts')
 const qaMod = await loadTs('src/lib/homeQuickActions.ts')
-
-assert.equal(greetMod.homeDayPart(new Date('2026-08-21T08:00:00')).toString(), 'morning')
-assert.equal(greetMod.homeDayPart(new Date('2026-08-21T14:00:00')).toString(), 'afternoon')
-assert.equal(greetMod.homeDayPart(new Date('2026-08-21T20:00:00')).toString(), 'evening')
-
-const withName = greetMod.formatHomeGreeting('Cristian', {
-  now: new Date('2026-08-21T08:00:00'),
-  language: 'it',
-})
-assert.equal(withName.text, 'Buongiorno, Cristian.')
-assert.equal(withName.name, 'Cristian')
-
-const noName = greetMod.formatHomeGreeting('  ', {
-  now: new Date('2026-08-21T08:00:00'),
-  language: 'it',
-})
-assert.equal(noName.text, 'Buongiorno.')
-assert.equal(noName.name, '')
-
-const d1 = thoughtMod.dailyThoughtForDate(new Date(2026, 7, 21))
-const d1b = thoughtMod.dailyThoughtForDate(new Date(2026, 7, 21, 23, 59))
-const d2 = thoughtMod.dailyThoughtForDate(new Date(2026, 7, 22))
-assert.equal(d1, d1b)
-assert.notEqual(d1, d2)
-assert.ok(thoughtMod.DAILY_THOUGHTS_IT.includes(d1))
-assert.equal(thoughtMod.localDateKey(new Date(2026, 7, 21)), '2026-08-21')
 
 // Quick actions — no fake Focus/Calendar backends
 const ids = qaMod.HOME_QUICK_ACTIONS.map((a) => a.id).sort()

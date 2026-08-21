@@ -81,7 +81,7 @@
 
 .home-thought {
   margin: 0;
-  max-width: 19rem;
+  max-width: 22rem;
   font-size: clamp(0.92rem, 3.4vw, 1.02rem);
   color: var(--ink-muted, var(--text-muted));
 }
