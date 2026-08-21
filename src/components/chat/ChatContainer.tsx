@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useChat } from '../../context/ChatContext'
+import { HomeAtmosphere } from '../HomeAtmosphere'
 import { HomeExperience } from '../home/HomeExperience'
 import { ComposerShell } from './ComposerShell'
 import { CopyToast } from './CopyToast'
@@ -75,11 +76,13 @@ export function ChatContainer() {
   }, [isStreaming, messages, onAssistantStart])
 
   return (
-    <div className={`chat-container${isHome ? ' chat-container--home' : ''}`}>
+    <div className={`chat-container${isHome ? ' chat-container--home' : ' chat-container--thread'}`}>
       {isHome ? (
         <HomeExperience />
       ) : (
         <div className="chat-container__stage">
+          {/* #335E — quiet paper fiber only; no scenic Home artwork */}
+          <HomeAtmosphere className="chat-atmosphere" showWash={false} />
           <div
             className="chat-container__viewport scroll-surface"
             ref={scrollerRef}

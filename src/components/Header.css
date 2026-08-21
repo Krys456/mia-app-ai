@@ -19,14 +19,14 @@
   background: color-mix(in srgb, var(--bg) 96%, #fff8ee);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
-  border-bottom-color: color-mix(in srgb, var(--accent) 8%, var(--border));
+  border-bottom-color: color-mix(in srgb, var(--hairline, var(--border)) 72%, transparent);
 }
 
 [data-theme='the-way-sumi'] .app-header {
   background: color-mix(in srgb, var(--bg) 97%, #0c0a09);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
-  border-bottom-color: color-mix(in srgb, var(--text) 8%, transparent);
+  border-bottom-color: color-mix(in srgb, var(--text) 7%, transparent);
 }
 
 .app-header__inner {

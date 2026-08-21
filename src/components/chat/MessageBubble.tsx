@@ -197,6 +197,8 @@ function MessageBubbleComponent({
               <span className="bubble__label bubble__label--error">Errore</span>
             </div>
           ) : null}
+          {/* #335E — one restrained vermilion seal per assistant turn */}
+          {!isError ? <span className="bubble__ink-seal" aria-hidden="true" /> : null}
           {!isError && message.memoryEvent ? (
             <MemoryMessageIndicator event={message.memoryEvent} />
           ) : null}

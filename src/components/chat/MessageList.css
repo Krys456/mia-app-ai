@@ -1,36 +1,65 @@
-/* #333B Kami — message list rhythm */
+/* #333B / #335E — message list rhythm (MA: calm but efficient) */
 
 .message-list {
   width: 100%;
   max-width: var(--content-max);
   margin: 0 auto;
-  padding: var(--space-page-y) var(--page-gutter) 1.5rem;
+  padding: var(--space-page-y) var(--page-gutter) 1.35rem;
   display: flex;
   flex-direction: column;
-  gap: 1.55rem;
+  gap: 0;
   box-sizing: border-box;
 }
 
+/* Intentional breathing between turns */
+.message-list > .bubble--user {
+  margin-top: 1.15rem;
+}
+
+.message-list > .bubble--assistant {
+  margin-top: 0.85rem;
+}
+
+.message-list > .bubble:first-child {
+  margin-top: 0;
+}
+
+/* Slightly more MA before the next user turn after a full assistant reply */
+.message-list > .bubble--assistant + .bubble--user {
+  margin-top: 1.55rem;
+}
+
 .message-list__end {
-  height: 1.45rem;
+  height: 1.35rem;
   flex-shrink: 0;
 }
 
 @media (min-width: 768px) {
   .message-list {
-    /* Slightly wider editorial column — still aligned with composer via --content-max */
-    max-width: min(48rem, 100%);
-    padding: calc(var(--space-page-y) + 0.15rem) var(--page-gutter) 1.75rem;
-    gap: 1.75rem;
+    /* Editorial reading column — intentional MA around conversation */
+    max-width: min(42rem, 100%);
+    padding: calc(var(--space-page-y) + 0.2rem) var(--page-gutter) 1.65rem;
+  }
+
+  .message-list > .bubble--user {
+    margin-top: 1.35rem;
+  }
+
+  .message-list > .bubble--assistant {
+    margin-top: 1rem;
+  }
+
+  .message-list > .bubble--assistant + .bubble--user {
+    margin-top: 1.85rem;
   }
 
   .message-list__end {
-    height: 1.65rem;
+    height: 1.55rem;
   }
 }
 
 @media (min-width: 1100px) {
   .message-list {
-    max-width: min(52rem, 100%);
+    max-width: min(44rem, 100%);
   }
 }

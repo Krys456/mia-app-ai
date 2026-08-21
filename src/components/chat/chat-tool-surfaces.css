@@ -11,10 +11,10 @@
 [data-theme='the-way-sumi'] .calc-ui__card,
 [data-theme='the-way-sumi'] .unit-ui__card,
 [data-theme='the-way-sumi'] .energy-ui__card {
-  background: color-mix(in srgb, var(--surface-solid) 94%, var(--surface-2));
-  border: 1px solid color-mix(in srgb, var(--border) 90%, transparent);
-  border-radius: var(--radius-md);
-  box-shadow: none;
+  background: color-mix(in srgb, var(--paper-surface, var(--surface-solid)) 94%, var(--surface-2));
+  border: 1px solid color-mix(in srgb, var(--hairline, var(--border)) 90%, transparent);
+  border-radius: var(--radius-paper, var(--radius-md));
+  box-shadow: var(--paper-shadow-1, none);
   max-width: min(100%, 20rem);
 }
 
