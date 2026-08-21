@@ -1,16 +1,11 @@
 /**
- * #335B — Daily philosophical thought (deterministic local rotation).
+ * #335B3 — Official ShinkAIdo Home philosophy secondary line (fixed English).
  */
 
-import { useMemo } from 'react'
-import { dailyThoughtForDate } from '../../lib/dailyThought'
-
 export function DailyThought() {
-  const thought = useMemo(() => dailyThoughtForDate(new Date()), [])
-
   return (
     <p className="home-thought type-daily-thought motion-ink-reveal" data-home="daily-thought">
-      {thought}
+      Improve every day. Become better. Find your true self.
     </p>
   )
 }
