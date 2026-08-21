@@ -278,6 +278,34 @@ export interface AppSettings {
   theme: ThemeSettings
   appearance: AppearanceSettings
   developer: DeveloperSettings
+  /** #334C — device-local Daily Briefing presentation prefs (not Memory). */
+  briefing: DailyBriefingSettings
+}
+
+/**
+ * #334C — Briefing presentation preferences (localStorage only).
+ * Never sent to Core / Memory as configuration.
+ */
+export type BriefingLength = 'concise' | 'balanced' | 'detailed'
+
+export interface DailyBriefingSettings {
+  length: BriefingLength
+  /** Include weather section when data is available. */
+  weatherEnabled: boolean
+  /** Include calendar events in presentation (does not disable Calendar OAuth). */
+  calendarEnabled: boolean
+  /** Include reminders in presentation. */
+  remindersEnabled: boolean
+  /** Explicit city-level preferred weather location for briefing; never GPS. */
+  preferredWeatherCity: string | null
+}
+
+export const DEFAULT_BRIEFING_SETTINGS: DailyBriefingSettings = {
+  length: 'balanced',
+  weatherEnabled: true,
+  calendarEnabled: true,
+  remindersEnabled: true,
+  preferredWeatherCity: null,
 }
 
 export const DEFAULT_PERSONALIZATION: PersonalizationSettings = {

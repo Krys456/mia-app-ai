@@ -9,7 +9,12 @@ import {
   buildBetaContactLine,
 } from '../lib/privacyCopy'
 import { getClientBuildId } from '../lib/buildInfo'
-import type { AppearanceFontFamily, AppearanceFontSize, PersonalizationSettings } from '../types'
+import type {
+  AppearanceFontFamily,
+  AppearanceFontSize,
+  BriefingLength,
+  PersonalizationSettings,
+} from '../types'
 import { ThemeSettings } from './ThemeSettings'
 import { NotificationsSettings } from './NotificationsSettings'
 import { CalendarIntegrationsSettings } from './CalendarIntegrationsSettings'
@@ -32,6 +37,7 @@ export function SettingsDrawer({ onOpenMemory, onOpenPrivacy, onOpenReminders }:
     settings,
     updatePersonalization,
     updateAppearance,
+    updateBriefing,
   } = useChat()
   const { clearPreview } = useTheme()
   const titleId = useId()
@@ -84,6 +90,7 @@ export function SettingsDrawer({ onOpenMemory, onOpenPrivacy, onOpenReminders }:
 
   const p = settings.personalization
   const appearance = settings.appearance
+  const briefing = settings.briefing
 
   const set = <K extends keyof PersonalizationSettings>(
     key: K,
@@ -92,6 +99,11 @@ export function SettingsDrawer({ onOpenMemory, onOpenPrivacy, onOpenReminders }:
 
   const setFontSize = (fontSize: AppearanceFontSize) => updateAppearance({ fontSize })
   const setFontFamily = (fontFamily: AppearanceFontFamily) => updateAppearance({ fontFamily })
+  const setBriefingLength = (length: BriefingLength) => updateBriefing({ length })
+  const setBriefingCity = (raw: string) => {
+    const trimmed = raw.trim()
+    updateBriefing({ preferredWeatherCity: trimmed ? trimmed.slice(0, 60) : null })
+  }
 
   return (
     <div
@@ -216,6 +228,80 @@ export function SettingsDrawer({ onOpenMemory, onOpenPrivacy, onOpenReminders }:
           <div className="settings-divider" role="separator" />
 
           <CalendarIntegrationsSettings />
+
+          <div className="settings-divider" role="separator" />
+
+          <section className="settings-briefing" aria-labelledby="briefing-settings-title">
+            <h3 id="briefing-settings-title" className="settings-section-title">
+              Briefing quotidiano
+            </h3>
+
+            <div className="field">
+              <label className="field__label" htmlFor="briefing-length">
+                Stile
+              </label>
+              <select
+                id="briefing-length"
+                value={briefing.length}
+                onChange={(e) => setBriefingLength(e.target.value as BriefingLength)}
+              >
+                <option value="concise">Conciso</option>
+                <option value="balanced">Bilanciato</option>
+                <option value="detailed">Dettagliato</option>
+              </select>
+            </div>
+
+            <div className="field">
+              <label className="field__label" htmlFor="briefing-city">
+                Città meteo
+              </label>
+              <input
+                id="briefing-city"
+                type="text"
+                inputMode="text"
+                autoComplete="address-level2"
+                placeholder="es. Milano"
+                value={briefing.preferredWeatherCity || ''}
+                onChange={(e) => setBriefingCity(e.target.value)}
+                aria-describedby="briefing-city-hint"
+              />
+              <p id="briefing-city-hint" className="settings-note settings-note--tight">
+                Solo se la scegli tu. Nessuna posizione automatica.
+              </p>
+            </div>
+
+            <div className="memory-toggle-row">
+              <span className="field__label" id="briefing-weather-label">
+                Meteo nel briefing
+              </span>
+              <div
+                className="memory-toggle"
+                role="group"
+                aria-labelledby="briefing-weather-label"
+              >
+                <button
+                  type="button"
+                  className={`memory-toggle__opt${briefing.weatherEnabled === false ? ' memory-toggle__opt--active' : ''}`}
+                  aria-pressed={briefing.weatherEnabled === false}
+                  onClick={() => updateBriefing({ weatherEnabled: false })}
+                >
+                  OFF
+                </button>
+                <button
+                  type="button"
+                  className={`memory-toggle__opt${briefing.weatherEnabled !== false ? ' memory-toggle__opt--active' : ''}`}
+                  aria-pressed={briefing.weatherEnabled !== false}
+                  onClick={() => updateBriefing({ weatherEnabled: true })}
+                >
+                  ON
+                </button>
+              </div>
+            </div>
+
+            <p className="settings-note settings-note--tight">
+              Preferenze sul dispositivo. Non usano la Memoria e non inventano fatti personali.
+            </p>
+          </section>
 
           <div className="settings-divider" role="separator" />
 

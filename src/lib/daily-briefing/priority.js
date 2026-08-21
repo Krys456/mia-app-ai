@@ -132,16 +132,36 @@ export function buildBriefingPriorities(model, opts = {}) {
     const soon = ms - nowMs <= soonMs && ms >= nowMs - 5 * 60 * 1000
     const isNext = !nextAssigned
     if (isNext) nextAssigned = true
+    const schedule = opts.schedule || null
+    const inOverlap = Boolean(
+      schedule?.overlaps?.some(
+        (o) =>
+          String(o.a?.id || '') === String(ev.id || '') ||
+          String(o.b?.id || '') === String(ev.id || ''),
+      ),
+    )
+    const inBackToBack = Boolean(
+      schedule?.backToBack?.some(
+        (p) =>
+          String(p.a?.id || '') === String(ev.id || '') ||
+          String(p.b?.id || '') === String(ev.id || ''),
+      ),
+    )
+    let rank = isNext ? (soon ? 20 : 25) : 30
+    if (inOverlap) rank = Math.min(rank, isNext ? 18 : 28)
+    else if (inBackToBack && isNext) rank = Math.min(rank, 22)
     items.push({
       id: `cal-${String(ev.id || ms)}`,
       kind: isNext ? 'next_event' : 'timed_event',
-      rank: isNext ? (soon ? 20 : 25) : 30,
+      rank,
       source: 'calendar',
       title: String(ev.title || ''),
       when: ev.start,
       whenMs: ms,
       allDay: false,
       soon: Boolean(soon && isNext),
+      overlap: inOverlap,
+      backToBack: inBackToBack,
       raw: ev,
     })
   }
@@ -161,7 +181,7 @@ export function buildBriefingPriorities(model, opts = {}) {
     })
   }
 
-  // 5. Reminders due today (not overdue)
+  // 5. Reminders due today (not overdue) — due-soon ahead of later today
   if (rem.status === 'ok' && Array.isArray(rem.today)) {
     const todaySorted = rem.today
       .slice()
@@ -169,15 +189,18 @@ export function buildBriefingPriorities(model, opts = {}) {
       .sort((a, b) => (a.ms ?? 0) - (b.ms ?? 0))
     for (const { r, ms } of todaySorted) {
       if (!r) continue
+      const dueSoon =
+        ms != null && ms >= nowMs - 5 * 60 * 1000 && ms - nowMs <= 2 * 60 * 60 * 1000
       items.push({
         id: `rem-today-${String(r.id || items.length)}`,
         kind: 'today_reminder',
-        rank: 50,
+        rank: dueSoon ? 45 : 55,
         source: 'reminders',
         title: String(r.title || ''),
         when: r.fireAt || null,
         whenMs: ms,
         overdue: false,
+        dueSoon: Boolean(dueSoon),
         raw: r,
       })
     }
