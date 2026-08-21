@@ -60,10 +60,13 @@ assert.match(experience, /HomeBrandArea/)
 
 // Artwork decorative
 assert.match(sumiHero, /aria-hidden="true"/)
-assert.match(sumiHero, /shinkaido-enso-hero\.svg/)
-assert.match(sumiHero, /shinkaido-sumi-mountains\.svg/)
-assert.match(sumiHero, /shinkaido-vermilion-sun\.svg/)
-assert.match(atm, /aria-hidden="true"/)
+assert.match(sumiHero, /sumi-hero__enso/)
+assert.match(sumiHero, /sumi-hero__mountains/)
+assert.match(sumiHero, /sumi-hero__sun/)
+assert.match(sumiHero, /--enso-sun|#C23B2A/)
+// Authored files remain in public/brand for asset pipeline / future <img> use
+assert.ok(fs.existsSync(path.join(root, 'public/brand/shinkaido-enso-hero.svg')))
+assert.match(read('public/brand/shinkaido-enso-hero.svg'), /viewBox/)
 
 // Assets exist + size budgets
 const ensoPath = path.join(root, 'public/brand/shinkaido-enso-hero.svg')
