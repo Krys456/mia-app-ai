@@ -95,18 +95,26 @@ export function SumiHero() {
         <defs>
           <linearGradient
             id="sumiHeroFireGrad"
-            x1="48"
-            y1="160"
-            x2="120"
-            y2="36"
+            x1="40"
+            y1="170"
+            x2="130"
+            y2="30"
             gradientUnits="userSpaceOnUse"
           >
-            <stop offset="0%" stopColor="#1C1916" stopOpacity="0.2" />
-            <stop offset="22%" stopColor="#9E2F22" stopOpacity="0.85" />
-            <stop offset="48%" stopColor="#C23B2A" stopOpacity="0.95" />
-            <stop offset="72%" stopColor="#D45A4A" stopOpacity="0.8" />
-            <stop offset="100%" stopColor="#E07A3A" stopOpacity="0.5" />
+            <stop offset="0%" stopColor="#1C1916" stopOpacity="0.15" />
+            <stop offset="18%" stopColor="#9E2F22" stopOpacity="0.9" />
+            <stop offset="42%" stopColor="#C23B2A" stopOpacity="1" />
+            <stop offset="68%" stopColor="#D45A4A" stopOpacity="0.88" />
+            <stop offset="100%" stopColor="#E07A3A" stopOpacity="0.55" />
           </linearGradient>
+          {/* Left / upper-left sector (~30–35% of ring) where ink becomes embers */}
+          <mask id="sumiHeroFireMask" maskUnits="userSpaceOnUse">
+            <rect x="0" y="0" width="240" height="240" fill="black" />
+            <path
+              fill="white"
+              d="M120 120 L55 200 A95 95 0 0 1 95 28 Z"
+            />
+          </mask>
         </defs>
         <path fill="currentColor" d={ENSO_INK} />
         <path fill="currentColor" opacity="0.28" d={ENSO_STREAK_1} />
@@ -117,31 +125,18 @@ export function SumiHero() {
         <circle cx="172" cy="188" r="1.5" fill="currentColor" opacity="0.35" />
         <circle cx="48" cy="130" r="0.9" fill="currentColor" opacity="0.25" />
         <circle cx="56" cy="160" r="1.1" fill="currentColor" opacity="0.2" />
-        {/* Fire — left / upper-left ~30% of circumference; sumi remains dominant */}
+        {/* Fire painted into the brush stroke itself (masked sector) */}
         <path
           fill="url(#sumiHeroFireGrad)"
-          opacity="0.9"
-          d="M50 152 C46 128 50 100 64 82 C74 68 90 56 108 50 C112 48 114 42 108 42 C94 48 78 58 66 74 C48 96 40 124 46 150 C48 158 54 158 58 154 C62 150 54 156 50 152 Z"
-        />
-        <path
-          fill="#C23B2A"
-          opacity="0.7"
-          d="M56 124 C54 102 62 84 76 70 C86 60 100 52 116 48 C120 46 120 40 114 40 C98 46 82 58 70 74 C58 90 50 110 52 130 C53 138 60 136 62 130 C64 124 58 128 56 124 Z"
-        />
-        <path
-          fill="#9E2F22"
-          opacity="0.55"
-          d="M50 138 C48 120 52 102 62 88 C58 104 54 122 56 140 C57 146 52 146 50 138 Z"
+          d={ENSO_INK}
+          mask="url(#sumiHeroFireMask)"
+          opacity="0.92"
         />
         <path
           fill="#E07A3A"
-          opacity="0.5"
-          d="M70 78 C78 68 90 60 104 54 C98 58 88 66 80 76 C74 84 70 86 70 78 Z"
-        />
-        <path
-          fill="#D45A4A"
-          opacity="0.45"
-          d="M62 96 C68 86 80 76 94 70 C86 76 76 86 70 96 C66 102 60 102 62 96 Z"
+          d={ENSO_STREAK_1}
+          mask="url(#sumiHeroFireMask)"
+          opacity="0.35"
         />
         <circle cx="72" cy="70" r="1.5" fill="#E07A3A" opacity="0.7" />
         <circle cx="60" cy="88" r="1.2" fill="#C23B2A" opacity="0.65" />
@@ -149,10 +144,11 @@ export function SumiHero() {
         <circle cx="82" cy="62" r="0.8" fill="#F0A060" opacity="0.45" />
         <circle cx="66" cy="80" r="0.6" fill="#F0A060" opacity="0.4" />
         <circle cx="52" cy="126" r="0.9" fill="#9E2F22" opacity="0.5" />
+        <circle cx="58" cy="148" r="0.7" fill="#C23B2A" opacity="0.4" />
         {/* Vermilion sun — final open tip of the brush stroke */}
         <circle cx={198.6} cy={66.98} r="8.2" fill="var(--enso-sun, #C23B2A)" />
         <circle
-          cx={200.80}
+          cx={200.8}
           cy={64.98}
           r="2.6"
           fill="var(--hanko-soft, #D45A4A)"

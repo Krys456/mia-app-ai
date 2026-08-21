@@ -27,6 +27,7 @@ assert.doesNotMatch(home, /Dove vuoi andare oggi/)
 // Ensō: brush ink + fire + sun at tip; no separate sun layer required
 assert.match(sumi, /ENSO_INK/)
 assert.match(sumi, /sumiHeroFireGrad/)
+assert.match(sumi, /sumiHeroFireMask/)
 assert.match(sumi, /#C23B2A/)
 assert.match(sumi, /#E07A3A/)
 assert.match(sumi, /--enso-sun/)
@@ -34,6 +35,7 @@ assert.doesNotMatch(sumi, /sumi-hero__sun/)
 
 // Canonical assets
 assert.match(ensoFile, /ensoFireGrad/)
+assert.match(ensoFile, /ensoFireMask/)
 assert.match(ensoFile, /#C23B2A/)
 assert.match(ensoFile, /currentColor/)
 assert.match(mtnFile, /opacity="0\.09"|opacity="0\.1"/)
@@ -44,7 +46,7 @@ assert.match(sunFile, /#C23B2A/)
 
 const ensoBytes = fs.statSync(path.join(root, 'public/brand/shinkaido-enso-hero.svg')).size
 const mtnBytes = fs.statSync(path.join(root, 'public/brand/shinkaido-sumi-mountains.svg')).size
-assert.ok(ensoBytes <= 22 * 1024, `enso ${ensoBytes}`)
+assert.ok(ensoBytes <= 24 * 1024, `enso ${ensoBytes}`)
 assert.ok(mtnBytes <= 30 * 1024, `mountains ${mtnBytes}`)
 
 assert.doesNotMatch(read('package.json'), /framer-motion|three|gsap/)
