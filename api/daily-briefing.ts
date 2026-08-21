@@ -87,10 +87,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     )
   }
 
-  const scope = morningBriefingScheduleOwnerScope(user.userId)
-
-  // --- #334D1 schedule get ---
+  // --- #334D1 schedule get (isolated; never runs for calendar_query) ---
   if (req.method === 'GET' && queryFlag(req, 'morning_schedule')) {
+    const scope = morningBriefingScheduleOwnerScope(user.userId)
     try {
       const schedule = await getMorningBriefingSchedule(scope)
       return sendJson(res, 200, { schedule, requestId: obs.requestId }, req)
@@ -128,6 +127,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const { user_id: _u, userId: _uc, ...safeBody } = body
 
   // #336B — read-only Calendar chat query (same function; verified listEvents only).
+  // Action-isolated: must not initialize or call morning schedule storage.
   if (safeBody.action === 'calendar_query') {
     try {
       const tz = sanitizeTimeZone(safeBody.timeZone) || 'UTC'
@@ -181,6 +181,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   if (isMorningScheduleAction(safeBody.action)) {
+    const scope = morningBriefingScheduleOwnerScope(user.userId)
     try {
       if (safeBody.action === 'morning_schedule_get') {
         const schedule = await getMorningBriefingSchedule(scope)
