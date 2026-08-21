@@ -132,6 +132,12 @@ import {
   saveBriefingContext,
 } from '../lib/dailyBriefing'
 import {
+  applyCalendarIntent,
+  detectCalendarIntent,
+  loadCalendarContext,
+  saveCalendarContext,
+} from '../lib/calendar-chat'
+import {
   applyTranslationIntent,
   buildTranslationDiag,
   clearTranslationContext,
@@ -356,6 +362,7 @@ type Action =
       energyMathUi?: import('../types').EnergyMathUiState | null
       dailyBriefingUi?: import('../types').DailyBriefingUiState | null
       translationUi?: import('../types').TranslationUiState | null
+      calendarUi?: import('../types').CalendarUiState | null
     }
   | { type: 'ASSISTANT_START'; id: string; memoryEvent?: MemoryFeedbackEvent | null }
   | { type: 'ASSISTANT_PROGRESS'; id: string; content: string }
@@ -499,6 +506,7 @@ function reducer(state: AppState, action: Action): AppState {
         ...(action.energyMathUi ? { energyMathUi: action.energyMathUi } : {}),
         ...(action.dailyBriefingUi ? { dailyBriefingUi: action.dailyBriefingUi } : {}),
         ...(action.translationUi ? { translationUi: action.translationUi } : {}),
+        ...(action.calendarUi ? { calendarUi: action.calendarUi } : {}),
       }
       return {
         ...state,
@@ -642,6 +650,8 @@ interface ChatContextValue {
   handleEnergyMathUiAction: (actionId: string) => void
   /** #322 — Translation result chip actions (copy). */
   handleTranslationUiAction: (actionId: string) => void
+  /** #336B — Calendar status chip actions (open Settings). */
+  handleCalendarUiAction: (actionId: string) => void
   /** Re-run the completion for an assistant message (drops that reply and regenerates). */
   regenerateAssistant: (assistantId: string) => void
 }
@@ -1415,6 +1425,15 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     [runWeatherWithGeolocation],
   )
 
+  const handleCalendarUiAction = useCallback(
+    (actionId: string) => {
+      if (actionId === 'open_settings') {
+        dispatch({ type: 'OPEN_SETTINGS' })
+      }
+    },
+    [],
+  )
+
   const handleCalculatorUiAction = useCallback((actionId: string) => {
     if (actionId !== 'copy_result') return
     const calc = applyCalculatorIntent({
@@ -1794,6 +1813,57 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         }
         if (shouldClearMessagingOnUserText(content)) {
           clearMessagingContext()
+        }
+      }
+
+      // #336B — Calendar chat before Daily Briefing (claims "Cosa ho oggi/domani?").
+      if (allowLocalRouters) {
+        const sticky = deriveDictationLangFromMessages(state.messages)
+        const langHint =
+          sticky === 'en'
+            ? 'en'
+            : sticky === 'it'
+              ? 'it'
+              : detectBriefingLanguage(content, detectTimerLanguage(content, 'it'))
+        const calendarCtx = loadCalendarContext()
+        const calendarIntent = detectCalendarIntent(content, {
+          languageHint: langHint,
+          hasCalendarContext: Boolean(calendarCtx),
+        })
+        if (calendarIntent.intent === 'calendar') {
+          void (async () => {
+            try {
+              const cal = await applyCalendarIntent({
+                text: content,
+                languageHint: langHint,
+                calendarContext: calendarCtx,
+              })
+              const reply =
+                cal.handled && cal.reply
+                  ? cal.reply
+                  : langHint === 'en'
+                    ? 'I couldn’t read the calendar right now.'
+                    : 'Non riesco a leggere il calendario in questo momento.'
+              if (cal.calendarContext) saveCalendarContext(cal.calendarContext)
+              dispatch({
+                type: 'LOCAL_EXCHANGE',
+                userContent: content,
+                assistantContent: reply,
+                calendarUi:
+                  (cal.calendarUi as import('../types').CalendarUiState | null) || null,
+              })
+            } catch {
+              dispatch({
+                type: 'LOCAL_EXCHANGE',
+                userContent: content,
+                assistantContent:
+                  langHint === 'en'
+                    ? 'I couldn’t read the calendar right now.'
+                    : 'Non riesco a leggere il calendario in questo momento.',
+              })
+            }
+          })()
+          return true
         }
       }
 
@@ -2259,6 +2329,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       handleUnitConversionUiAction,
       handleEnergyMathUiAction,
       handleTranslationUiAction,
+      handleCalendarUiAction,
       regenerateAssistant,
     }),
     [
@@ -2288,6 +2359,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       handleUnitConversionUiAction,
       handleEnergyMathUiAction,
       handleTranslationUiAction,
+      handleCalendarUiAction,
       regenerateAssistant,
     ],
   )

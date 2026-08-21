@@ -107,8 +107,8 @@ assert.equal(meteo.kind, 'sendMessage')
 assert.match(meteo.message, /tempo/i)
 
 const cal = qaMod.homeQuickActionById('calendario')
-assert.equal(cal.kind, 'openSettings')
-assert.equal(cal.message, undefined)
+assert.equal(cal.kind, 'sendMessage')
+assert.equal(cal.message, 'Cosa ho oggi?')
 
 const focus = qaMod.homeQuickActionById('focus')
 assert.equal(focus.kind, 'sendMessage')

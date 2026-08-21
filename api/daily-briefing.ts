@@ -1,7 +1,8 @@
 /**
- * #321/#334D1 /api/daily-briefing
+ * #321/#334D1/#336B /api/daily-briefing
  * - POST (default): authenticated Calendar + Reminders pack
  * - POST action morning_schedule_*: schedule CRUD (no new Vercel function)
+ * - POST action calendar_query: read-only Calendar chat pack (#336B; no new Vercel function)
  * - GET ?morning_schedule=1: fetch schedule
  *
  * Weather composed client-side via #317 (no silent GPS).
@@ -10,12 +11,14 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { requireMemoryApiUser } from '../lib/server/memory-api-auth.js'
 import { buildDailyBriefingServerPayload } from '../lib/server/daily-briefing/orchestrate.js'
+import { runCalendarQuery } from '../lib/server/daily-briefing/calendar-query.js'
 import {
   disableMorningBriefingSchedule,
   getMorningBriefingSchedule,
   morningBriefingScheduleOwnerScope,
   upsertMorningBriefingSchedule,
 } from '../lib/server/morning-briefing-schedule.js'
+import { sanitizeTimeZone } from '../lib/server/calendar-normalize.js'
 import {
   applyCors,
   parseJsonBody,
@@ -123,6 +126,59 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Never trust client ownership fields.
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { user_id: _u, userId: _uc, ...safeBody } = body
+
+  // #336B — read-only Calendar chat query (same function; verified listEvents only).
+  if (safeBody.action === 'calendar_query') {
+    try {
+      const tz = sanitizeTimeZone(safeBody.timeZone) || 'UTC'
+      const range =
+        typeof safeBody.range === 'string' ? safeBody.range.trim().toLowerCase() : undefined
+      const timeMin = typeof safeBody.timeMin === 'string' ? safeBody.timeMin : undefined
+      const timeMax = typeof safeBody.timeMax === 'string' ? safeBody.timeMax : undefined
+      const limit =
+        typeof safeBody.limit === 'number' && Number.isFinite(safeBody.limit)
+          ? safeBody.limit
+          : 40
+
+      const pack = await runCalendarQuery(user.userId, {
+        timeZone: tz,
+        range,
+        timeMin,
+        timeMax,
+        limit,
+      })
+
+      return sendJson(
+        res,
+        200,
+        {
+          ...pack,
+          requestId: obs.requestId,
+        },
+        req,
+      )
+    } catch (err) {
+      console.warn(
+        '[daily-briefing]',
+        JSON.stringify({
+          route: 'calendar-query',
+          requestId: obs.requestId,
+          error: safeErrorSnippet(err),
+        }),
+      )
+      return sendJson(
+        res,
+        500,
+        {
+          status: 'error',
+          items: [],
+          code: 'calendar_query_failed',
+          requestId: obs.requestId,
+        },
+        req,
+      )
+    }
+  }
 
   if (isMorningScheduleAction(safeBody.action)) {
     try {
