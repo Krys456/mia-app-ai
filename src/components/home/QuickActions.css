@@ -1,0 +1,102 @@
+/* #335B — Quick actions as paper annotations (not dashboard cards) */
+
+.home-actions {
+  width: 100%;
+  max-width: var(--home-max, 28rem);
+  margin: 0 auto;
+}
+
+.home-actions__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.home-action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  width: 100%;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0.65rem 0.35rem 0.55rem;
+  margin: 0;
+  border: 1px solid color-mix(in srgb, var(--hairline, var(--border)) 88%, transparent);
+  border-radius: var(--radius-paper, 0.55rem);
+  background: color-mix(in srgb, var(--paper-surface, var(--surface)) 92%, transparent);
+  box-shadow: var(--paper-shadow-1, none);
+  color: var(--ink, var(--text));
+  font: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition:
+    transform 120ms var(--ease-paper, ease),
+    background-color 160ms ease,
+    border-color 160ms ease;
+}
+
+.home-action:hover {
+  background: var(--paper-raised, var(--surface-2));
+  border-color: color-mix(in srgb, var(--hanko, var(--accent)) 22%, var(--border));
+}
+
+.home-action:active {
+  transform: translateY(1px) scale(0.985);
+}
+
+.home-action:focus-visible {
+  outline: 2px solid var(--hanko, var(--accent));
+  outline-offset: 2px;
+}
+
+.home-action:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.home-action__mark {
+  display: inline-flex;
+  color: color-mix(in srgb, var(--ink-muted, var(--text-muted)) 88%, var(--hanko, var(--accent)));
+}
+
+.home-action__label {
+  color: var(--ink, var(--text));
+  letter-spacing: 0.03em;
+  text-transform: none;
+  font-size: 0.72rem;
+  font-weight: 550;
+}
+
+html[data-theme='the-way-washi'] .home-action,
+html[data-theme='the-way-sumi'] .home-action {
+  background: color-mix(in srgb, var(--paper-surface) 96%, var(--paper-raised));
+}
+
+@media (max-width: 360px) {
+  .home-actions__list {
+    gap: 0.35rem;
+  }
+
+  .home-action {
+    padding: 0.55rem 0.2rem 0.45rem;
+  }
+
+  .home-action__label {
+    font-size: 0.68rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-action {
+    transition: none;
+  }
+
+  .home-action:active {
+    transform: none;
+  }
+}

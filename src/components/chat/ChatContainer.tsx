@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useChat } from '../../context/ChatContext'
-import { HomeHero } from '../HomeHero'
+import { HomeExperience } from '../home/HomeExperience'
 import { ComposerShell } from './ComposerShell'
 import { CopyToast } from './CopyToast'
 import { MessageList } from './MessageList'
@@ -77,7 +77,7 @@ export function ChatContainer() {
   return (
     <div className={`chat-container${isHome ? ' chat-container--home' : ''}`}>
       {isHome ? (
-        <HomeHero />
+        <HomeExperience />
       ) : (
         <div className="chat-container__stage">
           <div

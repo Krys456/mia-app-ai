@@ -1,7 +1,6 @@
 /**
- * #335A — Decorative Home atmosphere slot layer.
- * Washi fiber + sumi wash only. Mountains / hero Ensō / sun slots reserved
- * for authored assets in later phases (no placeholder artwork).
+ * #335A/#335B — Decorative Home atmosphere (washi fiber + quiet wash).
+ * Scenic artwork lives in SumiHero; slots remain for optional layering.
  */
 
 import './HomeAtmosphere.css'
@@ -21,10 +20,6 @@ export function HomeAtmosphere({ className = '', showWash = true }: HomeAtmosphe
     >
       {showWash ? <div className="home-atmosphere__wash" /> : null}
       <div className="washi-texture home-atmosphere__fiber" />
-      {/* Authored asset slots — empty until #335B assets */}
-      <div className="home-atmosphere__mountains" data-empty="true" data-slot="sumi-mountains" />
-      <div className="home-atmosphere__enso" data-empty="true" data-slot="enso-hero" />
-      <div className="home-atmosphere__sun" data-empty="true" data-slot="vermilion-sun" />
     </div>
   )
 }

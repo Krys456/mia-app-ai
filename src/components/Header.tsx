@@ -72,6 +72,8 @@ interface HeaderProps {
 
 export function Header({ onNavigate }: HeaderProps) {
   const { newChat, toggleSettings, settingsOpen, messages } = useChat()
+  /** #335B — quieter chrome on empty Home; keep all actions (de-emphasized in CSS). */
+  const isHome = messages.length === 0
 
   const goHomeChat = () => {
     onNavigate('chat')
@@ -85,7 +87,7 @@ export function Header({ onNavigate }: HeaderProps) {
   }
 
   return (
-    <header className="app-header" role="banner">
+    <header className={`app-header${isHome ? ' app-header--home' : ''}`} role="banner">
       <div className="app-header__inner">
         <button
           type="button"
@@ -95,13 +97,13 @@ export function Header({ onNavigate }: HeaderProps) {
           title={BRAND.accessibleProductName}
         >
           <BrandLogo variant="mark" />
-          <BrandWordmark showTagline emphasizeAi size="md" />
+          <BrandWordmark showTagline={!isHome} emphasizeAi size="md" />
         </button>
 
         <div className="app-header__actions">
           <button
             type="button"
-            className="header-btn"
+            className="header-btn header-btn--secondary"
             onClick={() => {
               onNavigate('chat')
               if (messages.length > 0) {
@@ -119,7 +121,7 @@ export function Header({ onNavigate }: HeaderProps) {
           </button>
           <button
             type="button"
-            className="header-btn"
+            className="header-btn header-btn--secondary"
             onClick={() => onNavigate('vision')}
             aria-label="Vision AI"
             title="Vision AI"
@@ -128,7 +130,7 @@ export function Header({ onNavigate }: HeaderProps) {
           </button>
           <button
             type="button"
-            className="header-btn header-btn--plans"
+            className="header-btn header-btn--plans header-btn--secondary"
             onClick={() => onNavigate('plans')}
             aria-label="Piani ShinkAIdo"
             title="Piani ShinkAIdo"

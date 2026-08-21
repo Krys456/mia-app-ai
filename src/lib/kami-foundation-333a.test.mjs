@@ -42,6 +42,7 @@ const headerTsx = read('src/components/Header.tsx')
 const headerCss = read('src/components/Header.css')
 const heroTsx = read('src/components/HomeHero.tsx')
 const heroCss = read('src/components/HomeHero.css')
+void heroCss
 const themesSrc = read('src/lib/themes.ts')
 const brandLogoCss = read('src/components/BrandLogo.css')
 const wordmarkCss = read('src/components/BrandWordmark.css')
@@ -130,15 +131,14 @@ assert.match(headerCss, /@media \(max-width:\s*380px\)/)
 assert.match(headerCss, /@media \(max-width:\s*360px\)/)
 assert.doesNotMatch(headerTsx, /hamburger|drawer.*nav|menu-architecture/i)
 
-// —— HomeHero hierarchy (no secondary hint / tour) ——
-assert.match(heroTsx, /BrandLogo/)
-assert.match(heroTsx, /BrandWordmark/)
-assert.match(heroTsx, /emptyPromptIt/)
-assert.match(heroTsx, /HomeAtmosphere/)
-assert.doesNotMatch(heroTsx, /FIRST_RUN_HINT|home-hero__hint/)
-assert.doesNotMatch(heroTsx, /carousel|onboarding|wizard/i)
-assert.match(heroCss, /\.home-hero__lead/)
-assert.doesNotMatch(heroCss, /home-hero__hint/)
+// —— HomeExperience (#335B evolves #333A HomeHero; empty-state hierarchy) ——
+const homeExp = read('src/components/home/HomeExperience.tsx')
+assert.match(heroTsx, /HomeExperience/)
+assert.match(homeExp, /HomeAtmosphere/)
+assert.match(homeExp, /SumiHero|ContextGreeting|QuickActions/)
+assert.doesNotMatch(homeExp, /FIRST_RUN_HINT|home-hero__hint/)
+assert.doesNotMatch(homeExp, /carousel|onboarding|wizard/i)
+assert.doesNotMatch(homeExp, /Dove vuoi andare oggi|emptyPromptIt/)
 
 // —— Brand: seal plate, no heavy drop shadow ——
 assert.doesNotMatch(brandLogoCss, /drop-shadow/)

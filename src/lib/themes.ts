@@ -489,9 +489,10 @@ export function applyThemeToDocument(theme: ThemeDefinition) {
         '--enso-container-shadow',
         `0 0 0 1px ${rgba('#1C1916', 0.06)}, 0 1px 2px ${rgba('#1C1916', 0.04)}`,
       )
+      /* #335B — paper atmosphere (clay/ink), not vermilion spotlight */
       root.style.setProperty(
         '--the-way-page-atmosphere',
-        `radial-gradient(ellipse 70% 48% at 50% 30%, ${rgba(accent, 0.035)}, transparent 64%), radial-gradient(ellipse 60% 42% at 74% 78%, ${rgba(accentQuaternary, 0.03)}, transparent 58%)`,
+        `radial-gradient(ellipse 72% 50% at 50% 34%, ${rgba(accentQuaternary, 0.045)}, transparent 68%), radial-gradient(ellipse 55% 40% at 70% 78%, ${rgba('#1C1916', 0.03)}, transparent 60%)`,
       )
     } else {
       root.style.setProperty('--enso-ink', '#F5F0E8')
@@ -504,7 +505,7 @@ export function applyThemeToDocument(theme: ThemeDefinition) {
       )
       root.style.setProperty(
         '--the-way-page-atmosphere',
-        `radial-gradient(ellipse 68% 46% at 48% 28%, ${rgba(accent, 0.07)}, transparent 62%), radial-gradient(ellipse 58% 40% at 70% 80%, ${rgba(accentQuaternary, 0.04)}, transparent 58%)`,
+        `radial-gradient(ellipse 70% 48% at 48% 32%, ${rgba('#F5F0E8', 0.045)}, transparent 66%), radial-gradient(ellipse 55% 38% at 72% 80%, ${rgba(accentQuaternary, 0.035)}, transparent 58%)`,
       )
     }
   } else {

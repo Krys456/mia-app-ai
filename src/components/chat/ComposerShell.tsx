@@ -534,8 +534,10 @@ export function ComposerShell({ onMessageSent }: ComposerShellProps) {
       </div>
     ) : null
 
+  const isHome = messages.length === 0 && !isThinking && !isStreaming
+
   return (
-    <div className="composer-dock">
+    <div className={`composer-dock${isHome ? ' composer-dock--home' : ''}`} data-home-composer={isHome ? 'true' : undefined}>
       <div className="sr-only" aria-live="polite" aria-atomic="true">
         {statusLabel ?? ''}
       </div>

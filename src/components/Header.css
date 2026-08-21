@@ -156,4 +156,31 @@
   }
 }
 
+/* #335B — Home: quieter chrome; brand + settings stay primary */
+.app-header--home {
+  border-bottom-color: transparent;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+}
+
+[data-theme='the-way-washi'] .app-header--home,
+[data-theme='the-way-sumi'] .app-header--home {
+  background: color-mix(in srgb, var(--bg) 94%, transparent);
+  border-bottom-color: color-mix(in srgb, var(--hairline, var(--border)) 55%, transparent);
+}
+
+.app-header--home .header-btn--secondary {
+  opacity: 0.55;
+}
+
+.app-header--home .header-btn--secondary:hover,
+.app-header--home .header-btn--secondary:focus-visible {
+  opacity: 1;
+}
+
+@media (max-width: 430px) {
+  .app-header--home .header-btn--secondary {
+    opacity: 0.42;
+  }
+}
+
 /* Brand wordmark styles live in BrandWordmark.css (#293A / #333A). */
