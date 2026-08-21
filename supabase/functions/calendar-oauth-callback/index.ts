@@ -68,7 +68,7 @@ Deno.serve(async (req) => {
     return failRedirect(returnBase, 'missing_code_or_state')
   }
 
-  const encKey = env('CALENDAR_TOKEN_ENCRYPTION_KEY')
+  const encKey = env('SHINKAIDO_CALENDAR_ENCRYPTION_KEY')
   const clientId = env('GOOGLE_OAUTH_CLIENT_ID')
   const clientSecret = env('GOOGLE_OAUTH_CLIENT_SECRET')
   const redirectUri = env('CALENDAR_OAUTH_REDIRECT_URI')

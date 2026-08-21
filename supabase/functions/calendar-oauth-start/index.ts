@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
 
   const clientId = env('GOOGLE_OAUTH_CLIENT_ID')
   const redirectUri = env('CALENDAR_OAUTH_REDIRECT_URI')
-  const encKey = env('CALENDAR_TOKEN_ENCRYPTION_KEY')
+  const encKey = env('SHINKAIDO_CALENDAR_ENCRYPTION_KEY')
   if (!clientId || !redirectUri || !encKey) {
     logSafe('calendar-oauth-start', { runId, code: 'oauth_misconfigured', ok: false })
     return json(503, { error: 'misconfigured', code: 'oauth_misconfigured', runId }, cors)

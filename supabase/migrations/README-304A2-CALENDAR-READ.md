@@ -20,25 +20,28 @@ Reusable Node libraries under `lib/server/`:
 
 Vercel functions remain **8**.
 
-## Environment (Node / future Vercel)
+## Environment (Node / Vercel)
 
-Same secrets as Edge (do not auto-set from this PR):
+Same secrets as Edge. `SHINKAIDO_CALENDAR_ENCRYPTION_KEY` must be **identical** on
+Supabase Edge, Vercel Preview, and later Vercel Production (do not auto-set from this PR):
 
 ```
 CALENDAR_ENABLED=false
 GOOGLE_OAUTH_CLIENT_ID=
 GOOGLE_OAUTH_CLIENT_SECRET=
-CALENDAR_TOKEN_ENCRYPTION_KEY=
+SHINKAIDO_CALENDAR_ENCRYPTION_KEY=
 SUPABASE_URL=
 SUPABASE_SERVICE_ROLE_KEY=
 ```
+
+Old name `CALENDAR_TOKEN_ENCRYPTION_KEY` is retired.
 
 ## Operator smoke (local only)
 
 ```bash
 export CALENDAR_ENABLED=true
 export CALENDAR_SMOKE_USER_ID='<owner auth.uid()>'
-# plus GOOGLE_OAUTH_*, CALENDAR_TOKEN_ENCRYPTION_KEY, SUPABASE_*
+# plus GOOGLE_OAUTH_*, SHINKAIDO_CALENDAR_ENCRYPTION_KEY, SUPABASE_*
 node scripts/calendar-read-smoke.mjs
 ```
 

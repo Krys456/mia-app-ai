@@ -129,7 +129,7 @@ Deno.serve(async (req) => {
       }
 
       // Best-effort revoke (prefer refresh, else access). Never log tokens.
-      const encKey = env('CALENDAR_TOKEN_ENCRYPTION_KEY')
+      const encKey = env('SHINKAIDO_CALENDAR_ENCRYPTION_KEY')
       if (encKey) {
         const enc =
           (typeof row.refresh_token_enc === 'string' && row.refresh_token_enc) ||
