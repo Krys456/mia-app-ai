@@ -1,10 +1,27 @@
-# #335B — Brand artwork (Washi Dojo Home)
+# Brand artwork (Washi Dojo Home)
+
+## #335B2 — Reference-locked Home hero (primary)
 
 | File | Role | Budget |
 |------|------|--------|
-| `shinkaido-enso-hero.svg` | Large sumi Ensō for Home | ≤20KB |
-| `shinkaido-sumi-mountains.svg` | Landscape wash behind Ensō | ≤30KB |
-| `shinkaido-vermilion-sun.svg` | Restrained sun / hanko accent | ≤6KB |
+| `shinkaido-home-hero.webp` | Washi decorative scene (Ensō + fire + sun + mountains) | ≤300KB |
+| `shinkaido-home-hero-sumi.webp` | Sumi-compatible tint of the same scene | ≤300KB |
+
+Notes:
+
+- Decorative only — no UI, text, cards, or composer baked in
+- Transparent edges + CSS mask so art dissolves into Home paper
+- Served locally from `/brand/*` (no external URL)
+
+## Legacy SVG pieces (#335B)
+
+Kept for other surfaces / mark pipeline; Home hero no longer composites them live.
+
+| File | Role | Budget |
+|------|------|--------|
+| `shinkaido-enso-hero.svg` | Ensō mark asset | ≤20KB |
+| `shinkaido-sumi-mountains.svg` | Landscape wash asset | ≤30KB |
+| `shinkaido-vermilion-sun.svg` | Sun / hanko accent | ≤6KB |
 
 Also keep:
 

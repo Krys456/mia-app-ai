@@ -58,17 +58,22 @@ assert.match(experience, /DailyThought/)
 assert.match(experience, /QuickActions/)
 assert.match(experience, /HomeBrandArea/)
 
-// Artwork decorative
+// Artwork decorative (#335B2 reference-locked raster hero)
 assert.match(sumiHero, /aria-hidden="true"/)
-assert.match(sumiHero, /sumi-hero__enso/)
-assert.match(sumiHero, /sumi-hero__mountains/)
-assert.match(sumiHero, /sumi-hero__sun/)
-assert.match(sumiHero, /--enso-sun|#C23B2A/)
-// Authored files remain in public/brand for asset pipeline / future <img> use
-assert.ok(fs.existsSync(path.join(root, 'public/brand/shinkaido-enso-hero.svg')))
-assert.match(read('public/brand/shinkaido-enso-hero.svg'), /viewBox/)
+assert.match(sumiHero, /sumi-hero__art/)
+assert.match(sumiHero, /shinkaido-home-hero\.webp/)
+assert.match(sumiHero, /shinkaido-home-hero-sumi\.webp/)
+assert.doesNotMatch(sumiHero, /Messaggio a ShinkAIdo|Buon pomeriggio/)
 
-// Assets exist + size budgets
+// Hero assets exist + size budgets
+const heroWashi = path.join(root, 'public/brand/shinkaido-home-hero.webp')
+const heroSumi = path.join(root, 'public/brand/shinkaido-home-hero-sumi.webp')
+assert.ok(fs.existsSync(heroWashi))
+assert.ok(fs.existsSync(heroSumi))
+assert.ok(fs.statSync(heroWashi).size <= 300 * 1024, `washi hero ${fs.statSync(heroWashi).size}`)
+assert.ok(fs.statSync(heroSumi).size <= 300 * 1024, `sumi hero ${fs.statSync(heroSumi).size}`)
+
+// Legacy SVG brand pieces remain available
 const ensoPath = path.join(root, 'public/brand/shinkaido-enso-hero.svg')
 const mtnPath = path.join(root, 'public/brand/shinkaido-sumi-mountains.svg')
 const sunPath = path.join(root, 'public/brand/shinkaido-vermilion-sun.svg')
@@ -78,9 +83,6 @@ assert.ok(fs.existsSync(sunPath))
 assert.ok(fs.statSync(ensoPath).size <= 20 * 1024)
 assert.ok(fs.statSync(mtnPath).size <= 30 * 1024)
 assert.ok(fs.statSync(sunPath).size <= 6 * 1024)
-const totalArt =
-  fs.statSync(ensoPath).size + fs.statSync(mtnPath).size + fs.statSync(sunPath).size
-assert.ok(totalArt <= 60 * 1024)
 
 // Greeting uses displayName only
 assert.match(greeting, /personalization\.displayName/)
