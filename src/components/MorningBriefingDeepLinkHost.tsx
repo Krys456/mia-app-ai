@@ -1,15 +1,19 @@
 /**
- * #334D1 — Deep-link host for ?briefing=morning → existing #334C briefing path.
+ * #334D1/#334D1A — Deep-link host for morning briefing → existing #334C path.
  *
- * Waits for auth bootstrap + chat idle, then hands off exactly once via
- * sendMessage('Briefing'). Consumes the intent only after successful handoff.
- * Also accepts SW postMessage when an existing window is focused without a
- * full navigation (notificationclick existing-client path).
+ * Intent sources (any one is enough):
+ * - URL ?briefing=morning
+ * - SW postMessage
+ * - durable Cache API marker (PWA-safe when openWindow drops the query)
+ *
+ * Waits for auth + chat idle, hands off once via sendMessage('Briefing'),
+ * then clears durable marker + URL only after successful accept.
  */
 
 import { useEffect, useState } from 'react'
 import { useChat } from '../context/ChatContext'
 import { useAuthBootstrap } from '../hooks/useAuthBootstrap'
+import { readMorningBriefingDurableIntent } from '../lib/morningBriefingDurableIntent'
 import {
   MORNING_BRIEFING_SW_MESSAGE_TYPE,
   captureMorningBriefingIntent,
@@ -30,11 +34,22 @@ export function MorningBriefingDeepLinkHost() {
   const auth = useAuthBootstrap()
   const [intentEpoch, setIntentEpoch] = useState(0)
 
-  // Capture URL marker / SW message → pending (do not strip URL yet).
+  // Capture URL / SW message / durable Cache marker → pending (do not clear yet).
   useEffect(() => {
-    const bump = () => setIntentEpoch((n) => n + 1)
+    let cancelled = false
+    const bump = () => {
+      if (!cancelled) setIntentEpoch((n) => n + 1)
+    }
 
-    if (captureMorningBriefingIntent()) bump()
+    const captureAll = () => {
+      if (captureMorningBriefingIntent()) bump()
+      void readMorningBriefingDurableIntent().then((marker) => {
+        if (cancelled || !marker) return
+        if (captureMorningBriefingIntent({ fromDurable: true })) bump()
+      })
+    }
+
+    captureAll()
 
     const onMessage = (event: MessageEvent) => {
       if (!isMorningBriefingSwMessage(event.data)) return
@@ -57,12 +72,13 @@ export function MorningBriefingDeepLinkHost() {
 
     const onVis = () => {
       if (document.visibilityState !== 'visible') return
-      if (captureMorningBriefingIntent()) bump()
+      captureAll()
     }
     document.addEventListener('visibilitychange', onVis)
     window.addEventListener('focus', onVis)
 
     return () => {
+      cancelled = true
       window.removeEventListener('message', onMessage)
       sw?.removeEventListener('message', onSwMessage)
       document.removeEventListener('visibilitychange', onVis)
@@ -84,6 +100,7 @@ export function MorningBriefingDeepLinkHost() {
       releaseMorningBriefingHandoffClaim()
       return
     }
+    // Clears session done + URL + durable Cache marker.
     completeMorningBriefingHandoff()
   }, [auth.status, sendMessage, isThinking, isStreaming, intentEpoch])
 
