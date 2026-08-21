@@ -218,6 +218,24 @@ export function composeDailyBriefing(model, language = 'it', opts = {}) {
             : `${place ? `A ${place} ` : ''}sono previsti circa ${range}.`,
         )
       }
+    } else if (quiet && !overdue[0] && !nextEv) {
+      // Keep concise quiet days short but not greeting-only.
+      if (!overviewBits.length) {
+        lines.push(
+          lang === 'en'
+            ? 'For now the day looks free.'
+            : 'Per ora la giornata è libera.',
+        )
+      }
+    } else if (!overdue[0] && !nextEv && !weatherItem) {
+      const unavail = unavailableSources(model)
+      if (unavail.length >= 2 || (!calOk && !remOk && wx.status !== 'ok')) {
+        lines.push(
+          lang === 'en'
+            ? 'There isn’t enough connected information to build a useful briefing right now.'
+            : 'Non ci sono abbastanza informazioni collegate per costruire un briefing utile al momento.',
+        )
+      }
     }
     while (lines.length && lines[lines.length - 1] === '') lines.pop()
     const text = lines.join('\n').replace(/\n{3,}/g, '\n\n').trim()
