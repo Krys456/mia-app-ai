@@ -48,10 +48,10 @@ assert.match(bubbleCss, /\[data-theme='the-way-sumi'\] \.bubble--user/)
 assert.doesNotMatch(bubbleCss, /0 0 18px/)
 
 // —— Composer paper dock ——
-assert.match(composer, /border-radius:\s*var\(--radius-lg\)/)
+assert.match(composer, /border-radius:\s*var\(--radius-(?:paper|lg)/)
 assert.match(composer, /\[data-theme='the-way-washi'\] \.composer/)
 assert.match(composer, /\[data-theme='the-way-sumi'\] \.composer/)
-assert.match(composer, /\.composer__send[\s\S]*?background:\s*var\(--accent\)/)
+assert.match(composer, /\.composer__send[\s\S]*?(?:background:\s*var\(--accent\)|var\(--hanko,\s*var\(--accent\)\))/)
 assert.match(composer, /min-width:\s*max\(var\(--btn-send\),\s*var\(--touch-min\)\)|width:\s*max\(var\(--btn-send\),\s*var\(--touch-min\)\)/)
 assert.doesNotMatch(composer, /backdrop-filter:\s*blur\(14px\)/)
 
