@@ -3,6 +3,7 @@ import { Header } from './components/Header'
 import { ChatContainer } from './components/chat'
 import { SettingsDrawer } from './components/SettingsDrawer'
 import { DueReminderHost } from './components/DueReminderHost'
+import { MorningBriefingDeepLinkHost } from './components/MorningBriefingDeepLinkHost'
 import { MemoryManage } from './pages/MemoryManage'
 import { PrivacyData } from './pages/PrivacyData'
 import { ReminderManage } from './pages/ReminderManage'
@@ -170,6 +171,8 @@ function AppShell() {
 
       {/* In-app / next-open reminder delivery (#303A) — no push. */}
       <DueReminderHost />
+      {/* #334D1 — ?briefing=morning → existing Daily Briefing path */}
+      <MorningBriefingDeepLinkHost />
     </div>
   )
 }

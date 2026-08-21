@@ -1,10 +1,58 @@
-/* #303C — Minimal ShinkAIdo service worker (push + notificationclick only).
+/* #303C/#334D1 — Minimal ShinkAIdo service worker (push + notificationclick only).
  * No Workbox. No offline cache. No app-shell precache.
+ * Supports type: reminder (legacy) and type: morning_briefing.
  */
 /* eslint-disable no-restricted-globals */
 
 function validatePayload(raw) {
   if (!raw || typeof raw !== 'object') return null
+  const typeRaw = typeof raw.type === 'string' ? raw.type.trim() : ''
+  const type =
+    typeRaw === 'morning_briefing'
+      ? 'morning_briefing'
+      : typeRaw === 'reminder' || !typeRaw
+        ? 'reminder'
+        : null
+  if (!type) return null
+
+  function sameOriginUrl(fallback) {
+    let url = fallback
+    if (typeof raw.url === 'string' && raw.url.trim()) {
+      const candidate = raw.url.trim()
+      if (!candidate.startsWith('/') || candidate.startsWith('//') || candidate.includes('://')) {
+        return null
+      }
+      if (candidate.length > 512) return null
+      url = candidate
+    }
+    return url
+  }
+
+  if (type === 'morning_briefing') {
+    const title =
+      typeof raw.title === 'string'
+        ? raw.title.replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 200)
+        : 'ShinkAIdo'
+    const body =
+      typeof raw.body === 'string'
+        ? raw.body.replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 200)
+        : 'Il tuo briefing mattutino è pronto.'
+    const url = sameOriginUrl('/?briefing=morning')
+    if (!url || !url.includes('briefing=morning')) return null
+    if (/[?&](user|uid|token|event|reminder|city)=/i.test(url)) return null
+    const tag =
+      typeof raw.tag === 'string' && raw.tag.trim()
+        ? raw.tag.trim().slice(0, 120)
+        : 'morning-briefing'
+    return {
+      type: 'morning_briefing',
+      title: title || 'ShinkAIdo',
+      body: body || 'Il tuo briefing mattutino è pronto.',
+      url: url,
+      tag: tag,
+    }
+  }
+
   const reminderId = typeof raw.reminderId === 'string' ? raw.reminderId.trim() : ''
   if (!reminderId || reminderId.length > 80) return null
   const title =
@@ -15,18 +63,12 @@ function validatePayload(raw) {
     typeof raw.body === 'string'
       ? raw.body.replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 200)
       : ''
-  let url = '/?reminder=' + encodeURIComponent(reminderId)
-  if (typeof raw.url === 'string' && raw.url.trim()) {
-    const candidate = raw.url.trim()
-    if (!candidate.startsWith('/') || candidate.startsWith('//') || candidate.includes('://')) {
-      return null
-    }
-    if (candidate.length > 512) return null
-    url = candidate
-  }
+  const url = sameOriginUrl('/?reminder=' + encodeURIComponent(reminderId))
+  if (!url) return null
   const tag =
     typeof raw.tag === 'string' && raw.tag.trim() ? raw.tag.trim().slice(0, 120) : reminderId
   return {
+    type: 'reminder',
     reminderId: reminderId,
     title: title || 'Promemoria',
     body: body,
@@ -46,6 +88,7 @@ self.addEventListener('push', function (event) {
   }
 
   const data = parsed || {
+    type: 'reminder',
     reminderId: 'unknown',
     title: 'Promemoria',
     body: '',
@@ -53,13 +96,20 @@ self.addEventListener('push', function (event) {
     tag: 'shinkaido-reminder',
   }
 
+  const isMorning = data.type === 'morning_briefing'
+  const notificationTitle = 'ShinkAIdo'
+  const notificationBody = isMorning
+    ? data.body || 'Il tuo briefing mattutino è pronto.'
+    : data.title
+
   event.waitUntil(
     self.registration.showNotification('ShinkAIdo', {
-      body: data.title,
+      body: notificationBody,
       tag: data.tag,
       renotify: false,
       data: {
-        reminderId: data.reminderId,
+        type: data.type || 'reminder',
+        reminderId: data.reminderId || null,
         url: data.url,
       },
     }),

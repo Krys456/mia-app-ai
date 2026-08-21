@@ -18,6 +18,7 @@ import type {
 import { ThemeSettings } from './ThemeSettings'
 import { NotificationsSettings } from './NotificationsSettings'
 import { CalendarIntegrationsSettings } from './CalendarIntegrationsSettings'
+import { MorningBriefingSettings } from './MorningBriefingSettings'
 import './SettingsDrawer.css'
 import './MemoryToggle.css'
 
@@ -301,6 +302,8 @@ export function SettingsDrawer({ onOpenMemory, onOpenPrivacy, onOpenReminders }:
             <p className="settings-note settings-note--tight">
               Preferenze sul dispositivo. Non usano la Memoria e non inventano fatti personali.
             </p>
+
+            <MorningBriefingSettings />
           </section>
 
           <div className="settings-divider" role="separator" />
