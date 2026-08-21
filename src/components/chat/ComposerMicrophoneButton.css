@@ -8,10 +8,10 @@
   height: max(var(--btn-send), var(--touch-min));
   margin: 0;
   padding: 0;
-  border: 1px solid color-mix(in srgb, var(--border) 90%, transparent);
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--surface-2) 70%, transparent);
-  color: var(--text);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
   cursor: pointer;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
@@ -23,8 +23,9 @@
 }
 
 .composer-mic:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--accent) 36%, var(--border));
-  color: var(--accent);
+  border-color: transparent;
+  color: var(--text);
+  background: color-mix(in srgb, var(--surface-2) 55%, transparent);
 }
 
 .composer-mic:disabled {
@@ -48,9 +49,9 @@
 }
 
 .composer-mic--listening {
-  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
   color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 16%, var(--surface-2));
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
 .composer-mic__badge {

@@ -9,10 +9,10 @@
   height: max(var(--btn-send, 2.75rem), var(--touch-min));
   margin: 0;
   padding: 0;
-  border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
-  border-radius: var(--radius-md, var(--radius-sm));
-  background: color-mix(in srgb, var(--surface-2) 70%, transparent);
-  color: var(--text);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
   cursor: pointer;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
@@ -27,7 +27,10 @@
 /* Idle Voice entry stays quieter than primary send; distinct from dictation mic */
 [data-theme='the-way-washi'] .voice-mode-btn:not(.voice-mode-btn--active),
 [data-theme='the-way-sumi'] .voice-mode-btn:not(.voice-mode-btn--active) {
-  border-color: color-mix(in srgb, var(--border) 88%, transparent);
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-muted);
+  box-shadow: none;
 }
 
 .voice-mode-btn:hover:not(:disabled),

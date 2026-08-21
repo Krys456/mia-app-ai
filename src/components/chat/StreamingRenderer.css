@@ -1,13 +1,20 @@
 .md-body {
-  line-height: 1.72;
-  font-size: calc(1.02rem * var(--chat-font-scale, 1));
+  line-height: 1.74;
+  font-size: calc(1.03rem * var(--chat-font-scale, 1));
   font-family: var(--font-sans);
+  font-weight: 400;
+  letter-spacing: 0.005em;
   overflow-wrap: anywhere;
   word-break: break-word;
   max-width: 100%;
   /* Wide tables/code scroll inside; never widen the app shell. */
   overflow-x: hidden;
-  --md-block-gap: 0.88em;
+  --md-block-gap: 0.95em;
+}
+
+[data-theme='the-way-washi'] .md-body,
+[data-theme='the-way-sumi'] .md-body {
+  line-height: 1.76;
 }
 
 .md-body--settle {
@@ -119,12 +126,12 @@
 
 .md-body blockquote,
 .md-blockquote {
-  margin: 0.6em 0 0.9em;
-  padding: 0.32em 0 0.32em 0.9em;
-  border-left: 2.5px solid color-mix(in srgb, var(--accent) 42%, transparent);
+  margin: 0.65em 0 1em;
+  padding: 0.28em 0 0.28em 0.85em;
+  border-left: 2px solid color-mix(in srgb, var(--accent) 38%, transparent);
   color: var(--text-muted);
-  background: color-mix(in srgb, var(--surface-2) 22%, transparent);
-  border-radius: 0 var(--radius-xs) var(--radius-xs) 0;
+  background: transparent;
+  border-radius: 0;
 }
 
 /* Nested inside CopyableBlock — chrome owns border/background */
@@ -140,14 +147,14 @@
 
 [data-theme='the-way-washi'] .md-body blockquote,
 [data-theme='the-way-washi'] .md-blockquote {
-  border-left-color: color-mix(in srgb, var(--accent) 36%, transparent);
-  background: color-mix(in srgb, var(--surface-2) 35%, transparent);
+  border-left-color: color-mix(in srgb, var(--accent) 32%, transparent);
+  background: transparent;
 }
 
 [data-theme='the-way-sumi'] .md-body blockquote,
 [data-theme='the-way-sumi'] .md-blockquote {
-  border-left-color: color-mix(in srgb, var(--accent) 40%, transparent);
-  background: color-mix(in srgb, var(--surface-2) 55%, transparent);
+  border-left-color: color-mix(in srgb, var(--accent) 36%, transparent);
+  background: transparent;
 }
 
 [data-theme='the-way-washi'] .copyable-block--quote .md-blockquote,
@@ -241,13 +248,19 @@
 
 .md-caret {
   display: inline-block;
-  width: 0.5em;
-  height: 1em;
-  margin-left: 0.1em;
-  vertical-align: -0.12em;
+  width: 0.42em;
+  height: 0.95em;
+  margin-left: 0.08em;
+  vertical-align: -0.1em;
   border-radius: 1px;
-  background: color-mix(in srgb, var(--accent) 70%, var(--text));
-  animation: md-caret-blink 1s steps(1, end) infinite;
+  background: color-mix(in srgb, var(--text) 55%, var(--accent));
+  opacity: 0.7;
+  animation: md-caret-blink 1.15s steps(1, end) infinite;
+}
+
+[data-theme='the-way-washi'] .md-caret,
+[data-theme='the-way-sumi'] .md-caret {
+  background: color-mix(in srgb, var(--text) 72%, transparent);
 }
 
 @keyframes md-caret-blink {

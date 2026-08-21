@@ -1,9 +1,11 @@
+/* #333B Kami — quieter message actions (discoverable on touch, not shouty) */
+
 .message-actions {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 0.1rem;
-  margin-top: 0.45rem;
+  gap: 0.05rem;
+  margin-top: 0.4rem;
   opacity: 0;
   transform: translateY(2px);
   pointer-events: none;
@@ -24,14 +26,14 @@
 
 .message-actions--user {
   justify-content: flex-end;
-  margin-top: 0.35rem;
+  margin-top: 0.3rem;
   max-width: 100%;
 }
 
 @media (hover: none), (pointer: coarse), (max-width: 767px) {
-  /* Phones/tablets: always show actions — never require hover (desktop pattern). */
+  /* Phones/tablets: always discoverable — never hover-only */
   .message-actions {
-    opacity: 0.95;
+    opacity: 0.78;
     transform: none;
     pointer-events: auto;
   }
@@ -45,17 +47,17 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.3rem;
+  gap: 0.28rem;
   min-height: 2.1rem;
   margin: 0;
-  padding: 0.28rem 0.5rem;
+  padding: 0.28rem 0.45rem;
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
   background: transparent;
-  color: color-mix(in srgb, var(--text-muted) 92%, transparent);
+  color: color-mix(in srgb, var(--text-muted) 88%, transparent);
   font: inherit;
-  font-size: 0.76rem;
-  font-weight: 500;
+  font-size: 0.74rem;
+  font-weight: 450;
   letter-spacing: 0.01em;
   line-height: 1.2;
   cursor: pointer;
@@ -68,8 +70,8 @@
 
 .message-actions__btn:hover:not(:disabled) {
   color: var(--text);
-  background: color-mix(in srgb, var(--surface-2) 75%, transparent);
-  border-color: var(--border);
+  background: color-mix(in srgb, var(--surface-2) 55%, transparent);
+  border-color: transparent;
 }
 
 .message-actions__btn:focus-visible {
@@ -88,8 +90,8 @@
 
 .message-actions__btn--active {
   color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
-  border-color: color-mix(in srgb, var(--accent) 28%, transparent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border-color: transparent;
 }
 
 .message-actions__btn--pulse {
@@ -103,9 +105,9 @@
 
 .message-actions__sep {
   width: 1px;
-  height: 1.05rem;
-  margin: 0 0.15rem;
-  background: var(--border);
+  height: 0.95rem;
+  margin: 0 0.12rem;
+  background: color-mix(in srgb, var(--border) 80%, transparent);
   flex-shrink: 0;
 }
 
@@ -113,7 +115,7 @@
   .message-actions__btn {
     min-height: var(--touch-min, 2.75rem);
     min-width: var(--touch-min, 2.75rem);
-    padding: 0.45rem 0.55rem;
+    padding: 0.45rem 0.5rem;
   }
 }
 

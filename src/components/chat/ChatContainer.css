@@ -21,6 +21,7 @@
   min-height: 0;
   width: 100%;
   max-width: 100%;
+  animation: chat-stage-enter var(--duration-enter) var(--ease-out) both;
 }
 
 .chat-container__viewport {
@@ -35,4 +36,19 @@
   touch-action: pan-y;
   /* Programmatic follow uses rAF deltas — keep CSS scroll-behavior off. */
   scroll-behavior: auto;
+}
+
+@keyframes chat-stage-enter {
+  from {
+    opacity: 0.92;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-container__stage {
+    animation: none;
+  }
 }

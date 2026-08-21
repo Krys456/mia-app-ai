@@ -10,6 +10,7 @@ import { SelectionInsightSheet } from './SelectionInsightSheet'
 import { useAutoScroll } from './useAutoScroll'
 import { useMessageSelection } from './useMessageSelection'
 import './ChatContainer.css'
+import './chat-tool-surfaces.css'
 
 /**
  * Top-level chat shell.

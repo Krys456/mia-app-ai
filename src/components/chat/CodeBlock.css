@@ -1,4 +1,4 @@
-/* Code body styles; chrome (bar/copy) lives in CopyableBlock.css (#331). */
+/* Code body styles; chrome (bar/copy) lives in CopyableBlock.css (#331 / #333B). */
 
 .code-block {
   animation: code-block-in var(--duration) var(--ease-out) both;
@@ -6,7 +6,7 @@
 
 .code-block__pre {
   margin: 0;
-  padding: 0.9rem 1rem;
+  padding: 0.85rem 0.95rem;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-x: contain;
@@ -26,17 +26,26 @@
   white-space: pre;
 }
 
-/* Compact highlight.js theme tuned to LAIfe tokens */
+[data-theme='the-way-washi'] .code-block {
+  /* Warm paper code well — contrast via CopyableBlock surface */
+  color: var(--text);
+}
+
+[data-theme='the-way-sumi'] .code-block {
+  color: var(--text);
+}
+
+/* Compact highlight.js theme — readable on paper/ink (no neon) */
 .hljs-comment,
 .hljs-quote {
-  color: color-mix(in srgb, var(--text-muted) 88%, transparent);
+  color: color-mix(in srgb, var(--text-muted) 92%, transparent);
   font-style: italic;
 }
 
 .hljs-keyword,
 .hljs-selector-tag,
 .hljs-addition {
-  color: color-mix(in srgb, var(--accent-pink) 75%, white);
+  color: color-mix(in srgb, var(--accent) 72%, var(--text));
 }
 
 .hljs-number,
@@ -45,7 +54,7 @@
 .hljs-literal,
 .hljs-doctag,
 .hljs-regexp {
-  color: color-mix(in srgb, var(--accent) 70%, white);
+  color: color-mix(in srgb, var(--theme-accent-4, var(--accent)) 55%, var(--text));
 }
 
 .hljs-title,
@@ -53,7 +62,7 @@
 .hljs-name,
 .hljs-selector-id,
 .hljs-selector-class {
-  color: color-mix(in srgb, var(--theme-accent-3) 70%, white);
+  color: color-mix(in srgb, var(--theme-accent-2, var(--accent)) 60%, var(--text));
 }
 
 .hljs-attribute,
@@ -62,18 +71,18 @@
 .hljs-template-variable,
 .hljs-class .hljs-title,
 .hljs-type {
-  color: color-mix(in srgb, var(--accent) 55%, #9ad7ff);
+  color: color-mix(in srgb, var(--accent) 45%, var(--text));
 }
 
 .hljs-symbol,
 .hljs-bullet,
 .hljs-link {
-  color: color-mix(in srgb, var(--accent) 80%, white);
+  color: color-mix(in srgb, var(--accent) 65%, var(--text));
 }
 
 .hljs-built_in,
 .hljs-builtin-name {
-  color: color-mix(in srgb, var(--theme-accent-3) 55%, #ffd0f5);
+  color: color-mix(in srgb, var(--theme-accent-3, var(--accent)) 50%, var(--text));
 }
 
 .hljs-meta,
@@ -89,13 +98,29 @@
   font-weight: 700;
 }
 
+[data-theme='the-way-washi'] .hljs-keyword,
+[data-theme='the-way-washi'] .hljs-selector-tag {
+  color: color-mix(in srgb, var(--accent) 78%, #1c1916);
+}
+
+[data-theme='the-way-sumi'] .hljs-keyword,
+[data-theme='the-way-sumi'] .hljs-selector-tag {
+  color: color-mix(in srgb, var(--accent) 70%, #f5f0e8);
+}
+
 @keyframes code-block-in {
   from {
     opacity: 0;
-    transform: translateY(4px);
+    transform: translateY(3px);
   }
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .code-block {
+    animation: none;
   }
 }
