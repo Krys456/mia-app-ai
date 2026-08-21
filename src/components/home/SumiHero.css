@@ -1,83 +1,76 @@
-/* #335B — SumiHero scene composition (one visual scene) */
+/* #335B2 — Reference-locked decorative hero (seamless paper integration) */
 
 .sumi-hero {
   position: relative;
-  width: min(100%, 18.5rem);
-  aspect-ratio: 1 / 0.92;
+  width: min(100%, 21rem);
+  aspect-ratio: 680 / 663;
   margin: 0 auto;
   pointer-events: none;
   user-select: none;
-  color: var(--enso-ink, #141210);
+  /* Soft dissolve into Home paper — no rectangular art frame */
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    #000 0%,
+    #000 78%,
+    rgba(0, 0, 0, 0.55) 90%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    #000 0%,
+    #000 78%,
+    rgba(0, 0, 0, 0.55) 90%,
+    transparent 100%
+  );
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
 }
 
-.sumi-hero__enso,
-.sumi-hero__mountains,
-.sumi-hero__sun {
+.sumi-hero__art {
   position: absolute;
-  pointer-events: none;
+  inset: 0;
   display: block;
-  overflow: visible;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center top;
+  pointer-events: none;
+  /* No card / no glow / no hard plate behind the art */
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  outline: none;
 }
 
-.sumi-hero__enso {
-  left: 50%;
-  top: 4%;
-  width: clamp(9.75rem, 50vw, 13rem);
-  height: clamp(9.75rem, 50vw, 13rem);
-  transform: translateX(-50%);
-  z-index: 2;
+.sumi-hero__art--sumi {
+  display: none;
+}
+
+html[data-theme='the-way-sumi'] .sumi-hero__art--washi {
+  display: none;
+}
+
+html[data-theme='the-way-sumi'] .sumi-hero__art--sumi {
+  display: block;
+  /* Matte charcoal/ivory character — no neon */
   opacity: 0.94;
-}
-
-.sumi-hero__mountains {
-  left: 50%;
-  bottom: 4%;
-  width: min(128%, 23rem);
-  height: auto;
-  aspect-ratio: 640 / 280;
-  transform: translateX(-50%);
-  z-index: 1;
-  opacity: 1;
-}
-
-.sumi-hero__sun {
-  left: 61%;
-  top: 14%;
-  width: clamp(1.25rem, 6vw, 1.7rem);
-  height: auto;
-  z-index: 3;
-  opacity: 0.95;
-}
-
-html[data-theme='the-way-sumi'] .sumi-hero {
-  color: var(--enso-ink, #f5f0e8);
-}
-
-html[data-theme='the-way-sumi'] .sumi-hero__enso {
-  opacity: 0.9;
-}
-
-html[data-theme='the-way-sumi'] .sumi-hero__mountains {
-  opacity: 0.45;
-}
-
-html[data-theme='the-way-sumi'] .sumi-hero__sun {
-  opacity: 0.88;
+  filter: saturate(0.92) contrast(1.02);
 }
 
 @media (min-width: 768px) {
   .sumi-hero {
-    width: min(100%, 22rem);
-  }
-
-  .sumi-hero__enso {
-    width: clamp(11.5rem, 22vw, 14.5rem);
-    height: clamp(11.5rem, 22vw, 14.5rem);
+    width: min(100%, 24rem);
   }
 }
 
 @media (min-width: 1024px) {
   .sumi-hero {
-    width: min(100%, 24rem);
+    width: min(100%, 26rem);
+  }
+}
+
+@media (max-width: 360px) {
+  .sumi-hero {
+    width: min(100%, 18.5rem);
   }
 }
