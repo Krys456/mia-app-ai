@@ -29,8 +29,8 @@
 .composer-attach__trigger:hover:not(:disabled),
 .composer-attach__trigger--open {
   border-color: transparent;
-  color: var(--text);
-  background: color-mix(in srgb, var(--surface-2) 55%, transparent);
+  color: color-mix(in srgb, var(--text) 82%, var(--muted, var(--text-muted)));
+  background: color-mix(in srgb, var(--paper-surface, var(--surface-2)) 42%, transparent);
 }
 
 .composer-attach__trigger:disabled {

@@ -549,12 +549,14 @@ export function ComposerShell({ onMessageSent }: ComposerShellProps) {
       ) : null}
 
       <form
-        className={`composer${busy ? ' composer--busy' : ''}${dictation.listening ? ' composer--dictating' : ''}${voice.active ? ' composer--voice' : ''}`}
+        className={`composer${busy ? ' composer--busy' : ''}${dictation.listening ? ' composer--dictating' : ''}${voice.active ? ' composer--voice' : ''}${canSend ? ' composer--ready' : ''}`}
         onSubmit={onSubmit}
         aria-busy={
           busy || preparing || uploading || dictation.listening || voice.active || undefined
         }
       >
+        {/* #335D — single restrained signature accent (presentation only) */}
+        <span className="composer__ink-seal" aria-hidden="true" />
         <div className="composer__left" data-composer-slot="left">
           <ComposerAttachMenu
             disabled={busy || preparing || uploading || dictation.listening || voice.active}
@@ -609,18 +611,36 @@ export function ComposerShell({ onMessageSent }: ComposerShellProps) {
           ) : (
             <button
               type="submit"
-              className={`composer__send${busy || uploading ? ' composer__send--busy' : ''}`}
+              className={`composer__send composer__send--signature${canSend ? ' composer__send--ready' : ''}${busy || uploading ? ' composer__send--busy' : ''}`}
               disabled={!canSend || voice.active}
               aria-label={busy || preparing || uploading ? statusLabel : 'Invia messaggio'}
             >
               {busy || preparing || uploading ? (
                 <span className="composer__send-pulse" aria-hidden="true" />
               ) : (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <svg
+                  className="composer__send-mark"
+                  width="22"
+                  height="22"
+                  viewBox="0 0 32 32"
+                  fill="none"
+                  aria-hidden="true"
+                >
+                  {/* Imperfect vermilion Ensō / hanko outline — not a geometric circle */}
                   <path
-                    d="M5 12h14M13 6l6 6-6 6"
+                    className="composer__send-enso"
+                    d="M22.8 8.2c3.6 2.4 6.1 6.2 6.2 10.4.1 4.6-2.4 8.9-6.4 11.1-3.6 2-8.1 2.1-11.8.3C7.2 27.9 4.4 24.2 3.8 20c-.6-4.1.9-8.3 4-11.1 2.9-2.6 7-3.7 10.8-2.9 1.3.3 2.5.8 3.6 1.6.4.3.4.9 0 1.2-.3.2-.8.2-1.1-.1-1-.7-2.1-1.1-3.2-1.4-3.1-.7-6.4.1-8.8 2.2-2.5 2.2-3.7 5.5-3.2 8.7.5 3.3 2.8 6.2 5.8 7.6 3 1.4 6.6 1.3 9.5-.3 3.1-1.7 5.1-5.1 5-8.7-.1-3.3-2-6.3-4.9-8.1-.4-.2-.5-.7-.2-1 .3-.4.8-.5 1.2-.2z"
+                    fill="none"
                     stroke="currentColor"
-                    strokeWidth="1.8"
+                    strokeWidth="2.05"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    className="composer__send-arrow"
+                    d="M10.2 16.1h10.2M16.6 11.4l5.2 4.7-5.2 4.7"
+                    stroke="currentColor"
+                    strokeWidth="1.85"
                     strokeLinecap="round"
                     strokeLinejoin="round"
                   />
