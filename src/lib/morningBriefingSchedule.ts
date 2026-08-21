@@ -3,6 +3,7 @@
  */
 
 import { resolveChatAuthForRequest } from './chatAuth'
+import { clearMorningBriefingDurableIntent } from './morningBriefingDurableIntent'
 
 export type MorningBriefingSchedule = {
   enabled: boolean
@@ -157,20 +158,21 @@ export function hasMorningBriefingUrlMarker(
 }
 
 /**
- * Capture intent from URL or SW postMessage without consuming.
+ * Capture intent from URL, SW postMessage, or durable Cache API marker without consuming.
  * Does NOT strip ?briefing=morning — cleanup happens only after successful handoff.
- * A fresh notification tap (message) or deep-link URL re-arms even after a prior done.
+ * A fresh notification tap (message / durable / URL) re-arms even after a prior done.
  */
 export function captureMorningBriefingIntent(options?: {
   search?: string
   fromMessage?: boolean
+  fromDurable?: boolean
   storage?: Storage | null
 }): boolean {
   try {
     const fromUrl = hasMorningBriefingUrlMarker(
       options?.search ?? (typeof window !== 'undefined' ? window.location.search : ''),
     )
-    if (!fromUrl && !options?.fromMessage) return false
+    if (!fromUrl && !options?.fromMessage && !options?.fromDurable) return false
     const state = readIntentState(options?.storage)
     if (state === 'pending') return true
     // Re-arm after prior handoff when a new explicit intent arrives.
@@ -204,12 +206,13 @@ export function releaseMorningBriefingHandoffClaim(): void {
 
 /**
  * Mark intent consumed AFTER successful handoff to #334C sendMessage('Briefing').
- * Strips ?briefing=morning via history.replaceState.
+ * Strips ?briefing=morning via history.replaceState and clears durable Cache marker.
  */
 export function completeMorningBriefingHandoff(options?: {
   storage?: Storage | null
   location?: { pathname: string; search: string; hash: string }
   replaceState?: (url: string) => void
+  clearDurable?: () => void | Promise<void>
 }): void {
   try {
     writeIntentState('done', options?.storage)
@@ -219,16 +222,29 @@ export function completeMorningBriefingHandoff(options?: {
       (typeof window !== 'undefined'
         ? { pathname: window.location.pathname, search: window.location.search, hash: window.location.hash }
         : null)
-    if (!loc) return
-    const params = new URLSearchParams(loc.search.startsWith('?') ? loc.search.slice(1) : loc.search)
-    if (!params.has('briefing')) return
-    params.delete('briefing')
-    const next = params.toString()
-    const url = `${loc.pathname}${next ? `?${next}` : ''}${loc.hash}`
-    if (options?.replaceState) {
-      options.replaceState(url)
-    } else if (typeof window !== 'undefined') {
-      window.history.replaceState({}, '', url)
+    if (loc) {
+      const params = new URLSearchParams(loc.search.startsWith('?') ? loc.search.slice(1) : loc.search)
+      if (params.has('briefing')) {
+        params.delete('briefing')
+        const next = params.toString()
+        const url = `${loc.pathname}${next ? `?${next}` : ''}${loc.hash}`
+        if (options?.replaceState) {
+          options.replaceState(url)
+        } else if (typeof window !== 'undefined') {
+          window.history.replaceState({}, '', url)
+        }
+      }
+    }
+    // Clear durable marker only after successful handoff (fire-and-forget).
+    try {
+      const clear = options?.clearDurable
+      if (clear) {
+        void Promise.resolve(clear()).catch(() => undefined)
+      } else {
+        void clearMorningBriefingDurableIntent().catch(() => undefined)
+      }
+    } catch {
+      /* ignore */
     }
   } catch {
     morningBriefingHandoffClaimed = false

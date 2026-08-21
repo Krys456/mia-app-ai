@@ -1,8 +1,42 @@
-/* #303C/#334D1 — Minimal ShinkAIdo service worker (push + notificationclick only).
+/* #303C/#334D1/#334D1A — Minimal ShinkAIdo service worker (push + notificationclick only).
  * No Workbox. No offline cache. No app-shell precache.
  * Supports type: reminder (legacy) and type: morning_briefing.
+ * #334D1A — durable Cache API morning intent before focus/open (PWA-safe).
  */
 /* eslint-disable no-restricted-globals */
+
+var MORNING_INTENT_CACHE = 'shinkaido-morning-intent-v1'
+var MORNING_INTENT_URL = '/__shinkaido/morning-briefing-intent'
+
+function persistMorningBriefingIntent() {
+  try {
+    if (typeof caches === 'undefined') {
+      return Promise.resolve(false)
+    }
+    var body = JSON.stringify({ type: 'morning_briefing', createdAt: Date.now() })
+    return caches
+      .open(MORNING_INTENT_CACHE)
+      .then(function (cache) {
+        return cache.put(
+          MORNING_INTENT_URL,
+          new Response(body, {
+            headers: {
+              'Content-Type': 'application/json',
+              'Cache-Control': 'no-store',
+            },
+          }),
+        )
+      })
+      .then(function () {
+        return true
+      })
+      .catch(function () {
+        return false
+      })
+  } catch (_err) {
+    return Promise.resolve(false)
+  }
+}
 
 function validatePayload(raw) {
   if (!raw || typeof raw !== 'object') return null
@@ -97,7 +131,6 @@ self.addEventListener('push', function (event) {
   }
 
   const isMorning = data.type === 'morning_briefing'
-  const notificationTitle = 'ShinkAIdo'
   const notificationBody = isMorning
     ? data.body || 'Il tuo briefing mattutino è pronto.'
     : data.title
@@ -134,7 +167,7 @@ self.addEventListener('notificationclick', function (event) {
     return c && 'focus' in c ? c.focus() : fallback && 'focus' in fallback ? fallback.focus() : undefined
   }
 
-  /** Existing window must receive morning intent even when navigate is missing/fails. */
+  /** Existing / newly opened window must receive morning intent. */
   function deliverMorningIntent(target) {
     if (!target || !('postMessage' in target)) return
     try {
@@ -144,24 +177,35 @@ self.addEventListener('notificationclick', function (event) {
     }
   }
 
-  event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (clientList) {
+  function openMorningClient() {
+    if (!clients.openWindow) return Promise.resolve(undefined)
+    return clients.openWindow(path).then(function (opened) {
+      if (!opened) return undefined
+      deliverMorningIntent(opened)
+      // Android PWA may ignore query on openWindow — re-navigate when possible.
+      if ('navigate' in opened && path) {
+        return opened.navigate(path).then(
+          function (nav) {
+            const target = nav || opened
+            deliverMorningIntent(target)
+            return focusClient(nav, opened)
+          },
+          function () {
+            return focusClient(opened, opened)
+          },
+        )
+      }
+      return focusClient(opened, opened)
+    })
+  }
+
+  function focusOrOpenMorning() {
+    return clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (clientList) {
       for (let i = 0; i < clientList.length; i += 1) {
         const client = clientList[i]
         try {
           const clientUrl = new URL(client.url)
           if (clientUrl.origin === self.location.origin && 'focus' in client) {
-            // Reminder path: preserve legacy navigate-or-focus exactly.
-            if (!isMorning) {
-              if ('navigate' in client && path) {
-                return client.navigate(path).then(function (c) {
-                  return focusClient(c, client)
-                })
-              }
-              return client.focus()
-            }
-
-            // Morning briefing: focus + ensure intent reaches this window.
             if ('navigate' in client && path) {
               return client.navigate(path).then(
                 function (c) {
@@ -182,10 +226,43 @@ self.addEventListener('notificationclick', function (event) {
           /* continue */
         }
       }
-      if (clients.openWindow) {
-        return clients.openWindow(path)
-      }
-      return undefined
+      return openMorningClient()
+    })
+  }
+
+  if (!isMorning) {
+    // Reminder path: preserve legacy navigate-or-focus / openWindow exactly.
+    event.waitUntil(
+      clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (clientList) {
+        for (let i = 0; i < clientList.length; i += 1) {
+          const client = clientList[i]
+          try {
+            const clientUrl = new URL(client.url)
+            if (clientUrl.origin === self.location.origin && 'focus' in client) {
+              if ('navigate' in client && path) {
+                return client.navigate(path).then(function (c) {
+                  return focusClient(c, client)
+                })
+              }
+              return client.focus()
+            }
+          } catch (_e) {
+            /* continue */
+          }
+        }
+        if (clients.openWindow) {
+          return clients.openWindow(path)
+        }
+        return undefined
+      }),
+    )
+    return
+  }
+
+  // Morning: persist durable marker FIRST, then focus/open (+ navigate/postMessage).
+  event.waitUntil(
+    persistMorningBriefingIntent().then(function () {
+      return focusOrOpenMorning()
     }),
   )
 })
