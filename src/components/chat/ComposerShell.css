@@ -17,6 +17,29 @@
   );
 }
 
+/* #335B — Home visual mode: warm raised paper, lighter dock (behavior unchanged) */
+.composer-dock--home {
+  background: linear-gradient(
+    to top,
+    var(--paper-bg, var(--bg)) 62%,
+    color-mix(in srgb, var(--paper-bg, var(--bg)) 35%, transparent)
+  );
+  padding-top: 0.35rem;
+}
+
+.composer-dock--home .composer {
+  background: var(--paper-surface, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--hairline, var(--border)) 90%, transparent);
+  box-shadow: var(--paper-shadow-2, 0 1px 2px rgba(28, 25, 22, 0.04));
+  border-radius: var(--radius-paper-lg, var(--radius-lg));
+}
+
+html[data-theme='the-way-washi'] .composer-dock--home .composer,
+html[data-theme='the-way-sumi'] .composer-dock--home .composer {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
 /* Optional slots: only mounted when content is provided — no empty chrome. */
 .composer-tray,
 .composer-secondary {

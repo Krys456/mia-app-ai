@@ -17,6 +17,8 @@ const heroTsx = read('src/components/HomeHero.tsx')
 const atmTsx = read('src/components/HomeAtmosphere.tsx')
 const themesSrc = read('src/lib/themes.ts')
 const brandReadme = read('public/brand/README.md')
+// heroTsx kept for re-export check below
+void heroTsx
 
 assert.match(indexCss, /washi-dojo-foundation\.css/)
 
@@ -72,18 +74,15 @@ assert.match(foundationCss, /washi-hero-recede/)
 assert.match(foundationCss, /washi-enso-reveal/)
 assert.match(foundationCss, /prefers-reduced-motion/)
 
-// Atmosphere architecture
+// Atmosphere architecture (#335B: scenery in SumiHero; atmosphere = wash + fiber)
 assert.match(atmTsx, /aria-hidden="true"/)
-assert.match(atmTsx, /data-slot="sumi-mountains"/)
-assert.match(atmTsx, /data-slot="enso-hero"/)
-assert.match(atmTsx, /data-slot="vermilion-sun"/)
-assert.match(atmTsx, /data-empty="true"/)
-assert.match(heroTsx, /HomeAtmosphere/)
-assert.doesNotMatch(heroTsx, /home-hero__glow/)
+assert.match(atmTsx, /washi-texture|home-atmosphere__fiber/)
+assert.match(read('src/components/home/HomeExperience.tsx'), /HomeAtmosphere/)
+assert.match(read('src/components/HomeHero.tsx'), /HomeExperience/)
 
-// No fake mountain/enso artwork files yet
-assert.ok(!fs.existsSync(path.join(root, 'public/brand/shinkaido-enso-hero.svg')))
-assert.ok(!fs.existsSync(path.join(root, 'public/brand/shinkaido-sumi-mountains.svg')))
+// Authored Home artwork (#335B)
+assert.ok(fs.existsSync(path.join(root, 'public/brand/shinkaido-enso-hero.svg')))
+assert.ok(fs.existsSync(path.join(root, 'public/brand/shinkaido-sumi-mountains.svg')))
 assert.match(brandReadme, /shinkaido-enso-hero\.svg/)
 
 // Runtime theme sets paper tokens on The Way

@@ -1,0 +1,83 @@
+/* #335B — SumiHero scene composition (one visual scene) */
+
+.sumi-hero {
+  position: relative;
+  width: min(100%, 18.5rem);
+  aspect-ratio: 1 / 0.92;
+  margin: 0 auto;
+  pointer-events: none;
+  user-select: none;
+  color: var(--enso-ink, #141210);
+}
+
+.sumi-hero__enso,
+.sumi-hero__mountains,
+.sumi-hero__sun {
+  position: absolute;
+  pointer-events: none;
+  display: block;
+  overflow: visible;
+}
+
+.sumi-hero__enso {
+  left: 50%;
+  top: 4%;
+  width: clamp(9.75rem, 50vw, 13rem);
+  height: clamp(9.75rem, 50vw, 13rem);
+  transform: translateX(-50%);
+  z-index: 2;
+  opacity: 0.94;
+}
+
+.sumi-hero__mountains {
+  left: 50%;
+  bottom: 4%;
+  width: min(128%, 23rem);
+  height: auto;
+  aspect-ratio: 640 / 280;
+  transform: translateX(-50%);
+  z-index: 1;
+  opacity: 1;
+}
+
+.sumi-hero__sun {
+  left: 61%;
+  top: 14%;
+  width: clamp(1.25rem, 6vw, 1.7rem);
+  height: auto;
+  z-index: 3;
+  opacity: 0.95;
+}
+
+html[data-theme='the-way-sumi'] .sumi-hero {
+  color: var(--enso-ink, #f5f0e8);
+}
+
+html[data-theme='the-way-sumi'] .sumi-hero__enso {
+  opacity: 0.9;
+}
+
+html[data-theme='the-way-sumi'] .sumi-hero__mountains {
+  opacity: 0.45;
+}
+
+html[data-theme='the-way-sumi'] .sumi-hero__sun {
+  opacity: 0.88;
+}
+
+@media (min-width: 768px) {
+  .sumi-hero {
+    width: min(100%, 22rem);
+  }
+
+  .sumi-hero__enso {
+    width: clamp(11.5rem, 22vw, 14.5rem);
+    height: clamp(11.5rem, 22vw, 14.5rem);
+  }
+}
+
+@media (min-width: 1024px) {
+  .sumi-hero {
+    width: min(100%, 24rem);
+  }
+}

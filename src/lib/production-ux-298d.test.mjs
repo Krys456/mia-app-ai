@@ -28,9 +28,11 @@ const read = (rel) => readFileSync(join(root, rel), 'utf8')
 assert.match(FIRST_RUN_HINT, /Scrivi liberamente/)
 assert.match(FIRST_RUN_HINT, /Impostazioni/)
 const hero = read('src/components/HomeHero.tsx')
+const homeExp = read('src/components/home/HomeExperience.tsx')
 assert.doesNotMatch(hero, /FIRST_RUN_HINT/)
-assert.match(hero, /BRAND\.emptyPromptIt|Dove vuoi andare oggi/)
-assert.doesNotMatch(hero, /tour|coach|modal|wizard|onboarding/i)
+assert.doesNotMatch(homeExp, /FIRST_RUN_HINT/)
+assert.match(homeExp, /HomeAtmosphere|SumiHero/)
+assert.doesNotMatch(homeExp, /tour|coach|modal|wizard|onboarding/i)
 
 // --- New Chat Memory clarification ---
 const header = read('src/components/Header.tsx')
