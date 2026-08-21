@@ -1,3 +1,5 @@
+@import './styles/washi-dojo-foundation.css';
+
 :root {
   /* #333A Kami — authoritative static defaults = The Way — Washi
      (runtime ThemeProvider / applyThemeToDocument remains source of truth after hydrate) */

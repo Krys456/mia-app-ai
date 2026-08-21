@@ -1,4 +1,5 @@
 /* #333A Kami HomeHero — ma: breathing room, less chrome */
+/* #335A — atmosphere via HomeAtmosphere; legacy glow class kept inert */
 
 .home-hero {
   flex: 1;
@@ -15,26 +16,9 @@
   animation: hero-fade 480ms var(--ease-out) both;
 }
 
+/* Legacy selector — no longer rendered; keep harmless if referenced */
 .home-hero__glow {
-  position: absolute;
-  inset: 14% 10% auto;
-  height: 52%;
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 35% 40%, var(--atmosphere-1), transparent 55%),
-    radial-gradient(circle at 70% 45%, var(--atmosphere-2), transparent 50%);
-  filter: blur(22px);
-  pointer-events: none;
-  opacity: 0.78;
-}
-
-[data-theme='the-way-washi'] .home-hero__glow,
-[data-theme='the-way-sumi'] .home-hero__glow {
-  background: var(--the-way-page-atmosphere, none);
-  filter: blur(26px);
-  inset: 10% 6% auto;
-  height: 56%;
-  opacity: 0.9;
+  display: none;
 }
 
 .home-hero__stage {
@@ -45,7 +29,7 @@
   align-items: center;
   text-align: center;
   gap: 1.15rem;
-  max-width: 24rem;
+  max-width: var(--home-max, 24rem);
   width: 100%;
   /* Optical lift above composer */
   transform: translateY(clamp(-1rem, -2vh, -0.25rem));
