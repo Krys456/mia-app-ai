@@ -24,7 +24,7 @@ export function SumiHero() {
         {/* DISTANT — faint misty peaks */}
         <path
           fill="currentColor"
-          opacity="0.08"
+          opacity="0.11"
           d="M0 188
             L18 188 L42 152 L58 168 L78 138 L98 158 L118 128 L138 148 L162 118 L182 142 L208 108 L232 136 L258 122 L278 148 L302 112 L328 140 L352 120 L378 146 L402 114 L428 138 L452 126 L478 150 L502 118 L528 142 L552 130 L578 156 L602 140 L620 162 L640 155
             L640 280 L0 280 Z"
@@ -34,7 +34,7 @@ export function SumiHero() {
         {/* MID — recognizable mountain silhouettes */}
         <path
           fill="currentColor"
-          opacity="0.16"
+          opacity="0.22"
           d="M0 210
             L22 210 L48 172 L66 192 L88 158 L108 182 L130 148 L152 176 L176 142 L198 170 L224 136 L248 164 L274 150 L296 178 L322 144 L348 172 L372 156 L398 182 L424 148 L450 174 L476 160 L500 188 L526 154 L552 178 L578 164 L604 190 L628 170 L640 184
             L640 280 L0 280 Z"
@@ -50,7 +50,7 @@ export function SumiHero() {
         {/* FOREGROUND foothills — stronger but dissolving */}
         <path
           fill="currentColor"
-          opacity="0.26"
+          opacity="0.34"
           d="M0 236
             L28 236 L52 208 L74 224 L98 198 L122 218 L148 194 L172 214 L198 188 L224 210 L250 196 L276 220 L304 192 L332 214 L360 200 L388 224 L416 198 L444 218 L472 204 L500 228 L528 206 L556 222 L584 208 L612 230 L640 220
             L640 280 L0 280 Z"
@@ -63,7 +63,7 @@ export function SumiHero() {
         />
 
         {/* Distant birds — near sun / upper right of scene */}
-        <g fill="currentColor" opacity="0.14">
+        <g fill="currentColor" opacity="0.22">
           <path d="M498 98c3.2-.6 6.2 1.2 8.4 3.4-2.4-.2-5.2-.8-7.8-2-.9-.4-1.2-1.4-.6-2 .3-.4.8-.6 1.2-.6-.5.2-1 .5-1.4.9.2-.2.4-.5.6-.7-.2.2-.4.4-.6.6z" />
           <path d="M518 90c2.6-.5 5 1 6.8 2.8-2-.1-4.2-.6-6.2-1.6-.7-.3-.9-1.1-.4-1.6.2-.3.6-.5 1-.5-.4.1-.8.4-1.1.7.1-.2.3-.4.5-.5-.2.1-.3.3-.5.5z" />
           <path d="M532 102c2-.4 3.8.8 5.2 2.2-1.5-.2-3.2-.5-4.8-1.2-.6-.3-.7-1-.3-1.4.1-.2.4-.4.7-.4-.3.1-.5.3-.8.5z" />
@@ -138,17 +138,17 @@ export function SumiHero() {
         {/* Flame tongues rising from left/upper-left stroke — burning ink, not cartoon fire */}
         <path
           fill="#C23B2A"
-          opacity="0.75"
+          opacity="0.88"
           d="M58 92 C54 78 58 64 68 54 C74 48 82 46 88 50 C84 54 78 58 74 66 C70 74 66 84 64 94 C63 98 60 98 58 92 Z"
         />
         <path
           fill="#E07A3A"
-          opacity="0.65"
+          opacity="0.8"
           d="M66 78 C64 66 70 54 80 46 C86 42 92 44 94 50 C90 52 86 56 82 64 C78 72 74 80 72 86 C71 90 68 88 66 78 Z"
         />
         <path
           fill="#9E2F22"
-          opacity="0.7"
+          opacity="0.82"
           d="M50 118 C46 104 50 90 60 80 C56 92 52 106 54 120 C55 126 52 126 50 118 Z"
         />
         <path
