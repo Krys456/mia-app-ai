@@ -453,6 +453,32 @@ export function applyThemeToDocument(theme: ThemeDefinition) {
         ? `0 8px 24px rgba(28, 25, 22, 0.07)`
         : `0 10px 28px rgba(0, 0, 0, 0.45)`,
     )
+    // #335A — semantic paper / ink / hanko parity (Washi Dojo)
+    root.style.setProperty('--paper-bg', bg)
+    root.style.setProperty('--paper-surface', surface)
+    root.style.setProperty('--paper-raised', surface2)
+    root.style.setProperty('--ink', text)
+    root.style.setProperty('--ink-muted', textMuted)
+    root.style.setProperty('--hanko', accent)
+    root.style.setProperty('--hanko-hover', accentSecondary)
+    root.style.setProperty('--hanko-soft', accentTertiary)
+    root.style.setProperty('--clay', accentQuaternary)
+    root.style.setProperty(
+      '--paper-shadow-1',
+      colorScheme === 'light'
+        ? '0 1px 1px rgba(28, 25, 22, 0.03), 0 1px 2px rgba(28, 25, 22, 0.04)'
+        : '0 1px 1px rgba(0, 0, 0, 0.22), 0 1px 3px rgba(0, 0, 0, 0.18)',
+    )
+    root.style.setProperty(
+      '--paper-shadow-2',
+      colorScheme === 'light'
+        ? '0 1px 2px rgba(28, 25, 22, 0.04), 0 4px 14px rgba(28, 25, 22, 0.05)'
+        : '0 1px 2px rgba(0, 0, 0, 0.28), 0 6px 16px rgba(0, 0, 0, 0.28)',
+    )
+    root.style.setProperty(
+      '--washi-fiber-opacity',
+      colorScheme === 'light' ? '0.038' : '0.022',
+    )
     // Ensō ink parity: Washi = sumi black, Sumi = warm ivory. Same geometry.
     if (theme.id === 'the-way-washi') {
       root.style.setProperty('--enso-ink', '#141210')

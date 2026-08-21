@@ -1,0 +1,313 @@
+/**
+ * #335A — Washi Dojo design foundation.
+ * Semantic paper / ink / hanko tokens + texture / depth / motion primitives.
+ * Product behavior unchanged. Official themes: Washi + Sumi.
+ */
+
+/* —— Semantic paper / ink (aliases over Kami theme tokens) —— */
+:root {
+  --paper-bg: var(--theme-bg);
+  --paper-surface: var(--theme-surface);
+  --paper-raised: var(--theme-surface-2);
+  --ink: var(--theme-text);
+  --ink-muted: var(--theme-text-muted);
+  --ink-faint: color-mix(in srgb, var(--theme-text-muted) 55%, transparent);
+  --hanko: var(--theme-accent);
+  --hanko-hover: var(--theme-accent-2);
+  --hanko-soft: var(--theme-accent-3);
+  --clay: var(--theme-accent-4);
+  --hairline: var(--border);
+  --paper-shadow-1: 0 1px 1px rgba(28, 25, 22, 0.03), 0 1px 2px rgba(28, 25, 22, 0.04);
+  --paper-shadow-2: 0 1px 2px rgba(28, 25, 22, 0.04), 0 4px 14px rgba(28, 25, 22, 0.05);
+  --sumi-wash: color-mix(in srgb, var(--theme-text) 4%, transparent);
+  --washi-fiber-opacity: 0.035;
+
+  /* Typography roles — Outfit remains UI; display falls back to editorial serif stack */
+  --font-ui: var(--font-sans);
+  --font-display: 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
+
+  /* Layout concepts for later Home / reading surfaces */
+  --home-max: min(100%, 28rem);
+  --reading-max: min(100%, 42rem);
+
+  /* Motion — calm, responsive interactions */
+  --duration-paper: 280ms;
+  --duration-ink: 420ms;
+  --duration-hero: 560ms;
+  --ease-paper: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-ink: cubic-bezier(0.33, 1, 0.45, 1);
+
+  /* Editorial radii (global tokens stay compatible; The Way may refine further) */
+  --radius-paper: 0.55rem;
+  --radius-paper-lg: 0.85rem;
+  --radius-control: 0.75rem;
+}
+
+/* Sumi: quieter fiber + warm charcoal paper shadows (parity keys) */
+html[data-theme='the-way-sumi'] {
+  --paper-shadow-1: 0 1px 1px rgba(0, 0, 0, 0.22), 0 1px 3px rgba(0, 0, 0, 0.18);
+  --paper-shadow-2: 0 1px 2px rgba(0, 0, 0, 0.28), 0 6px 16px rgba(0, 0, 0, 0.28);
+  --sumi-wash: color-mix(in srgb, var(--theme-text) 5%, transparent);
+  --washi-fiber-opacity: 0.022;
+  --ink-faint: color-mix(in srgb, var(--theme-text-muted) 48%, transparent);
+}
+
+html[data-theme='the-way-washi'] {
+  --washi-fiber-opacity: 0.038;
+}
+
+/* —— Washi texture (CSS noise via tiny inline SVG data-URI) —— */
+.washi-texture,
+.washi-dojo-fiber {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: var(--washi-fiber-opacity);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180' viewBox='0 0 180 180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.12 0 0 0 0 0.1 0 0 0 0 0.08 0 0 0 0.55 0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 180px 180px;
+  mix-blend-mode: multiply;
+}
+
+html[data-theme='the-way-sumi'] .washi-texture,
+html[data-theme='the-way-sumi'] .washi-dojo-fiber {
+  mix-blend-mode: soft-light;
+  opacity: var(--washi-fiber-opacity);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180' viewBox='0 0 180 180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.95 0 0 0 0 0.93 0 0 0 0 0.88 0 0 0 0.4 0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='0.4'/%3E%3C/svg%3E");
+}
+
+/* —— Paper depth —— */
+.paper-surface {
+  background: var(--paper-surface);
+  border: 1px solid color-mix(in srgb, var(--hairline) 88%, transparent);
+  border-radius: var(--radius-paper);
+  box-shadow: var(--paper-shadow-1);
+}
+
+.paper-raised {
+  background: var(--paper-surface);
+  border: 1px solid color-mix(in srgb, var(--hairline) 92%, transparent);
+  border-radius: var(--radius-paper-lg);
+  box-shadow: var(--paper-shadow-2);
+}
+
+/* —— Ink primitives —— */
+.ink-strong {
+  color: var(--ink);
+}
+
+.ink-secondary {
+  color: var(--ink-muted);
+}
+
+.ink-faint {
+  color: var(--ink-faint);
+}
+
+.ink-hanko,
+.vermilion-annotation {
+  color: var(--hanko);
+}
+
+.hairline-rule {
+  height: 1px;
+  border: 0;
+  margin: 0;
+  background: color-mix(in srgb, var(--hairline) 90%, transparent);
+}
+
+.sumi-wash {
+  background: var(--sumi-wash);
+}
+
+/* —— Typography roles —— */
+.type-brand {
+  font-family: var(--font-ui);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.type-hero-greeting {
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  color: var(--ink);
+}
+
+.type-daily-thought {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-style: italic;
+  line-height: 1.45;
+  color: var(--ink-muted);
+}
+
+.type-body {
+  font-family: var(--font-ui);
+  font-weight: 400;
+  line-height: 1.55;
+  color: var(--ink);
+}
+
+.type-caption {
+  font-family: var(--font-ui);
+  font-size: 0.875rem;
+  line-height: 1.4;
+  color: var(--ink-muted);
+}
+
+.type-nav {
+  font-family: var(--font-ui);
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.type-micro {
+  font-family: var(--font-ui);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+/* —— Motion primitives (later Home / Chat stages) —— */
+@keyframes washi-paper-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes washi-ink-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes washi-hero-recede {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}
+
+@keyframes washi-enso-reveal {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.motion-paper-fade {
+  animation: washi-paper-fade var(--duration-paper) var(--ease-paper) both;
+}
+
+.motion-ink-reveal {
+  animation: washi-ink-reveal var(--duration-ink) var(--ease-ink) both;
+}
+
+.motion-hero-recede {
+  animation: washi-hero-recede var(--duration-hero) var(--ease-paper) both;
+}
+
+.motion-enso-reveal {
+  animation: washi-enso-reveal var(--duration-ink) var(--ease-ink) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .motion-paper-fade,
+  .motion-ink-reveal,
+  .motion-hero-recede,
+  .motion-enso-reveal {
+    animation: none !important;
+  }
+}
+
+/* —— Home atmosphere slot architecture (#335B fills layers) —— */
+.home-atmosphere {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.home-atmosphere__wash {
+  position: absolute;
+  inset: 8% 4% auto;
+  height: 58%;
+  border-radius: 50%;
+  background: var(--the-way-page-atmosphere, none);
+  filter: blur(24px);
+  opacity: 0.88;
+  transform: translateZ(0);
+}
+
+.home-atmosphere__fiber {
+  /* uses .washi-texture */
+}
+
+.home-atmosphere__mountains,
+.home-atmosphere__enso,
+.home-atmosphere__sun {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Slots empty until authored assets land — do not invent scenery */
+}
+
+.home-atmosphere__mountains[data-empty='true'],
+.home-atmosphere__enso[data-empty='true'],
+.home-atmosphere__sun[data-empty='true'] {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-atmosphere__wash {
+    filter: blur(12px);
+    opacity: 0.7;
+  }
+}
+
+/* Soften official radii slightly toward editorial paper (scoped) */
+html[data-theme='the-way-washi'],
+html[data-theme='the-way-sumi'] {
+  --radius-sm: 0.55rem;
+  --radius-md: 0.8rem;
+  --radius-lg: 1.05rem;
+  --radius-xl: 1.35rem;
+}
+
+/* Reading / home max helpers */
+.u-home-max {
+  width: 100%;
+  max-width: var(--home-max);
+  margin-inline: auto;
+}
+
+.u-reading-max {
+  width: 100%;
+  max-width: var(--reading-max);
+  margin-inline: auto;
+}

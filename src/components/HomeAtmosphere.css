@@ -1,0 +1,6 @@
+/* #335A — HomeAtmosphere (imported after washi-dojo-foundation.css via main/index) */
+
+/* Component-local tweaks only; primitives live in washi-dojo-foundation.css */
+.home-atmosphere {
+  contain: paint;
+}
