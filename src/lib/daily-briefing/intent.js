@@ -101,19 +101,19 @@ export function detectDailyBriefingIntent(raw, opts = {}) {
     return { intent: 'none', language, failureCode: 'agenda_not_briefing' }
   }
 
-  // Follow-ups when context present
+  // Follow-ups when context present (#334B)
   if (opts.hasBriefingContext) {
-    if (/^(qual\s+e\s+il\s+primo\s+appuntamento|what(?:'s|\s+is)\s+(the\s+)?first\s+(appointment|event))\??$/.test(t)) {
-      return { intent: 'daily-briefing', language, target: 'today', followUp: true, followUpKind: 'first_event' }
-    }
-    if (/^(che\s+promemoria\s+ho|what\s+reminders?\s+(do\s+i\s+have)?)\??$/.test(t)) {
-      return { intent: 'daily-briefing', language, target: 'today', followUp: true, followUpKind: 'reminders' }
-    }
-    if (/^(e\s+il\s+meteo|and\s+(the\s+)?weather)\??$/.test(t)) {
-      return { intent: 'daily-briefing', language, target: 'today', followUp: true, followUpKind: 'weather' }
-    }
-    if (/\b(devo\s+portare\s+l[' ]?ombrello|do\s+i\s+need\s+(an\s+)?umbrella)\b/.test(t)) {
-      return { intent: 'daily-briefing', language, target: 'today', followUp: true, followUpKind: 'umbrella' }
+    const follow = detectBriefingFollowUp(t)
+    if (follow) {
+      return {
+        intent: 'daily-briefing',
+        language,
+        target: 'today',
+        followUp: true,
+        followUpKind: follow.kind,
+        ordinal: follow.ordinal ?? null,
+        beforeHour: follow.beforeHour ?? null,
+      }
     }
   }
 
@@ -134,4 +134,91 @@ export function detectDailyBriefingIntent(raw, opts = {}) {
     locationText: extractBriefingCity(text),
     followUp: false,
   }
+}
+
+/**
+ * Deterministic follow-up classification (folded lowercase text).
+ * @param {string} t folded text
+ * @returns {{ kind: string, ordinal?: number, beforeHour?: number } | null}
+ */
+export function detectBriefingFollowUp(t) {
+  const s = String(t || '').trim()
+  if (!s) return null
+
+  // Ordinals — first 3 (IT/EN)
+  if (
+    /^(approfondisci\s+(il\s+)?(primo|1(°|o)?)(\s+punto)?|il\s+primo(\s+punto)?|primo(\s+punto)?|the\s+first(\s+one|\s+point)?|first(\s+point)?)\??$/.test(
+      s,
+    ) ||
+    /^(qual\s+e\s+il\s+primo\s+(appuntamento|impegno|punto)|what(?:'s|\s+is)\s+(the\s+)?first\s+(appointment|event|point))\??$/.test(
+      s,
+    )
+  ) {
+    return { kind: 'ordinal', ordinal: 1 }
+  }
+  if (
+    /^(approfondisci\s+(il\s+)?(secondo|2(°|o)?)(\s+punto)?|il\s+secondo(\s+punto)?\??|secondo(\s+punto)?|the\s+second(\s+one|\s+point)?|second(\s+point)?)\??$/.test(
+      s,
+    )
+  ) {
+    return { kind: 'ordinal', ordinal: 2 }
+  }
+  if (
+    /^(approfondisci\s+(il\s+)?(terzo|3(°|o)?)(\s+punto)?|il\s+terzo(\s+punto)?|terzo(\s+punto)?|the\s+third(\s+one|\s+point)?|third(\s+point)?)\??$/.test(
+      s,
+    )
+  ) {
+    return { kind: 'ordinal', ordinal: 3 }
+  }
+
+  // Before time — "prima delle 14" / "before 14" / "before 2pm"
+  const beforeIt = s.match(/\b(?:cosa\s+devo\s+fare\s+)?prima\s+delle?\s+(\d{1,2})(?::(\d{2}))?\b/)
+  const beforeEn = s.match(/\b(?:what\s+(?:do\s+i\s+have|should\s+i\s+do)\s+)?before\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b/)
+  if (beforeIt) {
+    let h = Number(beforeIt[1])
+    if (h >= 0 && h <= 23) return { kind: 'before_time', beforeHour: h }
+  }
+  if (beforeEn) {
+    let h = Number(beforeEn[1])
+    const ap = beforeEn[3]
+    if (ap === 'pm' && h < 12) h += 12
+    if (ap === 'am' && h === 12) h = 0
+    if (h >= 0 && h <= 23) return { kind: 'before_time', beforeHour: h }
+  }
+
+  // Next / after
+  if (
+    /^(qual\s+e\s+il\s+prossimo(\s+impegno)?|quando\s+e\s+il\s+prossimo|il\s+prossimo(\s+impegno)?|prossimo|what(?:'s|\s+is)\s+(the\s+)?next(\s+(appointment|event|one))?|when\s+is\s+(the\s+)?next)\??$/.test(
+      s,
+    )
+  ) {
+    return { kind: 'prossimo' }
+  }
+  if (/^(e\s+dopo\??|dopo\??|cos[' ]?ho\s+dopo\??|and\s+after\??|what(?:'s|\s+is)\s+after\??|after\s+that\??)$/.test(s)) {
+    return { kind: 'e_dopo' }
+  }
+
+  // Reminders / overdue
+  if (
+    /^(che\s+promemoria\s+ho|quali\s+promemoria\s+ho|what\s+reminders?\s+(do\s+i\s+have)?)\??$/.test(s)
+  ) {
+    return { kind: 'reminders' }
+  }
+  if (
+    /^(ho\s+qualcosa\s+di\s+scaduto|qualcosa\s+di\s+scaduto|any(thing)?\s+overdue|what(?:'s|\s+is)\s+overdue)\??$/.test(
+      s,
+    )
+  ) {
+    return { kind: 'overdue' }
+  }
+
+  // Weather / umbrella
+  if (/^(e\s+il\s+meteo|che\s+tempo\s+fara|and\s+(the\s+)?weather|what(?:'s|\s+is)\s+the\s+weather)\??$/.test(s)) {
+    return { kind: 'weather' }
+  }
+  if (/\b(devo\s+portare\s+l[' ]?ombrello|mi\s+serve\s+l[' ]?ombrello|do\s+i\s+need\s+(an\s+)?umbrella)\b/.test(s)) {
+    return { kind: 'umbrella' }
+  }
+
+  return null
 }

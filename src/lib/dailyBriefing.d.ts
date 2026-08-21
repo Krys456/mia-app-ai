@@ -1,7 +1,3 @@
-/**
- * #321 — Daily Briefing TypeScript declarations for ChatContext.
- */
-
 export function detectDailyBriefingIntent(
   raw: string,
   opts?: { languageHint?: 'it' | 'en'; hasBriefingContext?: boolean },
@@ -12,8 +8,16 @@ export function detectDailyBriefingIntent(
   locationText?: string | null
   followUp?: boolean
   followUpKind?: string
+  ordinal?: number | null
+  beforeHour?: number | null
   failureCode?: string | null
 }
+
+export function detectBriefingFollowUp(t: string): {
+  kind: string
+  ordinal?: number
+  beforeHour?: number
+} | null
 
 export function detectBriefingLanguage(text: string, fallback?: 'it' | 'en'): 'it' | 'en'
 
@@ -22,6 +26,7 @@ export function applyDailyBriefingIntent(input: {
   languageHint?: 'it' | 'en'
   briefingContext?: unknown
   weatherContext?: unknown
+  now?: Date
 }): Promise<{
   handled: boolean
   reply: string | null
@@ -43,3 +48,42 @@ export function rememberDailyBriefingDiag(payload: unknown): void
 export function logDailyBriefingSafe(event: Record<string, unknown>): void
 
 export const BRIEFING_CONTEXT_TTL_MS: number
+
+export function renderDailyBriefing(
+  model: unknown,
+  language?: 'it' | 'en',
+  opts?: { now?: Date },
+): string
+
+export function composeDailyBriefing(
+  model: unknown,
+  language?: 'it' | 'en',
+  opts?: { now?: Date },
+): { text: string; priorities: unknown[]; presentationItems: unknown[] }
+
+export function buildBriefingUi(
+  model: unknown,
+  language?: 'it' | 'en',
+): import('../types').DailyBriefingUiState | null
+
+export function safeTitle(title: string): string
+export function greetingForDayPart(
+  language: 'it' | 'en',
+  part: 'morning' | 'afternoon' | 'evening',
+): string
+export function buildBriefingPriorities(model: unknown, opts?: { now?: Date }): unknown[]
+export function dayPartInZone(
+  timeZone: string,
+  now?: Date,
+): 'morning' | 'afternoon' | 'evening'
+export function answerBriefingFollowUp(
+  intent: { followUpKind: string; beforeHour?: number | null; ordinal?: number | null },
+  ctx: unknown,
+  language: 'it' | 'en',
+  opts?: { now?: Date },
+): {
+  handled: boolean
+  reply: string
+  briefingContext: unknown
+  diag: Record<string, unknown>
+}

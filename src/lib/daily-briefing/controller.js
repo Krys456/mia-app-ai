@@ -1,5 +1,6 @@
 /**
- * #321 — Apply Daily Briefing (client orchestration).
+ * #321/#334B — Apply Daily Briefing (client orchestration).
+ * Zero model calls. LOCAL_EXCHANGE path only.
  */
 
 import {
@@ -8,7 +9,8 @@ import {
 } from './active-context.js'
 import { requestDailyBriefingPack } from './api.js'
 import { detectDailyBriefingIntent } from './intent.js'
-import { buildBriefingUi, renderDailyBriefing, safeTitle } from './render.js'
+import { answerBriefingFollowUp } from './followups.js'
+import { buildBriefingUi, composeDailyBriefing } from './render.js'
 import { resolveBriefingWeather } from './weather-source.js'
 
 function browserTimeZone() {
@@ -25,6 +27,7 @@ function browserTimeZone() {
  *   languageHint?: 'it'|'en'
  *   briefingContext?: object | null
  *   weatherContext?: object | null
+ *   now?: Date
  * }} input
  */
 export async function applyDailyBriefingIntent(input) {
@@ -44,9 +47,26 @@ export async function applyDailyBriefingIntent(input) {
   }
 
   const language = intent.language || langHint
+  const now = input.now instanceof Date ? input.now : new Date()
 
   if (intent.followUp && ctx) {
-    return handleFollowUp(intent, ctx, language)
+    return answerBriefingFollowUp(intent, ctx, language, { now })
+  }
+
+  // Follow-up detected but context stale/missing
+  if (intent.followUp && !ctx) {
+    return {
+      handled: true,
+      reply:
+        language === 'en'
+          ? 'Ask for a briefing first, then I can go deeper on a point.'
+          : 'Chiedi prima un briefing, poi posso approfondire un punto.',
+      diag: {
+        dailyBriefingIntent: 'daily-briefing',
+        operation: 'follow_up_no_context',
+        failureCode: 'no_context',
+      },
+    }
   }
 
   const timeZone = browserTimeZone()
@@ -99,8 +119,23 @@ export async function applyDailyBriefingIntent(input) {
     model.status = 'error'
   }
 
-  const reply = renderDailyBriefing(model, language)
-  const reminderItems = [...(model.reminders.overdue || []), ...(model.reminders.today || [])]
+  const composed = composeDailyBriefing(model, language, { now })
+  const reply = composed.text
+  const reminderItems = [
+    ...(model.reminders.overdue || []).map((r) => ({ ...r, overdue: true })),
+    ...(model.reminders.today || []).map((r) => ({ ...r, overdue: false })),
+  ]
+  const unavailableSources = []
+  if (['disconnected', 'disabled', 'error', 'timeout', 'unavailable'].includes(model.calendar.status)) {
+    unavailableSources.push('calendar')
+  }
+  if (['disabled', 'error', 'timeout', 'unavailable'].includes(model.reminders.status)) {
+    unavailableSources.push('reminders')
+  }
+  if (['error', 'timeout', 'unavailable'].includes(model.weather.status)) {
+    unavailableSources.push('weather')
+  }
+
   const briefingContext = createBriefingContext({
     targetDate: model.targetDate,
     timezone: model.timezone,
@@ -109,9 +144,13 @@ export async function applyDailyBriefingIntent(input) {
       reminders: model.reminders.status,
       weather: model.weather.status,
     },
+    unavailableSources,
     calendarItems: model.calendar.items || [],
     reminderItems,
     weatherSnapshot: model.weather.snapshot || null,
+    presentationItems: composed.presentationItems,
+    priorities: composed.priorities,
+    focusIndex: -1,
     displayText: reply,
     language,
     generatedAt: model.generatedAt,
@@ -137,150 +176,13 @@ export async function applyDailyBriefingIntent(input) {
       reminderStatus: model.reminders.status,
       reminderCount: reminderItems.length,
       weatherStatus: model.weather.status,
+      priorityCount: composed.priorities.length,
       sourceTimeouts,
       partialSuccess: model.status === 'partial_success',
       renderMode: 'deterministic',
       failureCode: model.status === 'error' ? 'all_sources_failed' : null,
       responseMode: 'deterministic',
-    },
-  }
-}
-
-function handleFollowUp(intent, ctx, language) {
-  const kind = intent.followUpKind
-  if (kind === 'first_event') {
-    const first = (ctx.calendarItems || [])[0]
-    if (!first) {
-      return {
-        handled: true,
-        reply:
-          language === 'en'
-            ? 'No appointment in the latest briefing.'
-            : 'Nessun appuntamento nel briefing recente.',
-        briefingContext: ctx,
-        diag: {
-          dailyBriefingIntent: 'daily-briefing',
-          operation: 'follow_up_first_event',
-          contextReused: true,
-          failureCode: first ? null : 'empty',
-        },
-      }
-    }
-    return {
-      handled: true,
-      reply:
-        language === 'en'
-          ? `First event: ${safeTitle(first.title)}.`
-          : `Primo appuntamento: ${safeTitle(first.title)}.`,
-      briefingContext: ctx,
-      diag: {
-        dailyBriefingIntent: 'daily-briefing',
-        operation: 'follow_up_first_event',
-        contextReused: true,
-        failureCode: null,
-      },
-    }
-  }
-
-  if (kind === 'reminders') {
-    const items = ctx.reminderItems || []
-    if (!items.length) {
-      return {
-        handled: true,
-        reply:
-          language === 'en'
-            ? 'No reminders in the latest briefing.'
-            : 'Nessun promemoria nel briefing recente.',
-        briefingContext: ctx,
-        diag: {
-          dailyBriefingIntent: 'daily-briefing',
-          operation: 'follow_up_reminders',
-          contextReused: true,
-        },
-      }
-    }
-    const list = items
-      .slice(0, 5)
-      .map((r) => `• ${safeTitle(r.title)}`)
-      .join('\n')
-    return {
-      handled: true,
-      reply: list,
-      briefingContext: ctx,
-      diag: {
-        dailyBriefingIntent: 'daily-briefing',
-        operation: 'follow_up_reminders',
-        contextReused: true,
-      },
-    }
-  }
-
-  if (kind === 'weather' || kind === 'umbrella') {
-    const snap = ctx.weatherSnapshot
-    if (!snap) {
-      return {
-        handled: true,
-        reply:
-          language === 'en'
-            ? 'No weather in the latest briefing. Tell me a city to include it.'
-            : 'Nessun meteo nel briefing recente. Indicami una città per includerlo.',
-        briefingContext: ctx,
-        diag: {
-          dailyBriefingIntent: 'daily-briefing',
-          operation: 'follow_up_weather',
-          contextReused: true,
-        },
-      }
-    }
-    if (kind === 'umbrella') {
-      const yes = Boolean(snap.umbrellaRecommended || snap.rainLikely)
-      return {
-        handled: true,
-        reply: yes
-          ? language === 'en'
-            ? 'Yes — rain looks likely; I’d bring an umbrella.'
-            : 'Sì — sembra probabile la pioggia; porterei l’ombrello.'
-          : language === 'en'
-            ? 'No strong rain signal in the briefing weather.'
-            : 'Nel meteo del briefing non c’è un segnale forte di pioggia.',
-        briefingContext: ctx,
-        diag: {
-          dailyBriefingIntent: 'daily-briefing',
-          operation: 'follow_up_umbrella',
-          contextReused: true,
-        },
-      }
-    }
-    const place = snap.locationLabel || ''
-    const range =
-      snap.temperatureMinC != null && snap.temperatureMaxC != null
-        ? `${snap.temperatureMinC}–${snap.temperatureMaxC} °C`
-        : snap.temperatureC != null
-          ? `${snap.temperatureC} °C`
-          : ''
-    return {
-      handled: true,
-      reply: `${place ? `${place}: ` : ''}${range}`.trim(),
-      briefingContext: ctx,
-      diag: {
-        dailyBriefingIntent: 'daily-briefing',
-        operation: 'follow_up_weather',
-        contextReused: true,
-      },
-    }
-  }
-
-  return {
-    handled: true,
-    reply:
-      language === 'en'
-        ? 'Ask for a new briefing for an updated summary.'
-        : 'Chiedi un nuovo briefing per un riepilogo aggiornato.',
-    briefingContext: ctx,
-    diag: {
-      dailyBriefingIntent: 'daily-briefing',
-      operation: 'follow_up',
-      contextReused: true,
+      modelCalls: 0,
     },
   }
 }
