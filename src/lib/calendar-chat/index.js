@@ -14,7 +14,7 @@ export {
   clearCalendarContext,
 } from './active-context.js'
 export { applyCalendarIntent } from './controller.js'
-export { requestCalendarQuery } from './api.js'
+export { requestCalendarQuery, mapCalendarQueryResponse } from './api.js'
 export { computeFreeWindows, filterEventsForQuery } from './free-time.js'
 export { renderCalendarAnswer, failureReply } from './render.js'
 export { resolveCalendarQueryBounds } from './range.js'

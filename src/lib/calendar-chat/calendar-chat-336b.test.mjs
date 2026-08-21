@@ -262,4 +262,99 @@ describe('calendar-chat-336b renderer + controller', () => {
   })
 })
 
+describe('calendar-chat-336b no Core fallthrough', () => {
+  it('ChatContext returns before /api/chat for Calendar claim', () => {
+    const ctx = read('src/context/ChatContext.tsx')
+    const calIdx = ctx.indexOf('#336B — Calendar chat')
+    const chatIdx = ctx.indexOf('runAssistantCompletion(history')
+    assert.ok(calIdx > 0)
+    assert.ok(chatIdx > calIdx)
+    assert.match(ctx, /Never fall through to \/api\/chat/)
+    // Matched calendar block returns true before Core
+    const block = ctx.slice(calIdx, chatIdx)
+    assert.match(block, /intent === 'calendar'/)
+    assert.match(block, /return true/)
+  })
+
+  it('maps 401 auth HTTP to disconnected (not generic error)', async () => {
+    const { mapCalendarQueryResponse } = await import('./api.js')
+    const pack = mapCalendarQueryResponse(
+      { status: 401 },
+      { error: 'Unauthorized', code: 'unauthorized' },
+      'Europe/Rome',
+    )
+    assert.equal(pack.status, 'disconnected')
+  })
+
+  const terminalStatuses = [
+    'disabled',
+    'disconnected',
+    'reconnect_required',
+    'timeout',
+    'error',
+    'empty',
+    'ok',
+  ]
+
+  for (const status of terminalStatuses) {
+    it(`matched intent + ${status} terminates locally (no Core)`, async () => {
+      const result = await applyCalendarIntent({
+        text: 'Cosa ho domani?',
+        languageHint: 'it',
+        timeZone: 'UTC',
+        now: new Date('2026-08-21T10:00:00.000Z'),
+        requestFn: async () => ({
+          status,
+          items:
+            status === 'ok'
+              ? [
+                  {
+                    id: '1',
+                    title: 'X',
+                    start: '2026-08-22T09:00:00.000Z',
+                    end: '2026-08-22T10:00:00.000Z',
+                    allDay: false,
+                    status: 'confirmed',
+                  },
+                ]
+              : [],
+          fetchedAt: new Date().toISOString(),
+        }),
+      })
+      assert.equal(result.handled, true)
+      assert.ok(result.reply)
+      assert.equal(result.diag.modelCalls, 0)
+      assert.equal(result.diag.terminatesLocally, true)
+      assert.doesNotMatch(result.reply, /accesso diretto|condividi qui|tuoi account/i)
+      if (status !== 'ok' && status !== 'empty') {
+        assert.ok(result.calendarContext)
+        assert.equal(result.calendarContext.status, status)
+      }
+    })
+  }
+
+  it('failure follow-up "Perché?" stays local (never Core wording)', async () => {
+    const fail = await applyCalendarIntent({
+      text: 'Cosa ho oggi?',
+      languageHint: 'it',
+      timeZone: 'UTC',
+      requestFn: async () => ({
+        status: 'error',
+        items: [],
+        fetchedAt: new Date().toISOString(),
+      }),
+    })
+    const follow = await applyCalendarIntent({
+      text: 'Perché?',
+      languageHint: 'it',
+      calendarContext: fail.calendarContext,
+      timeZone: 'UTC',
+    })
+    assert.equal(follow.handled, true)
+    assert.match(follow.reply, /Non riesco a leggere il calendario/)
+    assert.equal(follow.diag.modelCalls, 0)
+    assert.doesNotMatch(follow.reply, /accesso diretto|condividi qui/i)
+  })
+})
+
 console.log('calendar-chat-336b: ok')

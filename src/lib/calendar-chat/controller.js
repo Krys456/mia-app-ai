@@ -78,6 +78,29 @@ export async function applyCalendarIntent(input) {
 
   // --- Follow-ups from verified context ---
   if (intent.followUp && ctx) {
+    if (intent.followUpKind === 'repeat_status') {
+      const st = ctx.status && ctx.status !== 'ok' && ctx.status !== 'empty' ? ctx.status : null
+      const reply = st
+        ? failureReply(st, language)
+        : language === 'en'
+          ? 'Ask about your calendar again if you need a fresh read.'
+          : 'Chiedi di nuovo il calendario se ti serve una lettura aggiornata.'
+      return {
+        handled: true,
+        reply,
+        calendarContext: ctx,
+        calendarUi: buildCalendarUi(st || ctx.status || 'ok'),
+        diag: {
+          calendarIntent: 'calendar',
+          operation: 'follow_up_repeat_status',
+          calendarStatus: st || ctx.status || null,
+          contextReused: true,
+          modelCalls: 0,
+          terminatesLocally: true,
+        },
+      }
+    }
+
     if (intent.followUpKind === 'free_time') {
       const dayYmd = ctx.dayYmd
       const freeWindows = dayYmd
@@ -199,16 +222,30 @@ export async function applyCalendarIntent(input) {
 
   const status = typeof pack.status === 'string' ? pack.status : 'error'
   if (status !== 'ok' && status !== 'empty') {
+    const calendarContext = createCalendarContext({
+      dateRange: bounds,
+      labelDay: bounds.labelDay,
+      timezone: timeZone,
+      fetchedAt: pack.fetchedAt,
+      events: [],
+      focusIndex: -1,
+      queryType: intent.queryType || 'list',
+      status,
+      language,
+      dayYmd: bounds.dayYmd,
+    })
     return {
       handled: true,
       reply: failureReply(status, language),
+      calendarContext,
       calendarUi: buildCalendarUi(status),
       diag: {
         calendarIntent: 'calendar',
         operation: 'query',
         calendarStatus: status,
-        failureCode: pack.failureCode || status,
+        failureCode: pack.failureCode || pack.code || status,
         modelCalls: 0,
+        terminatesLocally: true,
       },
     }
   }
@@ -280,6 +317,7 @@ export async function applyCalendarIntent(input) {
         calendarStatus: 'ok',
         eventCount: events.length,
         modelCalls: 0,
+        terminatesLocally: true,
       },
     }
   }
@@ -321,6 +359,7 @@ export async function applyCalendarIntent(input) {
       queryType: intent.queryType,
       eventCount: events.length,
       modelCalls: 0,
+      terminatesLocally: true,
     },
   }
 }

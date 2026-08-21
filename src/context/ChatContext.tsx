@@ -1817,6 +1817,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       }
 
       // #336B — Calendar chat before Daily Briefing (claims "Cosa ho oggi/domani?").
+      // CRITICAL: matched Calendar intents MUST return here (LOCAL_EXCHANGE only).
+      // Never fall through to /api/chat — including disabled/disconnected/error.
       if (allowLocalRouters) {
         const sticky = deriveDictationLangFromMessages(state.messages)
         const langHint =

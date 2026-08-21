@@ -96,6 +96,16 @@ function looksQuotedOrInjected(raw) {
 export function detectCalendarFollowUp(t) {
   if (!t) return null
 
+  // After a Calendar answer/failure, keep meta questions local (never Core).
+  if (
+    /^(perche|perche\?|why|why\?)$/.test(t) ||
+    /\b(perche\s+(non\s+)?(riesci|puoi|hai)|why\s+(can'?t|cannot|don'?t)|non\s+hai\s+accesso|non\s+riesci\s+a\s+leggere|accesso\s+(al\s+)?calendario)\b/.test(
+      t,
+    )
+  ) {
+    return { kind: 'repeat_status' }
+  }
+
   if (/^(e\s+dopo|dopo|and\s+after|what(?:'s|\s+is)\s+next|il\s+prossimo|prossimo|qual\s+e\s+il\s+prossimo(\s+impegno)?)\??$/.test(t)) {
     return { kind: 'next_after' }
   }

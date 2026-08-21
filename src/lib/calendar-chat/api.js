@@ -13,6 +13,78 @@ function resolveBase() {
 }
 
 /**
+ * Map HTTP / auth failures to Calendar safe statuses (never invent events).
+ * @param {{ status: number }} res
+ * @param {Record<string, unknown>} json
+ * @param {string | null} timeZone
+ */
+export function mapCalendarQueryResponse(res, json, timeZone) {
+  const fetchedAt = new Date().toISOString()
+  if (json && typeof json.status === 'string') {
+    return {
+      status: json.status,
+      items: Array.isArray(json.items) ? json.items : [],
+      fetchedAt: typeof json.fetchedAt === 'string' ? json.fetchedAt : fetchedAt,
+      timeZone: json.timeZone || timeZone,
+      failureCode: typeof json.failureCode === 'string' ? json.failureCode : undefined,
+      code: typeof json.code === 'string' ? json.code : undefined,
+    }
+  }
+
+  const code = typeof json?.code === 'string' ? json.code : ''
+  if (
+    res.status === 401 ||
+    res.status === 403 ||
+    code === 'unauthorized' ||
+    code === 'auth_required' ||
+    code === 'auth_unavailable'
+  ) {
+    return {
+      status: 'disconnected',
+      failureCode: code || 'auth_required',
+      items: [],
+      fetchedAt,
+      timeZone,
+    }
+  }
+  if (res.status === 404 || code === 'calendar_disabled') {
+    return {
+      status: 'disabled',
+      failureCode: code || 'calendar_disabled',
+      items: [],
+      fetchedAt,
+      timeZone,
+    }
+  }
+  if (res.status === 429 || code === 'rate_limit_exceeded') {
+    return {
+      status: 'timeout',
+      failureCode: code || 'rate_limit_exceeded',
+      items: [],
+      fetchedAt,
+      timeZone,
+    }
+  }
+  if (res.status === 503 || code === 'rate_limit_unavailable') {
+    return {
+      status: 'timeout',
+      failureCode: code || 'rate_limit_unavailable',
+      items: [],
+      fetchedAt,
+      timeZone,
+    }
+  }
+
+  return {
+    status: 'error',
+    failureCode: code || (res.ok ? 'invalid_pack' : 'http_error'),
+    items: [],
+    fetchedAt,
+    timeZone,
+  }
+}
+
+/**
  * @param {{
  *   timeZone: string
  *   range?: string
@@ -73,15 +145,5 @@ export async function requestCalendarQuery(body) {
     json = {}
   }
 
-  if (!res.ok && !json.status) {
-    return {
-      status: 'error',
-      failureCode: typeof json.code === 'string' ? json.code : 'http_error',
-      items: [],
-      fetchedAt: new Date().toISOString(),
-      timeZone: body.timeZone || null,
-    }
-  }
-
-  return json
+  return mapCalendarQueryResponse(res, json, body.timeZone || null)
 }
