@@ -1,4 +1,4 @@
-/* #335B — SumiHero scene composition (one visual scene) */
+/* #335B / #335B1 — SumiHero scene (artwork refinement only) */
 
 .sumi-hero {
   position: relative;
@@ -11,8 +11,7 @@
 }
 
 .sumi-hero__enso,
-.sumi-hero__mountains,
-.sumi-hero__sun {
+.sumi-hero__mountains {
   position: absolute;
   pointer-events: none;
   display: block;
@@ -26,13 +25,14 @@
   height: clamp(9.75rem, 50vw, 13rem);
   transform: translateX(-50%);
   z-index: 2;
-  opacity: 0.94;
+  opacity: 0.96;
 }
 
+/* Mountains pass behind lower Ensō — one painted composition */
 .sumi-hero__mountains {
   left: 50%;
-  bottom: 4%;
-  width: min(128%, 23rem);
+  bottom: 2%;
+  width: min(132%, 24rem);
   height: auto;
   aspect-ratio: 640 / 280;
   transform: translateX(-50%);
@@ -40,29 +40,16 @@
   opacity: 1;
 }
 
-.sumi-hero__sun {
-  left: 61%;
-  top: 14%;
-  width: clamp(1.25rem, 6vw, 1.7rem);
-  height: auto;
-  z-index: 3;
-  opacity: 0.95;
-}
-
 html[data-theme='the-way-sumi'] .sumi-hero {
   color: var(--enso-ink, #f5f0e8);
 }
 
 html[data-theme='the-way-sumi'] .sumi-hero__enso {
-  opacity: 0.9;
+  opacity: 0.92;
 }
 
 html[data-theme='the-way-sumi'] .sumi-hero__mountains {
-  opacity: 0.45;
-}
-
-html[data-theme='the-way-sumi'] .sumi-hero__sun {
-  opacity: 0.88;
+  opacity: 0.55;
 }
 
 @media (min-width: 768px) {
@@ -79,5 +66,12 @@ html[data-theme='the-way-sumi'] .sumi-hero__sun {
 @media (min-width: 1024px) {
   .sumi-hero {
     width: min(100%, 24rem);
+  }
+}
+
+@media (max-width: 360px) {
+  .sumi-hero__enso {
+    width: clamp(9rem, 52vw, 11.5rem);
+    height: clamp(9rem, 52vw, 11.5rem);
   }
 }

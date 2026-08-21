@@ -1,39 +1,73 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 280" fill="none" aria-hidden="true">
-  <!-- #335B sumi-e mountains: layered atmospheric silhouettes; currentColor = ink -->
-  <defs>
-    <linearGradient id="fadeL" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="currentColor" stop-opacity="0"/>
-      <stop offset="0.18" stop-color="currentColor" stop-opacity="1"/>
-      <stop offset="0.82" stop-color="currentColor" stop-opacity="1"/>
-      <stop offset="1" stop-color="currentColor" stop-opacity="0"/>
-    </linearGradient>
-    <linearGradient id="fadeV" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="currentColor" stop-opacity="1"/>
-      <stop offset="0.72" stop-color="currentColor" stop-opacity="0.55"/>
-      <stop offset="1" stop-color="currentColor" stop-opacity="0"/>
-    </linearGradient>
-    <mask id="edgeFade">
-      <rect width="640" height="280" fill="url(#fadeL)"/>
-    </mask>
-  </defs>
-  <g mask="url(#edgeFade)" fill="url(#fadeV)">
-    <path
-      opacity="0.18"
-      d="M0 168 C48 152 78 128 118 122 C148 117 172 132 198 138 C236 148 268 118 308 112 C348 106 378 128 416 136 C458 146 498 118 540 124 C578 130 610 148 640 158 L640 280 L0 280 Z"
-    />
-    <path
-      opacity="0.28"
-      d="M0 196 C42 178 86 148 132 142 C176 136 208 162 248 168 C292 176 328 146 372 140 C416 134 452 158 496 166 C536 174 580 152 640 168 L640 280 L0 280 Z"
-    />
-    <path
-      opacity="0.4"
-      d="M0 228 C28 214 56 198 92 194 C124 190 148 206 178 210 C214 216 246 196 282 192 C322 188 352 208 388 214 C428 222 462 204 500 208 C536 212 572 224 608 230 C624 233 640 236 640 236 L640 280 L0 280 Z"
-    />
-    <ellipse cx="320" cy="210" rx="220" ry="28" opacity="0.08" fill="currentColor"/>
-  </g>
-  <g fill="currentColor" opacity="0.12">
-    <path d="M210 146c18-2 34 6 48 4-6 4-18 6-28 5-12-1-18-6-20-9z"/>
-    <path d="M390 152c14-3 28 2 40 1-5 3-14 5-24 4-10-1-14-4-16-5z"/>
-    <path d="M118 158c10-2 22 1 30 0-4 2-12 3-18 2-8 0-12-2-12-2z"/>
-  </g>
+  <!-- #335B1 sumi-e mountains — irregular ink-wash layers, mist, dissolve into paper -->
+  <!-- DISTANT -->
+  <path
+    fill="currentColor"
+    opacity="0.1"
+    d="M12 178
+      C48 166 72 148 98 142
+      C118 138 136 152 158 148
+      C186 142 204 122 236 118
+      C262 114 286 132 312 128
+      C348 122 372 104 408 110
+      C438 114 458 136 492 132
+      C522 128 548 112 580 120
+      C604 126 624 142 640 152
+      L640 280 L0 280 Z"
+  />
+  <!-- DISTANT mist veil -->
+  <ellipse cx="300" cy="168" rx="240" ry="22" fill="currentColor" opacity="0.05"/>
+
+  <!-- MID -->
+  <path
+    fill="currentColor"
+    opacity="0.2"
+    d="M0 198
+      C36 186 58 164 92 158
+      C118 154 138 174 168 170
+      C198 166 218 146 252 150
+      C282 154 302 172 336 166
+      C372 158 396 140 434 148
+      C464 154 486 176 522 172
+      C554 168 582 154 616 164
+      C628 168 640 176 640 176
+      L640 280 L0 280 Z"
+  />
+  <!-- MID ridge brush marks -->
+  <path fill="currentColor" opacity="0.08" d="M210 152c22-6 44 4 62 0-8 6-24 10-38 8-16-2-24-6-24-8z"/>
+  <path fill="currentColor" opacity="0.07" d="M400 148c18-5 36 2 52 0-6 4-18 8-30 6-14-2-20-5-22-6z"/>
+
+  <!-- Mist between mid and foreground -->
+  <ellipse cx="320" cy="198" rx="260" ry="26" fill="currentColor" opacity="0.06"/>
+  <ellipse cx="180" cy="206" rx="90" ry="14" fill="currentColor" opacity="0.04"/>
+  <ellipse cx="460" cy="204" rx="100" ry="16" fill="currentColor" opacity="0.045"/>
+
+  <!-- FOREGROUND — stronger but still subordinate; irregular foothills -->
+  <path
+    fill="currentColor"
+    opacity="0.32"
+    d="M0 232
+      C24 220 46 206 74 202
+      C98 198 118 214 146 210
+      C176 206 194 188 226 192
+      C256 196 276 214 308 208
+      C342 202 364 186 398 194
+      C428 200 450 218 484 214
+      C516 210 540 196 574 206
+      C598 214 620 224 640 232
+      L640 280 L0 280 Z"
+  />
+  <!-- Foreground soft dissolve into paper -->
+  <path
+    fill="currentColor"
+    opacity="0.12"
+    d="M0 248 C80 242 160 252 240 246 C320 240 400 252 480 246 C560 240 600 250 640 252 L640 280 L0 280 Z"
+  />
+
+  <!-- Optional micro birds — nearly subliminal -->
+  <path fill="currentColor" opacity="0.12" d="M248 128c2.2-.4 4.2.8 5.6 2.2-1.6-.2-3.4-.6-5.2-1.4-.6-.3-.8-1-.4-1.4.2-.2.5-.4.8-.4-.3.1-.6.3-.8.6.1-.2.2-.3.3-.4-.1.1-.2.2-.3.4z"/>
+  <path fill="currentColor" opacity="0.1" d="M268 122c1.8-.3 3.4.6 4.6 1.8-1.3-.1-2.8-.4-4.2-1.1-.5-.2-.6-.8-.3-1.2.1-.2.4-.3.6-.3-.2.1-.4.2-.6.4.1-.1.1-.2.2-.3-.1.1-.2.2-.3.3z"/>
+
+  <!-- Tiny pine suggestion on mid ridge -->
+  <path fill="currentColor" opacity="0.1" d="M352 158l2.4-6.2 2.2 6.2h-4.6zm1.2-4.8l1.6-4 1.4 4h-3z"/>
 </svg>
