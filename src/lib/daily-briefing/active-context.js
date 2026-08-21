@@ -1,5 +1,5 @@
 /**
- * #321 — Session-only activeDailyBriefingContext.
+ * #321/#334B — Session-only activeDailyBriefingContext.
  */
 
 export const BRIEFING_CONTEXT_KEY = 'shinkaido.activeDailyBriefing.v1'
@@ -8,13 +8,23 @@ export const BRIEFING_CONTEXT_TTL_MS = 30 * 60 * 1000
 export function createBriefingContext(input) {
   if (!input || typeof input !== 'object') return null
   const now = input.createdAt || Date.now()
+  const presentationItems = Array.isArray(input.presentationItems)
+    ? input.presentationItems.slice(0, 40)
+    : []
+  const priorities = Array.isArray(input.priorities) ? input.priorities.slice(0, 40) : []
   return {
     targetDate: String(input.targetDate || ''),
     timezone: String(input.timezone || ''),
     sourceStatuses: input.sourceStatuses || {},
+    unavailableSources: Array.isArray(input.unavailableSources)
+      ? input.unavailableSources.slice(0, 8)
+      : [],
     calendarItems: Array.isArray(input.calendarItems) ? input.calendarItems.slice(0, 20) : [],
     reminderItems: Array.isArray(input.reminderItems) ? input.reminderItems.slice(0, 30) : [],
     weatherSnapshot: input.weatherSnapshot || null,
+    presentationItems,
+    priorities,
+    focusIndex: typeof input.focusIndex === 'number' ? input.focusIndex : -1,
     displayText: String(input.displayText || '').slice(0, 4000),
     language: input.language === 'en' ? 'en' : 'it',
     generatedAt: input.generatedAt || new Date(now).toISOString(),

@@ -80,10 +80,12 @@ export type TranslationUiState = {
   actions?: TranslationUiAction[]
 }
 
-/** #321 — compact Daily Briefing summary chips. */
+/** #321/#334B — compact Daily Briefing summary chips. */
 export type DailyBriefingUiChip = {
   id: string
   label: string
+  /** Quieter unavailable-source chip */
+  muted?: boolean
 }
 
 export type DailyBriefingUiState = {

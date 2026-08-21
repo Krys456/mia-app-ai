@@ -1,10 +1,17 @@
 /**
- * #321 — Deterministic Daily Briefing rendering (IT/EN). No Core required.
+ * #334B — Deterministic Daily Briefing rendering (IT/EN).
+ * Editorial conversational prose from verified priorities. No Core / no model.
  */
 
-function formatEventTime(ev, timeZone, language) {
-  if (ev.allDay) return language === 'en' ? 'all day' : 'tutto il giorno'
-  const start = ev.start
+import {
+  buildBriefingPriorities,
+  dayPartInZone,
+  presentationItemsForOrdinals,
+} from './priority.js'
+
+export function formatEventTime(ev, timeZone, language) {
+  if (ev?.allDay) return language === 'en' ? 'all day' : 'tutto il giorno'
+  const start = ev?.start
   if (typeof start === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(start)) {
     return language === 'en' ? 'all day' : 'tutto il giorno'
   }
@@ -22,7 +29,7 @@ function formatEventTime(ev, timeZone, language) {
   }
 }
 
-function formatReminderTime(item, timeZone, language) {
+export function formatReminderTime(item, timeZone, language) {
   try {
     const d = new Date(item.fireAt)
     if (Number.isNaN(d.getTime())) return ''
@@ -32,6 +39,20 @@ function formatReminderTime(item, timeZone, language) {
       minute: '2-digit',
       hour12: false,
     }).format(d)
+  } catch {
+    return ''
+  }
+}
+
+export function formatWhenMs(ms, timeZone, language) {
+  if (ms == null) return ''
+  try {
+    return new Intl.DateTimeFormat(language === 'en' ? 'en-GB' : 'it-IT', {
+      timeZone: timeZone || 'UTC',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).format(new Date(ms))
   } catch {
     return ''
   }
@@ -50,94 +71,180 @@ export function safeTitle(title) {
 }
 
 /**
+ * @param {'it'|'en'} language
+ * @param {'morning'|'afternoon'|'evening'} part
+ */
+export function greetingForDayPart(language, part) {
+  const lang = language === 'en' ? 'en' : 'it'
+  if (lang === 'en') {
+    if (part === 'afternoon') return 'Good afternoon.'
+    if (part === 'evening') return 'Good evening.'
+    return 'Good morning.'
+  }
+  if (part === 'afternoon') return 'Buon pomeriggio.'
+  if (part === 'evening') return 'Buonasera.'
+  return 'Buongiorno.'
+}
+
+function unavailableSources(model) {
+  const out = []
+  const cal = model.calendar?.status
+  const rem = model.reminders?.status
+  const wx = model.weather?.status
+  if (['disconnected', 'disabled', 'error', 'timeout', 'unavailable'].includes(cal)) {
+    out.push('calendar')
+  }
+  if (['disabled', 'error', 'timeout', 'unavailable'].includes(rem)) {
+    out.push('reminders')
+  }
+  if (['error', 'timeout', 'unavailable'].includes(wx)) {
+    out.push('weather')
+  }
+  return out
+}
+
+/**
+ * Build reply + presentation items from verified model.
  * @param {object} model
  * @param {'it'|'en'} language
+ * @param {{ now?: Date }} [opts]
+ * @returns {{ text: string, priorities: object[], presentationItems: object[] }}
  */
-export function renderDailyBriefing(model, language = 'it') {
+export function composeDailyBriefing(model, language = 'it', opts = {}) {
   const lang = language === 'en' ? 'en' : 'it'
-  const lines = []
-  lines.push(lang === 'en' ? 'Good morning ☀️' : 'Buongiorno ☀️')
-  lines.push('')
+  const tz = model.timezone || 'UTC'
+  const now = opts.now || new Date()
+  const part = dayPartInZone(tz, now)
+  const priorities = buildBriefingPriorities(model, { now })
+  const presentationItems = presentationItemsForOrdinals(priorities)
 
   const cal = model.calendar || { status: 'unavailable', items: [] }
   const rem = model.reminders || { status: 'unavailable', overdue: [], today: [] }
   const wx = model.weather || { status: 'unavailable' }
-  const tz = model.timezone || 'UTC'
 
-  // Priority: overdue reminders first
-  if (rem.status === 'ok' && Array.isArray(rem.overdue) && rem.overdue.length) {
-    const n = rem.overdue.length
+  const lines = []
+  lines.push(greetingForDayPart(lang, part))
+
+  const overdue = priorities.filter((p) => p.kind === 'overdue_reminder')
+  const nextEv = priorities.find((p) => p.kind === 'next_event')
+  const timedRest = priorities.filter((p) => p.kind === 'timed_event')
+  const allDay = priorities.filter((p) => p.kind === 'all_day_event')
+  const todayRem = priorities.filter((p) => p.kind === 'today_reminder')
+  const weatherItem = priorities.find((p) => p.kind === 'weather')
+  const quiet = priorities.some((p) => p.kind === 'quiet')
+
+  const timedCount =
+    (nextEv ? 1 : 0) + timedRest.length + allDay.length
+  const calOk = cal.status === 'ok' || cal.status === 'empty'
+  const remOk = rem.status === 'ok' || rem.status === 'empty'
+
+  // Overview line
+  const overviewBits = []
+  if (overdue.length) {
+    overviewBits.push(
+      lang === 'en'
+        ? `${overdue.length} overdue reminder${overdue.length > 1 ? 's' : ''}`
+        : `${overdue.length} promemoria scadut${overdue.length > 1 ? 'i' : 'o'}`,
+    )
+  }
+  if (calOk && timedCount) {
+    overviewBits.push(
+      lang === 'en'
+        ? `${timedCount} event${timedCount > 1 ? 's' : ''} today`
+        : `${timedCount} impegn${timedCount > 1 ? 'i' : 'o'} oggi`,
+    )
+  }
+  if (remOk && todayRem.length && !overdue.length) {
+    overviewBits.push(
+      lang === 'en'
+        ? `${todayRem.length} reminder${todayRem.length > 1 ? 's' : ''} today`
+        : `${todayRem.length} cos${todayRem.length > 1 ? 'e' : 'a'} da ricordare oggi`,
+    )
+  }
+
+  if (overviewBits.length) {
+    if (lang === 'en') {
+      lines.push(`You have ${overviewBits.join(' and ')}.`)
+    } else {
+      lines.push(`Hai ${overviewBits.join(' e ')}.`)
+    }
+  } else if (quiet && calOk && remOk) {
+    lines.push(
+      lang === 'en'
+        ? 'Nothing on the calendar or reminders for today.'
+        : 'Per il resto, la giornata è libera.',
+    )
+  }
+
+  // Prossimo
+  if (nextEv) {
+    const t = formatWhenMs(nextEv.whenMs, tz, lang)
+    lines.push('')
     if (lang === 'en') {
       lines.push(
-        `⏰ You have ${n} overdue reminder${n > 1 ? 's' : ''}${
-          rem.today?.length ? ` and ${rem.today.length} due today` : ''
-        }.`,
+        nextEv.soon
+          ? `Next: ${safeTitle(nextEv.title)}${t ? ` at ${t}` : ''} — coming up soon.`
+          : `Next: ${safeTitle(nextEv.title)}${t ? ` at ${t}` : ''}.`,
       )
-      const first = rem.overdue[0]
-      lines.push(`   • ${safeTitle(first.title)} (${formatReminderTime(first, tz, lang)})`)
     } else {
       lines.push(
-        `⏰ Hai ${n} promemoria scadut${n > 1 ? 'i' : 'o'}${
-          rem.today?.length ? ` e ${rem.today.length} per oggi` : ''
-        }.`,
+        nextEv.soon
+          ? `Prossimo: ${safeTitle(nextEv.title)}${t ? ` alle ${t}` : ''} — tra poco.`
+          : `Prossimo: ${safeTitle(nextEv.title)}${t ? ` alle ${t}` : ''}.`,
       )
-      const first = rem.overdue[0]
-      lines.push(`   • ${safeTitle(first.title)} (${formatReminderTime(first, tz, lang)})`)
     }
+  }
+
+  // Oggi — remaining timed + all-day (skip duplicating next)
+  const later = [...timedRest, ...allDay]
+  if (later.length) {
     lines.push('')
-  } else if (rem.status === 'ok' && rem.today?.length) {
-    const n = rem.today.length
-    const first = rem.today[0]
-    const t = formatReminderTime(first, tz, lang)
-    if (lang === 'en') {
-      lines.push(`⏰ You have ${n} reminder${n > 1 ? 's' : ''} today. Next: ${safeTitle(first.title)} at ${t}.`)
-    } else {
+    lines.push(lang === 'en' ? 'Later today:' : 'Oggi:')
+    for (const it of later.slice(0, 5)) {
+      if (it.allDay) {
+        lines.push(`• ${safeTitle(it.title)} (${lang === 'en' ? 'all day' : 'tutto il giorno'})`)
+      } else {
+        const t = formatWhenMs(it.whenMs, tz, lang)
+        lines.push(`• ${safeTitle(it.title)}${t ? ` — ${t}` : ''}`)
+      }
+    }
+  } else if (cal.status === 'empty' && !nextEv) {
+    // omit redundant if quiet already said
+  } else if (['disconnected', 'disabled', 'error', 'timeout', 'unavailable'].includes(cal.status)) {
+    // Subtle — only if no calendar content and other sources exist
+    if ((remOk && (overdue.length || todayRem.length)) || weatherItem) {
+      // one soft line max, not nagging
+    }
+  }
+
+  // Da ricordare
+  if (overdue.length || todayRem.length) {
+    lines.push('')
+    lines.push(lang === 'en' ? 'To remember:' : 'Da ricordare:')
+    for (const it of overdue.slice(0, 4)) {
+      const t = formatWhenMs(it.whenMs, tz, lang)
       lines.push(
-        `⏰ Hai ${n} promemoria per oggi. Il prossimo: ${safeTitle(first.title)} alle ${t}.`,
+        lang === 'en'
+          ? `• ${safeTitle(it.title)}${t ? ` (${t}, overdue)` : ' (overdue)'}`
+          : `• ${safeTitle(it.title)}${t ? ` (${t}, scaduto)` : ' (scaduto)'}`,
       )
     }
-    lines.push('')
-  } else if (rem.status === 'empty') {
-    // compact — skip verbose empty if other sources speak
-  } else if (rem.status === 'disabled' || rem.status === 'unavailable') {
-    // omit
+    for (const it of todayRem.slice(0, 4)) {
+      const t = formatWhenMs(it.whenMs, tz, lang)
+      lines.push(`• ${safeTitle(it.title)}${t ? ` — ${t}` : ''}`)
+    }
   } else if (['error', 'timeout'].includes(rem.status)) {
-    lines.push(lang === 'en' ? '⏰ Reminders unavailable right now.' : '⏰ Promemoria non disponibili al momento.')
     lines.push('')
+    lines.push(
+      lang === 'en'
+        ? 'Reminders aren’t available right now.'
+        : 'I promemoria non sono disponibili al momento.',
+    )
   }
 
-  // Calendar
-  if (cal.status === 'ok' && cal.items?.length) {
-    const n = cal.items.length
-    const first = cal.items[0]
-    const t = formatEventTime(first, tz, lang)
-    if (lang === 'en') {
-      lines.push(
-        `📅 You have ${n} event${n > 1 ? 's' : ''} today. First: ${safeTitle(first.title)} at ${t}.`,
-      )
-    } else {
-      lines.push(
-        `📅 Oggi hai ${n} appuntament${n > 1 ? 'i' : 'o'}. Il primo: ${safeTitle(first.title)} alle ${t}.`,
-      )
-    }
-    lines.push('')
-  } else if (cal.status === 'empty') {
-    if (lang === 'en') lines.push('📅 No events today.')
-    else lines.push('📅 Nessun appuntamento oggi.')
-    lines.push('')
-  } else if (['disconnected', 'disabled'].includes(cal.status)) {
-    if (lang === 'en') lines.push('📅 Calendar unavailable.')
-    else lines.push('📅 Calendario non disponibile in questo momento.')
-    lines.push('')
-  } else if (['error', 'timeout', 'unavailable'].includes(cal.status)) {
-    if (lang === 'en') lines.push('📅 Calendar unavailable right now.')
-    else lines.push('📅 Calendario non disponibile in questo momento.')
-    lines.push('')
-  }
-
-  // Weather
-  if (wx.status === 'ok' && wx.snapshot) {
-    const s = wx.snapshot
+  // Meteo
+  if (weatherItem?.snapshot) {
+    const s = weatherItem.snapshot
     const place = s.locationLabel || ''
     const range =
       typeof s.temperatureMinC === 'number' && typeof s.temperatureMaxC === 'number'
@@ -145,91 +252,133 @@ export function renderDailyBriefing(model, language = 'it') {
         : typeof s.temperatureC === 'number'
           ? `${s.temperatureC} °C`
           : ''
-    let rainBit = ''
+    lines.push('')
     if (s.umbrellaRecommended || s.rainLikely) {
-      rainBit =
+      lines.push(
         lang === 'en'
-          ? ' Rain possible — I’d bring an umbrella.'
-          : ' Possibile pioggia — porterei l’ombrello.'
+          ? `${place ? `${place}: ` : ''}${range ? `${range}. ` : ''}Rain looks likely later — an umbrella may help.`
+          : `${place ? `${place}: ` : ''}${range ? `${range}. ` : ''}Nel pomeriggio potrebbe piovere: potrebbe esserti utile portare un ombrello.`,
+      )
+    } else if (range) {
+      lines.push(
+        lang === 'en'
+          ? `${place ? `${place}: ` : ''}about ${range} today.`
+          : `${place ? `${place}: ` : ''}oggi intorno a ${range}.`,
+      )
     }
-    let windBit = ''
-    if (typeof s.windSpeedKmh === 'number') {
-      windBit =
-        lang === 'en' ? ` Wind around ${s.windSpeedKmh} km/h.` : ` Vento intorno ai ${s.windSpeedKmh} km/h.`
-    }
-    if (lang === 'en') {
-      lines.push(`🌤 ${place ? `${place}: ` : ''}${range}.${rainBit}${windBit}`.trim())
-    } else {
-      lines.push(`🌤 ${place ? `${place}: ` : ''}${range}.${rainBit}${windBit}`.trim())
-    }
-    lines.push('')
   } else if (wx.status === 'location_required') {
-    if (lang === 'en') {
-      lines.push('🌤 Weather: tell me a city (or use Weather location) to include it next time.')
-    } else {
-      lines.push('🌤 Meteo: indicami una città (o usa la posizione meteo) per aggiungerlo al briefing.')
+    // Avoid aggressive prompt every briefing — only when no other content
+    if (!overviewBits.length && !nextEv && !overdue.length && !todayRem.length) {
+      lines.push('')
+      lines.push(
+        lang === 'en'
+          ? 'I don’t have a weather location yet — say a city next time if you want meteo.'
+          : 'Non ho ancora una posizione meteo — indicami una città la prossima volta se vuoi includerlo.',
+      )
     }
+  }
+
+  // Nothing usable
+  const unavail = unavailableSources(model)
+  const hasAnyFact =
+    overdue.length ||
+    nextEv ||
+    later.length ||
+    todayRem.length ||
+    weatherItem ||
+    (cal.status === 'empty' && rem.status === 'empty')
+
+  if (!hasAnyFact) {
     lines.push('')
-  }
-
-  // Empty all
-  const calUseful = cal.status === 'ok' || cal.status === 'empty'
-  const remUseful = rem.status === 'ok' || rem.status === 'empty'
-  const wxUseful = wx.status === 'ok'
-  if (!calUseful && !remUseful && !wxUseful) {
-    if (cal.status === 'empty' && rem.status === 'empty' && wx.status === 'location_required') {
-      // already have weather tip
-    } else if (cal.status === 'empty' && rem.status === 'empty') {
-      if (lang === 'en') {
-        lines.push('No appointments or reminders for today.')
-      } else {
-        lines.push('Nessun appuntamento o promemoria per oggi.')
-      }
+    if (unavail.length >= 2 || (!calOk && !remOk && wx.status !== 'ok')) {
+      lines.push(
+        lang === 'en'
+          ? 'There isn’t enough connected information to build a useful briefing right now.'
+          : 'Non ci sono abbastanza informazioni collegate per costruire un briefing utile al momento.',
+      )
     } else {
-      if (lang === 'en') {
-        lines.push('I couldn’t build a full briefing right now. Try again shortly.')
-      } else {
-        lines.push('Non riesco a costruire il briefing in questo momento. Riprova tra poco.')
-      }
+      lines.push(
+        lang === 'en'
+          ? 'I couldn’t assemble today’s briefing. Try again shortly.'
+          : 'Non riesco a comporre il briefing di oggi. Riprova tra poco.',
+      )
     }
   }
 
-  // Trim trailing blanks
+  // Soft calendar unavailable note (once, subtle)
+  if (
+    ['disconnected', 'disabled'].includes(cal.status) &&
+    (todayRem.length || overdue.length || weatherItem)
+  ) {
+    // intentionally omit nag — calendar absence already reflected by missing events
+  }
+
   while (lines.length && lines[lines.length - 1] === '') lines.pop()
-  return lines.join('\n')
+  // Collapse double blanks
+  const text = lines
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+
+  return { text, priorities, presentationItems }
 }
 
 /**
- * Compact UI chips model.
+ * @param {object} model
+ * @param {'it'|'en'} language
+ * @param {{ now?: Date }} [opts]
+ */
+export function renderDailyBriefing(model, language = 'it', opts = {}) {
+  return composeDailyBriefing(model, language, opts).text
+}
+
+/**
+ * Compact UI chips — Kami-quiet source status.
  */
 export function buildBriefingUi(model, language = 'it') {
   const chips = []
   const cal = model.calendar
   const rem = model.reminders
   const wx = model.weather
+  const lang = language === 'en' ? 'en' : 'it'
+
   if (cal?.status === 'ok' && cal.items?.length) {
     chips.push({
       id: 'calendar',
       label:
-        language === 'en'
-          ? `📅 ${cal.items.length} event${cal.items.length > 1 ? 's' : ''}`
-          : `📅 ${cal.items.length} appuntament${cal.items.length > 1 ? 'i' : 'o'}`,
+        lang === 'en'
+          ? `${cal.items.length} event${cal.items.length > 1 ? 's' : ''}`
+          : `${cal.items.length} impegn${cal.items.length > 1 ? 'i' : 'o'}`,
+    })
+  } else if (['disconnected', 'disabled', 'error', 'timeout'].includes(cal?.status)) {
+    chips.push({
+      id: 'calendar-na',
+      label: lang === 'en' ? 'Calendar unavailable' : 'Calendario non disponibile',
+      muted: true,
     })
   }
+
   if (rem?.status === 'ok') {
-    const n = (rem.overdue?.length || 0) + (rem.today?.length || 0)
+    const overdue = rem.overdue?.length || 0
+    const today = rem.today?.length || 0
+    const n = overdue + today
     if (n) {
       chips.push({
         id: 'reminders',
-        label: language === 'en' ? `⏰ ${n} reminder${n > 1 ? 's' : ''}` : `⏰ ${n} promemoria`,
+        label:
+          lang === 'en'
+            ? `${n} reminder${n > 1 ? 's' : ''}${overdue ? ` · ${overdue} overdue` : ''}`
+            : `${n} promemoria${overdue ? ` · ${overdue} scadut${overdue > 1 ? 'i' : 'o'}` : ''}`,
       })
     }
   }
+
   if (wx?.status === 'ok' && typeof wx.snapshot?.temperatureC === 'number') {
-    chips.push({ id: 'weather', label: `🌤 ${wx.snapshot.temperatureC}°C` })
+    chips.push({ id: 'weather', label: `${wx.snapshot.temperatureC}°` })
   } else if (wx?.status === 'ok' && wx.snapshot?.temperatureMaxC != null) {
-    chips.push({ id: 'weather', label: `🌤 ${wx.snapshot.temperatureMaxC}°C` })
+    chips.push({ id: 'weather', label: `${wx.snapshot.temperatureMaxC}°` })
   }
+
   if (!chips.length) return null
   return { kind: 'summary', chips }
 }

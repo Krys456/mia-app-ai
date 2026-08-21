@@ -1,5 +1,5 @@
 /**
- * #321 — Compact Daily Briefing chips.
+ * #321/#334B — Compact Daily Briefing chips (Kami-quiet).
  */
 
 import type { DailyBriefingUiState } from '../../types'
@@ -18,7 +18,10 @@ export function DailyBriefingUi({ dailyBriefingUi }: Props) {
     <div className="briefing-ui" data-briefing-kind={dailyBriefingUi.kind}>
       <div className="briefing-ui__chips" aria-label="Briefing">
         {chips.map((c) => (
-          <span key={c.id} className="briefing-ui__chip">
+          <span
+            key={c.id}
+            className={`briefing-ui__chip${c.muted ? ' briefing-ui__chip--muted' : ''}`}
+          >
             {c.label}
           </span>
         ))}
