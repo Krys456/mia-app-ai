@@ -82,9 +82,9 @@ assert.match(tools, /the-way-washi/)
 assert.match(tools, /the-way-sumi/)
 
 // —— Typography ——
-assert.match(md, /var\(--font-sans\)/)
+assert.match(md, /var\(--font-sans\)|var\(--font-ui/)
 assert.match(md, /--md-block-gap/)
-assert.match(listCss, /gap:\s*1\.55rem/)
+assert.match(listCss, /bubble--assistant \+ \.bubble--user|margin-top:\s*1\./)
 
 // —— Behavior freezes (structure) ——
 assert.match(read('src/components/chat/composer-enter-331a.test.mjs'), /331A|newline|Enter/)

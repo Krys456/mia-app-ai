@@ -7,11 +7,13 @@
 }
 
 .bubble--assistant {
+  position: relative;
   align-self: stretch;
   width: 100%;
   display: flex;
   flex-direction: column;
   gap: 0.55rem;
+  padding-left: 0.55rem;
 }
 
 .bubble--user {
@@ -45,7 +47,7 @@
 
 .bubble--assistant .bubble__body {
   width: 100%;
-  max-width: 100%;
+  max-width: min(100%, 40rem);
   margin: 0;
   padding: 0;
   border: 0;
@@ -55,6 +57,29 @@
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   color: var(--text);
+}
+
+/* #335E — one tiny vermilion seal: “ShinkAIdo speaking” */
+.bubble__ink-seal {
+  position: absolute;
+  left: 0;
+  top: 0.35rem;
+  width: 0.28rem;
+  height: 0.28rem;
+  border-radius: 42% 55% 48% 58%;
+  background: color-mix(in srgb, var(--hanko, var(--accent)) 72%, transparent);
+  opacity: 0.55;
+  pointer-events: none;
+  transform: rotate(-14deg);
+}
+
+[data-theme='the-way-sumi'] .bubble__ink-seal {
+  opacity: 0.62;
+  background: color-mix(in srgb, var(--hanko, var(--accent)) 78%, transparent);
+}
+
+.bubble--error .bubble__ink-seal {
+  display: none;
 }
 
 .bubble--assistant .bubble__body--typing {
@@ -96,9 +121,9 @@
   max-width: min(100%, 32rem);
 }
 
-/* User: soft paper/clay chip — not a saturated speech bubble */
+/* User: soft paper slip — distinguishable, not a saturated speech bubble */
 .bubble__user-row {
-  max-width: min(100%, 32rem);
+  max-width: min(100%, 30rem);
   width: fit-content;
   margin-left: 0;
 }
@@ -106,25 +131,25 @@
 .bubble--user .bubble__body {
   width: fit-content;
   max-width: 100%;
-  padding: 0.72rem 0.95rem;
-  border-radius: var(--radius-md);
-  border-bottom-right-radius: var(--radius-xs);
-  background: color-mix(in srgb, var(--surface-2) 72%, var(--surface-solid));
-  border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
+  padding: 0.68rem 0.9rem;
+  border-radius: var(--radius-paper, var(--radius-md));
+  border-bottom-right-radius: calc(var(--radius-paper, var(--radius-md)) * 0.45);
+  background: color-mix(in srgb, var(--paper-surface, var(--surface-2)) 78%, var(--surface-solid));
+  border: 1px solid color-mix(in srgb, var(--hairline, var(--border)) 88%, transparent);
   color: var(--text);
-  box-shadow: none;
+  box-shadow: var(--paper-shadow-1, none);
 }
 
 [data-theme='the-way-washi'] .bubble--user .bubble__body {
-  background: color-mix(in srgb, var(--surface-2) 55%, #fffbf5);
-  border-color: color-mix(in srgb, var(--border) 92%, transparent);
-  box-shadow: none;
+  background: color-mix(in srgb, var(--paper-surface, var(--surface-2)) 62%, #fffbf5);
+  border-color: color-mix(in srgb, var(--hairline, var(--border)) 90%, transparent);
+  box-shadow: var(--paper-shadow-1, none);
 }
 
 [data-theme='the-way-sumi'] .bubble--user .bubble__body {
-  background: color-mix(in srgb, var(--surface-2) 88%, transparent);
-  border-color: color-mix(in srgb, var(--text) 8%, transparent);
-  box-shadow: none;
+  background: color-mix(in srgb, var(--paper-surface, var(--surface-2)) 90%, transparent);
+  border-color: color-mix(in srgb, var(--text) 9%, transparent);
+  box-shadow: var(--paper-shadow-1, none);
 }
 
 .bubble--user .bubble__body p {
