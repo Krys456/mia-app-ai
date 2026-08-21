@@ -36,3 +36,11 @@ export {
 } from './daily-briefing/diag.js'
 export { requestDailyBriefingPack } from './daily-briefing/api.js'
 export { resolveBriefingWeather, compactWeatherSnapshot } from './daily-briefing/weather-source.js'
+export {
+  normalizeBriefingSettings,
+  sanitizeBriefingCity,
+  detectBriefingPreferenceIntent,
+  preferenceAck,
+  applyBriefingPresentationPrefs,
+} from './daily-briefing/preferences.js'
+export { analyzeSchedule } from './daily-briefing/schedule.js'

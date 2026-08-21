@@ -8,6 +8,7 @@ import {
   dayPartInZone,
   presentationItemsForOrdinals,
 } from './priority.js'
+import { analyzeSchedule } from './schedule.js'
 
 export function formatEventTime(ev, timeZone, language) {
   if (ev?.allDay) return language === 'en' ? 'all day' : 'tutto il giorno'
@@ -107,15 +108,20 @@ function unavailableSources(model) {
  * Build reply + presentation items from verified model.
  * @param {object} model
  * @param {'it'|'en'} language
- * @param {{ now?: Date }} [opts]
- * @returns {{ text: string, priorities: object[], presentationItems: object[] }}
+ * @param {{ now?: Date, length?: 'concise'|'balanced'|'detailed', schedule?: object|null }} [opts]
+ * @returns {{ text: string, priorities: object[], presentationItems: object[], schedule: object|null }}
  */
 export function composeDailyBriefing(model, language = 'it', opts = {}) {
   const lang = language === 'en' ? 'en' : 'it'
+  const length =
+    opts.length === 'concise' || opts.length === 'detailed' ? opts.length : 'balanced'
   const tz = model.timezone || 'UTC'
   const now = opts.now || new Date()
   const part = dayPartInZone(tz, now)
-  const priorities = buildBriefingPriorities(model, { now })
+  const schedule =
+    opts.schedule ||
+    analyzeSchedule(model.calendar?.items || [], { now, timeZone: tz })
+  const priorities = buildBriefingPriorities(model, { now, schedule })
   const presentationItems = presentationItemsForOrdinals(priorities)
 
   const cal = model.calendar || { status: 'unavailable', items: [] }
@@ -133,12 +139,14 @@ export function composeDailyBriefing(model, language = 'it', opts = {}) {
   const weatherItem = priorities.find((p) => p.kind === 'weather')
   const quiet = priorities.some((p) => p.kind === 'quiet')
 
-  const timedCount =
-    (nextEv ? 1 : 0) + timedRest.length + allDay.length
+  const timedCount = (nextEv ? 1 : 0) + timedRest.length + allDay.length
   const calOk = cal.status === 'ok' || cal.status === 'empty'
   const remOk = rem.status === 'ok' || rem.status === 'empty'
+  const remHidden = Boolean(rem.hiddenByPref)
+  const calHidden = Boolean(cal.hiddenByPref)
+  const wxHidden = Boolean(wx.hiddenByPref)
 
-  // Overview line
+  // Overview
   const overviewBits = []
   if (overdue.length) {
     overviewBits.push(
@@ -147,14 +155,14 @@ export function composeDailyBriefing(model, language = 'it', opts = {}) {
         : `${overdue.length} promemoria scadut${overdue.length > 1 ? 'i' : 'o'}`,
     )
   }
-  if (calOk && timedCount) {
+  if (calOk && !calHidden && timedCount) {
     overviewBits.push(
       lang === 'en'
         ? `${timedCount} event${timedCount > 1 ? 's' : ''} today`
         : `${timedCount} impegn${timedCount > 1 ? 'i' : 'o'} oggi`,
     )
   }
-  if (remOk && todayRem.length && !overdue.length) {
+  if (remOk && !remHidden && todayRem.length && !overdue.length) {
     overviewBits.push(
       lang === 'en'
         ? `${todayRem.length} reminder${todayRem.length > 1 ? 's' : ''} today`
@@ -163,17 +171,75 @@ export function composeDailyBriefing(model, language = 'it', opts = {}) {
   }
 
   if (overviewBits.length) {
-    if (lang === 'en') {
-      lines.push(`You have ${overviewBits.join(' and ')}.`)
-    } else {
-      lines.push(`Hai ${overviewBits.join(' e ')}.`)
-    }
+    lines.push(lang === 'en' ? `You have ${overviewBits.join(' and ')}.` : `Hai ${overviewBits.join(' e ')}.`)
   } else if (quiet && calOk && remOk) {
     lines.push(
       lang === 'en'
-        ? 'Nothing on the calendar or reminders for today.'
-        : 'Per il resto, la giornata è libera.',
+        ? 'For now the day looks free.'
+        : 'Per ora la giornata è libera.',
     )
+  }
+
+  // Concise: next + critical overdue + actionable weather only
+  if (length === 'concise') {
+    if (overdue[0]) {
+      lines.push(
+        lang === 'en'
+          ? `Urgent: ${safeTitle(overdue[0].title)} (overdue).`
+          : `Urgente: ${safeTitle(overdue[0].title)} (scaduto).`,
+      )
+    }
+    if (nextEv) {
+      const t = formatWhenMs(nextEv.whenMs, tz, lang)
+      lines.push(
+        lang === 'en'
+          ? `Next: ${safeTitle(nextEv.title)}${t ? ` at ${t}` : ''}.`
+          : `Prossimo: ${safeTitle(nextEv.title)}${t ? ` alle ${t}` : ''}.`,
+      )
+    }
+    if (weatherItem?.snapshot && (weatherItem.rainLikely || weatherItem.snapshot.umbrellaRecommended)) {
+      const place = weatherItem.snapshot.locationLabel || ''
+      lines.push(
+        lang === 'en'
+          ? `${place ? `${place}: ` : ''}rain looks likely — bring an umbrella.`
+          : `${place ? `${place}: ` : ''}possibile pioggia — porta un ombrello.`,
+      )
+    } else if (quiet && weatherItem?.snapshot) {
+      const s = weatherItem.snapshot
+      const place = s.locationLabel || ''
+      const range =
+        s.temperatureMinC != null && s.temperatureMaxC != null
+          ? `${s.temperatureMinC}–${s.temperatureMaxC} °C`
+          : ''
+      if (range) {
+        lines.push(
+          lang === 'en'
+            ? `${place ? `In ${place}, ` : ''}about ${range} today.`
+            : `${place ? `A ${place} ` : ''}sono previsti circa ${range}.`,
+        )
+      }
+    } else if (quiet && !overdue[0] && !nextEv) {
+      // Keep concise quiet days short but not greeting-only.
+      if (!overviewBits.length) {
+        lines.push(
+          lang === 'en'
+            ? 'For now the day looks free.'
+            : 'Per ora la giornata è libera.',
+        )
+      }
+    } else if (!overdue[0] && !nextEv && !weatherItem) {
+      const unavail = unavailableSources(model)
+      if (unavail.length >= 2 || (!calOk && !remOk && wx.status !== 'ok')) {
+        lines.push(
+          lang === 'en'
+            ? 'There isn’t enough connected information to build a useful briefing right now.'
+            : 'Non ci sono abbastanza informazioni collegate per costruire un briefing utile al momento.',
+        )
+      }
+    }
+    while (lines.length && lines[lines.length - 1] === '') lines.pop()
+    const text = lines.join('\n').replace(/\n{3,}/g, '\n\n').trim()
+    return { text, priorities, presentationItems, schedule }
   }
 
   // Prossimo
@@ -195,12 +261,50 @@ export function composeDailyBriefing(model, language = 'it', opts = {}) {
     }
   }
 
-  // Oggi — remaining timed + all-day (skip duplicating next)
+  // Schedule intelligence (balanced + detailed)
+  if (schedule?.overlaps?.length) {
+    lines.push('')
+    lines.push(
+      lang === 'en'
+        ? 'Note: some events overlap on the calendar.'
+        : 'Nota: hai impegni sovrapposti nel calendario.',
+    )
+  } else if (schedule?.backToBack?.length) {
+    lines.push('')
+    lines.push(
+      lang === 'en'
+        ? 'You have two nearly consecutive events.'
+        : 'Hai due impegni quasi consecutivi.',
+    )
+  }
+
+  if (length === 'detailed' && schedule?.freeWindows?.length) {
+    const fw = schedule.freeWindows[0]
+    if (fw?.kind === 'until_first' && fw.minutes != null) {
+      const t = formatWhenMs(fw.toMs, tz, lang)
+      lines.push('')
+      lines.push(
+        lang === 'en'
+          ? `You’re free until about ${t} (~${fw.minutes} min).`
+          : `Hai la mattina libera fino alle ${t} (circa ${fw.minutes} min).`,
+      )
+    } else if (fw?.kind === 'between' && fw.minutes != null) {
+      lines.push('')
+      lines.push(
+        lang === 'en'
+          ? `Between events you have about ${fw.minutes} free minutes.`
+          : `Tra i due impegni hai circa ${fw.minutes} minuti liberi.`,
+      )
+    }
+  }
+
+  // Oggi — remaining
+  const laterLimit = length === 'detailed' ? 8 : 5
   const later = [...timedRest, ...allDay]
   if (later.length) {
     lines.push('')
     lines.push(lang === 'en' ? 'Later today:' : 'Oggi:')
-    for (const it of later.slice(0, 5)) {
+    for (const it of later.slice(0, laterLimit)) {
       if (it.allDay) {
         lines.push(`• ${safeTitle(it.title)} (${lang === 'en' ? 'all day' : 'tutto il giorno'})`)
       } else {
@@ -208,20 +312,14 @@ export function composeDailyBriefing(model, language = 'it', opts = {}) {
         lines.push(`• ${safeTitle(it.title)}${t ? ` — ${t}` : ''}`)
       }
     }
-  } else if (cal.status === 'empty' && !nextEv) {
-    // omit redundant if quiet already said
-  } else if (['disconnected', 'disabled', 'error', 'timeout', 'unavailable'].includes(cal.status)) {
-    // Subtle — only if no calendar content and other sources exist
-    if ((remOk && (overdue.length || todayRem.length)) || weatherItem) {
-      // one soft line max, not nagging
-    }
   }
 
-  // Da ricordare
+  // Reminders — avoid duplicating overdue in overview + list carefully
   if (overdue.length || todayRem.length) {
     lines.push('')
     lines.push(lang === 'en' ? 'To remember:' : 'Da ricordare:')
-    for (const it of overdue.slice(0, 4)) {
+    const remLimit = length === 'detailed' ? 6 : 4
+    for (const it of overdue.slice(0, remLimit)) {
       const t = formatWhenMs(it.whenMs, tz, lang)
       lines.push(
         lang === 'en'
@@ -229,11 +327,12 @@ export function composeDailyBriefing(model, language = 'it', opts = {}) {
           : `• ${safeTitle(it.title)}${t ? ` (${t}, scaduto)` : ' (scaduto)'}`,
       )
     }
-    for (const it of todayRem.slice(0, 4)) {
+    const room = Math.max(0, remLimit - Math.min(overdue.length, remLimit))
+    for (const it of todayRem.slice(0, room)) {
       const t = formatWhenMs(it.whenMs, tz, lang)
       lines.push(`• ${safeTitle(it.title)}${t ? ` — ${t}` : ''}`)
     }
-  } else if (['error', 'timeout'].includes(rem.status)) {
+  } else if (['error', 'timeout'].includes(rem.status) && !remHidden) {
     lines.push('')
     lines.push(
       lang === 'en'
@@ -243,7 +342,7 @@ export function composeDailyBriefing(model, language = 'it', opts = {}) {
   }
 
   // Meteo
-  if (weatherItem?.snapshot) {
+  if (weatherItem?.snapshot && !wxHidden) {
     const s = weatherItem.snapshot
     const place = s.locationLabel || ''
     const range =
@@ -260,25 +359,22 @@ export function composeDailyBriefing(model, language = 'it', opts = {}) {
           : `${place ? `${place}: ` : ''}${range ? `${range}. ` : ''}Nel pomeriggio potrebbe piovere: potrebbe esserti utile portare un ombrello.`,
       )
     } else if (range) {
-      lines.push(
-        lang === 'en'
-          ? `${place ? `${place}: ` : ''}about ${range} today.`
-          : `${place ? `${place}: ` : ''}oggi intorno a ${range}.`,
-      )
-    }
-  } else if (wx.status === 'location_required') {
-    // Avoid aggressive prompt every briefing — only when no other content
-    if (!overviewBits.length && !nextEv && !overdue.length && !todayRem.length) {
-      lines.push('')
-      lines.push(
-        lang === 'en'
-          ? 'I don’t have a weather location yet — say a city next time if you want meteo.'
-          : 'Non ho ancora una posizione meteo — indicami una città la prossima volta se vuoi includerlo.',
-      )
+      if (quiet) {
+        lines.push(
+          lang === 'en'
+            ? `${place ? `In ${place}, ` : ''}about ${range} today.`
+            : `${place ? `A ${place} ` : ''}sono previsti circa ${range}.`,
+        )
+      } else {
+        lines.push(
+          lang === 'en'
+            ? `${place ? `${place}: ` : ''}about ${range} today.`
+            : `${place ? `${place}: ` : ''}oggi intorno a ${range}.`,
+        )
+      }
     }
   }
 
-  // Nothing usable
   const unavail = unavailableSources(model)
   const hasAnyFact =
     overdue.length ||
@@ -305,22 +401,9 @@ export function composeDailyBriefing(model, language = 'it', opts = {}) {
     }
   }
 
-  // Soft calendar unavailable note (once, subtle)
-  if (
-    ['disconnected', 'disabled'].includes(cal.status) &&
-    (todayRem.length || overdue.length || weatherItem)
-  ) {
-    // intentionally omit nag — calendar absence already reflected by missing events
-  }
-
   while (lines.length && lines[lines.length - 1] === '') lines.pop()
-  // Collapse double blanks
-  const text = lines
-    .join('\n')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim()
-
-  return { text, priorities, presentationItems }
+  const text = lines.join('\n').replace(/\n{3,}/g, '\n\n').trim()
+  return { text, priorities, presentationItems, schedule }
 }
 
 /**

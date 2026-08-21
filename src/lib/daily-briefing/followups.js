@@ -321,6 +321,109 @@ export function answerBriefingFollowUp(intent, ctx, language, opts = {}) {
     return withFocus(`${place ? `${place}: ` : ''}${range}`.trim(), focusIndex)
   }
 
+  // #334C
+  if (kind === 'free_windows') {
+    const fws = ctx.schedule?.freeWindows || []
+    if (!fws.length) {
+      return withFocus(
+        lang === 'en'
+          ? 'I don’t see a clear free window in the latest briefing.'
+          : 'Non vedo una finestra libera chiara nel briefing recente.',
+        focusIndex,
+      )
+    }
+    const parts = fws.slice(0, 3).map((fw) => {
+      if (fw.kind === 'all_day') {
+        return lang === 'en' ? 'The day looks open on the calendar.' : 'La giornata risulta libera in calendario.'
+      }
+      if (fw.kind === 'until_first') {
+        const t = formatWhenMs(fw.toMs, tz, lang)
+        return lang === 'en'
+          ? `Free until about ${t} (~${fw.minutes} min).`
+          : `Libero fino alle ${t} (circa ${fw.minutes} min).`
+      }
+      return lang === 'en'
+        ? `About ${fw.minutes} free minutes between events.`
+        : `Circa ${fw.minutes} minuti liberi tra gli impegni.`
+    })
+    return withFocus(parts.join('\n'), focusIndex)
+  }
+
+  if (kind === 'overlaps') {
+    const ov = ctx.schedule?.overlaps || []
+    if (!ov.length) {
+      return withFocus(
+        lang === 'en'
+          ? 'No overlapping events in the latest briefing.'
+          : 'Nessun impegno sovrapposto nel briefing recente.',
+        focusIndex,
+      )
+    }
+    const list = ov
+      .slice(0, 4)
+      .map(
+        (o) =>
+          `• ${safeTitle(o.a.title)} ↔ ${safeTitle(o.b.title)}`,
+      )
+      .join('\n')
+    return withFocus(
+      lang === 'en' ? `Overlaps:\n${list}` : `Sovrapposizioni:\n${list}`,
+      focusIndex,
+    )
+  }
+
+  if (kind === 'time_until_next') {
+    const mins = ctx.schedule?.minutesUntilNext
+    const next = ctx.schedule?.next
+    if (mins == null || !next) {
+      return withFocus(
+        lang === 'en'
+          ? 'No upcoming timed event in the latest briefing.'
+          : 'Nessun prossimo impegno a orario nel briefing recente.',
+        focusIndex,
+      )
+    }
+    return withFocus(
+      lang === 'en'
+        ? `About ${mins} minutes until ${safeTitle(next.title)}.`
+        : `Circa ${mins} minuti prima di ${safeTitle(next.title)}.`,
+      focusIndex,
+    )
+  }
+
+  if (kind === 'reminder_count') {
+    const rems = items.filter((i) => i.source === 'reminders')
+    const n = rems.length
+    return withFocus(
+      lang === 'en'
+        ? n
+          ? `You have ${n} reminder${n > 1 ? 's' : ''} in the latest briefing.`
+          : 'No reminders in the latest briefing.'
+        : n
+          ? `Hai ${n} promemoria nel briefing recente.`
+          : 'Nessun promemoria nel briefing recente.',
+      focusIndex,
+    )
+  }
+
+  if (kind === 'most_urgent') {
+    const first = items.find((i) => i.kind !== 'quiet') || items[0]
+    if (!first) {
+      return withFocus(
+        lang === 'en'
+          ? 'Nothing urgent stood out in the latest briefing.'
+          : 'Nel briefing recente non emerge nulla di particolarmente urgente.',
+        focusIndex,
+      )
+    }
+    return withFocus(
+      lang === 'en'
+        ? `Most urgent: ${describeItem(first, lang, tz)}`
+        : `Più urgente: ${describeItem(first, lang, tz)}`,
+      items.indexOf(first),
+    )
+  }
+
   return withFocus(
     lang === 'en'
       ? 'Ask for a new briefing for an updated summary.'

@@ -122,10 +122,12 @@ import {
   buildDailyBriefingDiag,
   clearBriefingContext,
   detectBriefingLanguage,
+  detectBriefingPreferenceIntent,
   detectDailyBriefingIntent,
   isDailyBriefingDiagEnabled,
   loadBriefingContext,
   logDailyBriefingSafe,
+  preferenceAck,
   rememberDailyBriefingDiag,
   saveBriefingContext,
 } from '../lib/dailyBriefing'
@@ -188,11 +190,14 @@ import {
   type ChatAttachment,
   type ChatMessage,
   type DeveloperSettings,
+  type DailyBriefingSettings,
   type PersonalizationSettings,
   type ThemeSettings,
   type V2DebugInfo,
   type WebCitation,
+  DEFAULT_BRIEFING_SETTINGS,
 } from '../types'
+import { normalizeBriefingSettings } from '../lib/daily-briefing/preferences.js'
 import { MAX_RECENT_IMAGE_TURNS } from '../lib/imageAttachment'
 import { MAX_RECENT_FILE_TURNS } from '../lib/pdfAttachment'
 
@@ -274,6 +279,7 @@ function defaultAppSettings(): AppSettings {
     theme: { ...DEFAULT_THEME_SETTINGS, customThemes: [] },
     appearance: { ...DEFAULT_APPEARANCE_SETTINGS },
     developer: { ...DEFAULT_DEVELOPER_SETTINGS },
+    briefing: { ...DEFAULT_BRIEFING_SETTINGS },
   }
 }
 
@@ -286,6 +292,7 @@ function loadSettings(): AppSettings {
       personalization?: Partial<PersonalizationSettings> & { tone?: unknown }
       appearance?: Partial<AppearanceSettings>
       developer?: Partial<DeveloperSettings>
+      briefing?: Partial<DailyBriefingSettings>
     }
     return {
       personalization: normalizePersonalization(parsed.personalization),
@@ -296,6 +303,8 @@ function loadSettings(): AppSettings {
       // Old laife.settings.v2 blobs without appearance → safe defaults.
       appearance: normalizeAppearance(parsed.appearance),
       developer: normalizeDeveloper(parsed.developer),
+      // #334C — old blobs without briefing → safe defaults (no migration).
+      briefing: normalizeBriefingSettings(parsed.briefing) as DailyBriefingSettings,
     }
   } catch {
     return defaultAppSettings()
@@ -334,6 +343,7 @@ type Action =
   | { type: 'UPDATE_THEME'; payload: Partial<ThemeSettings> }
   | { type: 'UPDATE_APPEARANCE'; payload: Partial<AppearanceSettings> }
   | { type: 'UPDATE_DEVELOPER'; payload: Partial<DeveloperSettings> }
+  | { type: 'UPDATE_BRIEFING'; payload: Partial<DailyBriefingSettings> }
   | { type: 'SEND_USER'; content: string; attachments?: ChatAttachment[] }
   /** #314/#315/#317/#318 — local user+assistant exchange; no model call. */
   | {
@@ -432,6 +442,17 @@ function reducer(state: AppState, action: Action): AppState {
           ...state.settings.developer,
           ...action.payload,
         }),
+      }
+      saveSettings(next)
+      return { ...state, settings: next }
+    }
+    case 'UPDATE_BRIEFING': {
+      const next: AppSettings = {
+        ...state.settings,
+        briefing: normalizeBriefingSettings({
+          ...state.settings.briefing,
+          ...action.payload,
+        }) as DailyBriefingSettings,
       }
       saveSettings(next)
       return { ...state, settings: next }
@@ -607,6 +628,8 @@ interface ChatContextValue {
   updateTheme: (patch: Partial<ThemeSettings>) => void
   updateAppearance: (patch: Partial<AppearanceSettings>) => void
   updateDeveloper: (patch: Partial<DeveloperSettings>) => void
+  /** #334C — device-local Daily Briefing presentation prefs. */
+  updateBriefing: (patch: Partial<DailyBriefingSettings>) => void
   /** Returns true when the user turn was accepted into the thread. */
   sendMessage: (content: string, attachments?: ChatAttachment[]) => boolean
   /** #317 — Weather UI action chips (location grant). */
@@ -955,6 +978,10 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
   const updateDeveloper = useCallback((payload: Partial<DeveloperSettings>) => {
     dispatch({ type: 'UPDATE_DEVELOPER', payload })
+  }, [])
+
+  const updateBriefing = useCallback((payload: Partial<DailyBriefingSettings>) => {
+    dispatch({ type: 'UPDATE_BRIEFING', payload })
   }, [])
 
   useEffect(() => {
@@ -1770,7 +1797,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      // #321 — Daily Briefing before Energy Math / Unit / Calc / Weather.
+      // #321/#334C — Daily Briefing before Energy Math / Unit / Calc / Weather.
       if (allowLocalRouters) {
         const sticky = deriveDictationLangFromMessages(state.messages)
         const langHint =
@@ -1779,6 +1806,22 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             : sticky === 'it'
               ? 'it'
               : detectBriefingLanguage(content, detectTimerLanguage(content, 'it'))
+
+        // Persistent preference commands (explicit only; never Memory).
+        const prefIntent = detectBriefingPreferenceIntent(content)
+        if (prefIntent?.persist && prefIntent.patch) {
+          updateBriefing(prefIntent.patch)
+          const ack =
+            preferenceAck(prefIntent.patch, prefIntent.language || langHint, true) ||
+            (langHint === 'en' ? 'Preference saved.' : 'Preferenza salvata.')
+          dispatch({
+            type: 'LOCAL_EXCHANGE',
+            userContent: content,
+            assistantContent: ack,
+          })
+          return true
+        }
+
         const briefingCtx = loadBriefingContext()
         const briefingIntent = detectDailyBriefingIntent(content, {
           languageHint: langHint,
@@ -1792,6 +1835,9 @@ export function ChatProvider({ children }: { children: ReactNode }) {
                 languageHint: langHint,
                 briefingContext: briefingCtx,
                 weatherContext: loadWeatherContext(),
+                briefingPrefs: state.settings.briefing,
+                oneShotLength: prefIntent?.oneShotLength || null,
+                oneShotHideWeather: Boolean(prefIntent?.oneShotHideWeather),
               })
               const reply =
                 brief.handled && brief.reply
@@ -2139,6 +2185,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       state.messages,
       state.settings.personalization,
       state.settings.developer,
+      state.settings.briefing,
+      updateBriefing,
       activeTimer,
       pendingTimerReplace,
       persistTimer,
@@ -2204,6 +2252,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       updateTheme,
       updateAppearance,
       updateDeveloper,
+      updateBriefing,
       sendMessage,
       handleWeatherUiAction,
       handleCalculatorUiAction,
@@ -2232,6 +2281,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       updateTheme,
       updateAppearance,
       updateDeveloper,
+      updateBriefing,
       sendMessage,
       handleWeatherUiAction,
       handleCalculatorUiAction,

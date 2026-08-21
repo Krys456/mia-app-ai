@@ -142,7 +142,7 @@ export function detectDailyBriefingIntent(raw, opts = {}) {
  * @returns {{ kind: string, ordinal?: number, beforeHour?: number } | null}
  */
 export function detectBriefingFollowUp(t) {
-  const s = String(t || '').trim()
+  const s = fold(String(t || '').trim())
   if (!s) return null
 
   // Ordinals — first 3 (IT/EN)
@@ -213,11 +213,61 @@ export function detectBriefingFollowUp(t) {
   }
 
   // Weather / umbrella
-  if (/^(e\s+il\s+meteo|che\s+tempo\s+fara|and\s+(the\s+)?weather|what(?:'s|\s+is)\s+the\s+weather)\??$/.test(s)) {
+  if (
+    /^(e\s+il\s+meteo|che\s+tempo\s+fara|and\s+(the\s+)?weather|what(?:'s|\s+is)\s+the\s+weather)\??$/.test(s)
+  ) {
     return { kind: 'weather' }
   }
   if (/\b(devo\s+portare\s+l[' ]?ombrello|mi\s+serve\s+l[' ]?ombrello|do\s+i\s+need\s+(an\s+)?umbrella)\b/.test(s)) {
     return { kind: 'umbrella' }
+  }
+
+  // #334C schedule / urgency / density (session follow-ups)
+  if (
+    /^(quando\s+sono\s+libero|quando\s+ho\s+tempo|when\s+am\s+i\s+free|when\s+do\s+i\s+have\s+time)\??$/.test(s)
+  ) {
+    return { kind: 'free_windows' }
+  }
+  if (
+    /^(ho\s+impegni\s+sovrappost[oi]|ho\s+due\s+cose\s+alla\s+stessa\s+ora|any\s+overlap|overlapping\s+events)\??$/.test(
+      s,
+    )
+  ) {
+    return { kind: 'overlaps' }
+  }
+  if (
+    /^(quanto\s+tempo\s+ho\s+prima\s+del\s+prossimo(\s+impegno)?|how\s+long\s+until\s+(the\s+)?next)\??$/.test(
+      s,
+    )
+  ) {
+    return { kind: 'time_until_next' }
+  }
+  if (
+    /^(quanti\s+promemoria\s+ho|how\s+many\s+reminders)\??$/.test(s)
+  ) {
+    return { kind: 'reminder_count' }
+  }
+  if (
+    /^(qual\s+e\s+la\s+cosa\s+piu\s+urgente|what(?:'s|\s+is)\s+(the\s+)?most\s+urgent)\??$/.test(s)
+  ) {
+    return { kind: 'most_urgent' }
+  }
+  if (
+    /^(riassumilo\s+piu\s+brevemente|fammi\s+(la\s+)?versione\s+breve|make\s+it\s+shorter)\??$/.test(s)
+  ) {
+    return { kind: 'render_concise' }
+  }
+  if (
+    /^(fammi\s+(la\s+)?versione\s+dettagliata|make\s+it\s+detailed)\??$/.test(s)
+  ) {
+    return { kind: 'render_detailed' }
+  }
+  if (
+    /^(nascondi\s+il\s+meteo\s+(dal|nel)\s+briefing|hide\s+the\s+weather\s+(for\s+now)?)\??$/.test(
+      s,
+    )
+  ) {
+    return { kind: 'hide_weather_once' }
   }
 
   return null

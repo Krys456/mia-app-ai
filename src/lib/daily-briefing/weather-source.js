@@ -18,22 +18,21 @@ import { describeWmoCode } from '../weather/wmo.js'
  */
 export async function resolveBriefingWeather(opts) {
   const lang = opts.language === 'en' ? 'en' : 'it'
+  if (opts.weatherEnabled === false) {
+    return {
+      status: 'unavailable',
+      snapshot: null,
+      fetchedAt: new Date().toISOString(),
+      hiddenByPref: true,
+    }
+  }
+
   const ctx =
     opts.weatherContext && isWeatherContextFresh(opts.weatherContext)
       ? opts.weatherContext
       : loadWeatherContext()
 
-  // 1) Fresh activeWeatherContext snapshot
-  if (ctx?.forecastSnapshot?.status === 'ok') {
-    return {
-      status: 'ok',
-      snapshot: compactWeatherSnapshot(ctx.forecastSnapshot, lang),
-      fetchedAt: new Date().toISOString(),
-      fromContext: true,
-    }
-  }
-
-  // 2) Explicit city in briefing request
+  // 1) Explicit city in briefing request (highest priority)
   const city = typeof opts.locationText === 'string' ? opts.locationText.trim() : ''
   if (city) {
     const weather = await requestWeather({
@@ -49,16 +48,62 @@ export async function resolveBriefingWeather(opts) {
         snapshot: compactWeatherSnapshot(weather, lang),
         fetchedAt: new Date().toISOString(),
         fromContext: false,
+        citySource: 'request',
+      }
+    }
+    // fall through to other sources if explicit city fails
+  }
+
+  // 2) Fresh activeWeatherContext snapshot
+  if (ctx?.forecastSnapshot?.status === 'ok') {
+    return {
+      status: 'ok',
+      snapshot: compactWeatherSnapshot(ctx.forecastSnapshot, lang),
+      fetchedAt: new Date().toISOString(),
+      fromContext: true,
+      citySource: 'active_context',
+    }
+  }
+
+  // 3) Preferred briefing city (explicit user preference)
+  const preferred =
+    typeof opts.preferredWeatherCity === 'string' ? opts.preferredWeatherCity.trim() : ''
+  if (preferred) {
+    const weather = await requestWeather({
+      operation: 'today',
+      timeHint: 'today',
+      language: lang,
+      locationText: preferred,
+      timezone: opts.timeZone || null,
+    })
+    if (weather?.status === 'ok') {
+      return {
+        status: 'ok',
+        snapshot: compactWeatherSnapshot(weather, lang),
+        fetchedAt: new Date().toISOString(),
+        fromContext: false,
+        citySource: 'preferred',
       }
     }
     return {
       status: 'error',
       snapshot: null,
       fetchedAt: new Date().toISOString(),
+      citySource: 'preferred',
     }
   }
 
-  // 3) No GPS auto-prompt
+  // If request city failed and nothing else worked
+  if (city) {
+    return {
+      status: 'error',
+      snapshot: null,
+      fetchedAt: new Date().toISOString(),
+      citySource: 'request',
+    }
+  }
+
+  // 4) No GPS auto-prompt
   return {
     status: 'location_required',
     snapshot: null,
