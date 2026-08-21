@@ -118,16 +118,31 @@ self.addEventListener('push', function (event) {
 
 self.addEventListener('notificationclick', function (event) {
   event.notification.close()
-  const rawUrl =
-    event.notification &&
-    event.notification.data &&
-    typeof event.notification.data.url === 'string'
-      ? event.notification.data.url
-      : '/'
+  const data =
+    event.notification && event.notification.data && typeof event.notification.data === 'object'
+      ? event.notification.data
+      : {}
+  const rawUrl = typeof data.url === 'string' ? data.url : '/'
   const path =
     rawUrl.startsWith('/') && !rawUrl.startsWith('//') && rawUrl.indexOf('://') === -1
       ? rawUrl
       : '/'
+  const isMorning = data.type === 'morning_briefing'
+
+  function focusClient(target, fallback) {
+    const c = target || fallback
+    return c && 'focus' in c ? c.focus() : fallback && 'focus' in fallback ? fallback.focus() : undefined
+  }
+
+  /** Existing window must receive morning intent even when navigate is missing/fails. */
+  function deliverMorningIntent(target) {
+    if (!target || !('postMessage' in target)) return
+    try {
+      target.postMessage({ type: 'shinkaido.morning_briefing', intent: 'morning' })
+    } catch (_err) {
+      /* ignore */
+    }
+  }
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (clientList) {
@@ -136,11 +151,31 @@ self.addEventListener('notificationclick', function (event) {
         try {
           const clientUrl = new URL(client.url)
           if (clientUrl.origin === self.location.origin && 'focus' in client) {
-            if ('navigate' in client && path) {
-              return client.navigate(path).then(function (c) {
-                return c && c.focus ? c.focus() : client.focus()
-              })
+            // Reminder path: preserve legacy navigate-or-focus exactly.
+            if (!isMorning) {
+              if ('navigate' in client && path) {
+                return client.navigate(path).then(function (c) {
+                  return focusClient(c, client)
+                })
+              }
+              return client.focus()
             }
+
+            // Morning briefing: focus + ensure intent reaches this window.
+            if ('navigate' in client && path) {
+              return client.navigate(path).then(
+                function (c) {
+                  const target = c || client
+                  deliverMorningIntent(target)
+                  return focusClient(c, client)
+                },
+                function () {
+                  deliverMorningIntent(client)
+                  return client.focus()
+                },
+              )
+            }
+            deliverMorningIntent(client)
             return client.focus()
           }
         } catch (_e) {

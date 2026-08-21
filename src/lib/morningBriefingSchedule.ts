@@ -117,31 +117,135 @@ export async function disableMorningBriefingScheduleClient(): Promise<MorningBri
 
 export { guessBrowserTimeZone }
 
-/** Consume ?briefing=morning once (StrictMode-safe via sessionStorage). */
-export function consumeMorningBriefingDeepLink(
+/** sessionStorage state machine for morning-briefing deep-link intent. */
+export const MORNING_BRIEFING_INTENT_KEY = 'shinkaido.morningBriefing.intent'
+export const MORNING_BRIEFING_SW_MESSAGE_TYPE = 'shinkaido.morning_briefing'
+
+export type MorningBriefingIntentState = 'pending' | 'done'
+
+/** Module lock — StrictMode / remount must not double-fire the first handoff. */
+let morningBriefingHandoffClaimed = false
+
+function readIntentState(storage?: Storage | null): MorningBriefingIntentState | null {
+  try {
+    const store = storage ?? (typeof sessionStorage !== 'undefined' ? sessionStorage : null)
+    if (!store) return null
+    const raw = store.getItem(MORNING_BRIEFING_INTENT_KEY)
+    if (raw === 'pending' || raw === 'done') return raw
+    return null
+  } catch {
+    return null
+  }
+}
+
+function writeIntentState(state: MorningBriefingIntentState, storage?: Storage | null): void {
+  const store = storage ?? (typeof sessionStorage !== 'undefined' ? sessionStorage : null)
+  if (!store) return
+  store.setItem(MORNING_BRIEFING_INTENT_KEY, state)
+}
+
+/** True when URL carries the safe morning-briefing marker. */
+export function hasMorningBriefingUrlMarker(
   search: string = typeof window !== 'undefined' ? window.location.search : '',
 ): boolean {
   try {
     const params = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search)
-    if (params.get('briefing') !== 'morning') return false
-    const key = 'shinkaido.morningBriefing.deeplink.consumed'
-    const stamp = `${Date.now()}`
-    const prev = sessionStorage.getItem(key)
-    // Allow at most one consumption per navigation burst (~2s StrictMode).
-    if (prev && Date.now() - Number(prev) < 2000) {
-      params.delete('briefing')
-      const next = params.toString()
-      const url = `${window.location.pathname}${next ? `?${next}` : ''}${window.location.hash}`
-      window.history.replaceState({}, '', url)
-      return false
-    }
-    sessionStorage.setItem(key, stamp)
-    params.delete('briefing')
-    const next = params.toString()
-    const url = `${window.location.pathname}${next ? `?${next}` : ''}${window.location.hash}`
-    window.history.replaceState({}, '', url)
+    return params.get('briefing') === 'morning'
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Capture intent from URL or SW postMessage without consuming.
+ * Does NOT strip ?briefing=morning — cleanup happens only after successful handoff.
+ * A fresh notification tap (message) or deep-link URL re-arms even after a prior done.
+ */
+export function captureMorningBriefingIntent(options?: {
+  search?: string
+  fromMessage?: boolean
+  storage?: Storage | null
+}): boolean {
+  try {
+    const fromUrl = hasMorningBriefingUrlMarker(
+      options?.search ?? (typeof window !== 'undefined' ? window.location.search : ''),
+    )
+    if (!fromUrl && !options?.fromMessage) return false
+    const state = readIntentState(options?.storage)
+    if (state === 'pending') return true
+    // Re-arm after prior handoff when a new explicit intent arrives.
+    writeIntentState('pending', options?.storage)
+    morningBriefingHandoffClaimed = false
     return true
   } catch {
     return false
   }
+}
+
+export function hasPendingMorningBriefingIntent(storage?: Storage | null): boolean {
+  return readIntentState(storage) === 'pending'
+}
+
+/**
+ * Claim the one in-flight handoff. Returns false if already done, not pending,
+ * or another claim holds the module lock (StrictMode-safe).
+ */
+export function claimMorningBriefingHandoff(storage?: Storage | null): boolean {
+  if (morningBriefingHandoffClaimed) return false
+  if (readIntentState(storage) !== 'pending') return false
+  morningBriefingHandoffClaimed = true
+  return true
+}
+
+/** Release claim after failed sendMessage so a later ready tick can retry. */
+export function releaseMorningBriefingHandoffClaim(): void {
+  morningBriefingHandoffClaimed = false
+}
+
+/**
+ * Mark intent consumed AFTER successful handoff to #334C sendMessage('Briefing').
+ * Strips ?briefing=morning via history.replaceState.
+ */
+export function completeMorningBriefingHandoff(options?: {
+  storage?: Storage | null
+  location?: { pathname: string; search: string; hash: string }
+  replaceState?: (url: string) => void
+}): void {
+  try {
+    writeIntentState('done', options?.storage)
+    morningBriefingHandoffClaimed = false
+    const loc =
+      options?.location ??
+      (typeof window !== 'undefined'
+        ? { pathname: window.location.pathname, search: window.location.search, hash: window.location.hash }
+        : null)
+    if (!loc) return
+    const params = new URLSearchParams(loc.search.startsWith('?') ? loc.search.slice(1) : loc.search)
+    if (!params.has('briefing')) return
+    params.delete('briefing')
+    const next = params.toString()
+    const url = `${loc.pathname}${next ? `?${next}` : ''}${loc.hash}`
+    if (options?.replaceState) {
+      options.replaceState(url)
+    } else if (typeof window !== 'undefined') {
+      window.history.replaceState({}, '', url)
+    }
+  } catch {
+    morningBriefingHandoffClaimed = false
+  }
+}
+
+/** @internal test helper — reset module lock between cases. */
+export function resetMorningBriefingHandoffLockForTests(): void {
+  morningBriefingHandoffClaimed = false
+}
+
+/**
+ * @deprecated Use captureMorningBriefingIntent + claim/complete.
+ * Captures pending intent from the URL marker without stripping or marking done.
+ */
+export function consumeMorningBriefingDeepLink(
+  search: string = typeof window !== 'undefined' ? window.location.search : '',
+): boolean {
+  return captureMorningBriefingIntent({ search })
 }
