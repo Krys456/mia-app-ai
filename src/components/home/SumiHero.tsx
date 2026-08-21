@@ -16,36 +16,21 @@ export function SumiHero() {
         xmlns="http://www.w3.org/2000/svg"
         focusable="false"
       >
-        <defs>
-          <linearGradient id="sumiMtnFadeL" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0" stopColor="currentColor" stopOpacity="0" />
-            <stop offset="0.18" stopColor="currentColor" stopOpacity="1" />
-            <stop offset="0.82" stopColor="currentColor" stopOpacity="1" />
-            <stop offset="1" stopColor="currentColor" stopOpacity="0" />
-          </linearGradient>
-          <linearGradient id="sumiMtnFadeV" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="currentColor" stopOpacity="1" />
-            <stop offset="0.72" stopColor="currentColor" stopOpacity="0.55" />
-            <stop offset="1" stopColor="currentColor" stopOpacity="0" />
-          </linearGradient>
-          <mask id="sumiMtnEdge">
-            <rect width="640" height="280" fill="url(#sumiMtnFadeL)" />
-          </mask>
-        </defs>
-        <g mask="url(#sumiMtnEdge)" fill="url(#sumiMtnFadeV)">
-          <path
-            opacity="0.32"
-            d="M0 168 C48 152 78 128 118 122 C148 117 172 132 198 138 C236 148 268 118 308 112 C348 106 378 128 416 136 C458 146 498 118 540 124 C578 130 610 148 640 158 L640 280 L0 280 Z"
-          />
-          <path
-            opacity="0.48"
-            d="M0 196 C42 178 86 148 132 142 C176 136 208 162 248 168 C292 176 328 146 372 140 C416 134 452 158 496 166 C536 174 580 152 640 168 L640 280 L0 280 Z"
-          />
-          <path
-            opacity="0.62"
-            d="M0 228 C28 214 56 198 92 194 C124 190 148 206 178 210 C214 216 246 196 282 192 C322 188 352 208 388 214 C428 222 462 204 500 208 C536 212 572 224 608 230 C624 233 640 236 640 236 L640 280 L0 280 Z"
-          />
-        </g>
+        <path
+          fill="currentColor"
+          opacity="0.16"
+          d="M0 168 C48 152 78 128 118 122 C148 117 172 132 198 138 C236 148 268 118 308 112 C348 106 378 128 416 136 C458 146 498 118 540 124 C578 130 610 148 640 158 L640 280 L0 280 Z"
+        />
+        <path
+          fill="currentColor"
+          opacity="0.28"
+          d="M0 196 C42 178 86 148 132 142 C176 136 208 162 248 168 C292 176 328 146 372 140 C416 134 452 158 496 166 C536 174 580 152 640 168 L640 280 L0 280 Z"
+        />
+        <path
+          fill="currentColor"
+          opacity="0.4"
+          d="M0 228 C28 214 56 198 92 194 C124 190 148 206 178 210 C214 216 246 196 282 192 C322 188 352 208 388 214 C428 222 462 204 500 208 C536 212 572 224 608 230 C624 233 640 236 640 236 L640 280 L0 280 Z"
+        />
       </svg>
 
       {/* Hero Ensō — organic brush ring, open upper-right */}

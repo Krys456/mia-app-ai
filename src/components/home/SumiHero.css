@@ -31,13 +31,13 @@
 
 .sumi-hero__mountains {
   left: 50%;
-  bottom: -2%;
-  width: min(122%, 22.5rem);
+  bottom: 4%;
+  width: min(128%, 23rem);
   height: auto;
   aspect-ratio: 640 / 280;
   transform: translateX(-50%);
   z-index: 1;
-  opacity: 0.78;
+  opacity: 1;
 }
 
 .sumi-hero__sun {
