@@ -31,8 +31,8 @@
 /* Mountains pass behind lower Ensō — one painted composition */
 .sumi-hero__mountains {
   left: 50%;
-  bottom: 2%;
-  width: min(132%, 24rem);
+  bottom: -4%;
+  width: min(140%, 26rem);
   height: auto;
   aspect-ratio: 640 / 280;
   transform: translateX(-50%);

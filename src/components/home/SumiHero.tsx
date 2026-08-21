@@ -1,6 +1,7 @@
 /**
- * #335B1 — Ensō + sumi landscape visual refinement.
- * Same Home composition; expressive brush Ensō (sumi + restrained fire) and ink-wash mountains.
+ * #335B1 — Ensō + sumi landscape (reference art direction).
+ * Transfers: brush Ensō, left-arc fire/embers, tip sun, misty peak mountains.
+ * Does NOT copy: nav, header chrome, composer, layout/IA from the mockup.
  */
 
 import './SumiHero.css'
@@ -12,77 +13,61 @@ const ENSO_STREAK_2 = "M 34.58 120.46 C 34.7 119.69, 35.02 117.43, 35.28 115.97 
 export function SumiHero() {
   return (
     <div className="sumi-hero motion-enso-reveal" aria-hidden="true" data-home="sumi-hero">
-            <svg
+
+      <svg
         className="sumi-hero__mountains"
         viewBox="0 0 640 280"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
         focusable="false"
       >
+        {/* DISTANT — faint misty peaks */}
         <path
           fill="currentColor"
-          opacity="0.09"
-          d="M8 172
-            C28 168 42 158 58 154
-            C74 150 86 162 104 156
-            C122 150 132 136 152 134
-            C174 132 188 148 210 142
-            C236 134 252 118 278 122
-            C302 126 318 140 344 134
-            C372 126 390 112 418 118
-            C442 122 458 140 486 136
-            C512 132 530 118 558 124
-            C582 128 604 142 640 148
+          opacity="0.08"
+          d="M0 188
+            L18 188 L42 152 L58 168 L78 138 L98 158 L118 128 L138 148 L162 118 L182 142 L208 108 L232 136 L258 122 L278 148 L302 112 L328 140 L352 120 L378 146 L402 114 L428 138 L452 126 L478 150 L502 118 L528 142 L552 130 L578 156 L602 140 L620 162 L640 155
             L640 280 L0 280 Z"
         />
-        <ellipse cx="290" cy="162" rx="220" ry="20" fill="currentColor" opacity="0.045" />
-        <path
-          fill="currentColor"
-          opacity="0.18"
-          d="M0 196
-            C22 190 38 176 58 170
-            C78 164 94 180 118 174
-            C140 168 154 152 178 156
-            C204 160 220 178 248 170
-            C274 162 292 148 320 154
-            C348 160 366 176 396 168
-            C424 160 442 146 470 152
-            C496 158 514 174 544 168
-            C568 164 588 152 614 160
-            C628 164 640 172 640 172
-            L640 280 L0 280 Z"
-        />
-        <path fill="currentColor" opacity="0.1" d="M168 158c8-4 18-2 26-6 2 0-2 4-6 6-8 4-16 4-20 0z"/>
-        <path fill="currentColor" opacity="0.09" d="M300 152c10-5 22-1 30-6 1 1-4 5-10 7-10 3-18 2-20-1z"/>
-        <path fill="currentColor" opacity="0.08" d="M448 154c8-3 16 0 24-4-1 2-6 5-12 6-8 2-14 1-12-2z"/>
-        <ellipse cx="320" cy="192" rx="250" ry="24" fill="currentColor" opacity="0.055" />
-        <ellipse cx="160" cy="200" rx="85" ry="12" fill="currentColor" opacity="0.04" />
-        <ellipse cx="480" cy="198" rx="95" ry="14" fill="currentColor" opacity="0.04" />
-        <path
-          fill="currentColor"
-          opacity="0.28"
-          d="M0 228
-            C18 222 34 210 54 206
-            C72 202 88 216 110 210
-            C132 204 146 190 170 196
-            C196 202 212 216 240 208
-            C266 200 284 188 312 196
-            C340 204 358 218 388 210
-            C416 202 434 190 462 198
-            C488 206 506 218 536 212
-            C560 208 580 198 606 208
-            C622 214 632 222 640 228
-            L640 280 L0 280 Z"
-        />
-        <path
-          fill="currentColor"
-          opacity="0.1"
-          d="M0 252 C70 246 140 256 220 248 C300 240 380 254 460 246 C540 238 590 250 640 254 L640 280 L0 280 Z"
-        />
-        <path fill="currentColor" opacity="0.11" d="M242 126c2-.4 3.8.8 5.2 2-1.5-.2-3.2-.6-4.8-1.3-.6-.3-.8-1-.3-1.3.2-.2.5-.4.8-.4-.3.1-.6.3-.9.6z"/>
-        <path fill="currentColor" opacity="0.09" d="M262 120c1.6-.3 3.2.6 4.2 1.7-1.2-.1-2.6-.4-3.9-1-.5-.2-.6-.8-.2-1.1.1-.2.3-.3.6-.3-.2.1-.4.2-.7.4z"/>
-        <path fill="currentColor" opacity="0.09" d="M348 156l2.2-5.8 2 5.8h-4.2zm1.1-4.4l1.4-3.6 1.3 3.6h-2.7z"/>
+        <ellipse cx="310" cy="170" rx="260" ry="18" fill="currentColor" opacity="0.04" />
 
+        {/* MID — recognizable mountain silhouettes */}
+        <path
+          fill="currentColor"
+          opacity="0.16"
+          d="M0 210
+            L22 210 L48 172 L66 192 L88 158 L108 182 L130 148 L152 176 L176 142 L198 170 L224 136 L248 164 L274 150 L296 178 L322 144 L348 172 L372 156 L398 182 L424 148 L450 174 L476 160 L500 188 L526 154 L552 178 L578 164 L604 190 L628 170 L640 184
+            L640 280 L0 280 Z"
+        />
+        {/* Mid ridge dry-brush / pine hints */}
+        <path fill="currentColor" opacity="0.1" d="M214 148l1.8-5.2 1.6 5.2h-3.4zm.8-4l1.2-3.2 1.1 3.2h-2.3z" />
+        <path fill="currentColor" opacity="0.09" d="M318 152l2-5.6 1.8 5.6h-3.8zm1-4.2l1.4-3.6 1.2 3.6h-2.6z" />
+        <path fill="currentColor" opacity="0.08" d="M448 156l1.6-4.6 1.5 4.6h-3.1z" />
+        <ellipse cx="320" cy="198" rx="270" ry="22" fill="currentColor" opacity="0.055" />
+        <ellipse cx="150" cy="206" rx="90" ry="12" fill="currentColor" opacity="0.035" />
+        <ellipse cx="470" cy="204" rx="100" ry="14" fill="currentColor" opacity="0.04" />
+
+        {/* FOREGROUND foothills — stronger but dissolving */}
+        <path
+          fill="currentColor"
+          opacity="0.26"
+          d="M0 236
+            L28 236 L52 208 L74 224 L98 198 L122 218 L148 194 L172 214 L198 188 L224 210 L250 196 L276 220 L304 192 L332 214 L360 200 L388 224 L416 198 L444 218 L472 204 L500 228 L528 206 L556 222 L584 208 L612 230 L640 220
+            L640 280 L0 280 Z"
+        />
+        {/* Soft dissolve into paper */}
+        <path
+          fill="currentColor"
+          opacity="0.08"
+          d="M0 255 C90 248 180 258 280 250 C380 242 480 256 580 248 L640 252 L640 280 L0 280 Z"
+        />
+
+        {/* Distant birds — near sun / upper right of scene */}
+        <g fill="currentColor" opacity="0.14">
+          <path d="M498 98c3.2-.6 6.2 1.2 8.4 3.4-2.4-.2-5.2-.8-7.8-2-.9-.4-1.2-1.4-.6-2 .3-.4.8-.6 1.2-.6-.5.2-1 .5-1.4.9.2-.2.4-.5.6-.7-.2.2-.4.4-.6.6z" />
+          <path d="M518 90c2.6-.5 5 1 6.8 2.8-2-.1-4.2-.6-6.2-1.6-.7-.3-.9-1.1-.4-1.6.2-.3.6-.5 1-.5-.4.1-.8.4-1.1.7.1-.2.3-.4.5-.5-.2.1-.3.3-.5.5z" />
+          <path d="M532 102c2-.4 3.8.8 5.2 2.2-1.5-.2-3.2-.5-4.8-1.2-.6-.3-.7-1-.3-1.4.1-.2.4-.4.7-.4-.3.1-.5.3-.8.5z" />
+        </g>
       </svg>
 
       <svg
@@ -95,64 +80,111 @@ export function SumiHero() {
         <defs>
           <linearGradient
             id="sumiHeroFireGrad"
-            x1="40"
-            y1="170"
-            x2="130"
-            y2="30"
+            x1="36"
+            y1="175"
+            x2="125"
+            y2="28"
             gradientUnits="userSpaceOnUse"
           >
-            <stop offset="0%" stopColor="#1C1916" stopOpacity="0.15" />
-            <stop offset="18%" stopColor="#9E2F22" stopOpacity="0.9" />
-            <stop offset="42%" stopColor="#C23B2A" stopOpacity="1" />
-            <stop offset="68%" stopColor="#D45A4A" stopOpacity="0.88" />
-            <stop offset="100%" stopColor="#E07A3A" stopOpacity="0.55" />
+            <stop offset="0%" stopColor="#1C1916" stopOpacity="0.05" />
+            <stop offset="15%" stopColor="#9E2F22" stopOpacity="0.95" />
+            <stop offset="40%" stopColor="#C23B2A" stopOpacity="1" />
+            <stop offset="65%" stopColor="#D45A4A" stopOpacity="0.92" />
+            <stop offset="85%" stopColor="#E07A3A" stopOpacity="0.7" />
+            <stop offset="100%" stopColor="#F0A060" stopOpacity="0.35" />
           </linearGradient>
-          {/* Left / upper-left sector (~30–35% of ring) where ink becomes embers */}
           <mask id="sumiHeroFireMask" maskUnits="userSpaceOnUse">
-            <rect x="0" y="0" width="240" height="240" fill="black" />
-            <path
-              fill="white"
-              d="M120 120 L55 200 A95 95 0 0 1 95 28 Z"
-            />
+            <rect width="240" height="240" fill="black" />
+            {/* ~32% left → upper-left sector */}
+            <path fill="white" d="M120 120 L48 205 A105 105 0 0 1 100 22 Z" />
           </mask>
         </defs>
+
+        {/* Base sumi brush ring */}
         <path fill="currentColor" d={ENSO_INK} />
-        <path fill="currentColor" opacity="0.28" d={ENSO_STREAK_1} />
-        <path fill="currentColor" opacity="0.22" d={ENSO_STREAK_2} />
-        <circle cx="189.98" cy="181.97" r="0.84" fill="currentColor" opacity="0.3" />
-        <circle cx="167.52" cy="199.58" r="1.13" fill="currentColor" opacity="0.28" />
-        <circle cx="132.02" cy="213.55" r="1.42" fill="currentColor" opacity="0.22" />
-        <circle cx="172" cy="188" r="1.5" fill="currentColor" opacity="0.35" />
-        <circle cx="48" cy="130" r="0.9" fill="currentColor" opacity="0.25" />
-        <circle cx="56" cy="160" r="1.1" fill="currentColor" opacity="0.2" />
-        {/* Fire painted into the brush stroke itself (masked sector) */}
+        <path fill="currentColor" opacity="0.3" d={ENSO_STREAK_1} />
+        <path fill="currentColor" opacity="0.24" d={ENSO_STREAK_2} />
+
+        {/* Extra dry-brush / bristle character */}
         <path
-          fill="url(#sumiHeroFireGrad)"
-          d={ENSO_INK}
-          mask="url(#sumiHeroFireMask)"
-          opacity="0.92"
+          fill="currentColor"
+          opacity="0.18"
+          d="M44 118c-1.5 10-1 20.5 1.5 30.2.4 1.5 2 2.3 3.4 1.8 1.5-.4 2.3-2 1.8-3.4-2.2-8.4-2.6-17.2-1.2-25.8.3-1.6-1-3.1-2.6-3.2-1.5-.2-3 1-3 2.6.1-.1 0-.1.1-.2z"
+        />
+        <path
+          fill="currentColor"
+          opacity="0.16"
+          d="M156 196c10.5-4.2 20-11.2 26.8-20.2 1-1.3.7-3.2-.7-4.1-1.3-1-3.2-.6-4.1.7-5.8 7.6-13.8 13.4-22.6 16.8-1.5.6-2.2 2.3-1.6 3.8.6 1.5 2.3 2.2 3.8 1.6.4-.1.8-.2 1.2-.3-.4.1-.8.2-1.3.3-.5.2-1 .3-1.5.4z"
+        />
+        <path
+          fill="currentColor"
+          opacity="0.14"
+          d="M188 108c1.2-9.5-.2-19.2-4.2-28-1-2.2-3.6-2.8-5.2-1.4-1.2 1-1.4 2.8-.6 4.1 3.2 7 4.4 14.8 3.4 22.4-.2 1.6 1 3.1 2.6 3.3 1.6.2 3.1-1 3.3-2.6.2.1.5.1.7.2-.2-.1-.5-.1-.7-.2z"
+        />
+
+        {/* Ink splatter flecks */}
+        <circle cx="190" cy="182" r="1.5" fill="currentColor" opacity="0.36" />
+        <circle cx="168" cy="200" r="1.15" fill="currentColor" opacity="0.28" />
+        <circle cx="132" cy="214" r="1.4" fill="currentColor" opacity="0.22" />
+        <circle cx="46" cy="128" r="1" fill="currentColor" opacity="0.28" />
+        <circle cx="52" cy="158" r="1.2" fill="currentColor" opacity="0.2" />
+        <circle cx="198" cy="128" r="0.85" fill="currentColor" opacity="0.24" />
+        <circle cx="70" cy="178" r="0.9" fill="currentColor" opacity="0.18" />
+
+        {/* Fire painted into the brush stroke */}
+        <path fill="url(#sumiHeroFireGrad)" d={ENSO_INK} mask="url(#sumiHeroFireMask)" opacity="0.95" />
+        <path fill="#E07A3A" d={ENSO_STREAK_1} mask="url(#sumiHeroFireMask)" opacity="0.4" />
+
+        {/* Flame tongues rising from left/upper-left stroke — burning ink, not cartoon fire */}
+        <path
+          fill="#C23B2A"
+          opacity="0.75"
+          d="M58 92 C54 78 58 64 68 54 C74 48 82 46 88 50 C84 54 78 58 74 66 C70 74 66 84 64 94 C63 98 60 98 58 92 Z"
         />
         <path
           fill="#E07A3A"
-          d={ENSO_STREAK_1}
-          mask="url(#sumiHeroFireMask)"
-          opacity="0.35"
+          opacity="0.65"
+          d="M66 78 C64 66 70 54 80 46 C86 42 92 44 94 50 C90 52 86 56 82 64 C78 72 74 80 72 86 C71 90 68 88 66 78 Z"
         />
-        <circle cx="72" cy="70" r="1.5" fill="#E07A3A" opacity="0.7" />
-        <circle cx="60" cy="88" r="1.2" fill="#C23B2A" opacity="0.65" />
-        <circle cx="54" cy="108" r="1" fill="#D45A4A" opacity="0.55" />
-        <circle cx="82" cy="62" r="0.8" fill="#F0A060" opacity="0.45" />
-        <circle cx="66" cy="80" r="0.6" fill="#F0A060" opacity="0.4" />
-        <circle cx="52" cy="126" r="0.9" fill="#9E2F22" opacity="0.5" />
-        <circle cx="58" cy="148" r="0.7" fill="#C23B2A" opacity="0.4" />
-        {/* Vermilion sun — final open tip of the brush stroke */}
-        <circle cx={198.6} cy={66.98} r="8.2" fill="var(--enso-sun, #C23B2A)" />
+        <path
+          fill="#9E2F22"
+          opacity="0.7"
+          d="M50 118 C46 104 50 90 60 80 C56 92 52 106 54 120 C55 126 52 126 50 118 Z"
+        />
+        <path
+          fill="#D45A4A"
+          opacity="0.55"
+          d="M74 62 C76 52 84 44 94 40 C90 46 86 52 84 60 C82 66 76 68 74 62 Z"
+        />
+        <path
+          fill="#F0A060"
+          opacity="0.4"
+          d="M80 54 C82 46 90 40 98 38 C94 44 90 48 88 54 C86 58 82 58 80 54 Z"
+        />
+        <path
+          fill="#C23B2A"
+          opacity="0.5"
+          d="M54 140 C50 128 52 116 58 106 C56 118 54 130 56 142 C57 146 56 146 54 140 Z"
+        />
+
+        {/* Ember sparks drifting from fire arc */}
+        <circle cx="70" cy="48" r="1.6" fill="#E07A3A" opacity="0.75" />
+        <circle cx="82" cy="42" r="1.1" fill="#F0A060" opacity="0.6" />
+        <circle cx="62" cy="58" r="1.3" fill="#C23B2A" opacity="0.7" />
+        <circle cx="92" cy="52" r="0.8" fill="#F0A060" opacity="0.5" />
+        <circle cx="54" cy="78" r="1" fill="#D45A4A" opacity="0.55" />
+        <circle cx="48" cy="98" r="0.9" fill="#9E2F22" opacity="0.5" />
+        <circle cx="76" cy="36" r="0.65" fill="#F0A060" opacity="0.45" />
+        <circle cx="88" cy="34" r="0.55" fill="#E07A3A" opacity="0.4" />
+
+        {/* Vermilion sun — destination at open tip */}
+        <circle cx={198.6} cy={66.98} r="8.4" fill="var(--enso-sun, #C23B2A)" />
         <circle
-          cx={200.8}
-          cy={64.98}
-          r="2.6"
+          cx={200.70}
+          cy={65.08}
+          r="2.5"
           fill="var(--hanko-soft, #D45A4A)"
-          opacity="0.28"
+          opacity="0.25"
         />
       </svg>
     </div>
