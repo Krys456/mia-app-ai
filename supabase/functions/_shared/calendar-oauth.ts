@@ -256,6 +256,46 @@ export function resolveSafeReturnUrl(candidate: string | null | undefined, allow
   return { ok: true as const, url: next.toString() }
 }
 
+/**
+ * #358B TEMPORARY — safe redirect diagnostics only (no secrets / tokens / raw env).
+ * Remove after live OAuth return URL is confirmed clean.
+ */
+export function describeReturnRedirectDiag(
+  allowedBase: string,
+  finalUrl: string | null | undefined,
+) {
+  const allowlist = parseCalendarReturnAllowlist(allowedBase)
+  const selectedOrigin = allowlist[0] ?? null
+  let finalOrigin: string | null = null
+  let pathname: string | null = null
+  const safeQueryKeys: string[] = []
+  const final = typeof finalUrl === 'string' ? finalUrl : ''
+  if (final) {
+    try {
+      const u = new URL(final)
+      finalOrigin = u.origin
+      pathname = u.pathname
+      for (const key of u.searchParams.keys()) {
+        if (key === 'calendar' || key === 'code') safeQueryKeys.push(key)
+      }
+    } catch {
+      /* keep nulls */
+    }
+  }
+  return {
+    diag: '358b_return_redirect',
+    sourceEnvName: 'CALENDAR_RETURN_URL',
+    candidateCount: allowlist.length,
+    selectedOrigin,
+    finalOrigin,
+    pathname,
+    safeQueryKeys,
+    containsComma: Boolean(final && (final.includes(',') || (finalOrigin || '').includes(','))),
+    containsCommaHttp: /,http/i.test(final),
+    containsCommaHttps: /,https/i.test(final),
+  }
+}
+
 export function buildGoogleAuthorizeUrl(p: {
   clientId: string
   redirectUri: string

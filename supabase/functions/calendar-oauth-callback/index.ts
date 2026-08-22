@@ -20,6 +20,7 @@ import {
 import { encryptToken } from '../_shared/calendar-token-crypto.ts'
 import {
   GOOGLE_OAUTH_SCOPES,
+  describeReturnRedirectDiag,
   resolveSafeReturnUrl,
   verifySignedOAuthState,
 } from '../_shared/calendar-oauth.ts'
@@ -31,15 +32,28 @@ function redirect(url: string, status = 302) {
   })
 }
 
-function failRedirect(base: string, code: string) {
+function failRedirect(base: string, code: string, runId?: string) {
   const safe = resolveSafeReturnUrl(null, base)
   const target = safe.ok ? new URL(safe.url) : null
   if (!target) {
+    logSafe('calendar-oauth-callback', {
+      runId,
+      code,
+      ...describeReturnRedirectDiag(base, null),
+      resolveOk: false,
+    })
     return new Response(`OAuth error: ${code}`, { status: 400 })
   }
   target.searchParams.set('calendar', 'error')
   target.searchParams.set('code', code)
-  return redirect(target.toString())
+  const finalUrl = target.toString()
+  logSafe('calendar-oauth-callback', {
+    runId,
+    code,
+    ...describeReturnRedirectDiag(base, finalUrl),
+    resolveOk: true,
+  })
+  return redirect(finalUrl)
 }
 
 Deno.serve(async (req) => {
@@ -52,7 +66,7 @@ Deno.serve(async (req) => {
 
   if (!isCalendarEnabled()) {
     logSafe('calendar-oauth-callback', { runId, code: 'calendar_disabled', ok: false })
-    return failRedirect(returnBase, 'calendar_disabled')
+    return failRedirect(returnBase, 'calendar_disabled', runId)
   }
 
   const url = new URL(req.url)
@@ -62,10 +76,10 @@ Deno.serve(async (req) => {
 
   if (oauthError) {
     logSafe('calendar-oauth-callback', { runId, code: 'google_denied', ok: false })
-    return failRedirect(returnBase, 'google_denied')
+    return failRedirect(returnBase, 'google_denied', runId)
   }
   if (!code || !state) {
-    return failRedirect(returnBase, 'missing_code_or_state')
+    return failRedirect(returnBase, 'missing_code_or_state', runId)
   }
 
   const encKey = env('SHINKAIDO_CALENDAR_ENCRYPTION_KEY')
@@ -74,13 +88,13 @@ Deno.serve(async (req) => {
   const redirectUri = env('CALENDAR_OAUTH_REDIRECT_URI')
   if (!encKey || !clientId || !clientSecret || !redirectUri || !returnBase) {
     logSafe('calendar-oauth-callback', { runId, code: 'oauth_misconfigured', ok: false })
-    return failRedirect(returnBase, 'oauth_misconfigured')
+    return failRedirect(returnBase, 'oauth_misconfigured', runId)
   }
 
   const verified = await verifySignedOAuthState(state, {}, encKey)
   if (!verified.ok) {
     logSafe('calendar-oauth-callback', { runId, code: verified.code, ok: false })
-    return failRedirect(returnBase, verified.code)
+    return failRedirect(returnBase, verified.code, runId)
   }
 
   try {
@@ -98,7 +112,7 @@ Deno.serve(async (req) => {
 
     if (existingError) {
       logSafe('calendar-oauth-callback', { runId, code: 'connection_lookup_failed', ok: false })
-      return failRedirect(returnBase, 'connection_lookup_failed')
+      return failRedirect(returnBase, 'connection_lookup_failed', runId)
     }
 
     // Bind callback to the pending start for THIS user (CSRF / replay / IDOR).
@@ -109,13 +123,13 @@ Deno.serve(async (req) => {
       new Date(existing.oauth_pending_expires_at).getTime() < Date.now()
     ) {
       logSafe('calendar-oauth-callback', { runId, code: 'oauth_nonce_invalid', ok: false, userId })
-      return failRedirect(returnBase, 'oauth_nonce_invalid')
+      return failRedirect(returnBase, 'oauth_nonce_invalid', runId)
     }
 
     // Defense: state user must match row owner (already keyed by userId query).
     if (String(existing.user_id) !== userId) {
       logSafe('calendar-oauth-callback', { runId, code: 'ownership_mismatch', ok: false })
-      return failRedirect(returnBase, 'ownership_mismatch')
+      return failRedirect(returnBase, 'ownership_mismatch', runId)
     }
 
     const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
@@ -148,7 +162,7 @@ Deno.serve(async (req) => {
         })
         .eq('user_id', userId)
         .eq('provider', 'google')
-      return failRedirect(returnBase, 'token_exchange_failed')
+      return failRedirect(returnBase, 'token_exchange_failed', runId)
     }
 
     const tokenJson = (await tokenRes.json()) as {
@@ -163,7 +177,7 @@ Deno.serve(async (req) => {
     const accessToken = typeof tokenJson.access_token === 'string' ? tokenJson.access_token : ''
     if (!accessToken) {
       logSafe('calendar-oauth-callback', { runId, code: 'token_response_invalid', ok: false })
-      return failRedirect(returnBase, 'token_response_invalid')
+      return failRedirect(returnBase, 'token_response_invalid', runId)
     }
 
     const refreshToken =
@@ -174,7 +188,7 @@ Deno.serve(async (req) => {
     const accessEnc = await encryptToken(accessToken, encKey)
     if (!accessEnc.ok) {
       logSafe('calendar-oauth-callback', { runId, code: accessEnc.code, ok: false })
-      return failRedirect(returnBase, 'encrypt_failed')
+      return failRedirect(returnBase, 'encrypt_failed', runId)
     }
 
     let refreshEnc: string | null = null
@@ -182,7 +196,7 @@ Deno.serve(async (req) => {
       const enc = await encryptToken(refreshToken, encKey)
       if (!enc.ok) {
         logSafe('calendar-oauth-callback', { runId, code: enc.code, ok: false })
-        return failRedirect(returnBase, 'encrypt_failed')
+        return failRedirect(returnBase, 'encrypt_failed', runId)
       }
       refreshEnc = enc.ciphertext
     }
@@ -242,7 +256,7 @@ Deno.serve(async (req) => {
 
     if (upsertError) {
       logSafe('calendar-oauth-callback', { runId, code: 'connection_upsert_failed', ok: false })
-      return failRedirect(returnBase, 'connection_upsert_failed')
+      return failRedirect(returnBase, 'connection_upsert_failed', runId)
     }
 
     logSafe('calendar-oauth-callback', {
@@ -254,19 +268,25 @@ Deno.serve(async (req) => {
     })
 
     const safe = resolveSafeReturnUrl(null, returnBase)
-    if (!safe.ok) return failRedirect(returnBase, 'return_url_not_configured')
+    if (!safe.ok) return failRedirect(returnBase, 'return_url_not_configured', runId)
     const dest = new URL(safe.url)
     dest.searchParams.set(
       'calendar',
       refreshResolved.status === 'connected' ? 'connected' : 'reconnect_required',
     )
-    return redirect(dest.toString())
+    const finalUrl = dest.toString()
+    logSafe('calendar-oauth-callback', {
+      runId,
+      ok: true,
+      ...describeReturnRedirectDiag(returnBase, finalUrl),
+    })
+    return redirect(finalUrl)
   } catch (err) {
     const code =
       err instanceof Error && err.message === 'supabase_service_misconfigured'
         ? 'supabase_service_misconfigured'
         : 'callback_failed'
     logSafe('calendar-oauth-callback', { runId, code, ok: false })
-    return failRedirect(returnBase, code)
+    return failRedirect(returnBase, code, runId)
   }
 })
