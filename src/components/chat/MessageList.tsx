@@ -35,6 +35,7 @@ function MessageListComponent({
     handleEnergyMathUiAction,
     handleTranslationUiAction,
     handleCalendarUiAction,
+    handlePlacesUiAction,
   } = useChat()
   const last = messages[messages.length - 1]
   const streamingId =
@@ -98,6 +99,7 @@ function MessageListComponent({
             onEnergyMathAction={handleEnergyMathUiAction}
             onTranslationAction={handleTranslationUiAction}
             onCalendarAction={handleCalendarUiAction}
+            onPlacesAction={handlePlacesUiAction}
           />
         )
       })}
