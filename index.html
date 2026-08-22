@@ -23,6 +23,44 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <!-- #358D — apply saved theme before paint (same store as ChatContext; default WASHI). -->
+    <script>
+      (function () {
+        try {
+          var raw =
+            localStorage.getItem('laife.settings.v2') ||
+            localStorage.getItem('laife.settings.v1')
+          var id = 'the-way-washi'
+          if (raw) {
+            var parsed = JSON.parse(raw)
+            var saved = parsed && parsed.theme && parsed.theme.activeThemeId
+            if (typeof saved === 'string' && saved.trim()) id = saved.trim()
+          }
+          var root = document.documentElement
+          root.setAttribute('data-theme', id)
+          var dark = {
+            'the-way-sumi': 1,
+            laife: 1,
+            dark: 1,
+            amoled: 1,
+            ocean: 1,
+            forest: 1,
+            sunset: 1,
+            royal: 1,
+            cyber: 1,
+            midnight: 1,
+          }
+          var scheme = dark[id] ? 'dark' : 'light'
+          root.style.colorScheme = scheme
+          root.setAttribute('data-color-scheme', scheme)
+          var meta = document.querySelector('meta[name="theme-color"]')
+          if (meta) {
+            if (id === 'the-way-washi') meta.setAttribute('content', '#F5F0E6')
+            else if (id === 'the-way-sumi') meta.setAttribute('content', '#100E0C')
+          }
+        } catch (e) {}
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>

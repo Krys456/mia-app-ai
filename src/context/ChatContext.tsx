@@ -235,7 +235,13 @@ import { normalizeBriefingSettings } from '../lib/daily-briefing/preferences.js'
 import { MAX_RECENT_IMAGE_TURNS } from '../lib/imageAttachment'
 import { MAX_RECENT_FILE_TURNS } from '../lib/pdfAttachment'
 
-const STORAGE_KEY = 'laife.settings.v2'
+import {
+  SETTINGS_STORAGE_KEY,
+  SETTINGS_STORAGE_KEY_LEGACY,
+  resolveActiveThemeIdFromSettingsJson,
+} from '../lib/themePersistence'
+
+const STORAGE_KEY = SETTINGS_STORAGE_KEY
 
 function sanitizeCustomThemes(raw: unknown): ThemeDefinition[] {
   if (!Array.isArray(raw)) return []
@@ -319,7 +325,8 @@ function defaultAppSettings(): AppSettings {
 
 function loadSettings(): AppSettings {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem('laife.settings.v1')
+    const raw =
+      localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(SETTINGS_STORAGE_KEY_LEGACY)
     if (!raw) return defaultAppSettings()
     const parsed = JSON.parse(raw) as Partial<AppSettings> & {
       theme?: Partial<ThemeSettings>
@@ -331,7 +338,8 @@ function loadSettings(): AppSettings {
     return {
       personalization: normalizePersonalization(parsed.personalization),
       theme: {
-        activeThemeId: parsed.theme?.activeThemeId ?? DEFAULT_THEME_SETTINGS.activeThemeId,
+        // #358D — canonical persistence helper (WASHI default; never system-dark→SUMI)
+        activeThemeId: resolveActiveThemeIdFromSettingsJson(raw),
         customThemes: sanitizeCustomThemes(parsed.theme?.customThemes),
       },
       // Old laife.settings.v2 blobs without appearance → safe defaults.

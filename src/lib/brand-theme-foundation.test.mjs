@@ -132,7 +132,7 @@ assert.doesNotMatch(read('src/index.css'), /color-scheme:\s*dark/)
 // D — internal storage key unchanged
 const chatContext = read('src/context/ChatContext.tsx')
 assert.match(chatContext, /laife\.settings\.v2/)
-assert.match(chatContext, /X-LAIfe-User-Id|STORAGE_KEY = 'laife\.settings\.v2'/)
+assert.match(chatContext, /X-LAIfe-User-Id|laife\.settings\.v2|SETTINGS_STORAGE_KEY/)
 
 // E — old theme id laife still resolves
 assert.ok(getBuiltinTheme('laife'))
