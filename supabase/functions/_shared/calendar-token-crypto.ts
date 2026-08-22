@@ -1,6 +1,9 @@
 /**
  * #304A1 — Deno shared: AES-256-GCM token encryption (Edge only).
  * Mirrors lib/server/calendar-token-crypto.js — keep algorithms in sync.
+ *
+ * Runtime key env (passed by callers): SHINKAIDO_CALENDAR_ENCRYPTION_KEY
+ * (32 raw bytes as base64/base64url or 64-char hex). Never log key material.
  */
 
 const VERSION = 'v1'

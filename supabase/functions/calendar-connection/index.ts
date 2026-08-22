@@ -101,6 +101,7 @@ Deno.serve(async (req) => {
       }
 
       const action = typeof body.action === 'string' ? body.action.trim() : 'disconnect'
+
       if (action !== 'disconnect') {
         return json(400, { error: 'unknown_action', code: 'unknown_action', runId }, cors)
       }
@@ -129,7 +130,7 @@ Deno.serve(async (req) => {
       }
 
       // Best-effort revoke (prefer refresh, else access). Never log tokens.
-      const encKey = env('CALENDAR_TOKEN_ENCRYPTION_KEY')
+      const encKey = env('SHINKAIDO_CALENDAR_ENCRYPTION_KEY')
       if (encKey) {
         const enc =
           (typeof row.refresh_token_enc === 'string' && row.refresh_token_enc) ||

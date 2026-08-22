@@ -9,7 +9,7 @@
  *   CALENDAR_SMOKE_USER_ID=<supabase auth.uid()> \
  *   GOOGLE_OAUTH_CLIENT_ID=… \
  *   GOOGLE_OAUTH_CLIENT_SECRET=… \
- *   CALENDAR_TOKEN_ENCRYPTION_KEY=… \
+ *   SHINKAIDO_CALENDAR_ENCRYPTION_KEY=… \
  *   SUPABASE_URL=… \
  *   SUPABASE_SERVICE_ROLE_KEY=… \
  *   node scripts/calendar-read-smoke.mjs
@@ -39,7 +39,7 @@ function trunc(s, n = 80) {
 
 async function main() {
   const userId = requireEnv('CALENDAR_SMOKE_USER_ID')
-  requireEnv('CALENDAR_TOKEN_ENCRYPTION_KEY')
+  requireEnv('SHINKAIDO_CALENDAR_ENCRYPTION_KEY')
   requireEnv('GOOGLE_OAUTH_CLIENT_ID')
   requireEnv('GOOGLE_OAUTH_CLIENT_SECRET')
   requireEnv('SUPABASE_URL')

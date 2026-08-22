@@ -19,6 +19,7 @@ import { CalculatorUi } from './CalculatorUi'
 import { UnitConversionUi } from './UnitConversionUi'
 import { EnergyMathUi } from './EnergyMathUi'
 import { DailyBriefingUi } from './DailyBriefingUi'
+import { CalendarUi } from './CalendarUi'
 import { TranslationUi } from './TranslationUi'
 import './MessageBubble.css'
 
@@ -43,6 +44,8 @@ interface MessageBubbleProps {
   onEnergyMathAction?: (actionId: string) => void
   /** #322 — Translation result chip actions. */
   onTranslationAction?: (actionId: string) => void
+  /** #336B — Calendar status chip actions (Settings handoff). */
+  onCalendarAction?: (actionId: string) => void
   /**
    * #290 — when true, a native text selection is active in message prose.
    * Suppresses whole-message long-press action pinning to avoid overlay conflicts.
@@ -90,6 +93,7 @@ function MessageBubbleComponent({
   onUnitConversionAction,
   onEnergyMathAction,
   onTranslationAction,
+  onCalendarAction,
   selectionActive = false,
 }: MessageBubbleProps) {
   const isAssistant = message.role === 'assistant'
@@ -260,6 +264,9 @@ function MessageBubbleComponent({
                 ) : null}
                 {!isStreaming && message.dailyBriefingUi ? (
                   <DailyBriefingUi dailyBriefingUi={message.dailyBriefingUi} />
+                ) : null}
+                {!isStreaming && message.calendarUi ? (
+                  <CalendarUi calendarUi={message.calendarUi} onAction={onCalendarAction} />
                 ) : null}
                 {!isStreaming && message.translationUi && onTranslationAction ? (
                   <TranslationUi

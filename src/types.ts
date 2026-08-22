@@ -64,6 +64,8 @@ export interface ChatMessage {
   energyMathUi?: EnergyMathUiState | null
   /** #321 — compact Daily Briefing chips on an assistant message. */
   dailyBriefingUi?: DailyBriefingUiState | null
+  /** #336B — compact Calendar status chip on an assistant message. */
+  calendarUi?: CalendarUiState | null
   /** #322 — compact Translation chip on an assistant message. */
   translationUi?: TranslationUiState | null
 }
@@ -91,6 +93,18 @@ export type DailyBriefingUiChip = {
 export type DailyBriefingUiState = {
   kind: 'summary'
   chips: DailyBriefingUiChip[]
+}
+
+/** #336B — compact Calendar status chip + optional Settings handoff. */
+export type CalendarUiAction = {
+  id: string
+  label: string
+}
+
+export type CalendarUiState = {
+  kind: 'status'
+  chip?: string
+  actions?: CalendarUiAction[]
 }
 
 /** #320 — compact Energy Math result UI on an assistant message. */

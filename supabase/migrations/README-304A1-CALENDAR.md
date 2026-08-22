@@ -54,12 +54,14 @@ supabase secrets set \
   CALENDAR_ENABLED=false \
   GOOGLE_OAUTH_CLIENT_ID='…' \
   GOOGLE_OAUTH_CLIENT_SECRET='…' \
-  CALENDAR_TOKEN_ENCRYPTION_KEY='…' \
+  SHINKAIDO_CALENDAR_ENCRYPTION_KEY='…' \
   CALENDAR_OAUTH_REDIRECT_URI='https://<project-ref>.supabase.co/functions/v1/calendar-oauth-callback' \
   CALENDAR_RETURN_URL='https://<your-preview-or-prod-app>.vercel.app'
 ```
 
-`CALENDAR_TOKEN_ENCRYPTION_KEY`: 32 raw bytes as **base64** or **64-char hex**. Generate offline; never commit.
+`SHINKAIDO_CALENDAR_ENCRYPTION_KEY`: 32 raw bytes as **base64** or **64-char hex**. Generate offline; never commit.
+Must be **identical** on Supabase Edge Secrets, Vercel Preview, and later Vercel Production (Node decrypt/refresh).
+Old name `CALENDAR_TOKEN_ENCRYPTION_KEY` is retired — do not set it.
 
 Also ensure Edge has `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` (usually present).
 
@@ -80,8 +82,8 @@ Settings → Integrazioni → Google Calendar is **always visible** in the clien
 
 | Variable | Where | Notes |
 |----------|-------|-------|
-| `CALENDAR_ENABLED` | Supabase Edge | Real activation gate; `true` only when ready; default OFF |
-| Google + encryption secrets | Edge only | **never** `VITE_*` |
+| `CALENDAR_ENABLED` | Supabase Edge (+ Vercel Node for reads) | Real activation gate; `true` only when ready; default OFF |
+| `GOOGLE_OAUTH_*` / `SHINKAIDO_CALENDAR_ENCRYPTION_KEY` | Edge + Vercel Node | Same values both sides; **never** `VITE_*` |
 
 When `CALENDAR_ENABLED` is false, the Settings section still shows and reports “Non disponibile”.
 
