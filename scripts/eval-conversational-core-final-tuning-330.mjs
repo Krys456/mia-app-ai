@@ -110,12 +110,17 @@ function budget() {
 }
 
 const contractIssues = []
-if (PERSONALITY_2_BUILD !== '329-1' && PERSONALITY_2_BUILD !== '362b-1') {
+if (
+  PERSONALITY_2_BUILD !== '329-1' &&
+  PERSONALITY_2_BUILD !== '362b-1' &&
+  PERSONALITY_2_BUILD !== '362c-1'
+) {
   contractIssues.push('unexpected personality build')
 }
 if (
   NATURAL_RESPONSE_POLICY_BUILD !== '330-1' &&
-  NATURAL_RESPONSE_POLICY_BUILD !== '362b-1'
+  NATURAL_RESPONSE_POLICY_BUILD !== '362b-1' &&
+  NATURAL_RESPONSE_POLICY_BUILD !== '362c-1'
 ) {
   contractIssues.push('unexpected NRP build')
 }
