@@ -18,6 +18,7 @@ import type {
 import { ThemeSettings } from './ThemeSettings'
 import { NotificationsSettings } from './NotificationsSettings'
 import { CalendarIntegrationsSettings } from './CalendarIntegrationsSettings'
+import { EmailIntegrationsSettings } from './EmailIntegrationsSettings'
 import { MorningBriefingSettings } from './MorningBriefingSettings'
 import './SettingsDrawer.css'
 import './MemoryToggle.css'
@@ -229,6 +230,9 @@ export function SettingsDrawer({ onOpenMemory, onOpenPrivacy, onOpenReminders }:
           <div className="settings-divider" role="separator" />
 
           <CalendarIntegrationsSettings />
+
+          {/* #337B — Gmail read-only, below Calendar, under the same Integrazioni title. */}
+          <EmailIntegrationsSettings />
 
           <div className="settings-divider" role="separator" />
 

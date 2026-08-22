@@ -138,6 +138,12 @@ import {
   saveCalendarContext,
 } from '../lib/calendar-chat'
 import {
+  applyEmailIntent,
+  detectEmailIntent,
+  loadEmailContext,
+  saveEmailContext,
+} from '../lib/email-chat'
+import {
   applyTranslationIntent,
   buildTranslationDiag,
   clearTranslationContext,
@@ -1862,6 +1868,57 @@ export function ChatProvider({ children }: { children: ReactNode }) {
                   langHint === 'en'
                     ? 'I couldn’t read the calendar right now.'
                     : 'Non riesco a leggere il calendario in questo momento.',
+              })
+            }
+          })()
+          return true
+        }
+      }
+
+      // #337B — Gmail read-only chat. CRITICAL: matched Email intents MUST terminate locally.
+      // Never fall through to /api/chat — including disabled/disconnected/error. Calendar
+      // (above) is FROZEN: this block is a pure insertion, no Calendar behavior changed.
+      if (allowLocalRouters) {
+        const sticky = deriveDictationLangFromMessages(state.messages)
+        const langHint =
+          sticky === 'en'
+            ? 'en'
+            : sticky === 'it'
+              ? 'it'
+              : detectBriefingLanguage(content, detectTimerLanguage(content, 'it'))
+        const emailCtx = loadEmailContext()
+        const emailIntent = detectEmailIntent(content, {
+          languageHint: langHint,
+          hasEmailContext: Boolean(emailCtx),
+        })
+        if (emailIntent.intent === 'email') {
+          void (async () => {
+            try {
+              const mail = await applyEmailIntent({
+                text: content,
+                languageHint: langHint,
+                emailContext: emailCtx,
+              })
+              const reply =
+                mail.handled && mail.reply
+                  ? mail.reply
+                  : langHint === 'en'
+                    ? 'I couldn’t read Gmail right now.'
+                    : 'Non riesco a leggere Gmail in questo momento.'
+              if (mail.emailContext) saveEmailContext(mail.emailContext)
+              dispatch({
+                type: 'LOCAL_EXCHANGE',
+                userContent: content,
+                assistantContent: reply,
+              })
+            } catch {
+              dispatch({
+                type: 'LOCAL_EXCHANGE',
+                userContent: content,
+                assistantContent:
+                  langHint === 'en'
+                    ? 'I couldn’t read Gmail right now.'
+                    : 'Non riesco a leggere Gmail in questo momento.',
               })
             }
           })()
