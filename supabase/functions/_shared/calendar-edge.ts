@@ -3,6 +3,7 @@
  */
 
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2'
+import { parseCalendarReturnAllowlist } from './calendar-oauth.ts'
 import { redactTokenFields } from './calendar-token-crypto.ts'
 
 export function env(name: string): string {
@@ -42,14 +43,9 @@ export function resolveCorsOrigin(req: Request): string | null {
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean)
-  const returnBase = env('CALENDAR_RETURN_URL').replace(/\/+$/, '')
   const allow = new Set(DEFAULT_ALLOWED_ORIGINS.concat(extra))
-  if (returnBase) {
-    try {
-      allow.add(new URL(returnBase).origin)
-    } catch {
-      /* ignore */
-    }
+  for (const origin of parseCalendarReturnAllowlist(env('CALENDAR_RETURN_URL'))) {
+    allow.add(origin)
   }
   if (allow.has(origin)) return origin
   if (/\.vercel\.app$/i.test(new URL(origin).hostname)) return origin

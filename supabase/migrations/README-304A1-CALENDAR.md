@@ -59,6 +59,8 @@ supabase secrets set \
   CALENDAR_RETURN_URL='https://<your-preview-or-prod-app>.vercel.app'
 ```
 
+`CALENDAR_RETURN_URL` may be a comma-separated allowlist (Preview + Production). The first valid `https` origin is the canonical post-OAuth redirect. Do **not** paste multiple URLs into one unsplit string without commas — that previously produced NXDOMAIN hostnames containing `,https`. For Production, put the Production origin first.
+
 `SHINKAIDO_CALENDAR_ENCRYPTION_KEY`: 32 raw bytes as **base64** or **64-char hex**. Generate offline; never commit.
 Must be **identical** on Supabase Edge Secrets, Vercel Preview, and later Vercel Production (Node decrypt/refresh).
 Old name `CALENDAR_TOKEN_ENCRYPTION_KEY` is retired — do not set it.

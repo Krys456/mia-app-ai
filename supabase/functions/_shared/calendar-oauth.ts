@@ -165,18 +165,67 @@ export function assertReadOnlyCalendarScopes(scopeString: string) {
   return { ok: true as const, scopes }
 }
 
+/**
+ * Parse CALENDAR_RETURN_URL into distinct origins.
+ * Supports comma- or newline-separated lists (Preview + Production).
+ * Never concatenates — each entry is validated alone via URL().
+ * Entries with a second http(s) scheme, commas in the hostname, or
+ * non-http(s) protocols are dropped.
+ */
+export function parseCalendarReturnAllowlist(raw: string | null | undefined): string[] {
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const part of String(raw || '').split(/[\n,]+/)) {
+    const entry = part.trim().replace(/\/+$/, '')
+    if (!entry) continue
+    // Reject glued multi-URL paste (e.g. https://a.comhttps://b.com)
+    const scheme = entry.match(/^https?:\/\//i)
+    if (!scheme) continue
+    if (/https?:\/\//i.test(entry.slice(scheme[0].length))) continue
+    let parsed: URL
+    try {
+      parsed = new URL(entry)
+    } catch {
+      continue
+    }
+    if (parsed.protocol !== 'https:' && parsed.hostname !== 'localhost' && parsed.hostname !== '127.0.0.1') {
+      continue
+    }
+    if (parsed.hostname.includes(',') || parsed.hostname.includes('\n')) continue
+    const origin = parsed.origin
+    if (seen.has(origin)) continue
+    seen.add(origin)
+    out.push(origin)
+  }
+  return out
+}
+
+function isMalformedMultiUrl(raw: string): boolean {
+  const s = String(raw || '')
+  return /,https?:\/\//i.test(s) || /https?:\/\/[^/\s]+,https?/i.test(s)
+}
+
+/**
+ * Safe post-OAuth return URL — always ONE absolute http(s) URL.
+ * Canonical base is the first allowlisted origin from CALENDAR_RETURN_URL.
+ * Candidates must share an allowlisted origin; otherwise fall back to canonical.
+ */
 export function resolveSafeReturnUrl(candidate: string | null | undefined, allowedBase: string) {
-  const base = typeof allowedBase === 'string' ? allowedBase.trim().replace(/\/+$/, '') : ''
-  if (!base) return { ok: false as const, code: 'return_url_not_configured' }
+  const allowlist = parseCalendarReturnAllowlist(allowedBase)
+  if (allowlist.length === 0) {
+    // Distinguish empty/garbage vs a single insecure protocol when raw looks like one URL
+    const raw = typeof allowedBase === 'string' ? allowedBase.trim() : ''
+    if (raw && /^[a-z][a-z0-9+.-]*:/i.test(raw) && !/^https?:/i.test(raw.split(/[\n,]/)[0] || '')) {
+      return { ok: false as const, code: 'return_url_insecure' }
+    }
+    return { ok: false as const, code: 'return_url_not_configured' }
+  }
 
   let baseUrl: URL
   try {
-    baseUrl = new URL(base)
+    baseUrl = new URL(allowlist[0])
   } catch {
     return { ok: false as const, code: 'return_url_not_configured' }
-  }
-  if (baseUrl.protocol !== 'https:' && baseUrl.hostname !== 'localhost') {
-    return { ok: false as const, code: 'return_url_insecure' }
   }
 
   const fallback = `${baseUrl.origin}/?calendar=connected`
@@ -184,13 +233,24 @@ export function resolveSafeReturnUrl(candidate: string | null | undefined, allow
     return { ok: true as const, url: fallback }
   }
 
+  const trimmed = candidate.trim()
+  if (!trimmed || isMalformedMultiUrl(trimmed) || trimmed.includes('\n')) {
+    return { ok: true as const, url: fallback }
+  }
+
   let next: URL
   try {
-    next = new URL(candidate, baseUrl.origin)
+    next = new URL(trimmed, baseUrl.origin)
   } catch {
     return { ok: true as const, url: fallback }
   }
-  if (next.origin !== baseUrl.origin || !next.pathname.startsWith('/')) {
+  if (next.hostname.includes(',') || next.hostname.includes('\n')) {
+    return { ok: true as const, url: fallback }
+  }
+  if (next.protocol !== 'https:' && next.hostname !== 'localhost' && next.hostname !== '127.0.0.1') {
+    return { ok: true as const, url: fallback }
+  }
+  if (!allowlist.includes(next.origin) || !next.pathname.startsWith('/')) {
     return { ok: true as const, url: fallback }
   }
   return { ok: true as const, url: next.toString() }
