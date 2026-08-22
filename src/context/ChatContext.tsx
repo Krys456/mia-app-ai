@@ -178,6 +178,7 @@ import {
   saveTranslationContext,
 } from '../lib/translation'
 import { analyzeOuterUserRequest } from '../lib/outer-content-gate'
+import { shouldLocalRouterClaimWholeTurn } from '../lib/mixed-intent-gate'
 import { deriveDictationLangFromMessages } from '../lib/dictationLanguage'
 import {
   finalizeConversationLearning,
@@ -1841,72 +1842,84 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           languageHint: langHint,
           hasTranslationContext: Boolean(translationCtx),
         })
+        // #364B — claim whole turn only when translation is predominant (not an aside).
         if (translationIntent.intent === 'translation') {
-          void (async () => {
-            try {
-              const result = await applyTranslationIntent({
-                text: content,
-                languageHint: langHint,
-                translationContext: translationCtx,
-                messages: state.messages.map((m) => ({
-                  role: m.role,
-                  content: String(m.content || ''),
-                })),
-                env: {
-                  copyTextSync: (text: string) => {
-                    try {
-                      const area = document.createElement('textarea')
-                      area.value = text
-                      area.setAttribute('readonly', '')
-                      area.style.position = 'fixed'
-                      area.style.opacity = '0'
-                      document.body.appendChild(area)
-                      area.select()
-                      const ok = document.execCommand('copy')
-                      document.body.removeChild(area)
-                      return ok
-                    } catch {
-                      return false
-                    }
+          const claim = shouldLocalRouterClaimWholeTurn({
+            routerType: 'translation',
+            fullText: content,
+            detectedSpan: translationIntent.sourceText || null,
+            intentMetadata: {
+              followUp: Boolean(translationIntent.followUp),
+              operation: translationIntent.operation || null,
+            },
+          })
+          if (claim.claimWholeTurn) {
+            void (async () => {
+              try {
+                const result = await applyTranslationIntent({
+                  text: content,
+                  languageHint: langHint,
+                  translationContext: translationCtx,
+                  messages: state.messages.map((m) => ({
+                    role: m.role,
+                    content: String(m.content || ''),
+                  })),
+                  env: {
+                    copyTextSync: (text: string) => {
+                      try {
+                        const area = document.createElement('textarea')
+                        area.value = text
+                        area.setAttribute('readonly', '')
+                        area.style.position = 'fixed'
+                        area.style.opacity = '0'
+                        document.body.appendChild(area)
+                        area.select()
+                        const ok = document.execCommand('copy')
+                        document.body.removeChild(area)
+                        return ok
+                      } catch {
+                        return false
+                      }
+                    },
                   },
-                },
-              })
-              const reply =
-                result.handled && result.reply
-                  ? result.reply
-                  : langHint === 'en'
-                    ? 'I couldn’t complete the translation right now.'
-                    : 'Non riesco a completare la traduzione in questo momento.'
-              if (result.translationContext) saveTranslationContext(result.translationContext)
-              dispatch({
-                type: 'LOCAL_EXCHANGE',
-                userContent: content,
-                assistantContent: reply,
-                translationUi:
-                  (result.translationUi as import('../types').TranslationUiState | null) || null,
-              })
-              logTranslationSafe({
-                operation: (result.diag?.operation as string) || null,
-                targetLanguage: (result.diag?.targetLanguage as string) || null,
-                contextReused: Boolean(result.diag?.contextReused),
-                status: (result.diag?.status as string) || null,
-                failureCode: (result.diag?.failureCode as string) || null,
-              })
-              if (isTranslationDiagEnabled()) {
-                rememberTranslationDiag(buildTranslationDiag(result.diag || {}))
+                })
+                const reply =
+                  result.handled && result.reply
+                    ? result.reply
+                    : langHint === 'en'
+                      ? 'I couldn’t complete the translation right now.'
+                      : 'Non riesco a completare la traduzione in questo momento.'
+                if (result.translationContext) saveTranslationContext(result.translationContext)
+                dispatch({
+                  type: 'LOCAL_EXCHANGE',
+                  userContent: content,
+                  assistantContent: reply,
+                  translationUi:
+                    (result.translationUi as import('../types').TranslationUiState | null) || null,
+                })
+                logTranslationSafe({
+                  operation: (result.diag?.operation as string) || null,
+                  targetLanguage: (result.diag?.targetLanguage as string) || null,
+                  contextReused: Boolean(result.diag?.contextReused),
+                  status: (result.diag?.status as string) || null,
+                  failureCode: (result.diag?.failureCode as string) || null,
+                })
+                if (isTranslationDiagEnabled()) {
+                  rememberTranslationDiag(buildTranslationDiag(result.diag || {}))
+                }
+              } catch {
+                dispatch({
+                  type: 'LOCAL_EXCHANGE',
+                  userContent: content,
+                  assistantContent:
+                    langHint === 'en'
+                      ? 'I couldn’t complete the translation right now.'
+                      : 'Non riesco a completare la traduzione in questo momento.',
+                })
               }
-            } catch {
-              dispatch({
-                type: 'LOCAL_EXCHANGE',
-                userContent: content,
-                assistantContent:
-                  langHint === 'en'
-                    ? 'I couldn’t complete the translation right now.'
-                    : 'Non riesco a completare la traduzione in questo momento.',
-              })
-            }
-          })()
-          return true
+            })()
+            return true
+          }
         }
       }
 
@@ -1922,36 +1935,50 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           pendingReplace: pendingTimerReplace,
           languageHint: langHint,
         })
+        // #364B — do not steal mixed turns that only mention a timer aside.
         if (result.handled && result.reply) {
-          if (result.clearTimer) {
-            persistTimer(null)
-            completionLockRef.current = false
-          } else if (result.timer) {
-            if (result.diag.timerStarted) completionLockRef.current = false
-            persistTimer(result.timer)
-          }
-          persistPendingReplace(result.pendingReplace)
-          dispatch({
-            type: 'LOCAL_EXCHANGE',
-            userContent: content,
-            assistantContent: result.reply,
+          const claim = shouldLocalRouterClaimWholeTurn({
+            routerType: 'timer',
+            fullText: content,
+            detectedSpan: null,
+            intentMetadata: {
+              followUp: Boolean(
+                result.diag.timerIntent &&
+                  /adjust|add|cancel|status|replace/i.test(String(result.diag.timerIntent)),
+              ),
+            },
           })
-          logTimerSafe({
-            action: String(result.diag.timerAction || result.diag.timerIntent),
-            durationMs: result.diag.parsedDurationMs,
-            remainingMs: result.diag.remainingMs,
-            status: result.timer?.status ?? null,
-          })
-          if (isTimerDiagClientEnabled()) {
-            rememberTimerDiag(
-              buildTimerDiag({
-                ...result.diag,
-                completionSoundAttempted: false,
-                notificationAttempted: false,
-              }),
-            )
+          if (claim.claimWholeTurn) {
+            if (result.clearTimer) {
+              persistTimer(null)
+              completionLockRef.current = false
+            } else if (result.timer) {
+              if (result.diag.timerStarted) completionLockRef.current = false
+              persistTimer(result.timer)
+            }
+            persistPendingReplace(result.pendingReplace)
+            dispatch({
+              type: 'LOCAL_EXCHANGE',
+              userContent: content,
+              assistantContent: result.reply,
+            })
+            logTimerSafe({
+              action: String(result.diag.timerAction || result.diag.timerIntent),
+              durationMs: result.diag.parsedDurationMs,
+              remainingMs: result.diag.remainingMs,
+              status: result.timer?.status ?? null,
+            })
+            if (isTimerDiagClientEnabled()) {
+              rememberTimerDiag(
+                buildTimerDiag({
+                  ...result.diag,
+                  completionSoundAttempted: false,
+                  notificationAttempted: false,
+                }),
+              )
+            }
+            return true
           }
-          return true
         }
       }
 
@@ -1972,48 +1999,62 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           hasPendingProposal: Boolean(loadPendingReminderProposal()),
         })
         if (reminderIntent.intent === 'reminder') {
-          void (async () => {
-            try {
-              const rem = await applyReminderIntent({
-                text: content,
-                languageHint: langHint,
-                remindersContext: remindersCtx,
-                pushLikelyEnabled: !shouldOfferPushOptIn(),
-              })
-              if (rem.remindersContext) saveRemindersContext(rem.remindersContext)
-              const reply =
-                rem.handled && rem.reply
-                  ? rem.reply
-                  : langHint === 'en'
-                    ? 'I couldn’t manage reminders right now.'
-                    : 'Non riesco a gestire i promemoria in questo momento.'
-              let reminderUi =
-                (rem.reminderUi as import('../types').ReminderUiState | null) || null
-              if (rem.offerPushOptIn) {
-                reminderUi = {
-                  kind: 'status',
-                  chip: 'Promemoria',
-                  actions: [{ id: 'enable_push', label: 'Attiva notifiche' }],
+          // #364B — reminder asides in mixed turns fall through to Core.
+          const claim = shouldLocalRouterClaimWholeTurn({
+            routerType: 'reminder',
+            fullText: content,
+            detectedSpan: (reminderIntent as { title?: string }).title || null,
+            intentMetadata: {
+              followUp: reminderIntent.operation === 'follow_up',
+              operation: reminderIntent.operation || null,
+            },
+          })
+          if (!claim.claimWholeTurn) {
+            // fall through — do not LOCAL_EXCHANGE
+          } else {
+            void (async () => {
+              try {
+                const rem = await applyReminderIntent({
+                  text: content,
+                  languageHint: langHint,
+                  remindersContext: remindersCtx,
+                  pushLikelyEnabled: !shouldOfferPushOptIn(),
+                })
+                if (rem.remindersContext) saveRemindersContext(rem.remindersContext)
+                const reply =
+                  rem.handled && rem.reply
+                    ? rem.reply
+                    : langHint === 'en'
+                      ? 'I couldn’t manage reminders right now.'
+                      : 'Non riesco a gestire i promemoria in questo momento.'
+                let reminderUi =
+                  (rem.reminderUi as import('../types').ReminderUiState | null) || null
+                if (rem.offerPushOptIn) {
+                  reminderUi = {
+                    kind: 'status',
+                    chip: 'Promemoria',
+                    actions: [{ id: 'enable_push', label: 'Attiva notifiche' }],
+                  }
                 }
+                dispatch({
+                  type: 'LOCAL_EXCHANGE',
+                  userContent: content,
+                  assistantContent: reply,
+                  reminderUi,
+                })
+              } catch {
+                dispatch({
+                  type: 'LOCAL_EXCHANGE',
+                  userContent: content,
+                  assistantContent:
+                    langHint === 'en'
+                      ? 'I couldn’t manage reminders right now.'
+                      : 'Non riesco a gestire i promemoria in questo momento.',
+                })
               }
-              dispatch({
-                type: 'LOCAL_EXCHANGE',
-                userContent: content,
-                assistantContent: reply,
-                reminderUi,
-              })
-            } catch {
-              dispatch({
-                type: 'LOCAL_EXCHANGE',
-                userContent: content,
-                assistantContent:
-                  langHint === 'en'
-                    ? 'I couldn’t manage reminders right now.'
-                    : 'Non riesco a gestire i promemoria in questo momento.',
-              })
-            }
-          })()
-          return true
+            })()
+            return true
+          }
         }
       }
 
@@ -2268,53 +2309,65 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           hasBriefingContext: Boolean(briefingCtx),
         })
         if (briefingIntent.intent === 'daily-briefing') {
-          void (async () => {
-            try {
-              const brief = await applyDailyBriefingIntent({
-                text: content,
-                languageHint: langHint,
-                briefingContext: briefingCtx,
-                weatherContext: loadWeatherContext(),
-                briefingPrefs: state.settings.briefing,
-                oneShotLength: prefIntent?.oneShotLength || null,
-                oneShotHideWeather: Boolean(prefIntent?.oneShotHideWeather),
-              })
-              const reply =
-                brief.handled && brief.reply
-                  ? brief.reply
-                  : langHint === 'en'
-                    ? 'I couldn’t build the briefing right now. Try again shortly.'
-                    : 'Non riesco a costruire il briefing in questo momento. Riprova tra poco.'
-              if (brief.briefingContext) saveBriefingContext(brief.briefingContext)
-              dispatch({
-                type: 'LOCAL_EXCHANGE',
-                userContent: content,
-                assistantContent: reply,
-                dailyBriefingUi:
-                  (brief.briefingUi as import('../types').DailyBriefingUiState | null) || null,
-              })
-              logDailyBriefingSafe({
-                calendarStatus: (brief.diag?.calendarStatus as string) || null,
-                reminderStatus: (brief.diag?.reminderStatus as string) || null,
-                weatherStatus: (brief.diag?.weatherStatus as string) || null,
-                partialSuccess: Boolean(brief.diag?.partialSuccess),
-                failureCode: (brief.diag?.failureCode as string) || null,
-              })
-              if (isDailyBriefingDiagEnabled()) {
-                rememberDailyBriefingDiag(buildDailyBriefingDiag(brief.diag || {}))
+          // #364B — briefing + unrelated ask → Core owns the full turn.
+          const claim = shouldLocalRouterClaimWholeTurn({
+            routerType: 'briefing',
+            fullText: content,
+            detectedSpan: null,
+            intentMetadata: {
+              followUp: Boolean(briefingIntent.followUp),
+              operation: briefingIntent.followUpKind || null,
+            },
+          })
+          if (claim.claimWholeTurn) {
+            void (async () => {
+              try {
+                const brief = await applyDailyBriefingIntent({
+                  text: content,
+                  languageHint: langHint,
+                  briefingContext: briefingCtx,
+                  weatherContext: loadWeatherContext(),
+                  briefingPrefs: state.settings.briefing,
+                  oneShotLength: prefIntent?.oneShotLength || null,
+                  oneShotHideWeather: Boolean(prefIntent?.oneShotHideWeather),
+                })
+                const reply =
+                  brief.handled && brief.reply
+                    ? brief.reply
+                    : langHint === 'en'
+                      ? 'I couldn’t build the briefing right now. Try again shortly.'
+                      : 'Non riesco a costruire il briefing in questo momento. Riprova tra poco.'
+                if (brief.briefingContext) saveBriefingContext(brief.briefingContext)
+                dispatch({
+                  type: 'LOCAL_EXCHANGE',
+                  userContent: content,
+                  assistantContent: reply,
+                  dailyBriefingUi:
+                    (brief.briefingUi as import('../types').DailyBriefingUiState | null) || null,
+                })
+                logDailyBriefingSafe({
+                  calendarStatus: (brief.diag?.calendarStatus as string) || null,
+                  reminderStatus: (brief.diag?.reminderStatus as string) || null,
+                  weatherStatus: (brief.diag?.weatherStatus as string) || null,
+                  partialSuccess: Boolean(brief.diag?.partialSuccess),
+                  failureCode: (brief.diag?.failureCode as string) || null,
+                })
+                if (isDailyBriefingDiagEnabled()) {
+                  rememberDailyBriefingDiag(buildDailyBriefingDiag(brief.diag || {}))
+                }
+              } catch {
+                dispatch({
+                  type: 'LOCAL_EXCHANGE',
+                  userContent: content,
+                  assistantContent:
+                    langHint === 'en'
+                      ? 'I couldn’t build the briefing right now. Try again shortly.'
+                      : 'Non riesco a costruire il briefing in questo momento. Riprova tra poco.',
+                })
               }
-            } catch {
-              dispatch({
-                type: 'LOCAL_EXCHANGE',
-                userContent: content,
-                assistantContent:
-                  langHint === 'en'
-                    ? 'I couldn’t build the briefing right now. Try again shortly.'
-                    : 'Non riesco a costruire il briefing in questo momento. Riprova tra poco.',
-              })
-            }
-          })()
-          return true
+            })()
+            return true
+          }
         }
       }
 
@@ -2396,51 +2449,66 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           hasConversionContext: Boolean(convCtx),
         })
         if (unitIntent.intent === 'unit-conversion') {
-          const unit = applyUnitConversionIntent({
-            text: content,
-            languageHint: langHint,
-            conversionContext: convCtx,
-            env: {
-              copyTextSync: (text: string) => {
-                try {
-                  const area = document.createElement('textarea')
-                  area.value = text
-                  area.setAttribute('readonly', '')
-                  area.style.position = 'fixed'
-                  area.style.opacity = '0'
-                  document.body.appendChild(area)
-                  area.select()
-                  const ok = document.execCommand('copy')
-                  document.body.removeChild(area)
-                  return ok
-                } catch {
-                  return false
-                }
-              },
+          // #364B — unit conversion asides must not erase residual asks.
+          const claim = shouldLocalRouterClaimWholeTurn({
+            routerType: 'units',
+            fullText: content,
+            detectedSpan:
+              (unitIntent as { sourceText?: string; expressionText?: string }).sourceText ||
+              (unitIntent as { expressionText?: string }).expressionText ||
+              null,
+            intentMetadata: {
+              followUp: Boolean((unitIntent as { followUp?: boolean }).followUp),
+              operation: (unitIntent as { operation?: string }).operation || null,
             },
           })
-          if (unit.handled && unit.reply) {
-            if (unit.conversionContext) saveConversionContext(unit.conversionContext)
-            dispatch({
-              type: 'LOCAL_EXCHANGE',
-              userContent: content,
-              assistantContent: unit.reply,
-              unitConversionUi:
-                (unit.unitUi as import('../types').UnitConversionUiState | null) || null,
+          if (claim.claimWholeTurn) {
+            const unit = applyUnitConversionIntent({
+              text: content,
+              languageHint: langHint,
+              conversionContext: convCtx,
+              env: {
+                copyTextSync: (text: string) => {
+                  try {
+                    const area = document.createElement('textarea')
+                    area.value = text
+                    area.setAttribute('readonly', '')
+                    area.style.position = 'fixed'
+                    area.style.opacity = '0'
+                    document.body.appendChild(area)
+                    area.select()
+                    const ok = document.execCommand('copy')
+                    document.body.removeChild(area)
+                    return ok
+                  } catch {
+                    return false
+                  }
+                },
+              },
             })
-            logUnitConversionSafe({
-              operation: String(unit.diag.operation || ''),
-              dimension: (unit.diag.dimension as string) || null,
-              sourceUnit: (unit.diag.sourceUnit as string) || null,
-              targetUnit: (unit.diag.targetUnit as string) || null,
-              parserStatus: (unit.diag.parserStatus as string) || null,
-              failureCode: (unit.diag.failureCode as string) || null,
-              contextReused: Boolean(unit.diag.contextReused),
-            })
-            if (isUnitConversionDiagEnabled()) {
-              rememberUnitConversionDiag(buildUnitConversionDiag(unit.diag || {}))
+            if (unit.handled && unit.reply) {
+              if (unit.conversionContext) saveConversionContext(unit.conversionContext)
+              dispatch({
+                type: 'LOCAL_EXCHANGE',
+                userContent: content,
+                assistantContent: unit.reply,
+                unitConversionUi:
+                  (unit.unitUi as import('../types').UnitConversionUiState | null) || null,
+              })
+              logUnitConversionSafe({
+                operation: String(unit.diag.operation || ''),
+                dimension: (unit.diag.dimension as string) || null,
+                sourceUnit: (unit.diag.sourceUnit as string) || null,
+                targetUnit: (unit.diag.targetUnit as string) || null,
+                parserStatus: (unit.diag.parserStatus as string) || null,
+                failureCode: (unit.diag.failureCode as string) || null,
+                contextReused: Boolean(unit.diag.contextReused),
+              })
+              if (isUnitConversionDiagEnabled()) {
+                rememberUnitConversionDiag(buildUnitConversionDiag(unit.diag || {}))
+              }
+              return true
             }
-            return true
           }
         }
       }
@@ -2471,47 +2539,59 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             /\bsqrt\s*\(/i.test(content) ||
             /\d\s*%/.test(content))
         if (clearCalc) {
-          const calc = applyCalculatorIntent({
-            text: content,
-            languageHint: langHint,
-            calcContext: calcCtxEarly,
-            env: {
-              copyTextSync: (text: string) => {
-                try {
-                  const area = document.createElement('textarea')
-                  area.value = text
-                  area.setAttribute('readonly', '')
-                  area.style.position = 'fixed'
-                  area.style.opacity = '0'
-                  document.body.appendChild(area)
-                  area.select()
-                  const ok = document.execCommand('copy')
-                  document.body.removeChild(area)
-                  return ok
-                } catch {
-                  return false
-                }
-              },
+          // #364B — calculator + advice → Core; pure math stays local.
+          const claim = shouldLocalRouterClaimWholeTurn({
+            routerType: 'calculator',
+            fullText: content,
+            detectedSpan: earlyIntent.expressionText || null,
+            intentMetadata: {
+              followUp: Boolean(earlyIntent.followUp),
+              operation: earlyIntent.operation || null,
             },
           })
-          if (calc.handled && calc.reply) {
-            if (calc.calcContext) saveCalculationContext(calc.calcContext)
-            dispatch({
-              type: 'LOCAL_EXCHANGE',
-              userContent: content,
-              assistantContent: calc.reply,
-              calculatorUi: (calc.calcUi as import('../types').CalculatorUiState | null) || null,
+          if (claim.claimWholeTurn) {
+            const calc = applyCalculatorIntent({
+              text: content,
+              languageHint: langHint,
+              calcContext: calcCtxEarly,
+              env: {
+                copyTextSync: (text: string) => {
+                  try {
+                    const area = document.createElement('textarea')
+                    area.value = text
+                    area.setAttribute('readonly', '')
+                    area.style.position = 'fixed'
+                    area.style.opacity = '0'
+                    document.body.appendChild(area)
+                    area.select()
+                    const ok = document.execCommand('copy')
+                    document.body.removeChild(area)
+                    return ok
+                  } catch {
+                    return false
+                  }
+                },
+              },
             })
-            logCalculatorSafe({
-              operation: String(calc.diag.operation || ''),
-              parserStatus: (calc.diag.parserStatus as string) || null,
-              failureCode: (calc.diag.failureCode as string) || null,
-              contextReused: Boolean(calc.diag.contextReused),
-            })
-            if (isCalculatorDiagEnabled()) {
-              rememberCalculatorDiag(buildCalculatorDiag(calc.diag || {}))
+            if (calc.handled && calc.reply) {
+              if (calc.calcContext) saveCalculationContext(calc.calcContext)
+              dispatch({
+                type: 'LOCAL_EXCHANGE',
+                userContent: content,
+                assistantContent: calc.reply,
+                calculatorUi: (calc.calcUi as import('../types').CalculatorUiState | null) || null,
+              })
+              logCalculatorSafe({
+                operation: String(calc.diag.operation || ''),
+                parserStatus: (calc.diag.parserStatus as string) || null,
+                failureCode: (calc.diag.failureCode as string) || null,
+                contextReused: Boolean(calc.diag.contextReused),
+              })
+              if (isCalculatorDiagEnabled()) {
+                rememberCalculatorDiag(buildCalculatorDiag(calc.diag || {}))
+              }
+              return true
             }
-            return true
           }
         }
       }
@@ -2550,34 +2630,57 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           languageHint: langHint,
           weatherContext: weatherCtx,
         })
+        // #364B — weather aside inside a larger ask must not short-circuit Core.
         if (weather.handled && weather.reply && !(weather as { needsProvider?: boolean }).needsProvider) {
-          if (weather.weatherContext) saveWeatherContext(weather.weatherContext)
-          dispatch({
-            type: 'LOCAL_EXCHANGE',
-            userContent: content,
-            assistantContent: weather.reply,
-            weatherUi: (weather.weatherUi as import('../types').WeatherUiState | null) || null,
+          const claim = shouldLocalRouterClaimWholeTurn({
+            routerType: 'weather',
+            fullText: content,
+            detectedSpan: weather.intent?.locationText || null,
+            intentMetadata: {
+              followUp: Boolean(weather.diag?.contextReused),
+              operation: weather.diag?.operation || null,
+            },
           })
-          logWeatherSafe({
-            operation: String(weather.diag.operation || ''),
-            locationSource: (weather.diag.locationSource as string) || null,
-            status: weather.status || null,
-            failureCode: (weather.diag.failureCode as string) || null,
-            cacheHit: Boolean(weather.cacheHit || weather.diag.cacheHit),
-          })
-          if (isWeatherDiagEnabled()) {
-            rememberWeatherDiag(buildWeatherDiag(weather.diag || {}))
+          if (claim.claimWholeTurn) {
+            if (weather.weatherContext) saveWeatherContext(weather.weatherContext)
+            dispatch({
+              type: 'LOCAL_EXCHANGE',
+              userContent: content,
+              assistantContent: weather.reply,
+              weatherUi: (weather.weatherUi as import('../types').WeatherUiState | null) || null,
+            })
+            logWeatherSafe({
+              operation: String(weather.diag.operation || ''),
+              locationSource: (weather.diag.locationSource as string) || null,
+              status: weather.status || null,
+              failureCode: (weather.diag.failureCode as string) || null,
+              cacheHit: Boolean(weather.cacheHit || weather.diag.cacheHit),
+            })
+            if (isWeatherDiagEnabled()) {
+              rememberWeatherDiag(buildWeatherDiag(weather.diag || {}))
+            }
+            return true
           }
-          return true
         }
         if ((weather as { needsProvider?: boolean }).needsProvider && weather.intent) {
-          void runWeatherProvider({
-            intent: weather.intent,
-            language: langHint as 'it' | 'en',
-            userContent: content,
-            locationSource: weather.intent.locationText ? 'explicit' : undefined,
+          const claim = shouldLocalRouterClaimWholeTurn({
+            routerType: 'weather',
+            fullText: content,
+            detectedSpan: weather.intent?.locationText || null,
+            intentMetadata: {
+              followUp: false,
+              operation: weather.intent?.operation || null,
+            },
           })
-          return true
+          if (claim.claimWholeTurn) {
+            void runWeatherProvider({
+              intent: weather.intent,
+              language: langHint as 'it' | 'en',
+              userContent: content,
+              locationSource: weather.intent.locationText ? 'explicit' : undefined,
+            })
+            return true
+          }
         }
       }
 
