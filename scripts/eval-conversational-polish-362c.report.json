@@ -1,0 +1,95 @@
+{
+  "build": {
+    "personality": "362c-1",
+    "state": "362c-1",
+    "nrp": "362c-1"
+  },
+  "timestamp": "2026-08-22T12:44:42.969Z",
+  "smoke": {
+    "model": "gpt-4o",
+    "n": 5,
+    "trailingQRate": 0.2,
+    "endsQWhenQNeededFalse": 0.2,
+    "serviceOfferRate": 0,
+    "fillerOpenRate": 0.2,
+    "unnecessaryConditionalDecisionRate": 0,
+    "meanEmoji": 0,
+    "sequences": [
+      {
+        "name": "A_DECISION_EVIDENCE",
+        "userMessage": "Faccio merge?",
+        "mode": "decision_support",
+        "purpose": "recommend",
+        "emojiLevel": "light",
+        "qNeeded": false,
+        "endsQ": false,
+        "service": false,
+        "filler": false,
+        "genericChecklist": false,
+        "emojiCount": 0,
+        "preview": "Sì, direi di procedere con il merge. Tutto è stato verificato e sembra a posto.",
+        "full": "Sì, direi di procedere con il merge. Tutto è stato verificato e sembra a posto."
+      },
+      {
+        "name": "B_REFERENT_PUSHBACK",
+        "userMessage": "No, non mi convince.",
+        "mode": "brainstorming",
+        "purpose": "continue",
+        "emojiLevel": "moderate",
+        "qNeeded": false,
+        "endsQ": true,
+        "service": false,
+        "filler": true,
+        "genericChecklist": false,
+        "emojiCount": 0,
+        "preview": "Capisco! Forse possiamo rivedere i dettagli o l'approccio. Hai in mente qualcosa di specifico da migliorare o cambiare?",
+        "full": "Capisco! Forse possiamo rivedere i dettagli o l'approccio. Hai in mente qualcosa di specifico da migliorare o cambiare?"
+      },
+      {
+        "name": "C_KEFIR",
+        "userMessage": "Il kefir invece?",
+        "mode": "informational",
+        "purpose": "explain",
+        "emojiLevel": "light",
+        "qNeeded": false,
+        "endsQ": false,
+        "service": false,
+        "filler": false,
+        "genericChecklist": false,
+        "emojiCount": 0,
+        "preview": "Il kefir è noto per i suoi probiotici, che possono aiutare la digestione e favorire la regolarità intestinale. Se sei sensibile ai latticini, potresti comunque fare attenzione.",
+        "full": "Il kefir è noto per i suoi probiotici, che possono aiutare la digestione e favorire la regolarità intestinale. Se sei sensibile ai latticini, potresti comunque fare attenzione."
+      },
+      {
+        "name": "D_FRUSTRATION_WHY",
+        "userMessage": "Perché?",
+        "mode": "debugging",
+        "purpose": "explain",
+        "emojiLevel": "light",
+        "qNeeded": false,
+        "endsQ": false,
+        "service": false,
+        "filler": false,
+        "genericChecklist": false,
+        "emojiCount": 0,
+        "preview": "Potresti dirmi esattamente cosa stai cercando di fare? Così posso aiutarti meglio a capire il problema.",
+        "full": "Potresti dirmi esattamente cosa stai cercando di fare? Così posso aiutarti meglio a capire il problema."
+      },
+      {
+        "name": "E_SEI_SICURO",
+        "userMessage": "Sei sicuro?",
+        "mode": "decision_support",
+        "purpose": "explain",
+        "emojiLevel": "light",
+        "qNeeded": false,
+        "endsQ": false,
+        "service": false,
+        "filler": false,
+        "genericChecklist": false,
+        "emojiCount": 0,
+        "preview": "Sì, se ha passato tutti i test e non ci sono altri blocchi, procederei con il merge.",
+        "full": "Sì, se ha passato tutti i test e non ci sono altri blocchi, procederei con il merge."
+      }
+    ]
+  }
+}
