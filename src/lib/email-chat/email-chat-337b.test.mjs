@@ -244,16 +244,13 @@ describe('email-chat-337b intents (Italian-first)', () => {
 
 describe('email-chat-337b renderer', () => {
   it('renders failure copy (Italian-first)', () => {
-    assert.match(failureReply('disabled', 'it'), /non è attivo/)
-    assert.match(failureReply('disconnected', 'it'), /Collega Gmail/)
+    assert.match(failureReply('disabled', 'it'), /Email non è attiva/)
+    assert.match(failureReply('disconnected', 'it'), /Collega Gmail.*vedere le tue email/)
     assert.match(failureReply('reconnect_required', 'it'), /Ricollega Gmail/)
     assert.match(failureReply('timeout', 'it'), /troppo a rispondere/)
     assert.match(failureReply('error', 'it'), /Non riesco a leggere Gmail/)
-    assert.match(failureReply('empty', 'it'), /Non risultano email/)
+    assert.match(failureReply('empty', 'it'), /Non risultano email per questa ricerca/)
     assert.match(failureReply('no_sender_match', 'it'), /Non trovo email recenti/)
-    assert.match(failureReply('disabled', 'it'), /Email non è attiva/)
-    assert.match(failureReply('disconnected', 'it'), /vedere le tue email/)
-    assert.match(failureReply('empty', 'it'), /per questa ricerca/)
   })
 
   it('renders empty / single / multiple lists', () => {
