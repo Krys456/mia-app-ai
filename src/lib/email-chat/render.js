@@ -68,14 +68,14 @@ export function bulletLine(msg, timeZone, language = 'it') {
  */
 export function failureReply(status, language = 'it') {
   const it = {
-    disabled: 'Gmail non è attivo in questo ambiente.',
-    disconnected: 'Collega Gmail in Impostazioni per leggere le tue email.',
-    auth_required: 'Collega Gmail in Impostazioni per leggere le tue email.',
+    disabled: 'Email non è attiva in questo ambiente.',
+    disconnected: 'Collega Gmail in Impostazioni per vedere le tue email.',
+    auth_required: 'Collega Gmail in Impostazioni per vedere le tue email.',
     reconnect_required: 'Ricollega Gmail: l’accesso è scaduto.',
     timeout: 'Gmail sta impiegando troppo a rispondere. Riprova tra poco.',
     error: 'Non riesco a leggere Gmail in questo momento.',
-    empty: 'Non risultano email corrispondenti.',
-    no_sender_match: 'Non ho trovato email da questo mittente.',
+    empty: 'Non risultano email per questa ricerca.',
+    no_sender_match: 'Non trovo email recenti da quel mittente.',
   }
   const en = {
     disabled: 'Gmail is not enabled in this environment.',
