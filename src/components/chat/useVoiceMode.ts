@@ -102,9 +102,14 @@ export function useVoiceMode(): UseVoiceModeApi {
     sessionRef.current = null
   }, [])
 
-  const clearError = useCallback(() => setError(null), [])
+  const clearError = useCallback(() => {
+    setError(null)
+    setPhase((p) => (p === 'error' ? 'idle' : p))
+  }, [])
 
   const stopSpeaking = useCallback(() => {
+    // Invalidate in-flight TTS so a late fetch cannot resume playback.
+    turnIdRef.current += 1
     clearAudio()
     setPhase('idle')
   }, [clearAudio])
@@ -221,13 +226,17 @@ export function useVoiceMode(): UseVoiceModeApi {
 
   const startListening = useCallback(() => {
     if (!supported) {
-      setError('Modalità vocale non supportata in questo browser.')
+      setError(
+        'Modalità vocale non disponibile qui. Su questo dispositivo usa la chat testuale.',
+      )
       setPhase('error')
       return
     }
     if (sendLockRef.current || isThinking || isStreaming) return
 
-    // Stop any current TTS before listening (MVP interruption).
+    // New Voice turn cancels prior speech (TTS fetch + playback) first (#356B).
+    turnIdRef.current += 1
+    pendingSpeakRef.current = null
     clearAudio()
     clearListenSession()
     setError(null)
@@ -281,7 +290,7 @@ export function useVoiceMode(): UseVoiceModeApi {
         if (listenGenRef.current !== listenGen) return
         if (code === 'aborted') return
         const msg =
-          friendlySpeechError(code) ||
+          friendlySpeechError(code, 'voice') ||
           'Ascolto non riuscito. Puoi scrivere normalmente.'
         setError(msg)
         setPhase('error')

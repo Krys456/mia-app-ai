@@ -8,17 +8,22 @@ export type ComposerMicrophoneButtonProps = {
 
 /**
  * Right-slot mic control (#273). Idle ↔ listening; a11y via labels + aria-pressed.
+ * Dictation only fills the composer draft — never auto-sends (#356B clarity).
  */
 export function ComposerMicrophoneButton({
   listening,
   disabled = false,
   onClick,
 }: ComposerMicrophoneButtonProps) {
+  const label = listening
+    ? 'Interrompi dettatura'
+    : 'Dettatura: scrive nel campo, poi invii tu'
   return (
     <button
       type="button"
       className={`composer-mic${listening ? ' composer-mic--listening' : ''}`}
-      aria-label={listening ? 'Interrompi dettatura' : 'Dettatura'}
+      aria-label={label}
+      title={label}
       aria-pressed={listening}
       disabled={disabled}
       onClick={onClick}

@@ -37,6 +37,8 @@ export const PRIVACY_DISCLOSURE = {
     'Se attivi le notifiche, ShinkAIdo chiede il permesso del browser e salva una sottoscrizione push (endpoint e chiavi tecniche del browser) collegata al tuo account anonimo su questo dispositivo. Il titolo del promemoria può comparire sulla schermata di blocco. La consegna passa dai servizi push della piattaforma (ad es. Chrome/FCM). Puoi disattivare le notifiche in Impostazioni; i promemoria in app restano disponibili. Su un altro telefono o dopo aver cancellato i dati del sito l’identità anonima può cambiare e le sottoscrizioni precedenti non si trasferiscono automaticamente.',
   googleCalendar:
     'Puoi collegare opzionalmente Google Calendar da Impostazioni → Integrazioni. ShinkAIdo chiede solo il permesso di lettura (sola lettura): non può creare, modificare o eliminare eventi in questa versione. I token di accesso Google sono crittografati lato server e non vengono salvati nel browser. Quando è collegato, ShinkAIdo può rispondere in chat a domande sugli impegni (solo lettura, fatti verificati). Puoi scollegare in qualsiasi momento; Memoria, promemoria e notifiche restano indipendenti. Con una sessione anonima su questo dispositivo, cancellare i dati del sito può richiedere di collegare di nuovo Google.',
+  voice:
+    'La dettatura (microfono) scrive nel campo messaggio: rivedi e invii tu. La Modalità vocale ascolta, invia il testo finale in chat e può riprodurre la risposta a voce. Entrambe usano il riconoscimento vocale del browser (Web Speech): l’audio può essere elaborato dal browser o dal fornitore del sistema, non da un server STT di ShinkAIdo. ShinkAIdo non salva l’audio grezzo del microfono, non registra TTS come file persistenti e non ascolta in background. Su dispositivi non supportati (es. molti Safari iOS) i controlli vocali restano nascosti e la chat testuale resta disponibile.',
   anonymousSession:
     'ShinkAIdo usa un account anonimo silenzioso su questo browser. Cancellare i dati del sito può creare una nuova identità. La Memoria e i promemoria collegati all’identità precedente non vengono trasferiti automaticamente.',
   sharedDevice:
@@ -44,7 +46,7 @@ export const PRIVACY_DISCLOSURE = {
   sensitiveWarning:
     'Non salvare in Memoria password, dati di pagamento, chiavi API o altri segreti sensibili. Evita titoli di promemoria troppo sensibili se attivi le notifiche sulla schermata di blocco.',
   processors:
-    'Servizi principali usati da ShinkAIdo: OpenAI (elaborazione AI), Supabase (autenticazione, Memoria, promemoria, sottoscrizioni push e, se collegato, connessione Calendar), Vercel (hosting), Upstash (limite di richieste), i servizi push del browser/sistema operativo per le notifiche opzionali, e Google (OAuth Calendar, solo se colleghi Calendar).',
+    'Servizi principali usati da ShinkAIdo: OpenAI (elaborazione AI e, se usi la Modalità vocale, sintesi vocale TTS), Supabase (autenticazione, Memoria, promemoria, sottoscrizioni push e, se collegato, connessione Calendar/Email), Vercel (hosting), Upstash (limite di richieste), i servizi push del browser/sistema operativo per le notifiche opzionali, Google (OAuth Calendar/Email e Places, solo se usi quelle funzioni), e il riconoscimento vocale del browser/sistema (Web Speech) per dettatura e Modalità vocale.',
   newChatVsMemory:
     'Nuova chat chiude la conversazione sullo schermo. Eliminare la Memoria rimuove i ricordi salvati. L’eliminazione dell’account non è ancora disponibile.',
   highStakes:

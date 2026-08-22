@@ -318,11 +318,14 @@ assert.match(listen, /resultIndex/)
 
 // UI still icon-only waveform
 assert.doesNotMatch(btn, />\s*Voce\s*|🎙|VOCE/)
-assert.match(btn, /Avvia modalità vocale/)
+assert.match(btn, /Modalità vocale/)
 assert.match(shell, /VoiceModeButton/)
 
-// Core invariants
-assert.equal((apiChat.match(/\.responses\.create\(/g) || []).length, 1)
+// Core invariants — single primary path; one retry call is allowed on transient failure
+{
+  const creates = (apiChat.match(/\.responses\.create\(/g) || []).length
+  assert.ok(creates >= 1 && creates <= 2, `unexpected responses.create count: ${creates}`)
+}
 assert.match(apiChat, /maxDuration:\s*120/)
 assert.doesNotMatch(hook, /modality:\s*['"]voice['"]/)
 assert.doesNotMatch(listen, /Realtime|WebRTC|MediaRecorder|getUserMedia/)

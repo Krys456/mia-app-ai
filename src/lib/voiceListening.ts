@@ -354,15 +354,20 @@ export function startVoiceListening(
       // Natural cycle end — commit this cycle's transcript, then keep listening.
       state = commitRecognitionCycle(state)
       emitDisplay()
-      try {
-        recognition.start()
-      } catch {
-        // Browser may throw if start is called too quickly; retry once.
+      // Android Chrome often throws if start() runs synchronously in onend;
+      // defer and retry once (#356B).
+      const restart = () => {
+        if (disposed || discarded || activeGen() !== gen || finalizeRequested) return
         try {
           recognition.start()
         } catch {
           handlers.onError?.('busy')
         }
+      }
+      try {
+        recognition.start()
+      } catch {
+        setTimeout(restart, 48)
       }
     }
   }
@@ -384,9 +389,22 @@ export function startVoiceListening(
   try {
     recognition.start()
   } catch {
-    dispose()
-    handlers.onError?.('busy')
-    return null
+    // Brief defer helps after a prior abort (Android Chrome start race).
+    try {
+      setTimeout(() => {
+        if (disposed || discarded) return
+        try {
+          recognition.start()
+        } catch {
+          dispose()
+          handlers.onError?.('busy')
+        }
+      }, 48)
+    } catch {
+      dispose()
+      handlers.onError?.('busy')
+      return null
+    }
   }
 
   return {

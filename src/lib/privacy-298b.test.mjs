@@ -37,6 +37,8 @@ assert.match(PRIVACY_DISCLOSURE.webSearch, /Fonti/)
 assert.match(PRIVACY_DISCLOSURE.anonymousSession, /anonimo/i)
 assert.match(PRIVACY_DISCLOSURE.sensitiveWarning, /password/i)
 assert.match(PRIVACY_DISCLOSURE.newChatVsMemory, /eliminazione dell’account|Account/i)
+assert.match(PRIVACY_DISCLOSURE.voice, /Web Speech/)
+assert.match(PRIVACY_DISCLOSURE.voice, /non salva/i)
 
 assert.equal(resolvePrivacyContactEmail({}), PRIVACY_CONTACT_PLACEHOLDER)
 assert.equal(
@@ -64,8 +66,10 @@ assert.match(types, /'privacy'/)
 
 const privacyPage = read('src/pages/PrivacyData.tsx')
 assert.match(privacyPage, /PRIVACY_DISCLOSURE/)
+assert.match(privacyPage, /PRIVACY_DISCLOSURE\.voice/)
 assert.match(privacyPage, /role="note"/)
 assert.match(privacyPage, /Privacy e dati/)
+assert.match(privacyPage, /Voce e dettatura/)
 
 const memoryPage = read('src/pages/MemoryManage.tsx')
 assert.match(memoryPage, /deleteAllMemories/)
@@ -80,6 +84,9 @@ assert.doesNotMatch(memoriesIndex, /createBrowserClient|createClient/)
 
 const chat = read('api/chat.ts')
 assert.match(chat, /requirePaidApiAccess/)
-assert.equal((chat.match(/\.responses\.create\s*\(/g) || []).length, 1)
+{
+  const creates = (chat.match(/\.responses\.create\s*\(/g) || []).length
+  assert.ok(creates >= 1 && creates <= 2, `unexpected responses.create count: ${creates}`)
+}
 
 console.log('ok: #298B privacy UI + Memory Manage contracts')
