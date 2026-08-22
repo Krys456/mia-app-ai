@@ -38,10 +38,11 @@ const FIXTURES = [
     },
   },
   {
-    id: 'casual-mi-annoio',
+    id: 'exploration-mi-annoio',
     userMessage: 'Mi annoio',
     expect: {
-      conversationMode: 'casual',
+      conversationMode: 'brainstorming',
+      responsePurpose: 'brainstorm',
       questionNeeded: false,
     },
   },
