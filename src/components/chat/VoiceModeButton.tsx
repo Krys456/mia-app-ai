@@ -8,22 +8,25 @@ export type VoiceModeButtonProps = {
 
 /**
  * Compact Voice Mode entry — waveform icon, not the #273 dictation microphone.
- * Accessible label distinguishes "Modalità vocale" from "Dettatura".
+ * Accessible label distinguishes "Modalità vocale" from "Dettatura" (#356B).
  */
 export function VoiceModeButton({
   active = false,
   disabled = false,
   onClick,
 }: VoiceModeButtonProps) {
+  const label = active
+    ? 'Chiudi modalità vocale'
+    : 'Modalità vocale: ascolta, invia e risponde a voce'
   return (
     <button
       type="button"
       className={`voice-mode-btn${active ? ' voice-mode-btn--active' : ''}`}
-      aria-label={active ? 'Modalità vocale attiva' : 'Avvia modalità vocale'}
+      aria-label={label}
+      title={label}
       aria-pressed={active}
       disabled={disabled}
       onClick={onClick}
-      title="Avvia modalità vocale"
     >
       <span className="voice-mode-btn__glyph" aria-hidden="true">
         {/* Sound-wave / conversation-wave — deliberately not a microphone */}

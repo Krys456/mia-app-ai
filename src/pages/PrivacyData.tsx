@@ -89,6 +89,13 @@ export function PrivacyData({ onBack }: PrivacyDataProps) {
           <p>{PRIVACY_DISCLOSURE.googleCalendar}</p>
         </section>
 
+        <section className="privacy-data__section" aria-labelledby="privacy-voice-title">
+          <h2 id="privacy-voice-title" className="privacy-data__heading">
+            Voce e dettatura
+          </h2>
+          <p>{PRIVACY_DISCLOSURE.voice}</p>
+        </section>
+
         <section className="privacy-data__section" aria-labelledby="privacy-account-title">
           <h2 id="privacy-account-title" className="privacy-data__heading">
             Account recuperabile

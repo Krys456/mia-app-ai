@@ -53,9 +53,32 @@ function getSpeechRecognitionConstructor(): SpeechRecognitionConstructor | null 
   return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null
 }
 
-/** Runtime feature detection — safe to call in browser only. */
-export function isSpeechRecognitionSupported(): boolean {
+/**
+ * iOS / iPadOS WebKit often exposes SpeechRecognition but STT is unreliable
+ * for push-to-talk Voice Mode and dictation. Do not fake support (#356B).
+ */
+export function isLikelyIosWebkitSpeech(): boolean {
+  if (typeof navigator === 'undefined') return false
+  const ua = navigator.userAgent || ''
+  if (/iPad|iPhone|iPod/i.test(ua)) return true
+  // iPadOS 13+ desktop UA
+  if (navigator.platform === 'MacIntel' && (navigator.maxTouchPoints || 0) > 1) return true
+  return false
+}
+
+/** True when the Web Speech constructor exists (may still be unreliable). */
+export function isSpeechRecognitionApiPresent(): boolean {
   return getSpeechRecognitionConstructor() != null
+}
+
+/**
+ * Product-facing support: API present AND not on unreliable iOS WebKit.
+ * Safe to call in browser only; false under SSR / Node.
+ */
+export function isSpeechRecognitionSupported(): boolean {
+  if (!isSpeechRecognitionApiPresent()) return false
+  if (isLikelyIosWebkitSpeech()) return false
+  return true
 }
 
 export function createSpeechRecognition(): SpeechRecognitionLike | null {
@@ -93,8 +116,17 @@ export function normalizeSpeechErrorCode(raw: string | undefined | null): Speech
   }
 }
 
+export type SpeechErrorSurface = 'dictation' | 'voice'
+
 /** User-facing Italian copy — never expose raw vendor errors. */
-export function friendlySpeechError(code: SpeechRecognitionErrorCode): string | null {
+export function friendlySpeechError(
+  code: SpeechRecognitionErrorCode,
+  surface: SpeechErrorSurface = 'dictation',
+): string | null {
+  const writeFallback =
+    surface === 'voice'
+      ? 'Ascolto non riuscito. Puoi scrivere il messaggio normalmente.'
+      : 'Dettatura non riuscita. Puoi scrivere il messaggio normalmente.'
   switch (code) {
     case 'not-allowed':
     case 'service-not-allowed':
@@ -103,15 +135,17 @@ export function friendlySpeechError(code: SpeechRecognitionErrorCode): string | 
     case 'busy':
       return 'Microfono non disponibile. Riprova tra un momento.'
     case 'no-speech':
-      return 'Non ho sentito nulla. Tocca di nuovo il microfono e riprova.'
+      return surface === 'voice'
+        ? 'Non ho sentito nulla. Tocca Ascolta e riprova.'
+        : 'Non ho sentito nulla. Tocca di nuovo il microfono e riprova.'
     case 'network':
     case 'language-not-supported':
     case 'unknown':
-      return 'Dettatura non riuscita. Puoi scrivere il messaggio normalmente.'
+      return writeFallback
     case 'aborted':
       return null
     default:
-      return 'Dettatura non riuscita. Puoi scrivere il messaggio normalmente.'
+      return writeFallback
   }
 }
 
