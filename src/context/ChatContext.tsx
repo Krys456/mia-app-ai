@@ -154,6 +154,16 @@ import {
   PLACES_USE_LOCATION_TRIGGER,
   savePlacesContext,
 } from '../lib/places-chat'
+import {
+  applyReminderIntent,
+  confirmPendingReminderProposal,
+  detectReminderIntent,
+  discardPendingReminderProposal,
+  loadPendingReminderProposal,
+  loadRemindersContext,
+  saveRemindersContext,
+} from '../lib/reminder-chat'
+import { shouldOfferPushOptIn, enableWebPushFromUserGesture } from '../lib/webPush'
 import { getBrowserPosition as getBrowserPositionForPlaces } from '../lib/geolocation.js'
 import {
   applyTranslationIntent,
@@ -382,6 +392,7 @@ type Action =
       translationUi?: import('../types').TranslationUiState | null
       calendarUi?: import('../types').CalendarUiState | null
       placesUi?: import('../types').PlacesUiState | null
+      reminderUi?: import('../types').ReminderUiState | null
     }
   | { type: 'ASSISTANT_START'; id: string; memoryEvent?: MemoryFeedbackEvent | null }
   | { type: 'ASSISTANT_PROGRESS'; id: string; content: string }
@@ -527,6 +538,7 @@ function reducer(state: AppState, action: Action): AppState {
         ...(action.translationUi ? { translationUi: action.translationUi } : {}),
         ...(action.calendarUi ? { calendarUi: action.calendarUi } : {}),
         ...(action.placesUi ? { placesUi: action.placesUi } : {}),
+        ...(action.reminderUi ? { reminderUi: action.reminderUi } : {}),
       }
       return {
         ...state,
@@ -674,6 +686,8 @@ interface ChatContextValue {
   handleCalendarUiAction: (actionId: string) => void
   /** #355B — Places status chip actions (location grant / navigate). */
   handlePlacesUiAction: (actionId: string) => void
+  /** #357B — Reminder proposal Conferma / Annulla / Attiva notifiche. */
+  handleReminderUiAction: (actionId: string) => void
   /** Re-run the completion for an assistant message (drops that reply and regenerates). */
   regenerateAssistant: (assistantId: string) => void
 }
@@ -1561,6 +1575,57 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     [state.messages, runPlacesWithGeolocation, runPlacesFollowUp],
   )
 
+  const handleReminderUiAction = useCallback((actionId: string) => {
+    if (actionId === 'confirm') {
+      void (async () => {
+        const result = await confirmPendingReminderProposal({
+          language: 'it',
+          pushLikelyEnabled: !shouldOfferPushOptIn(),
+        })
+        const reminderUi =
+          result.ok && result.offerPushOptIn
+            ? {
+                kind: 'status' as const,
+                chip: 'Promemoria',
+                actions: [{ id: 'enable_push', label: 'Attiva notifiche' }],
+              }
+            : null
+        dispatch({
+          type: 'LOCAL_EXCHANGE',
+          userContent: 'Conferma',
+          assistantContent: result.reply,
+          reminderUi,
+        })
+      })()
+      return
+    }
+    if (actionId === 'cancel') {
+      void (async () => {
+        const result = await discardPendingReminderProposal({ language: 'it' })
+        dispatch({
+          type: 'LOCAL_EXCHANGE',
+          userContent: 'Annulla',
+          assistantContent: result.reply,
+        })
+      })()
+      return
+    }
+    if (actionId === 'enable_push') {
+      void (async () => {
+        const r = await enableWebPushFromUserGesture()
+        dispatch({
+          type: 'LOCAL_EXCHANGE',
+          userContent: 'Attiva notifiche',
+          assistantContent: r.ok
+            ? 'Notifiche attivate. Ti avviserò anche quando ShinkAIdo non è aperto.'
+            : r.code === 'permission_denied'
+              ? 'Permesso notifiche non concesso. Puoi riprovare dalle Impostazioni.'
+              : 'Non sono riuscito ad attivare le notifiche. Puoi riprovare dalle Impostazioni.',
+        })
+      })()
+    }
+  }, [])
+
   const handleCalculatorUiAction = useCallback((actionId: string) => {
     if (actionId !== 'copy_result') return
     const calc = applyCalculatorIntent({
@@ -1878,6 +1943,68 @@ export function ChatProvider({ children }: { children: ReactNode }) {
               }),
             )
           }
+          return true
+        }
+      }
+
+      // #357B — Conversational Reminders (reuse #303 API). After Timer so
+      // "Ricordami…" never becomes a timer; CRITICAL: matched intents terminate locally.
+      if (allowLocalRouters) {
+        const sticky = deriveDictationLangFromMessages(state.messages)
+        const langHint =
+          sticky === 'en'
+            ? 'en'
+            : sticky === 'it'
+              ? 'it'
+              : detectBriefingLanguage(content, detectTimerLanguage(content, 'it'))
+        const remindersCtx = loadRemindersContext()
+        const reminderIntent = detectReminderIntent(content, {
+          languageHint: langHint,
+          hasRemindersContext: Boolean(remindersCtx),
+          hasPendingProposal: Boolean(loadPendingReminderProposal()),
+        })
+        if (reminderIntent.intent === 'reminder') {
+          void (async () => {
+            try {
+              const rem = await applyReminderIntent({
+                text: content,
+                languageHint: langHint,
+                remindersContext: remindersCtx,
+                pushLikelyEnabled: !shouldOfferPushOptIn(),
+              })
+              if (rem.remindersContext) saveRemindersContext(rem.remindersContext)
+              const reply =
+                rem.handled && rem.reply
+                  ? rem.reply
+                  : langHint === 'en'
+                    ? 'I couldn’t manage reminders right now.'
+                    : 'Non riesco a gestire i promemoria in questo momento.'
+              let reminderUi =
+                (rem.reminderUi as import('../types').ReminderUiState | null) || null
+              if (rem.offerPushOptIn) {
+                reminderUi = {
+                  kind: 'status',
+                  chip: 'Promemoria',
+                  actions: [{ id: 'enable_push', label: 'Attiva notifiche' }],
+                }
+              }
+              dispatch({
+                type: 'LOCAL_EXCHANGE',
+                userContent: content,
+                assistantContent: reply,
+                reminderUi,
+              })
+            } catch {
+              dispatch({
+                type: 'LOCAL_EXCHANGE',
+                userContent: content,
+                assistantContent:
+                  langHint === 'en'
+                    ? 'I couldn’t manage reminders right now.'
+                    : 'Non riesco a gestire i promemoria in questo momento.',
+              })
+            }
+          })()
           return true
         }
       }
@@ -2566,6 +2693,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       handleTranslationUiAction,
       handleCalendarUiAction,
       handlePlacesUiAction,
+      handleReminderUiAction,
       regenerateAssistant,
     }),
     [
@@ -2597,6 +2725,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       handleTranslationUiAction,
       handleCalendarUiAction,
       handlePlacesUiAction,
+      handleReminderUiAction,
       regenerateAssistant,
     ],
   )

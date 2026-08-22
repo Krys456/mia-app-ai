@@ -22,6 +22,7 @@ import { DailyBriefingUi } from './DailyBriefingUi'
 import { CalendarUi } from './CalendarUi'
 import { TranslationUi } from './TranslationUi'
 import { PlacesUi } from './PlacesUi'
+import { ReminderUi } from './ReminderUi'
 import './MessageBubble.css'
 
 interface MessageBubbleProps {
@@ -49,6 +50,8 @@ interface MessageBubbleProps {
   onCalendarAction?: (actionId: string) => void
   /** #355B — Places status chip actions (location grant / navigate). */
   onPlacesAction?: (actionId: string) => void
+  /** #357B — Reminder proposal Conferma / Annulla. */
+  onReminderAction?: (actionId: string) => void
   /**
    * #290 — when true, a native text selection is active in message prose.
    * Suppresses whole-message long-press action pinning to avoid overlay conflicts.
@@ -98,6 +101,7 @@ function MessageBubbleComponent({
   onTranslationAction,
   onCalendarAction,
   onPlacesAction,
+  onReminderAction,
   selectionActive = false,
 }: MessageBubbleProps) {
   const isAssistant = message.role === 'assistant'
@@ -274,6 +278,9 @@ function MessageBubbleComponent({
                 ) : null}
                 {!isStreaming && message.placesUi ? (
                   <PlacesUi placesUi={message.placesUi} onAction={onPlacesAction} />
+                ) : null}
+                {!isStreaming && message.reminderUi ? (
+                  <ReminderUi reminderUi={message.reminderUi} onAction={onReminderAction} />
                 ) : null}
                 {!isStreaming && message.translationUi && onTranslationAction ? (
                   <TranslationUi
