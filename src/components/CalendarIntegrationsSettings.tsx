@@ -12,7 +12,6 @@ import {
   type CalendarToggleVisual,
   type CalendarUiPhase,
 } from '../lib/calendarToggleModel'
-import { CalendarCryptoDiagPanel } from './CalendarCryptoDiagPanel'
 import './MemoryToggle.css'
 
 /** #304A1 — Settings → Integrazioni → Google Calendar with persistent ON/OFF toggle. */
@@ -201,9 +200,6 @@ export function CalendarIntegrationsSettings() {
             {note}
           </p>
         ) : null}
-
-        {/* #336B TEMPORARY — Preview/dev only; REMOVE BEFORE MERGE */}
-        <CalendarCryptoDiagPanel />
       </div>
     </section>
   )

@@ -3,7 +3,6 @@
  * - POST (default): authenticated Calendar + Reminders pack
  * - POST action morning_schedule_*: schedule CRUD (no new Vercel function)
  * - POST action calendar_query: read-only Calendar chat pack (#336B; no new Vercel function)
- * - POST action calendar_crypto_diag: TEMPORARY safe key fingerprints (#336B; REMOVE BEFORE MERGE)
  * - GET ?morning_schedule=1: fetch schedule
  *
  * Weather composed client-side via #317 (no silent GPS).
@@ -29,7 +28,6 @@ import {
 import { consumeRateLimit } from '../lib/server/rate-limit.js'
 import { ensureRequestContext } from '../lib/server/request-id.js'
 import { safeErrorSnippet } from '../lib/server/safe-log.js'
-import { buildCalendarCryptoDiag } from '../lib/server/calendar-crypto-diag.js'
 
 export const config = {
   runtime: 'nodejs',
@@ -127,25 +125,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Never trust client ownership fields.
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { user_id: _u, userId: _uc, ...safeBody } = body
-
-  // #336B TEMPORARY — authenticated safe encryption-key fingerprints. REMOVE BEFORE MERGE.
-  if (safeBody.action === 'calendar_crypto_diag') {
-    const diag = buildCalendarCryptoDiag(process.env)
-    console.warn(
-      '[daily-briefing]',
-      JSON.stringify({
-        route: 'calendar-crypto-diag',
-        requestId: obs.requestId,
-        exists: diag.exists,
-        parseOk: diag.parseOk,
-        trimmedLength: diag.trimmedLength,
-        // fingerprints only — never secret material
-        stringFingerprint12: diag.stringFingerprint12,
-        effectiveFingerprint12: diag.effectiveFingerprint12,
-      }),
-    )
-    return sendJson(res, 200, { ...diag, requestId: obs.requestId }, req)
-  }
 
   // #336B — read-only Calendar chat query (same function; verified listEvents only).
   // Action-isolated: must not initialize or call morning schedule storage.

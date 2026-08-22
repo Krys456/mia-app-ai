@@ -20,7 +20,7 @@ import {
   toPublicConnection,
   verifyUserJwt,
 } from '../_shared/calendar-edge.ts'
-import { decryptToken, fingerprintEncryptionKeyEnv } from '../_shared/calendar-token-crypto.ts'
+import { decryptToken } from '../_shared/calendar-token-crypto.ts'
 
 async function revokeGoogleToken(token: string) {
   try {
@@ -101,19 +101,6 @@ Deno.serve(async (req) => {
       }
 
       const action = typeof body.action === 'string' ? body.action.trim() : 'disconnect'
-
-      // #336B TEMPORARY crypto fingerprint diagnostic — REMOVE BEFORE MERGE.
-      if (action === 'calendar_crypto_diag') {
-        const diag = await fingerprintEncryptionKeyEnv(env('SHINKAIDO_CALENDAR_ENCRYPTION_KEY'))
-        logSafe('calendar-connection', {
-          runId,
-          ok: true,
-          action: 'calendar_crypto_diag',
-          exists: diag.exists,
-          parseOk: diag.parseOk,
-        })
-        return json(200, { ...diag, runId }, cors)
-      }
 
       if (action !== 'disconnect') {
         return json(400, { error: 'unknown_action', code: 'unknown_action', runId }, cors)
