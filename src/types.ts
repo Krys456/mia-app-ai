@@ -70,6 +70,8 @@ export interface ChatMessage {
   translationUi?: TranslationUiState | null
   /** #355B — compact Places status chip / location permission ask. */
   placesUi?: PlacesUiState | null
+  /** #357B — Reminder proposal Conferma / Annulla. */
+  reminderUi?: ReminderUiState | null
 }
 
 /** #322 — compact Translation result UI. */
@@ -119,6 +121,18 @@ export type PlacesUiState = {
   kind: 'location_permission' | 'results'
   chip?: string
   actions?: PlacesUiAction[]
+}
+
+/** #357B — Reminder proposal confirmation chip. */
+export type ReminderUiAction = {
+  id: string
+  label: string
+}
+
+export type ReminderUiState = {
+  kind: 'proposal' | 'status'
+  chip?: string
+  actions?: ReminderUiAction[]
 }
 
 /** #320 — compact Energy Math result UI on an assistant message. */

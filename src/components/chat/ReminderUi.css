@@ -1,0 +1,50 @@
+/* #357B — quiet Reminder proposal actions (paper system) */
+
+.reminder-ui {
+  margin-top: 0.45rem;
+}
+
+.reminder-ui__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.reminder-ui__chip {
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  border-bottom: 1px solid color-mix(in srgb, var(--hanko, var(--accent)) 35%, transparent);
+  padding-bottom: 0.05rem;
+}
+
+.reminder-ui__action {
+  appearance: none;
+  border: 1px solid color-mix(in srgb, var(--border, #ddd) 80%, transparent);
+  background: color-mix(in srgb, var(--surface-solid, var(--surface)) 92%, transparent);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.82rem;
+  padding: 0.28rem 0.55rem;
+  border-radius: var(--radius-sm, 6px);
+  cursor: pointer;
+  min-height: max(2.75rem, var(--touch-min, 2.75rem));
+  touch-action: manipulation;
+}
+
+.reminder-ui__action--primary {
+  border-color: color-mix(in srgb, var(--accent) 36%, var(--border, #ddd));
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  font-weight: 600;
+}
+
+.reminder-ui__action:hover {
+  border-color: color-mix(in srgb, var(--hanko, var(--accent)) 40%, var(--border, #ddd));
+}
+
+.reminder-ui__action:focus-visible {
+  outline: 2px solid var(--hanko, var(--accent));
+  outline-offset: 2px;
+}
