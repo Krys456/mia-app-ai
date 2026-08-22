@@ -144,6 +144,18 @@ import {
   saveEmailContext,
 } from '../lib/email-chat'
 import {
+  applyPlacesIntent,
+  clearPendingPlacesRequest,
+  detectPlacesIntent,
+  geoFailureCopy as placesGeoFailureCopy,
+  loadPendingPlacesRequest,
+  loadPlacesContext,
+  placesCopy,
+  PLACES_USE_LOCATION_TRIGGER,
+  savePlacesContext,
+} from '../lib/places-chat'
+import { getBrowserPosition as getBrowserPositionForPlaces } from '../lib/geolocation.js'
+import {
   applyTranslationIntent,
   buildTranslationDiag,
   clearTranslationContext,
@@ -369,6 +381,7 @@ type Action =
       dailyBriefingUi?: import('../types').DailyBriefingUiState | null
       translationUi?: import('../types').TranslationUiState | null
       calendarUi?: import('../types').CalendarUiState | null
+      placesUi?: import('../types').PlacesUiState | null
     }
   | { type: 'ASSISTANT_START'; id: string; memoryEvent?: MemoryFeedbackEvent | null }
   | { type: 'ASSISTANT_PROGRESS'; id: string; content: string }
@@ -513,6 +526,7 @@ function reducer(state: AppState, action: Action): AppState {
         ...(action.dailyBriefingUi ? { dailyBriefingUi: action.dailyBriefingUi } : {}),
         ...(action.translationUi ? { translationUi: action.translationUi } : {}),
         ...(action.calendarUi ? { calendarUi: action.calendarUi } : {}),
+        ...(action.placesUi ? { placesUi: action.placesUi } : {}),
       }
       return {
         ...state,
@@ -658,6 +672,8 @@ interface ChatContextValue {
   handleTranslationUiAction: (actionId: string) => void
   /** #336B — Calendar status chip actions (open Settings). */
   handleCalendarUiAction: (actionId: string) => void
+  /** #355B — Places status chip actions (location grant / navigate). */
+  handlePlacesUiAction: (actionId: string) => void
   /** Re-run the completion for an assistant message (drops that reply and regenerates). */
   regenerateAssistant: (assistantId: string) => void
 }
@@ -1440,6 +1456,111 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     [],
   )
 
+  // #355B — resolve a Places follow-up (chip tap or synthetic sentinel text)
+  // against the stored session context. Zero model calls; always terminates
+  // locally when the text is Places-shaped.
+  const runPlacesFollowUp = useCallback(async (text: string, langHint: 'it' | 'en') => {
+    const placesCtx = loadPlacesContext()
+    try {
+      const result = await applyPlacesIntent({
+        text,
+        languageHint: langHint,
+        placesContext: placesCtx,
+      })
+      if (result.placesContext) {
+        savePlacesContext(result.placesContext)
+      } else if (result.placesContext === null) {
+        savePlacesContext(null)
+      }
+      if (result.handled && result.reply) {
+        dispatch({
+          type: 'LOCAL_EXCHANGE',
+          userContent: text,
+          assistantContent: result.reply,
+          placesUi: (result.placesUi as import('../types').PlacesUiState | null) || null,
+        })
+      }
+    } catch {
+      dispatch({
+        type: 'LOCAL_EXCHANGE',
+        userContent: text,
+        assistantContent:
+          langHint === 'en'
+            ? 'Places search failed right now.'
+            : 'La ricerca luoghi non è riuscita al momento.',
+      })
+    }
+  }, [])
+
+  // #355B — after explicit "Usa la mia posizione" grant, re-run the pending
+  // Places query (same original text) now WITH coordinates. Coordinates are
+  // only ever passed transiently into applyPlacesIntent — never stored.
+  const runPlacesWithGeolocation = useCallback(async (langHint: 'it' | 'en') => {
+    const pending = loadPendingPlacesRequest()
+    const lang = (pending?.language as 'it' | 'en' | undefined) || langHint
+    const userLabel = lang === 'en' ? 'Use my location' : 'Usa la mia posizione'
+    dispatch({
+      type: 'LOCAL_EXCHANGE',
+      userContent: userLabel,
+      assistantContent: lang === 'en' ? 'Checking your location…' : 'Controllo la tua posizione…',
+    })
+    const pos = await getBrowserPositionForPlaces()
+    if (!pos.ok) {
+      dispatch({
+        type: 'LOCAL_EXCHANGE',
+        userContent: userLabel,
+        assistantContent: placesGeoFailureCopy(pos.code, lang),
+      })
+      return
+    }
+    const placesCtx = loadPlacesContext()
+    const text = pending?.text || PLACES_USE_LOCATION_TRIGGER
+    try {
+      const result = await applyPlacesIntent({
+        text,
+        languageHint: lang,
+        placesContext: placesCtx,
+        latitude: pos.latitude,
+        longitude: pos.longitude,
+      })
+      if (result.placesContext) savePlacesContext(result.placesContext)
+      dispatch({
+        type: 'LOCAL_EXCHANGE',
+        userContent: userLabel,
+        assistantContent:
+          result.reply || placesCopy('error', lang),
+        placesUi: (result.placesUi as import('../types').PlacesUiState | null) || null,
+      })
+    } catch {
+      dispatch({
+        type: 'LOCAL_EXCHANGE',
+        userContent: userLabel,
+        assistantContent: placesCopy('error', lang),
+      })
+    } finally {
+      clearPendingPlacesRequest()
+    }
+  }, [])
+
+  const handlePlacesUiAction = useCallback(
+    (actionId: string) => {
+      const sticky = deriveDictationLangFromMessages(state.messages)
+      const langHint = sticky === 'en' ? 'en' : 'it'
+      if (actionId === 'use_location') {
+        void runPlacesWithGeolocation(langHint)
+        return
+      }
+      if (actionId === 'navigate') {
+        void runPlacesFollowUp(langHint === 'en' ? 'take me there' : 'Portami lì', langHint)
+        return
+      }
+      if (actionId === 'maps') {
+        void runPlacesFollowUp(langHint === 'en' ? 'open it on maps' : 'Aprilo su Maps', langHint)
+      }
+    },
+    [state.messages, runPlacesWithGeolocation, runPlacesFollowUp],
+  )
+
   const handleCalculatorUiAction = useCallback((actionId: string) => {
     if (actionId !== 'copy_result') return
     const calc = applyCalculatorIntent({
@@ -1926,6 +2047,61 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         }
       }
 
+      // #355B — Places (nearby search) after Email, before Daily Briefing / Weather.
+      // CRITICAL: matched Places intents MUST terminate locally (LOCAL_EXCHANGE only).
+      // Phone Actions (above) still owns bare "Apri Google Maps"; Weather (below)
+      // still owns weather-shaped "vicino" cues via its own keyword gate — Places
+      // only claims when a place-category word (farmacia/bar/…) or a named place
+      // is paired with a proximity cue.
+      if (allowLocalRouters) {
+        const sticky = deriveDictationLangFromMessages(state.messages)
+        const langHint =
+          sticky === 'en'
+            ? 'en'
+            : sticky === 'it'
+              ? 'it'
+              : detectBriefingLanguage(content, detectTimerLanguage(content, 'it'))
+        const placesCtx = loadPlacesContext()
+        const placesIntent = detectPlacesIntent(content, {
+          languageHint: langHint,
+          hasPlacesContext: Boolean(placesCtx),
+        })
+        if (placesIntent.intent === 'places') {
+          void (async () => {
+            try {
+              const places = await applyPlacesIntent({
+                text: content,
+                languageHint: langHint,
+                placesContext: placesCtx,
+              })
+              const reply =
+                places.handled && places.reply
+                  ? places.reply
+                  : langHint === 'en'
+                    ? 'Places search failed right now.'
+                    : 'La ricerca luoghi non è riuscita al momento.'
+              savePlacesContext(places.placesContext ?? null)
+              dispatch({
+                type: 'LOCAL_EXCHANGE',
+                userContent: content,
+                assistantContent: reply,
+                placesUi: (places.placesUi as import('../types').PlacesUiState | null) || null,
+              })
+            } catch {
+              dispatch({
+                type: 'LOCAL_EXCHANGE',
+                userContent: content,
+                assistantContent:
+                  langHint === 'en'
+                    ? 'Places search failed right now.'
+                    : 'La ricerca luoghi non è riuscita al momento.',
+              })
+            }
+          })()
+          return true
+        }
+      }
+
       // #321/#334C — Daily Briefing before Energy Math / Unit / Calc / Weather.
       if (allowLocalRouters) {
         const sticky = deriveDictationLangFromMessages(state.messages)
@@ -2389,6 +2565,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       handleEnergyMathUiAction,
       handleTranslationUiAction,
       handleCalendarUiAction,
+      handlePlacesUiAction,
       regenerateAssistant,
     }),
     [
@@ -2419,6 +2596,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       handleEnergyMathUiAction,
       handleTranslationUiAction,
       handleCalendarUiAction,
+      handlePlacesUiAction,
       regenerateAssistant,
     ],
   )

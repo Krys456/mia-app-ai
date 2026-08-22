@@ -68,6 +68,8 @@ export interface ChatMessage {
   calendarUi?: CalendarUiState | null
   /** #322 — compact Translation chip on an assistant message. */
   translationUi?: TranslationUiState | null
+  /** #355B — compact Places status chip / location permission ask. */
+  placesUi?: PlacesUiState | null
 }
 
 /** #322 — compact Translation result UI. */
@@ -105,6 +107,18 @@ export type CalendarUiState = {
   kind: 'status'
   chip?: string
   actions?: CalendarUiAction[]
+}
+
+/** #355B — compact Places status chip + location-permission ask. */
+export type PlacesUiAction = {
+  id: string
+  label: string
+}
+
+export type PlacesUiState = {
+  kind: 'location_permission' | 'results'
+  chip?: string
+  actions?: PlacesUiAction[]
 }
 
 /** #320 — compact Energy Math result UI on an assistant message. */
