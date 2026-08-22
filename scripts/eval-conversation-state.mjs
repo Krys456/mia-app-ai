@@ -23,7 +23,7 @@ const FIXTURES = [
       conversationMode: 'casual',
       responsePurpose: 'react',
       desiredDepth: 'short',
-      questionNeeded: false,
+      questionNeeded: true, // #330 social reciprocal for greeting
       structurePreference: 'prose',
     },
   },
@@ -34,14 +34,15 @@ const FIXTURES = [
       conversationMode: 'casual',
       responsePurpose: 'react',
       desiredDepth: 'short',
-      questionNeeded: false,
+      questionNeeded: true, // #330
     },
   },
   {
-    id: 'casual-mi-annoio',
+    id: 'exploration-mi-annoio',
     userMessage: 'Mi annoio',
     expect: {
-      conversationMode: 'casual',
+      conversationMode: 'brainstorming',
+      responsePurpose: 'brainstorm',
       questionNeeded: false,
     },
   },

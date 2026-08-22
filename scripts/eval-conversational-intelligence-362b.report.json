@@ -1,0 +1,431 @@
+{
+  "build": {
+    "personality": "362b-1",
+    "state": "362b-1",
+    "nrp": "362b-1"
+  },
+  "timestamp": "2026-08-22T12:24:07.810Z",
+  "stateProxy": {
+    "A_CASUAL": [
+      {
+        "userMessage": "Ciao",
+        "mode": "casual",
+        "purpose": "react",
+        "tone": "neutral",
+        "emoji": "moderate",
+        "depth": "short",
+        "qNeeded": true
+      },
+      {
+        "userMessage": "Come va?",
+        "mode": "casual",
+        "purpose": "react",
+        "tone": "neutral",
+        "emoji": "moderate",
+        "depth": "short",
+        "qNeeded": true
+      },
+      {
+        "userMessage": "Mi annoio",
+        "mode": "brainstorming",
+        "purpose": "brainstorm",
+        "tone": "curious",
+        "emoji": "moderate",
+        "depth": "medium",
+        "qNeeded": false
+      }
+    ],
+    "B_CELEBRATION": [
+      {
+        "userMessage": "Finalmente funziona!!!",
+        "mode": "celebration",
+        "purpose": "react",
+        "tone": "celebratory",
+        "emoji": "expressive",
+        "depth": "short",
+        "qNeeded": false
+      },
+      {
+        "userMessage": "Era ora 😂",
+        "mode": "casual",
+        "purpose": "react",
+        "tone": "neutral",
+        "emoji": "moderate",
+        "depth": "short",
+        "qNeeded": false
+      }
+    ],
+    "C_FRUSTRATION": [
+      {
+        "userMessage": "Non funziona ancora, che palle",
+        "mode": "debugging",
+        "purpose": "continue",
+        "tone": "frustrated",
+        "emoji": "none",
+        "depth": "medium",
+        "qNeeded": false
+      },
+      {
+        "userMessage": "Perché?",
+        "mode": "casual",
+        "purpose": "explain",
+        "tone": "neutral",
+        "emoji": "moderate",
+        "depth": "short",
+        "qNeeded": false
+      }
+    ],
+    "D_REPAIR": [
+      {
+        "userMessage": "Cos'è OAuth?",
+        "mode": "informational",
+        "purpose": "explain",
+        "tone": "neutral",
+        "emoji": "light",
+        "depth": "medium",
+        "qNeeded": false
+      },
+      {
+        "userMessage": "Non ho capito",
+        "mode": "teaching",
+        "purpose": "explain",
+        "tone": "curious",
+        "emoji": "light",
+        "depth": "medium",
+        "qNeeded": false
+      },
+      {
+        "userMessage": "Fammi un esempio",
+        "mode": "teaching",
+        "purpose": "explain",
+        "tone": "curious",
+        "emoji": "light",
+        "depth": "medium",
+        "qNeeded": false
+      }
+    ],
+    "E_DECISION": [
+      {
+        "userMessage": "La PR ha passato tutti i test. Faccio merge?",
+        "mode": "decision_support",
+        "purpose": "recommend",
+        "tone": "neutral",
+        "emoji": "light",
+        "depth": "medium",
+        "qNeeded": true
+      },
+      {
+        "userMessage": "Sei sicuro?",
+        "mode": "quick_answer",
+        "purpose": "answer",
+        "tone": "neutral",
+        "emoji": "light",
+        "depth": "short",
+        "qNeeded": false
+      }
+    ],
+    "F_PLAYFUL": [
+      {
+        "userMessage": "Secondo te questa idea fa schifo? 😂",
+        "mode": "casual",
+        "purpose": "recommend",
+        "tone": "playful",
+        "emoji": "moderate",
+        "depth": "short",
+        "qNeeded": true
+      },
+      {
+        "userMessage": "No, non mi convince.",
+        "mode": "casual",
+        "purpose": "react",
+        "tone": "neutral",
+        "emoji": "moderate",
+        "depth": "short",
+        "qNeeded": false
+      }
+    ],
+    "G_EXAMPLES": [
+      {
+        "userMessage": "Quali latticini possono farmi andare in bagno?",
+        "mode": "quick_answer",
+        "purpose": "answer",
+        "tone": "neutral",
+        "emoji": "light",
+        "depth": "short",
+        "qNeeded": false
+      }
+    ]
+  },
+  "smoke": {
+    "model": "gpt-4o",
+    "n": 15,
+    "trailingQRate": 0.3333333333333333,
+    "endsQWhenQNeededFalse": 0.2,
+    "serviceOfferRate": 0,
+    "fillerOpenRate": 0.26666666666666666,
+    "meanEmoji": 0.2,
+    "frustrationEmojiMax": 0,
+    "sequences": [
+      {
+        "name": "A_CASUAL",
+        "turns": [
+          {
+            "userMessage": "Ciao",
+            "mode": "casual",
+            "purpose": "react",
+            "tone": "neutral",
+            "emojiLevel": "moderate",
+            "qNeeded": true,
+            "len": 17,
+            "endsQ": false,
+            "service": false,
+            "filler": false,
+            "emojiCount": 1,
+            "preview": "Ciao! Come va? 😊",
+            "full": "Ciao! Come va? 😊"
+          },
+          {
+            "userMessage": "Come va?",
+            "mode": "casual",
+            "purpose": "react",
+            "tone": "neutral",
+            "emojiLevel": "moderate",
+            "qNeeded": true,
+            "len": 36,
+            "endsQ": true,
+            "service": false,
+            "filler": false,
+            "emojiCount": 0,
+            "preview": "Tutto bene, grazie! E tu, come stai?",
+            "full": "Tutto bene, grazie! E tu, come stai?"
+          },
+          {
+            "userMessage": "Mi annoio",
+            "mode": "brainstorming",
+            "purpose": "brainstorm",
+            "tone": "curious",
+            "emojiLevel": "moderate",
+            "qNeeded": false,
+            "len": 118,
+            "endsQ": false,
+            "service": false,
+            "filler": true,
+            "emojiCount": 0,
+            "preview": "Capisco. Vuoi provare qualcosa di nuovo per passare il tempo? Potremmo esplorare un hobby o un argomento interessante!",
+            "full": "Capisco. Vuoi provare qualcosa di nuovo per passare il tempo? Potremmo esplorare un hobby o un argomento interessante!"
+          }
+        ]
+      },
+      {
+        "name": "B_CELEBRATION",
+        "turns": [
+          {
+            "userMessage": "Finalmente funziona!!!",
+            "mode": "celebration",
+            "purpose": "react",
+            "tone": "celebratory",
+            "emojiLevel": "expressive",
+            "qNeeded": false,
+            "len": 58,
+            "endsQ": true,
+            "service": false,
+            "filler": false,
+            "emojiCount": 1,
+            "preview": "Fantastico! 🎉 Che gioia sentirlo. Cos’è che funziona ora?",
+            "full": "Fantastico! 🎉 Che gioia sentirlo. Cos’è che funziona ora?"
+          },
+          {
+            "userMessage": "Era ora 😂",
+            "mode": "casual",
+            "purpose": "react",
+            "tone": "neutral",
+            "emojiLevel": "moderate",
+            "qNeeded": false,
+            "len": 39,
+            "endsQ": true,
+            "service": false,
+            "filler": false,
+            "emojiCount": 0,
+            "preview": "Meglio tardi che mai! Cosa hai risolto?",
+            "full": "Meglio tardi che mai! Cosa hai risolto?"
+          }
+        ]
+      },
+      {
+        "name": "C_FRUSTRATION",
+        "turns": [
+          {
+            "userMessage": "Non funziona ancora, che palle",
+            "mode": "debugging",
+            "purpose": "continue",
+            "tone": "frustrated",
+            "emojiLevel": "none",
+            "qNeeded": false,
+            "len": 122,
+            "endsQ": false,
+            "service": false,
+            "filler": true,
+            "emojiCount": 0,
+            "preview": "Capisco, dev'essere frustrante. Sai dirmi cosa non ha funzionato esattamente? Così possiamo cercare di risolverlo insieme.",
+            "full": "Capisco, dev'essere frustrante. Sai dirmi cosa non ha funzionato esattamente? Così possiamo cercare di risolverlo insieme."
+          },
+          {
+            "userMessage": "Perché?",
+            "mode": "debugging",
+            "purpose": "explain",
+            "tone": "neutral",
+            "emojiLevel": "light",
+            "qNeeded": false,
+            "len": 133,
+            "endsQ": false,
+            "service": false,
+            "filler": false,
+            "emojiCount": 0,
+            "preview": "Potrebbe essere utile sapere quali passaggi hai seguito o che tipo di errore riscontri. Così possiamo individuare meglio il problema.",
+            "full": "Potrebbe essere utile sapere quali passaggi hai seguito o che tipo di errore riscontri. Così possiamo individuare meglio il problema."
+          }
+        ]
+      },
+      {
+        "name": "D_REPAIR",
+        "turns": [
+          {
+            "userMessage": "Cos'è OAuth?",
+            "mode": "informational",
+            "purpose": "explain",
+            "tone": "neutral",
+            "emojiLevel": "light",
+            "qNeeded": false,
+            "len": 585,
+            "endsQ": false,
+            "service": false,
+            "filler": false,
+            "emojiCount": 0,
+            "preview": "OAuth è un protocollo di autorizzazione che consente a un'applicazione di accedere alle risorse di un utente su un altro servizio senza dover condividere le credenziali dell'utente. In pratica, permette a un'app di otten",
+            "full": "OAuth è un protocollo di autorizzazione che consente a un'applicazione di accedere alle risorse di un utente su un altro servizio senza dover condividere le credenziali dell'utente. In pratica, permette a un'app di ottenere il permesso di utilizzare le risorse di un utente (come i dati di un profilo) ospitate su un altro servizio (come un social network), usando token di accesso temporanei.\n\nEcco un esempio concreto: quando accedi a un'app usando il tuo account Google, OAuth gestisce il processo per permettere all'app di utilizzare il tuo account senza conoscere la tua password."
+          },
+          {
+            "userMessage": "Non ho capito",
+            "mode": "teaching",
+            "purpose": "explain",
+            "tone": "curious",
+            "emojiLevel": "light",
+            "qNeeded": false,
+            "len": 425,
+            "endsQ": false,
+            "service": false,
+            "filler": false,
+            "emojiCount": 0,
+            "preview": "Immagina di voler usare un'app che richiede accesso alle tue foto su un servizio di archiviazione cloud. Invece di condividere la tua password del cloud con l'app, OAuth permette all'app di chiedere il permesso al serviz",
+            "full": "Immagina di voler usare un'app che richiede accesso alle tue foto su un servizio di archiviazione cloud. Invece di condividere la tua password del cloud con l'app, OAuth permette all'app di chiedere il permesso al servizio di archiviazione. Se accetti, il servizio fornisce un \"token\" all'app, che può usare per accedere alle tue foto.\n\nIn questo modo, la tua password rimane sicura e l'app ottiene solo l'accesso necessario."
+          },
+          {
+            "userMessage": "Fammi un esempio",
+            "mode": "teaching",
+            "purpose": "explain",
+            "tone": "curious",
+            "emojiLevel": "light",
+            "qNeeded": false,
+            "len": 692,
+            "endsQ": false,
+            "service": false,
+            "filler": true,
+            "emojiCount": 0,
+            "preview": "Certo! Immagina di voler postare una foto su Instagram usando un'app di fotoritocco. Ecco come funzionerebbe con OAuth: /  / 1. **Collegamento:** L'app di fotoritocco chiede di collegarsi al tuo account Instagram. /     / 2. **A",
+            "full": "Certo! Immagina di voler postare una foto su Instagram usando un'app di fotoritocco. Ecco come funzionerebbe con OAuth:\n\n1. **Collegamento:** L'app di fotoritocco chiede di collegarsi al tuo account Instagram.\n   \n2. **Autorizzazione:** Viene aperta una schermata di Instagram dove ti viene chiesto di accedere e consentire all'app di accedere al tuo account.\n\n3. **Token di Accesso:** Se accetti, Instagram fornisce un token all'app di fotoritocco.\n\n4. **Uso del Token:** L'app utilizza questo token per postare la foto sul tuo profilo Instagram senza mai conoscere la tua password.\n\nQuesto processo protegge le tue credenziali e garantisce che l'app abbia solo il permesso che hai concesso."
+          }
+        ]
+      },
+      {
+        "name": "E_DECISION",
+        "turns": [
+          {
+            "userMessage": "La PR ha passato tutti i test. Faccio merge?",
+            "mode": "decision_support",
+            "purpose": "recommend",
+            "tone": "neutral",
+            "emojiLevel": "light",
+            "qNeeded": true,
+            "len": 193,
+            "endsQ": false,
+            "service": false,
+            "filler": false,
+            "emojiCount": 0,
+            "preview": "Sì, se la PR ha superato tutti i test e non ci sono altri blocchi, farei il merge. Assicurati solo che tutto sia in ordine con le revisioni richieste e che il branch di destinazione sia pronto.",
+            "full": "Sì, se la PR ha superato tutti i test e non ci sono altri blocchi, farei il merge. Assicurati solo che tutto sia in ordine con le revisioni richieste e che il branch di destinazione sia pronto."
+          },
+          {
+            "userMessage": "Sei sicuro?",
+            "mode": "quick_answer",
+            "purpose": "answer",
+            "tone": "neutral",
+            "emojiLevel": "light",
+            "qNeeded": false,
+            "len": 242,
+            "endsQ": false,
+            "service": false,
+            "filler": false,
+            "emojiCount": 0,
+            "preview": "Sì, se hai verificato che tutti i test sono stati passati e che non ci sono altri problemi segnalati, il merge è il passo successivo logico. Assicurati solo che non ci siano conflitti e che sia tutto allineato con le lin",
+            "full": "Sì, se hai verificato che tutti i test sono stati passati e che non ci sono altri problemi segnalati, il merge è il passo successivo logico. Assicurati solo che non ci siano conflitti e che sia tutto allineato con le linee guida del progetto."
+          }
+        ]
+      },
+      {
+        "name": "F_PLAYFUL",
+        "turns": [
+          {
+            "userMessage": "Secondo te questa idea fa schifo? 😂",
+            "mode": "casual",
+            "purpose": "recommend",
+            "tone": "playful",
+            "emojiLevel": "moderate",
+            "qNeeded": true,
+            "len": 40,
+            "endsQ": true,
+            "service": false,
+            "filler": false,
+            "emojiCount": 1,
+            "preview": "Dipende dall'idea! 😄 Di cosa si tratta?",
+            "full": "Dipende dall'idea! 😄 Di cosa si tratta?"
+          },
+          {
+            "userMessage": "No, non mi convince.",
+            "mode": "casual",
+            "purpose": "react",
+            "tone": "neutral",
+            "emojiLevel": "moderate",
+            "qNeeded": false,
+            "len": 106,
+            "endsQ": true,
+            "service": false,
+            "filler": true,
+            "emojiCount": 0,
+            "preview": "Va bene, a volte è utile rivedere un'idea che non ci convince. C'è qualcosa di specifico che ti preoccupa?",
+            "full": "Va bene, a volte è utile rivedere un'idea che non ci convince. C'è qualcosa di specifico che ti preoccupa?"
+          }
+        ]
+      },
+      {
+        "name": "G_EXAMPLES",
+        "turns": [
+          {
+            "userMessage": "Quali latticini possono farmi andare in bagno?",
+            "mode": "quick_answer",
+            "purpose": "answer",
+            "tone": "neutral",
+            "emojiLevel": "light",
+            "qNeeded": false,
+            "len": 336,
+            "endsQ": false,
+            "service": false,
+            "filler": false,
+            "emojiCount": 0,
+            "preview": "I latticini possono avere effetti lassativi su alcune persone, specialmente se sono intolleranti al lattosio. Prodotti come latte, formaggi freschi, yogurt e gelato possono causare disturbi digestivi. Se sospetti di aver",
+            "full": "I latticini possono avere effetti lassativi su alcune persone, specialmente se sono intolleranti al lattosio. Prodotti come latte, formaggi freschi, yogurt e gelato possono causare disturbi digestivi. Se sospetti di avere intolleranza al lattosio, potresti provare latticini senza lattosio o consultare un medico per ulteriori consigli."
+          }
+        ]
+      }
+    ]
+  }
+}

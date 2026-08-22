@@ -110,8 +110,15 @@ function budget() {
 }
 
 const contractIssues = []
-if (PERSONALITY_2_BUILD !== '329-1') contractIssues.push('unexpected personality build')
-if (NATURAL_RESPONSE_POLICY_BUILD !== '330-1') contractIssues.push('unexpected NRP build')
+if (PERSONALITY_2_BUILD !== '329-1' && PERSONALITY_2_BUILD !== '362b-1') {
+  contractIssues.push('unexpected personality build')
+}
+if (
+  NATURAL_RESPONSE_POLICY_BUILD !== '330-1' &&
+  NATURAL_RESPONSE_POLICY_BUILD !== '362b-1'
+) {
+  contractIssues.push('unexpected NRP build')
+}
 if (!/E tu\?|Cosa ne pensi/i.test(buildNaturalResponsePolicyAppendix())) {
   contractIssues.push('missing question ban examples')
 }
