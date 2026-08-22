@@ -286,6 +286,7 @@ export function describeReturnRedirectDiag(
     diag: '358b_return_redirect',
     sourceEnvName: 'CALENDAR_RETURN_URL',
     candidateCount: allowlist.length,
+    candidateOrigins: allowlist.slice(),
     selectedOrigin,
     finalOrigin,
     pathname,

@@ -47,10 +47,11 @@ function failRedirect(base: string, code: string, runId?: string) {
   target.searchParams.set('calendar', 'error')
   target.searchParams.set('code', code)
   const finalUrl = target.toString()
+  const diag = describeReturnRedirectDiag(base, finalUrl)
   logSafe('calendar-oauth-callback', {
     runId,
     code,
-    ...describeReturnRedirectDiag(base, finalUrl),
+    ...diag,
     resolveOk: true,
   })
   return redirect(finalUrl)
@@ -275,10 +276,11 @@ Deno.serve(async (req) => {
       refreshResolved.status === 'connected' ? 'connected' : 'reconnect_required',
     )
     const finalUrl = dest.toString()
+    const diag = describeReturnRedirectDiag(returnBase, finalUrl)
     logSafe('calendar-oauth-callback', {
       runId,
       ok: true,
-      ...describeReturnRedirectDiag(returnBase, finalUrl),
+      ...diag,
     })
     return redirect(finalUrl)
   } catch (err) {
