@@ -133,9 +133,13 @@ import {
 } from '../lib/dailyBriefing'
 import {
   applyCalendarIntent,
-  detectCalendarIntent,
-  loadCalendarContext,
-  saveCalendarContext,
+  clearCalendarContext,
+  clearCalendarLocalExchange,
+  markActiveLocalExchange,
+  peekActiveLocalExchange,
+  rememberCalendarContext,
+  resolveCalendarContext,
+  resolveCalendarTurnClaim,
 } from '../lib/calendar-chat'
 import {
   applyEmailIntent,
@@ -545,7 +549,7 @@ function reducer(state: AppState, action: Action): AppState {
         ...(action.energyMathUi ? { energyMathUi: action.energyMathUi } : {}),
         ...(action.dailyBriefingUi ? { dailyBriefingUi: action.dailyBriefingUi } : {}),
         ...(action.translationUi ? { translationUi: action.translationUi } : {}),
-        ...(action.calendarUi ? { calendarUi: action.calendarUi } : {}),
+        ...(action.calendarUi != null ? { calendarUi: action.calendarUi } : {}),
         ...(action.placesUi ? { placesUi: action.placesUi } : {}),
         ...(action.reminderUi ? { reminderUi: action.reminderUi } : {}),
       }
@@ -787,6 +791,23 @@ function toApiMessages(messages: ChatMessage[]): ChatApiMessage[] {
   return reversed.reverse()
 }
 
+/** #375U — Preview/localhost-only ownership diagnostics (no titles/tokens). */
+function logCalendarOwnershipDiag(payload: Record<string, unknown>) {
+  try {
+    if (typeof window === 'undefined') return
+    const host = String(window.location?.hostname || '')
+    const enabled =
+      host.includes('vercel.app') ||
+      host === 'localhost' ||
+      host === '127.0.0.1' ||
+      new URLSearchParams(window.location.search).get('calDiag') === '1'
+    if (!enabled) return
+    console.info('[cal-own-375u]', payload)
+  } catch {
+    /* ignore */
+  }
+}
+
 export function ChatProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, undefined, createInitialState)
   const generationRef = useRef(0)
@@ -814,6 +835,10 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   )
   const timerLangRef = useRef<'it' | 'en'>('it')
   const completionLockRef = useRef(false)
+  /** #375P — primary activeCalendar for this mounted conversation (sessionStorage is mirror only). */
+  const calendarRuntimeRef = useRef<object | null>(null)
+  /** #375T/#375U — React mirror of module-scoped LOCAL_EXCHANGE ownership. */
+  const activeLocalExchangeRef = useRef<{ domain: string; at: number } | null>(null)
 
   const syncActiveDocument = useCallback((messages: ChatMessage[]) => {
     if (suppressDocReuseRef.current) {
@@ -1002,6 +1027,13 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     }
     try {
       clearTranslationContext()
+    } catch {
+      /* ignore */
+    }
+    try {
+      clearCalendarContext(undefined, calendarRuntimeRef)
+      calendarRuntimeRef.current = null
+      markActiveLocalExchange(activeLocalExchangeRef, null, { reason: 'newChat' })
     } catch {
       /* ignore */
     }
@@ -1918,6 +1950,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
                 })
               }
             })()
+            clearCalendarLocalExchange(activeLocalExchangeRef, { reason: 'translation' })
             return true
           }
         }
@@ -1977,6 +2010,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
                 }),
               )
             }
+            clearCalendarLocalExchange(activeLocalExchangeRef, { reason: 'timer' })
             return true
           }
         }
@@ -2053,6 +2087,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
                 })
               }
             })()
+            clearCalendarLocalExchange(activeLocalExchangeRef, { reason: 'reminder' })
             return true
           }
         }
@@ -2112,6 +2147,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           if (isPhoneActionDiagEnabled()) {
             rememberPhoneActionDiag(buildPhoneActionDiag(phone.diag))
           }
+          clearCalendarLocalExchange(activeLocalExchangeRef, { reason: 'phone' })
           return true
         }
         if (shouldClearMessagingOnUserText(content)) {
@@ -2119,9 +2155,12 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      // #336B — Calendar chat before Daily Briefing (claims "Cosa ho oggi/domani?").
+      // #336B / #375U — Calendar chat before Daily Briefing (claims "Cosa ho oggi/domani?").
       // CRITICAL: matched Calendar intents MUST return here (LOCAL_EXCHANGE only).
       // Never fall through to /api/chat — including disabled/disconnected/error.
+      // Ownership: module-scoped (page session) + optional React ref mirror.
+      // Sticky last assistant calendarUi restores #375S conversational continuity.
+      // sessionStorage / calendarRuntimeRef remain best-effort query packs.
       if (allowLocalRouters) {
         const sticky = deriveDictationLangFromMessages(state.messages)
         const langHint =
@@ -2130,18 +2169,51 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             : sticky === 'it'
               ? 'it'
               : detectBriefingLanguage(content, detectTimerLanguage(content, 'it'))
-        const calendarCtx = loadCalendarContext()
-        const calendarIntent = detectCalendarIntent(content, {
+        const calendarCtx = resolveCalendarContext({ runtimeRef: calendarRuntimeRef })
+        // Sticky authorization from last assistant Calendar badge (UI-visible).
+        let lastAssistantHadCalendar = false
+        for (let i = state.messages.length - 1; i >= 0; i -= 1) {
+          const m = state.messages[i]
+          if (m?.role === 'assistant') {
+            lastAssistantHadCalendar = Boolean(
+              (m as { calendarUi?: unknown }).calendarUi,
+            )
+            break
+          }
+        }
+        const claim = resolveCalendarTurnClaim({
+          text: content,
           languageHint: langHint,
-          hasCalendarContext: Boolean(calendarCtx),
+          calendarCtx,
+          activeLocalExchangeRef,
+          lastAssistantHadCalendar,
         })
-        if (calendarIntent.intent === 'calendar') {
+        logCalendarOwnershipDiag({
+          phase: 'claim',
+          calendarOwnershipBefore: peekActiveLocalExchange()?.domain || null,
+          hasCalendarContext: Boolean(calendarCtx),
+          lastAssistantHadCalendar,
+          calendarOwned: claim.calendarOwned,
+          calendarIntent: (claim.intent as { intent?: string })?.intent || 'none',
+          dayShiftFollowUp: claim.dayShiftFollowUp,
+          claim: claim.claim,
+        })
+        if (claim.claim) {
+          // Own the domain synchronously BEFORE async work (survives storage miss).
+          markActiveLocalExchange(activeLocalExchangeRef, 'calendar')
+          logCalendarOwnershipDiag({
+            phase: 'mark_sync',
+            calendarOwnershipAfter: peekActiveLocalExchange()?.domain || null,
+          })
+          // Block a rapid second send until context/save + LOCAL_EXCHANGE complete.
+          inFlightRef.current = true
           void (async () => {
             try {
               const cal = await applyCalendarIntent({
                 text: content,
                 languageHint: langHint,
                 calendarContext: calendarCtx,
+                hasCalendarContext: claim.calendarOwned,
               })
               const reply =
                 cal.handled && cal.reply
@@ -2149,15 +2221,31 @@ export function ChatProvider({ children }: { children: ReactNode }) {
                   : langHint === 'en'
                     ? 'I couldn’t read the calendar right now.'
                     : 'Non riesco a leggere il calendario in questo momento.'
-              if (cal.calendarContext) saveCalendarContext(cal.calendarContext)
+              // Runtime first (sync), then storage mirror — before next turn can run.
+              if (cal.calendarContext) {
+                rememberCalendarContext(cal.calendarContext, {
+                  runtimeRef: calendarRuntimeRef,
+                })
+              }
+              markActiveLocalExchange(activeLocalExchangeRef, 'calendar')
               dispatch({
                 type: 'LOCAL_EXCHANGE',
                 userContent: content,
                 assistantContent: reply,
                 calendarUi:
-                  (cal.calendarUi as import('../types').CalendarUiState | null) || null,
+                  (cal.calendarUi as import('../types').CalendarUiState | null) || {
+                    kind: 'status',
+                    chip: 'Calendar',
+                    actions: [],
+                  },
+              })
+              logCalendarOwnershipDiag({
+                phase: 'after_local_exchange',
+                calendarOwnershipAfter: peekActiveLocalExchange()?.domain || null,
+                hasCalendarContext: Boolean(calendarRuntimeRef.current),
               })
             } catch {
+              markActiveLocalExchange(activeLocalExchangeRef, 'calendar')
               dispatch({
                 type: 'LOCAL_EXCHANGE',
                 userContent: content,
@@ -2165,7 +2253,14 @@ export function ChatProvider({ children }: { children: ReactNode }) {
                   langHint === 'en'
                     ? 'I couldn’t read the calendar right now.'
                     : 'Non riesco a leggere il calendario in questo momento.',
+                calendarUi: {
+                  kind: 'status',
+                  chip: 'Calendar',
+                  actions: [],
+                },
               })
+            } finally {
+              inFlightRef.current = false
             }
           })()
           return true
@@ -2219,6 +2314,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
               })
             }
           })()
+          clearCalendarLocalExchange(activeLocalExchangeRef, { reason: 'email' })
           return true
         }
       }
@@ -2274,6 +2370,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
               })
             }
           })()
+          clearCalendarLocalExchange(activeLocalExchangeRef, { reason: 'places' })
           return true
         }
       }
@@ -2366,6 +2463,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
                 })
               }
             })()
+            clearCalendarLocalExchange(activeLocalExchangeRef, { reason: 'briefing' })
             return true
           }
         }
@@ -2659,6 +2757,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             if (isWeatherDiagEnabled()) {
               rememberWeatherDiag(buildWeatherDiag(weather.diag || {}))
             }
+            clearCalendarLocalExchange(activeLocalExchangeRef, { reason: 'weather' })
             return true
           }
         }
@@ -2679,10 +2778,21 @@ export function ChatProvider({ children }: { children: ReactNode }) {
               userContent: content,
               locationSource: weather.intent.locationText ? 'explicit' : undefined,
             })
+            clearCalendarLocalExchange(activeLocalExchangeRef, { reason: 'weather_provider' })
             return true
           }
         }
       }
+
+      // Leaving Calendar ownership: USER turn resolved outside Calendar
+      // (Core or unclaimed). Do not clear for internal assistant post-processing —
+      // this line only runs on a user sendMessage fallthrough.
+      clearCalendarLocalExchange(activeLocalExchangeRef, { reason: 'core_fallthrough' })
+      logCalendarOwnershipDiag({
+        phase: 'core_fallthrough',
+        ownershipClearReason: 'core_fallthrough',
+        calendarOwnershipAfter: peekActiveLocalExchange()?.domain || null,
+      })
 
       const personalization = state.settings.personalization
       const developer = state.settings.developer ?? DEFAULT_DEVELOPER_SETTINGS

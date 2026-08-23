@@ -2,7 +2,11 @@
  * #336B — Calendar chat public exports.
  */
 
-export { detectCalendarIntent, detectCalendarFollowUp } from './intent.js'
+export {
+  detectCalendarIntent,
+  detectCalendarFollowUp,
+  detectDayShiftFollowUp,
+} from './intent.js'
 export { foldCalendarText } from './normalize.js'
 export {
   CALENDAR_CONTEXT_KEY,
@@ -12,9 +16,22 @@ export {
   loadCalendarContext,
   saveCalendarContext,
   clearCalendarContext,
+  resolveCalendarContext,
+  rememberCalendarContext,
+  resetModuleCalendarRuntimeForTests,
 } from './active-context.js'
-export { applyCalendarIntent } from './controller.js'
+export { applyCalendarIntent, resolveClientCalendarTimeZone, isUnreliableCalendarTimeZone } from './controller.js'
+export { runCalendarLocalExchangeTurn } from './chat-turn.js'
+export { resolveCalendarTurnClaim } from './calendar-turn-claim.js'
+export {
+  markActiveLocalExchange,
+  isCalendarLocalExchangeActive,
+  clearCalendarLocalExchange,
+  peekActiveLocalExchange,
+  peekOwnershipClearReason,
+  resetModuleActiveLocalExchangeForTests,
+} from './local-exchange-ownership.js'
 export { requestCalendarQuery, mapCalendarQueryResponse } from './api.js'
-export { computeFreeWindows, filterEventsForQuery } from './free-time.js'
+export { computeFreeWindows, filterEventsForQuery, filterEventsForAllDayDayMembership, allDayEventIncludesYmd } from './free-time.js'
 export { renderCalendarAnswer, failureReply } from './render.js'
 export { resolveCalendarQueryBounds } from './range.js'

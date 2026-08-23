@@ -1,9 +1,52 @@
 /**
- * #336B — Session-only activeCalendar context (not Memory).
+ * #336B / #375P — activeCalendar context (not Memory).
+ *
+ * Primary: in-memory runtime holder for the mounted conversation (ChatContext ref).
+ * Mirror: sessionStorage (best-effort; failures must not kill follow-ups).
  */
 
 export const CALENDAR_CONTEXT_KEY = 'shinkaido.activeCalendar.v1'
 export const CALENDAR_CONTEXT_TTL_MS = 30 * 60 * 1000
+
+/** Module fallback when no ChatContext holder is passed (tests / non-React). */
+let moduleRuntimeContext = null
+
+/**
+ * @param {{ current?: object | null } | null | undefined} holder
+ * @returns {object | null}
+ */
+function readRuntime(holder) {
+  // Prefer the ChatProvider holder when present; fall back to module so a
+  // remount within the same page session can still resolve without storage.
+  if (holder && typeof holder === 'object' && 'current' in holder) {
+    if (holder.current) return holder.current
+  }
+  return moduleRuntimeContext
+}
+
+/**
+ * @param {{ current?: object | null } | null | undefined} holder
+ * @param {object | null} ctx
+ */
+function writeRuntime(holder, ctx) {
+  // Always dual-write module (page-session fallback). Holder is a mirror.
+  moduleRuntimeContext = ctx
+  if (holder && typeof holder === 'object' && 'current' in holder) {
+    holder.current = ctx
+  }
+}
+
+/**
+ * Default sessionStorage, or null when unavailable.
+ * @returns {Storage | null}
+ */
+function defaultStorage() {
+  try {
+    return typeof sessionStorage !== 'undefined' ? sessionStorage : null
+  } catch {
+    return null
+  }
+}
 
 export function createCalendarContext(input) {
   if (!input || typeof input !== 'object') return null
@@ -37,12 +80,22 @@ export function createCalendarContext(input) {
 
 export function isCalendarContextFresh(ctx, nowMs = Date.now()) {
   if (!ctx || typeof ctx !== 'object') return false
-  if (typeof ctx.expiresAt !== 'number') return false
-  return ctx.expiresAt > nowMs
+  let expiresAt = ctx.expiresAt
+  // Coerce numeric strings (defensive; JSON should already be number).
+  if (typeof expiresAt === 'string' && /^\d+(\.\d+)?$/.test(expiresAt.trim())) {
+    expiresAt = Number(expiresAt)
+  }
+  if (typeof expiresAt !== 'number' || !Number.isFinite(expiresAt)) return false
+  return expiresAt > nowMs
 }
 
+/**
+ * Load only from persisted storage (no runtime).
+ * @param {Storage | null} [storage]
+ * @param {number} [nowMs]
+ */
 export function loadCalendarContext(
-  storage = typeof sessionStorage !== 'undefined' ? sessionStorage : null,
+  storage = defaultStorage(),
   nowMs = Date.now(),
 ) {
   if (!storage) return null
@@ -60,9 +113,14 @@ export function loadCalendarContext(
   }
 }
 
+/**
+ * Mirror to storage only (best-effort). Does not touch runtime.
+ * @param {object | null} ctx
+ * @param {Storage | null} [storage]
+ */
 export function saveCalendarContext(
   ctx,
-  storage = typeof sessionStorage !== 'undefined' ? sessionStorage : null,
+  storage = defaultStorage(),
 ) {
   if (!storage) return
   try {
@@ -72,17 +130,89 @@ export function saveCalendarContext(
     }
     storage.setItem(CALENDAR_CONTEXT_KEY, JSON.stringify(ctx))
   } catch {
-    /* ignore */
+    /* ignore — runtime follow-ups must not depend on storage */
   }
 }
 
+/**
+ * Clear runtime (+ optional storage mirror).
+ * Always clears the module fallback as well (new chat / logout isolation).
+ * @param {Storage | null} [storage]
+ * @param {{ current?: object | null } | null} [runtimeRef]
+ */
 export function clearCalendarContext(
-  storage = typeof sessionStorage !== 'undefined' ? sessionStorage : null,
+  storage = defaultStorage(),
+  runtimeRef = null,
 ) {
+  writeRuntime(runtimeRef, null)
+  moduleRuntimeContext = null
   if (!storage) return
   try {
     storage.removeItem(CALENDAR_CONTEXT_KEY)
   } catch {
     /* ignore */
   }
+}
+
+/**
+ * Prefer runtime holder; fall back to sessionStorage and hydrate runtime.
+ * @param {{
+ *   runtimeRef?: { current?: object | null } | null
+ *   storage?: Storage | null
+ *   nowMs?: number
+ * }} [opts]
+ * @returns {object | null}
+ */
+export function resolveCalendarContext(opts = {}) {
+  const nowMs = typeof opts.nowMs === 'number' ? opts.nowMs : Date.now()
+  const storage = opts.storage !== undefined ? opts.storage : defaultStorage()
+  const holder = opts.runtimeRef
+
+  const runtime = readRuntime(holder)
+  if (isCalendarContextFresh(runtime, nowMs)) {
+    return runtime
+  }
+  // Drop stale runtime.
+  writeRuntime(holder, null)
+
+  const persisted = loadCalendarContext(storage, nowMs)
+  if (persisted) {
+    writeRuntime(holder, persisted)
+    return persisted
+  }
+  return null
+}
+
+/**
+ * Set runtime primary, then best-effort mirror to storage.
+ * Must be called after a successful Calendar LOCAL_EXCHANGE before the next turn.
+ * @param {object | null} ctx
+ * @param {{
+ *   runtimeRef?: { current?: object | null } | null
+ *   storage?: Storage | null
+ *   nowMs?: number
+ * }} [opts]
+ * @returns {object | null}
+ */
+export function rememberCalendarContext(ctx, opts = {}) {
+  const nowMs = typeof opts.nowMs === 'number' ? opts.nowMs : Date.now()
+  const storage = opts.storage !== undefined ? opts.storage : defaultStorage()
+  const holder = opts.runtimeRef
+
+  if (!ctx || !isCalendarContextFresh(ctx, nowMs)) {
+    writeRuntime(holder, null)
+    saveCalendarContext(null, storage)
+    return null
+  }
+
+  writeRuntime(holder, ctx)
+  saveCalendarContext(ctx, storage)
+  return readRuntime(holder)
+}
+
+/**
+ * Test helper: wipe module-level runtime (does not touch storage).
+ */
+export function resetModuleCalendarRuntimeForTests() {
+  moduleRuntimeContext = null
 }
