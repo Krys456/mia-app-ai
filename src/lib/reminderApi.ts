@@ -91,7 +91,7 @@ function italianReminderError(
   if (code === 'reminders_disabled') {
     return 'I promemoria non sono disponibili in questo momento.'
   }
-  if (code === 'status_transition_invalid') {
+  if (code === 'status_transition_invalid' || errors?.status === 'status_transition_invalid') {
     return 'Questa azione non è consentita per lo stato attuale del promemoria.'
   }
   if (status === 401) {
