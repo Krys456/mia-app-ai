@@ -133,9 +133,10 @@ import {
 } from '../lib/dailyBriefing'
 import {
   applyCalendarIntent,
+  clearCalendarContext,
   detectCalendarIntent,
-  loadCalendarContext,
-  saveCalendarContext,
+  rememberCalendarContext,
+  resolveCalendarContext,
 } from '../lib/calendar-chat'
 import {
   applyEmailIntent,
@@ -814,6 +815,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   )
   const timerLangRef = useRef<'it' | 'en'>('it')
   const completionLockRef = useRef(false)
+  /** #375P — primary activeCalendar for this mounted conversation (sessionStorage is mirror only). */
+  const calendarRuntimeRef = useRef<object | null>(null)
 
   const syncActiveDocument = useCallback((messages: ChatMessage[]) => {
     if (suppressDocReuseRef.current) {
@@ -1002,6 +1005,12 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     }
     try {
       clearTranslationContext()
+    } catch {
+      /* ignore */
+    }
+    try {
+      clearCalendarContext(undefined, calendarRuntimeRef)
+      calendarRuntimeRef.current = null
     } catch {
       /* ignore */
     }
@@ -2119,9 +2128,10 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      // #336B — Calendar chat before Daily Briefing (claims "Cosa ho oggi/domani?").
+      // #336B / #375P — Calendar chat before Daily Briefing (claims "Cosa ho oggi/domani?").
       // CRITICAL: matched Calendar intents MUST return here (LOCAL_EXCHANGE only).
       // Never fall through to /api/chat — including disabled/disconnected/error.
+      // Runtime ref is primary activeCalendar; sessionStorage is best-effort mirror only.
       if (allowLocalRouters) {
         const sticky = deriveDictationLangFromMessages(state.messages)
         const langHint =
@@ -2130,12 +2140,14 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             : sticky === 'it'
               ? 'it'
               : detectBriefingLanguage(content, detectTimerLanguage(content, 'it'))
-        const calendarCtx = loadCalendarContext()
+        const calendarCtx = resolveCalendarContext({ runtimeRef: calendarRuntimeRef })
         const calendarIntent = detectCalendarIntent(content, {
           languageHint: langHint,
           hasCalendarContext: Boolean(calendarCtx),
         })
         if (calendarIntent.intent === 'calendar') {
+          // Block a rapid second send until context/save + LOCAL_EXCHANGE complete.
+          inFlightRef.current = true
           void (async () => {
             try {
               const cal = await applyCalendarIntent({
@@ -2149,7 +2161,12 @@ export function ChatProvider({ children }: { children: ReactNode }) {
                   : langHint === 'en'
                     ? 'I couldn’t read the calendar right now.'
                     : 'Non riesco a leggere il calendario in questo momento.'
-              if (cal.calendarContext) saveCalendarContext(cal.calendarContext)
+              // Runtime first (sync), then storage mirror — before next turn can run.
+              if (cal.calendarContext) {
+                rememberCalendarContext(cal.calendarContext, {
+                  runtimeRef: calendarRuntimeRef,
+                })
+              }
               dispatch({
                 type: 'LOCAL_EXCHANGE',
                 userContent: content,
@@ -2166,6 +2183,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
                     ? 'I couldn’t read the calendar right now.'
                     : 'Non riesco a leggere il calendario in questo momento.',
               })
+            } finally {
+              inFlightRef.current = false
             }
           })()
           return true

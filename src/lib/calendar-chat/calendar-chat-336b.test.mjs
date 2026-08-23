@@ -17,7 +17,16 @@ import {
 } from './free-time.js'
 import { renderCalendarAnswer, failureReply } from './render.js'
 import { applyCalendarIntent } from './controller.js'
-import { createCalendarContext } from './active-context.js'
+import {
+  createCalendarContext,
+  rememberCalendarContext,
+  resolveCalendarContext,
+  clearCalendarContext,
+  isCalendarContextFresh,
+  CALENDAR_CONTEXT_TTL_MS,
+  resetModuleCalendarRuntimeForTests,
+} from './active-context.js'
+import { runCalendarLocalExchangeTurn } from './chat-turn.js'
 
 const root = process.cwd()
 const read = (rel) => fs.readFileSync(path.join(root, rel), 'utf8')
@@ -193,6 +202,347 @@ describe('calendar-chat-336b day-shift follow-ups (#375M)', () => {
     assert.equal(second.diag.modelCalls, 0)
     assert.equal(second.diag.terminatesLocally, true)
     assert.doesNotMatch(second.reply, /non posso vedere|in questa chat/i)
+  })
+})
+
+describe('calendar-chat-375P active-context persistence', () => {
+  function memoryStorage() {
+    const mem = new Map()
+    return {
+      getItem: (k) => (mem.has(k) ? mem.get(k) : null),
+      setItem: (k, v) => {
+        mem.set(k, String(v))
+      },
+      removeItem: (k) => {
+        mem.delete(k)
+      },
+    }
+  }
+
+  function failingStorage() {
+    return {
+      getItem: () => {
+        throw new Error('storage_blocked')
+      },
+      setItem: () => {
+        throw new Error('storage_blocked')
+      },
+      removeItem: () => {
+        throw new Error('storage_blocked')
+      },
+    }
+  }
+
+  const now = new Date('2026-08-23T15:00:00+02:00')
+  const todayPack = {
+    status: 'ok',
+    items: [
+      {
+        id: 'b1',
+        title: 'Buon compleanno!',
+        start: '2026-08-23',
+        end: '2026-08-24',
+        allDay: true,
+        status: 'confirmed',
+      },
+    ],
+    fetchedAt: new Date().toISOString(),
+  }
+
+  it('full two-turn: Cosa ho oggi? then E domani? via runtime (Core NOT called)', async () => {
+    resetModuleCalendarRuntimeForTests()
+    const runtimeRef = { current: null }
+    const storage = memoryStorage()
+    const inFlightRef = { current: false }
+
+    const t1 = await runCalendarLocalExchangeTurn({
+      text: 'Cosa ho oggi?',
+      languageHint: 'it',
+      runtimeRef,
+      storage,
+      inFlightRef,
+      timeZone: 'Europe/Rome',
+      now,
+      requestFn: async () => todayPack,
+    })
+    assert.equal(t1.handled, true)
+    assert.equal(t1.coreCalled, false)
+    assert.ok(runtimeRef.current)
+    assert.equal(isCalendarContextFresh(runtimeRef.current), true)
+
+    let requestedRange = null
+    let coreCalled = false
+    const t2 = await runCalendarLocalExchangeTurn({
+      text: 'E domani?',
+      languageHint: 'it',
+      runtimeRef,
+      storage,
+      inFlightRef,
+      timeZone: 'Europe/Rome',
+      now,
+      requestFn: async (opts) => {
+        requestedRange = opts.range
+        return { status: 'empty', items: [], fetchedAt: new Date().toISOString() }
+      },
+    })
+    if (t2.coreCalled) coreCalled = true
+    assert.equal(t2.hasCalendarContext, true)
+    assert.equal(t2.intent.intent, 'calendar')
+    assert.equal(t2.intent.dayRef, 'tomorrow')
+    assert.equal(t2.intent.dayShiftFollowUp, true)
+    assert.equal(t2.coreCalled, false)
+    assert.equal(coreCalled, false)
+    assert.equal(requestedRange, 'tomorrow')
+    assert.equal(t2.result.diag.modelCalls, 0)
+  })
+
+  it('E oggi? / E lunedì? use runtime context', async () => {
+    resetModuleCalendarRuntimeForTests()
+    const runtimeRef = { current: null }
+    const storage = memoryStorage()
+    await runCalendarLocalExchangeTurn({
+      text: 'Cosa ho oggi?',
+      languageHint: 'it',
+      runtimeRef,
+      storage,
+      timeZone: 'Europe/Rome',
+      now,
+      requestFn: async () => todayPack,
+    })
+
+    const oggi = await runCalendarLocalExchangeTurn({
+      text: 'E oggi?',
+      languageHint: 'it',
+      runtimeRef,
+      storage,
+      timeZone: 'Europe/Rome',
+      now,
+      requestFn: async () => todayPack,
+    })
+    assert.equal(oggi.coreCalled, false)
+    assert.equal(oggi.intent.dayRef, 'today')
+    assert.equal(oggi.intent.dayShiftFollowUp, true)
+
+    const lun = await runCalendarLocalExchangeTurn({
+      text: 'E lunedì?',
+      languageHint: 'it',
+      runtimeRef,
+      storage,
+      timeZone: 'Europe/Rome',
+      now,
+      requestFn: async () => ({ status: 'empty', items: [], fetchedAt: new Date().toISOString() }),
+    })
+    assert.equal(lun.coreCalled, false)
+    assert.equal(lun.intent.dayRef.kind, 'weekday')
+    assert.equal(lun.intent.dayRef.weekday, 1)
+  })
+
+  it('expired context is not used', () => {
+    resetModuleCalendarRuntimeForTests()
+    const runtimeRef = { current: null }
+    const storage = memoryStorage()
+    const createdAt = Date.now() - CALENDAR_CONTEXT_TTL_MS - 1000
+    const expired = createCalendarContext({
+      labelDay: 'today',
+      timezone: 'Europe/Rome',
+      events: [],
+      status: 'ok',
+      createdAt,
+      expiresAt: createdAt + CALENDAR_CONTEXT_TTL_MS,
+    })
+    rememberCalendarContext(expired, { runtimeRef, storage, nowMs: createdAt })
+    // Force stale into runtime/storage with past expiresAt
+    runtimeRef.current = expired
+    storage.setItem('shinkaido.activeCalendar.v1', JSON.stringify(expired))
+    const resolved = resolveCalendarContext({
+      runtimeRef,
+      storage,
+      nowMs: Date.now(),
+    })
+    assert.equal(resolved, null)
+    assert.equal(runtimeRef.current, null)
+  })
+
+  it('no context: E domani? does not claim Calendar (Core path)', async () => {
+    resetModuleCalendarRuntimeForTests()
+    const runtimeRef = { current: null }
+    const storage = memoryStorage()
+    const t = await runCalendarLocalExchangeTurn({
+      text: 'E domani?',
+      languageHint: 'it',
+      runtimeRef,
+      storage,
+      timeZone: 'Europe/Rome',
+      now,
+      requestFn: async () => todayPack,
+    })
+    assert.equal(t.hasCalendarContext, false)
+    assert.equal(t.intent.intent, 'none')
+    assert.equal(t.coreCalled, true)
+    assert.equal(t.handled, false)
+  })
+
+  it('E OAuth? is not Calendar even with runtime context', async () => {
+    resetModuleCalendarRuntimeForTests()
+    const runtimeRef = { current: null }
+    const storage = memoryStorage()
+    await runCalendarLocalExchangeTurn({
+      text: 'Cosa ho oggi?',
+      languageHint: 'it',
+      runtimeRef,
+      storage,
+      timeZone: 'Europe/Rome',
+      now,
+      requestFn: async () => todayPack,
+    })
+    const t = await runCalendarLocalExchangeTurn({
+      text: 'E OAuth?',
+      languageHint: 'it',
+      runtimeRef,
+      storage,
+      timeZone: 'Europe/Rome',
+      now,
+      requestFn: async () => todayPack,
+    })
+    assert.equal(t.intent.intent, 'none')
+    assert.equal(t.coreCalled, true)
+  })
+
+  it('context isolation: separate runtime holders do not share', async () => {
+    resetModuleCalendarRuntimeForTests()
+    const a = { current: null }
+    const b = { current: null }
+    const storageA = memoryStorage()
+    const storageB = memoryStorage()
+    await runCalendarLocalExchangeTurn({
+      text: 'Cosa ho oggi?',
+      languageHint: 'it',
+      runtimeRef: a,
+      storage: storageA,
+      timeZone: 'Europe/Rome',
+      now,
+      requestFn: async () => todayPack,
+    })
+    assert.ok(a.current)
+    assert.equal(resolveCalendarContext({ runtimeRef: b, storage: storageB }), null)
+    const t = await runCalendarLocalExchangeTurn({
+      text: 'E domani?',
+      languageHint: 'it',
+      runtimeRef: b,
+      storage: storageB,
+      timeZone: 'Europe/Rome',
+      now,
+      requestFn: async () => todayPack,
+    })
+    assert.equal(t.coreCalled, true)
+  })
+
+  it('storage failure does not kill runtime follow-up', async () => {
+    resetModuleCalendarRuntimeForTests()
+    const runtimeRef = { current: null }
+    const storage = failingStorage()
+    const t1 = await runCalendarLocalExchangeTurn({
+      text: 'Cosa ho oggi?',
+      languageHint: 'it',
+      runtimeRef,
+      storage,
+      timeZone: 'Europe/Rome',
+      now,
+      requestFn: async () => todayPack,
+    })
+    assert.equal(t1.handled, true)
+    assert.ok(runtimeRef.current)
+
+    const t2 = await runCalendarLocalExchangeTurn({
+      text: 'E domani?',
+      languageHint: 'it',
+      runtimeRef,
+      storage,
+      timeZone: 'Europe/Rome',
+      now,
+      requestFn: async () => ({ status: 'empty', items: [], fetchedAt: new Date().toISOString() }),
+    })
+    assert.equal(t2.hasCalendarContext, true)
+    assert.equal(t2.intent.dayShiftFollowUp, true)
+    assert.equal(t2.coreCalled, false)
+  })
+
+  it('rapid second message cannot race Calendar result (in-flight)', async () => {
+    resetModuleCalendarRuntimeForTests()
+    const runtimeRef = { current: null }
+    const storage = memoryStorage()
+    const inFlightRef = { current: false }
+
+    let release
+    const gate = new Promise((resolve) => {
+      release = resolve
+    })
+
+    const firstPromise = runCalendarLocalExchangeTurn({
+      text: 'Cosa ho oggi?',
+      languageHint: 'it',
+      runtimeRef,
+      storage,
+      inFlightRef,
+      timeZone: 'Europe/Rome',
+      now,
+      requestFn: async () => {
+        await gate
+        return todayPack
+      },
+    })
+
+    // Allow first turn to set inFlight
+    await new Promise((r) => setTimeout(r, 5))
+    assert.equal(inFlightRef.current, true)
+
+    const raced = await runCalendarLocalExchangeTurn({
+      text: 'E domani?',
+      languageHint: 'it',
+      runtimeRef,
+      storage,
+      inFlightRef,
+      timeZone: 'Europe/Rome',
+      now,
+      requestFn: async () => todayPack,
+    })
+    assert.equal(raced.blockedByInFlight, true)
+    assert.equal(raced.coreCalled, false)
+
+    release()
+    const first = await firstPromise
+    assert.equal(first.handled, true)
+    assert.equal(inFlightRef.current, false)
+    assert.ok(runtimeRef.current)
+  })
+
+  it('ChatContext wires resolveCalendarContext + remember + inFlight (source)', () => {
+    const chat = read('src/context/ChatContext.tsx')
+    assert.match(chat, /resolveCalendarContext/)
+    assert.match(chat, /rememberCalendarContext/)
+    assert.match(chat, /calendarRuntimeRef/)
+    assert.match(chat, /inFlightRef\.current = true/)
+    assert.match(chat, /clearCalendarContext/)
+    assert.doesNotMatch(
+      chat,
+      /const calendarCtx = loadCalendarContext\(\)/,
+    )
+  })
+
+  it('clearCalendarContext isolates new chat', () => {
+    resetModuleCalendarRuntimeForTests()
+    const runtimeRef = { current: null }
+    const storage = memoryStorage()
+    const ctx = createCalendarContext({
+      labelDay: 'today',
+      timezone: 'UTC',
+      events: [],
+      status: 'ok',
+    })
+    rememberCalendarContext(ctx, { runtimeRef, storage })
+    clearCalendarContext(storage, runtimeRef)
+    assert.equal(runtimeRef.current, null)
+    assert.equal(resolveCalendarContext({ runtimeRef, storage }), null)
   })
 })
 
@@ -449,7 +799,7 @@ describe('calendar-chat-336b renderer + controller', () => {
 describe('calendar-chat-336b no Core fallthrough', () => {
   it('ChatContext returns before /api/chat for Calendar claim', () => {
     const ctx = read('src/context/ChatContext.tsx')
-    const calIdx = ctx.indexOf('#336B — Calendar chat')
+    const calIdx = ctx.indexOf('Calendar chat before Daily Briefing')
     const chatIdx = ctx.indexOf('runAssistantCompletion(history')
     assert.ok(calIdx > 0)
     assert.ok(chatIdx > calIdx)
