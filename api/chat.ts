@@ -95,6 +95,7 @@ import {
   documentExpiredUserMessage,
 } from '../lib/server/document-chat-appendix.js'
 import { buildPhoneActionCapabilityAppendix } from '../lib/server/phone-action-capability-appendix.js'
+import { buildLocalCapabilityAwarenessAppendix } from '../lib/server/local-capability-awareness-appendix.js'
 import {
   buildDocumentChatDiagPayload,
   isDocumentChatDiagEnabled,
@@ -225,6 +226,7 @@ interface CoreInstructionBundle {
   understandingChars: number
   adaptiveChars: number
   phoneCapabilityInjected: boolean
+  localCapabilityAwarenessInjected: boolean
   referenceContextAppendixChars: number
   referenceContext: ReturnType<typeof deriveReferenceContext>
 }
@@ -301,6 +303,17 @@ function buildInstructions(body: ChatApiRequestBody, messages: ChatApiMessage[] 
     parts.push(phoneCapabilityAppendix)
   }
 
+  // #364C — Local capability awareness (Timer/Reminder/…): prevent false "I can't"
+  // on mixed turns that #364B correctly sent to Core without executing the local action.
+  const localCapabilityAwarenessAppendix = buildLocalCapabilityAwarenessAppendix({
+    userMessage: latestUserText,
+    recentMessages: textMessages,
+  })
+  const localCapabilityAwarenessInjected = Boolean(localCapabilityAwarenessAppendix)
+  if (localCapabilityAwarenessAppendix) {
+    parts.push(localCapabilityAwarenessAppendix)
+  }
+
   // Ephemeral LANGUAGE appendix — reply-language only.
   const languageAppendix = buildCoreLanguageAppendix({
     userMessage: latestUserText,
@@ -360,6 +373,7 @@ function buildInstructions(body: ChatApiRequestBody, messages: ChatApiMessage[] 
     understandingChars: understandingAppendix ? understandingAppendix.length : 0,
     adaptiveChars: adaptiveReasoningAppendix ? adaptiveReasoningAppendix.length : 0,
     phoneCapabilityInjected,
+    localCapabilityAwarenessInjected,
     referenceContextAppendixChars: referenceContextAppendix ? referenceContextAppendix.length : 0,
     referenceContext,
   }
