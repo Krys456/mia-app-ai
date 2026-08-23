@@ -13,6 +13,7 @@ import { rememberCalendarContext, resolveCalendarContext } from './active-contex
  *   languageHint?: 'it'|'en'
  *   runtimeRef: { current: object | null }
  *   storage?: Storage | null
+ *   hasCalendarContext?: boolean
  *   inFlightRef?: { current: boolean }
  *   requestFn?: Function
  *   timeZone?: string
@@ -36,7 +37,8 @@ export async function runCalendarLocalExchangeTurn(input) {
     runtimeRef: input.runtimeRef,
     storage: input.storage,
   })
-  const hasCalendarContext = Boolean(calendarCtx)
+  const hasCalendarContext =
+    Boolean(calendarCtx) || Boolean(input.hasCalendarContext)
   const intent = detectCalendarIntent(input.text, {
     languageHint: input.languageHint === 'en' ? 'en' : 'it',
     hasCalendarContext,
@@ -59,6 +61,7 @@ export async function runCalendarLocalExchangeTurn(input) {
       text: input.text,
       languageHint: input.languageHint === 'en' ? 'en' : 'it',
       calendarContext: calendarCtx,
+      hasCalendarContext,
       requestFn: input.requestFn,
       timeZone: input.timeZone,
       now: input.now,

@@ -700,6 +700,133 @@ describe('calendar-chat-336b timezone (#375R)', () => {
   })
 })
 
+describe('calendar-chat-375S sticky follow-up + membership', () => {
+  function memStore() {
+    const mem = new Map()
+    return {
+      getItem: (k) => (mem.has(k) ? mem.get(k) : null),
+      setItem: (k, v) => {
+        mem.set(k, String(v))
+      },
+      removeItem: (k) => {
+        mem.delete(k)
+      },
+    }
+  }
+
+  const birthday = {
+    id: 'bday',
+    title: 'Buon compleanno!',
+    start: '2026-08-23',
+    end: '2026-08-24',
+    allDay: true,
+    status: 'confirmed',
+  }
+  const now = new Date('2026-08-23T16:00:00.000Z')
+
+  it('sticky hasCalendarContext arms E domani? without runtime ctx (not Core)', async () => {
+    resetModuleCalendarRuntimeForTests()
+    const runtimeRef = { current: null }
+    const storage = memStore()
+    let requestedRange = null
+    const t = await runCalendarLocalExchangeTurn({
+      text: 'E domani?',
+      languageHint: 'it',
+      runtimeRef,
+      storage,
+      hasCalendarContext: true, // sticky from last Calendar badge
+      timeZone: 'Europe/Rome',
+      now,
+      requestFn: async (opts) => {
+        requestedRange = opts.range
+        return {
+          status: 'ok',
+          items: [birthday],
+          fetchedAt: now.toISOString(),
+          timeZone: 'Europe/Rome',
+        }
+      },
+    })
+    assert.equal(t.coreCalled, false)
+    assert.equal(t.intent.dayShiftFollowUp, true)
+    assert.equal(requestedRange, 'tomorrow')
+    assert.equal(t.result.calendarContext.events.length, 0)
+    assert.equal(t.result.calendarContext.dayYmd, '2026-08-24')
+  })
+
+  it('E dopodomani? excludes birthday (Aug 25)', async () => {
+    const r = await applyCalendarIntent({
+      text: 'E dopodomani?',
+      languageHint: 'it',
+      hasCalendarContext: true,
+      timeZone: 'Europe/Rome',
+      now,
+      requestFn: async () => ({
+        status: 'ok',
+        items: [birthday],
+        fetchedAt: now.toISOString(),
+        timeZone: 'Europe/Rome',
+      }),
+    })
+    assert.equal(r.handled, true)
+    assert.equal(r.calendarContext.dayYmd, '2026-08-25')
+    assert.equal(r.calendarContext.events.length, 0)
+  })
+
+  it('E oggi? keeps birthday', async () => {
+    const r = await applyCalendarIntent({
+      text: 'E oggi?',
+      languageHint: 'it',
+      hasCalendarContext: true,
+      timeZone: 'Europe/Rome',
+      now,
+      requestFn: async () => ({
+        status: 'ok',
+        items: [birthday],
+        fetchedAt: now.toISOString(),
+        timeZone: 'Europe/Rome',
+      }),
+    })
+    assert.equal(r.handled, true)
+    assert.equal(r.calendarContext.dayYmd, '2026-08-23')
+    assert.equal(r.calendarContext.events.length, 1)
+  })
+
+  it('ChatContext sticky + fail-closed day-shift (source)', () => {
+    const chat = read('src/context/ChatContext.tsx')
+    assert.match(chat, /lastAssistantHadCalendar/)
+    assert.match(chat, /detectDayShiftFollowUp/)
+    assert.match(chat, /hasCalendarContext,/)
+  })
+
+  it('runCalendarQuery omits TZ so listEvents can use primary', async () => {
+    const { runCalendarQuery } = await import(
+      '../../../lib/server/daily-briefing/calendar-query.js'
+    )
+    let sawTimeZone = 'MISSING'
+    const pack = await runCalendarQuery('user-1', {
+      range: 'tomorrow',
+      now,
+      env: { CALENDAR_ENABLED: 'true' },
+      listEventsFn: async (_uid, opts) => {
+        sawTimeZone = opts.timeZone
+        return {
+          events: [birthday],
+          timeMin: '2026-08-23T22:00:00.000Z',
+          timeMax: '2026-08-24T22:00:00.000Z',
+          timeZone: 'Europe/Rome',
+        }
+      },
+    })
+    assert.equal(sawTimeZone, undefined)
+    assert.equal(pack.timeZone, 'Europe/Rome')
+    assert.equal(pack.queryMeta.dayYmd, '2026-08-24')
+    assert.equal(pack.items.length, 0)
+    assert.equal(pack.queryMeta.rawCount, 1)
+    assert.equal(pack.queryMeta.keptCount, 0)
+  })
+})
+
 describe('calendar-chat-336b all-day day membership (#375M)', () => {
   const birthday = {
     id: 'bday',

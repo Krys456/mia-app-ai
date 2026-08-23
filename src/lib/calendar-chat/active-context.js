@@ -78,8 +78,13 @@ export function createCalendarContext(input) {
 
 export function isCalendarContextFresh(ctx, nowMs = Date.now()) {
   if (!ctx || typeof ctx !== 'object') return false
-  if (typeof ctx.expiresAt !== 'number') return false
-  return ctx.expiresAt > nowMs
+  let expiresAt = ctx.expiresAt
+  // Coerce numeric strings (defensive; JSON should already be number).
+  if (typeof expiresAt === 'string' && /^\d+(\.\d+)?$/.test(expiresAt.trim())) {
+    expiresAt = Number(expiresAt)
+  }
+  if (typeof expiresAt !== 'number' || !Number.isFinite(expiresAt)) return false
+  return expiresAt > nowMs
 }
 
 /**

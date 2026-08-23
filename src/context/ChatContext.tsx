@@ -135,6 +135,8 @@ import {
   applyCalendarIntent,
   clearCalendarContext,
   detectCalendarIntent,
+  detectDayShiftFollowUp,
+  foldCalendarText,
   rememberCalendarContext,
   resolveCalendarContext,
 } from '../lib/calendar-chat'
@@ -2141,10 +2143,41 @@ export function ChatProvider({ children }: { children: ReactNode }) {
               ? 'it'
               : detectBriefingLanguage(content, detectTimerLanguage(content, 'it'))
         const calendarCtx = resolveCalendarContext({ runtimeRef: calendarRuntimeRef })
-        const calendarIntent = detectCalendarIntent(content, {
+        // #375S — sticky Calendar authorization from last assistant Calendar badge.
+        // If resolve/storage misses, day-shift follow-ups must still LOCAL_EXCHANGE
+        // (never Core inventing events from prior turns).
+        let lastAssistantHadCalendar = false
+        for (let i = state.messages.length - 1; i >= 0; i -= 1) {
+          const m = state.messages[i]
+          if (m?.role === 'assistant') {
+            lastAssistantHadCalendar = Boolean(
+              (m as { calendarUi?: unknown }).calendarUi,
+            )
+            break
+          }
+        }
+        const hasCalendarContext = Boolean(calendarCtx) || lastAssistantHadCalendar
+        let calendarIntent = detectCalendarIntent(content, {
           languageHint: langHint,
-          hasCalendarContext: Boolean(calendarCtx),
+          hasCalendarContext,
         })
+        // Fail-closed: bare day-shift after a Calendar turn always stays local.
+        if (
+          calendarIntent.intent !== 'calendar' &&
+          lastAssistantHadCalendar
+        ) {
+          const dayShift = detectDayShiftFollowUp(foldCalendarText(content))
+          if (dayShift) {
+            calendarIntent = {
+              intent: 'calendar',
+              language: langHint === 'en' ? 'en' : 'it',
+              queryType: 'list',
+              dayRef: dayShift,
+              followUp: false,
+              dayShiftFollowUp: true,
+            }
+          }
+        }
         if (calendarIntent.intent === 'calendar') {
           // Block a rapid second send until context/save + LOCAL_EXCHANGE complete.
           inFlightRef.current = true
@@ -2154,6 +2187,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
                 text: content,
                 languageHint: langHint,
                 calendarContext: calendarCtx,
+                hasCalendarContext,
               })
               const reply =
                 cal.handled && cal.reply

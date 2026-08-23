@@ -2,7 +2,11 @@
  * #336B — Calendar chat public exports.
  */
 
-export { detectCalendarIntent, detectCalendarFollowUp, detectDayShiftFollowUp } from './intent.js'
+export {
+  detectCalendarIntent,
+  detectCalendarFollowUp,
+  detectDayShiftFollowUp,
+} from './intent.js'
 export { foldCalendarText } from './normalize.js'
 export {
   CALENDAR_CONTEXT_KEY,

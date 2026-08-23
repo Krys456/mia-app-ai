@@ -72,6 +72,7 @@ function buildCalendarUi(status) {
  *   text: string
  *   languageHint?: 'it'|'en'
  *   calendarContext?: object | null
+ *   hasCalendarContext?: boolean
  *   now?: Date
  *   timeZone?: string
  *   requestFn?: typeof requestCalendarQuery
@@ -80,9 +81,11 @@ function buildCalendarUi(status) {
 export async function applyCalendarIntent(input) {
   const langHint = input.languageHint === 'en' ? 'en' : 'it'
   const ctx = isCalendarContextFresh(input.calendarContext) ? input.calendarContext : null
+  // #375S — ChatContext may pass sticky authorization when runtime/storage missed.
+  const hasCalendarContext = Boolean(ctx) || Boolean(input.hasCalendarContext)
   const intent = detectCalendarIntent(input.text, {
     languageHint: langHint,
-    hasCalendarContext: Boolean(ctx),
+    hasCalendarContext,
   })
 
   if (intent.intent !== 'calendar') {
