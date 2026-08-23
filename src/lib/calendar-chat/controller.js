@@ -7,7 +7,7 @@ import {
   createCalendarContext,
   isCalendarContextFresh,
 } from './active-context.js'
-import { computeFreeWindows, filterEventsForQuery } from './free-time.js'
+import { computeFreeWindows, filterEventsForQuery, filterEventsForAllDayDayMembership, allDayEventIncludesYmd } from './free-time.js'
 import { detectCalendarIntent } from './intent.js'
 import { addDaysYmd, localYmdInZone, resolveCalendarQueryBounds } from './range.js'
 import {
@@ -253,13 +253,21 @@ export async function applyCalendarIntent(input) {
   let events = Array.isArray(pack.items) ? pack.items : []
   // Exclude cancelled (server should already)
   events = events.filter((e) => e && e.status !== 'cancelled')
+  // Defense in depth: Google all-day end.date is exclusive.
+  // Only for single-day scopes — never week/next multi-day windows.
+  const dayScopedList =
+    Boolean(bounds.dayYmd) && bounds.range !== 'week' && bounds.range !== 'next'
+  if (dayScopedList) {
+    events = filterEventsForAllDayDayMembership(events, bounds.dayYmd)
+  }
 
   if (intent.queryType === 'next') {
     // Keep soonest upcoming
     const nowMs = now.getTime()
+    const todayYmd = localYmdInZone(timeZone, now)
     events = events
       .filter((e) => {
-        if (e.allDay) return true
+        if (e.allDay) return allDayEventIncludesYmd(e, todayYmd)
         const s = Date.parse(e.start)
         return Number.isFinite(s) && s >= nowMs - 5 * 60000
       })
@@ -271,6 +279,7 @@ export async function applyCalendarIntent(input) {
   ) {
     events = filterEventsForQuery(events, {
       timeZone,
+      dayYmd: bounds.dayYmd,
       afterHour: intent.afterHour,
       afterMinute: intent.afterMinute,
       beforeHour: intent.beforeHour,

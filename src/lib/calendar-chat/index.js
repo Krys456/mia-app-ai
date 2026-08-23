@@ -2,7 +2,7 @@
  * #336B — Calendar chat public exports.
  */
 
-export { detectCalendarIntent, detectCalendarFollowUp } from './intent.js'
+export { detectCalendarIntent, detectCalendarFollowUp, detectDayShiftFollowUp } from './intent.js'
 export { foldCalendarText } from './normalize.js'
 export {
   CALENDAR_CONTEXT_KEY,
@@ -15,6 +15,6 @@ export {
 } from './active-context.js'
 export { applyCalendarIntent } from './controller.js'
 export { requestCalendarQuery, mapCalendarQueryResponse } from './api.js'
-export { computeFreeWindows, filterEventsForQuery } from './free-time.js'
+export { computeFreeWindows, filterEventsForQuery, filterEventsForAllDayDayMembership, allDayEventIncludesYmd } from './free-time.js'
 export { renderCalendarAnswer, failureReply } from './render.js'
 export { resolveCalendarQueryBounds } from './range.js'

@@ -11,6 +11,36 @@ import {
 } from './range.js'
 
 /**
+ * Google all-day membership: start inclusive, end exclusive.
+ * @param {{ allDay?: boolean, start?: string, end?: string }} ev
+ * @param {string} dayYmd
+ */
+export function allDayEventIncludesYmd(ev, dayYmd) {
+  const d = typeof dayYmd === 'string' ? dayYmd.trim() : ''
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return false
+  if (!ev || !ev.allDay) return false
+  const start = typeof ev.start === 'string' ? ev.start.trim() : ''
+  const end = typeof ev.end === 'string' ? ev.end.trim() : ''
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || !/^\d{4}-\d{2}-\d{2}$/.test(end)) return false
+  return start <= d && d < end
+}
+
+/**
+ * @param {Array<{ allDay?: boolean, start?: string, end?: string }>} events
+ * @param {string | null | undefined} dayYmd
+ */
+export function filterEventsForAllDayDayMembership(events, dayYmd) {
+  const list = Array.isArray(events) ? events : []
+  const d = typeof dayYmd === 'string' ? dayYmd.trim() : ''
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return list
+  return list.filter((ev) => {
+    if (!ev) return false
+    if (!ev.allDay) return true
+    return allDayEventIncludesYmd(ev, d)
+  })
+}
+
+/**
  * Local hour+minute → Date on dayYmd in zone (approx).
  */
 export function localTimeOnDayUtc(dayYmd, hour, minute, timeZone) {
@@ -106,6 +136,8 @@ export function filterEventsForQuery(events, opts) {
     if (!ev) continue
     if (ev.allDay) {
       if (opts.afterHour != null || opts.beforeHour != null || opts.partOfDay) continue
+      // Day-scoped list: Google end.date is exclusive.
+      if (opts.dayYmd && !allDayEventIncludesYmd(ev, opts.dayYmd)) continue
       out.push(ev)
       continue
     }

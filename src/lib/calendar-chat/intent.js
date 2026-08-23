@@ -90,6 +90,53 @@ function looksQuotedOrInjected(raw) {
 }
 
 /**
+ * Day-shift ellipsis follow-ups — only when activeCalendar context is fresh.
+ * "E domani?" / "And tomorrow?" → fresh Calendar query for that day (never Core).
+ * Requires a recognizable day/weekday cue; rejects unrelated "E OAuth?" etc.
+ * @param {string} t folded
+ * @returns {null | string | { kind: 'weekday', weekday: number, name: string }}
+ */
+export function detectDayShiftFollowUp(t) {
+  if (!t || t.length > 72) return null
+  // Stronger unrelated tokens — do not steal from other domains.
+  if (
+    /\b(oauth|email|gmail|meteo|weather|timer|spotify|youtube|maps|wifi|bluetooth|password|codice|code|vision|foto|photo)\b/.test(
+      t,
+    )
+  ) {
+    return null
+  }
+
+  const day = detectDayRef(t)
+  if (!day) return null
+
+  // Short ellipsis / contrastive / "about" / "per <day>" shapes only.
+  const dayShiftShape =
+    /^(e|and)\s+/.test(t) ||
+    /^(what|how)\s+about\s+/.test(t) ||
+    /^per\s+/.test(t) ||
+    /\binvece\b/.test(t) ||
+    /\binstead\b/.test(t) ||
+    /^(oggi|domani|dopodomani|today|tomorrow|lunedi|martedi|mercoledi|giovedi|venerdi|sabato|domenica|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\??$/.test(
+      t,
+    )
+
+  if (!dayShiftShape) return null
+
+  // Strip connectors + day tokens; leftover must be negligible (avoid "e oauth domani").
+  const stripped = t
+    .replace(
+      /\b(e|and|what|how|about|per|invece|instead|oggi|domani|dopodomani|today|tomorrow|day\s+after\s+tomorrow|questa\s+settimana|this\s+week|lunedi|martedi|mercoledi|giovedi|venerdi|sabato|domenica|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/g,
+      ' ',
+    )
+    .replace(/[?!.\s]+/g, ' ')
+    .trim()
+  if (stripped.length > 12) return null
+
+  return day
+}
+
+/**
  * Follow-ups — only when activeCalendar context is fresh.
  * @param {string} t folded
  */
@@ -98,12 +145,18 @@ export function detectCalendarFollowUp(t) {
 
   // After a Calendar answer/failure, keep meta questions local (never Core).
   if (
-    /^(perche|perche\?|why|why\?)$/.test(t) ||
+    /^(e\s+)?(perche|perche\?|why|why\?)$/.test(t) ||
     /\b(perche\s+(non\s+)?(riesci|puoi|hai)|why\s+(can'?t|cannot|don'?t)|non\s+hai\s+accesso|non\s+riesci\s+a\s+leggere|accesso\s+(al\s+)?calendario)\b/.test(
       t,
     )
   ) {
     return { kind: 'repeat_status' }
+  }
+
+  // Day-shift ellipsis → handled in detectCalendarIntent as a fresh day query.
+  const dayShift = detectDayShiftFollowUp(t)
+  if (dayShift) {
+    return { kind: 'day_shift', dayRef: dayShift }
   }
 
   if (/^(e\s+dopo|dopo|and\s+after|what(?:'s|\s+is)\s+next|il\s+prossimo|prossimo|qual\s+e\s+il\s+prossimo(\s+impegno)?)\??$/.test(t)) {
@@ -163,6 +216,17 @@ export function detectCalendarIntent(raw, opts = {}) {
   if (opts.hasCalendarContext) {
     const follow = detectCalendarFollowUp(t)
     if (follow) {
+      // Day-shift ellipsis: fresh Calendar query for the named day (not context reuse).
+      if (follow.kind === 'day_shift') {
+        return {
+          intent: 'calendar',
+          language,
+          queryType: 'list',
+          dayRef: follow.dayRef || 'today',
+          followUp: false,
+          dayShiftFollowUp: true,
+        }
+      }
       return {
         intent: 'calendar',
         language,
