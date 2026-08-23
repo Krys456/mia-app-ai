@@ -23,13 +23,11 @@ import {
   renderReminderList,
   renderSavedText,
 } from './render.js'
+import { readBrowserReminderTimeZone } from './timezone.js'
 
 function browserTimeZone() {
-  try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
-  } catch {
-    return 'UTC'
-  }
+  // #380C — never treat Etc/GMT* as authoritative.
+  return readBrowserReminderTimeZone() || undefined
 }
 
 function localLabelsForFireAt(fireAtIso, timeZone) {

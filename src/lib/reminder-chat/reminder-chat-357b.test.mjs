@@ -22,6 +22,9 @@ const {
   loadPendingReminderProposal,
   clearPendingReminderProposal,
   failureReply,
+  isUnreliableReminderTimeZone,
+  isReliableReminderTimeZone,
+  resolveReminderSchedulingTimeZone,
 } = await import(pathToFileURL(path.join(root, 'src/lib/reminder-chat/index.js')).href)
 
 const { isReminderNotTimer } = await import(
@@ -39,6 +42,21 @@ function memStorage() {
     removeItem: (k) => map.delete(k),
   }
 }
+
+describe('reminder-chat-380c timezone reliability', () => {
+  it('accepts normal IANA zones; rejects Etc/GMT family', () => {
+    assert.equal(isReliableReminderTimeZone('Europe/Rome'), true)
+    assert.equal(isReliableReminderTimeZone('America/New_York'), true)
+    assert.equal(isReliableReminderTimeZone('Europe/London'), true)
+    assert.equal(isReliableReminderTimeZone('Asia/Tokyo'), true)
+    for (const bad of ['Etc/GMT', 'Etc/GMT+12', 'Etc/GMT-5', 'etc/gmt+3']) {
+      assert.equal(isUnreliableReminderTimeZone(bad), true, bad)
+      assert.equal(isReliableReminderTimeZone(bad), false, bad)
+      assert.equal(resolveReminderSchedulingTimeZone(bad).ok, false, bad)
+      assert.equal(resolveReminderSchedulingTimeZone(bad).code, 'unreliable_timezone', bad)
+    }
+  })
+})
 
 describe('reminder-chat-357b datetime', () => {
   const tz = 'Europe/Rome'
@@ -58,6 +76,68 @@ describe('reminder-chat-357b datetime', () => {
     assert.equal(r.ok, true)
     assert.equal(r.localTime, '09:00')
     assert.match(r.localDate, /^2026-08-23$/)
+    // CEST (UTC+2): 09:00 Rome → 07:00 UTC
+    assert.equal(r.fireAtUtc, '2026-08-23T07:00:00.000Z')
+  })
+
+  it('DST-aware: Europe/Rome winter wall-clock', () => {
+    const winterNow = new Date('2026-01-10T10:00:00.000Z')
+    const r = parseReminderDateTime('Ricordami domani alle 9 di chiamare Marco', {
+      timeZone: 'Europe/Rome',
+      now: winterNow,
+    })
+    assert.equal(r.ok, true)
+    assert.equal(r.localDate, '2026-01-11')
+    assert.equal(r.localTime, '09:00')
+    // CET (UTC+1): 09:00 Rome → 08:00 UTC
+    assert.equal(r.fireAtUtc, '2026-01-11T08:00:00.000Z')
+  })
+
+  it('rejects Etc/GMT* for absolute wall-clock (no silent UTC-12)', () => {
+    for (const bad of ['Etc/GMT', 'Etc/GMT+12', 'Etc/GMT-5']) {
+      const r = parseReminderDateTime('Ricordami domani alle 9 di chiamare Marco', {
+        timeZone: bad,
+        now,
+      })
+      assert.equal(r.ok, false, bad)
+      assert.equal(r.code, 'unreliable_timezone', bad)
+    }
+  })
+
+  it('Etc/GMT+12 must not schedule as if UTC-12', () => {
+    const r = parseReminderDateTime('Ricordami domani alle 9 di chiamare Marco', {
+      timeZone: 'Etc/GMT+12',
+      now,
+    })
+    assert.equal(r.ok, false)
+    // Would have been 2026-08-23T21:00:00.000Z if Etc/GMT+12 (=UTC-12) were trusted.
+    assert.notEqual(r.fireAtUtc, '2026-08-23T21:00:00.000Z')
+  })
+
+  it('relative tra 2 minuti still works with unreliable browser TZ', () => {
+    const r = parseReminderDateTime('Ricordami tra 2 minuti di bere', {
+      timeZone: 'Etc/GMT+12',
+      now,
+    })
+    assert.equal(r.ok, true)
+    assert.equal(r.timezone, 'UTC')
+    const delta = new Date(r.fireAtUtc).getTime() - now.getTime()
+    assert.ok(delta >= 110_000 && delta <= 130_000)
+  })
+
+  it('accepts America/New_York and Asia/Tokyo', () => {
+    const ny = parseReminderDateTime('Remind me tomorrow at 9 to call Marco', {
+      timeZone: 'America/New_York',
+      now,
+    })
+    assert.equal(ny.ok, true)
+    assert.equal(ny.timezone, 'America/New_York')
+    const tyo = parseReminderDateTime('Remind me tomorrow at 9 to call Marco', {
+      timeZone: 'Asia/Tokyo',
+      now,
+    })
+    assert.equal(tyo.ok, true)
+    assert.equal(tyo.timezone, 'Asia/Tokyo')
   })
 
   it('ambiguous without time', () => {

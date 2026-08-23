@@ -9,6 +9,8 @@ export function reminderCopy(key, language = 'it') {
     past_time: 'Quel momento è già passato. Scegli un orario futuro.',
     too_far: 'La data è troppo lontana. Scegli un momento entro circa due anni.',
     invalid_time: 'Non ho capito data e ora. Prova con «domani alle 9» o «tra 20 minuti».',
+    unreliable_timezone:
+      'Non riesco a usare il fuso orario di questo dispositivo per un orario assoluto. Prova «tra 20 minuti», oppure imposta un fuso IANA affidabile (es. Europe/Rome) e riprova «domani alle 9».',
     unsupported_recurrence:
       'I promemoria ricorrenti non sono ancora disponibili. Posso crearne uno una sola volta.',
     propose_intro: 'Confermi questo promemoria?',
@@ -36,6 +38,8 @@ export function reminderCopy(key, language = 'it') {
     past_time: 'That time is already past. Choose a future time.',
     too_far: 'That date is too far out. Choose within about two years.',
     invalid_time: 'I couldn’t parse date and time. Try “tomorrow at 9” or “in 20 minutes”.',
+    unreliable_timezone:
+      'I can’t use this device’s time zone for an absolute time. Try “in 20 minutes”, or set a reliable IANA zone (e.g. Europe/Rome) and retry “tomorrow at 9”.',
     unsupported_recurrence:
       'Recurring reminders aren’t available yet. I can create a one-time reminder.',
     propose_intro: 'Confirm this reminder?',
@@ -73,6 +77,8 @@ export function failureReply(code, language = 'it') {
       return reminderCopy('too_far', language)
     case 'invalid_time':
       return reminderCopy('invalid_time', language)
+    case 'unreliable_timezone':
+      return reminderCopy('unreliable_timezone', language)
     case 'unsupported_recurrence':
       return reminderCopy('unsupported_recurrence', language)
     case 'not_found':

@@ -3,6 +3,11 @@ import { resolveChatAuthForRequest } from './chatAuth'
 import { isSupabaseConfigured } from './supabase'
 import { getOrCreateUserId } from './userId'
 import { parseApiErrorResponse, withErrorReference, userFacingApiMessage } from './apiError'
+import {
+  isReliableReminderTimeZone,
+  isUnreliableReminderTimeZone,
+  readBrowserReminderTimeZone,
+} from './reminder-chat/timezone.js'
 
 export class ReminderApiError extends Error {
   readonly status: number
@@ -232,7 +237,14 @@ export function buildManualReminderProposal(input: {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date)) return { error: 'Data non valida.' }
   if (!/^\d{2}:\d{2}$/.test(input.time)) return { error: 'Ora non valida.' }
 
-  const timezone = input.timezone.trim() || guessBrowserTimeZone()
+  const timezone = (input.timezone.trim() || guessBrowserTimeZone()).trim()
+  // #380C — never interpret absolute wall-clock with Etc/GMT* (fail closed).
+  if (!timezone || isUnreliableReminderTimeZone(timezone) || !isReliableReminderTimeZone(timezone)) {
+    return {
+      error:
+        'Fuso orario non affidabile su questo dispositivo. Imposta un fuso IANA (es. Europe/Rome) e riprova.',
+    }
+  }
   const localStamp = `${input.date}T${input.time}:00`
   const fireAt = zonedLocalToUtcIso(localStamp, timezone)
   if (!fireAt) return { error: 'Data/ora o fuso orario non validi.' }
@@ -253,11 +265,17 @@ export function buildManualReminderProposal(input: {
 }
 
 export function guessBrowserTimeZone(): string {
+  // #380C — do not surface Etc/GMT* as a trusted Reminder zone.
+  const reliable = readBrowserReminderTimeZone()
+  if (reliable) return reliable
   try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+    const raw = Intl.DateTimeFormat().resolvedOptions().timeZone || ''
+    if (raw && !isUnreliableReminderTimeZone(raw) && isReliableReminderTimeZone(raw)) return raw
   } catch {
-    return 'UTC'
+    /* ignore */
   }
+  // No invented product default; caller / server must fail closed for absolute times.
+  return ''
 }
 
 /**

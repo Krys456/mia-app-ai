@@ -1,9 +1,11 @@
 /**
- * #357B — Deterministic Italian (and light EN) reminder date/time parser.
- * Authority: validated fireAt UTC + IANA timezone. No model timestamps.
+ * #357B / #380C — Deterministic Italian (and light EN) reminder date/time parser.
+ * Authority: validated fireAt UTC + reliable IANA timezone. No model timestamps.
+ * #380C: never interpret absolute wall-clock using Etc/GMT*.
  */
 
 import { foldReminderText } from './normalize.js'
+import { isReliableReminderTimeZone, resolveReminderSchedulingTimeZone } from './timezone.js'
 
 const PAST_GRACE_MS = 30_000
 const MAX_FUTURE_MS = 1000 * 60 * 60 * 24 * 731
@@ -151,19 +153,10 @@ function nextWeekdayDate(parts, targetDow, nextWeek) {
  *   localDisplay: string,
  * } | {
  *   ok: false,
- *   code: 'ambiguous_time' | 'invalid_time' | 'past_time' | 'too_far' | 'unsupported_recurrence',
+ *   code: 'ambiguous_time' | 'invalid_time' | 'past_time' | 'too_far' | 'unsupported_recurrence' | 'unreliable_timezone',
  * }}
  */
 export function parseReminderDateTime(raw, opts = {}) {
-  const timeZone =
-    (typeof opts.timeZone === 'string' && opts.timeZone.trim()) ||
-    (() => {
-      try {
-        return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
-      } catch {
-        return 'UTC'
-      }
-    })()
   const now = opts.now instanceof Date ? opts.now : new Date()
   const t = foldReminderText(raw)
 
@@ -173,6 +166,13 @@ export function parseReminderDateTime(raw, opts = {}) {
 
   const relative = parseRelative(t)
   if (relative) {
+    // Duration-based: fireAt does not depend on wall-clock zone.
+    // Prefer a reliable zone for labels/metadata; else UTC (honest for elapsed time).
+    const resolved = resolveReminderSchedulingTimeZone(opts.timeZone)
+    const timeZone =
+      resolved.ok && isReliableReminderTimeZone(resolved.timeZone)
+        ? resolved.timeZone
+        : 'UTC'
     const fire = new Date(now.getTime() + relative.ms)
     const parts = getTzParts(fire, timeZone)
     if (!parts) return { ok: false, code: 'invalid_time' }
@@ -180,6 +180,13 @@ export function parseReminderDateTime(raw, opts = {}) {
     const localTime = `${pad2(parts.hour)}:${pad2(parts.minute)}`
     return finalize(fire.toISOString(), timeZone, localDate, localTime, now)
   }
+
+  // Absolute wall-clock: require a reliable IANA zone (no Etc/GMT*, no invented default).
+  const resolved = resolveReminderSchedulingTimeZone(opts.timeZone)
+  if (!resolved.ok) {
+    return { ok: false, code: resolved.code === 'missing_timezone' ? 'invalid_time' : 'unreliable_timezone' }
+  }
+  const timeZone = resolved.timeZone
 
   // Evening without clock → clarify (no canonical stasera time in product).
   if (/\b(stasera|questa\s+sera|tonight|this\s+evening)\b/.test(t) && !parseClock(t)) {
