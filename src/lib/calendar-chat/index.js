@@ -27,6 +27,9 @@ export {
   markActiveLocalExchange,
   isCalendarLocalExchangeActive,
   clearCalendarLocalExchange,
+  peekActiveLocalExchange,
+  peekOwnershipClearReason,
+  resetModuleActiveLocalExchangeForTests,
 } from './local-exchange-ownership.js'
 export { requestCalendarQuery, mapCalendarQueryResponse } from './api.js'
 export { computeFreeWindows, filterEventsForQuery, filterEventsForAllDayDayMembership, allDayEventIncludesYmd } from './free-time.js'

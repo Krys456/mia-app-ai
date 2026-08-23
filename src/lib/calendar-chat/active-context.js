@@ -16,8 +16,10 @@ let moduleRuntimeContext = null
  * @returns {object | null}
  */
 function readRuntime(holder) {
+  // Prefer the ChatProvider holder when present; fall back to module so a
+  // remount within the same page session can still resolve without storage.
   if (holder && typeof holder === 'object' && 'current' in holder) {
-    return holder.current || null
+    if (holder.current) return holder.current
   }
   return moduleRuntimeContext
 }
@@ -27,11 +29,11 @@ function readRuntime(holder) {
  * @param {object | null} ctx
  */
 function writeRuntime(holder, ctx) {
+  // Always dual-write module (page-session fallback). Holder is a mirror.
+  moduleRuntimeContext = ctx
   if (holder && typeof holder === 'object' && 'current' in holder) {
     holder.current = ctx
-    return
   }
-  moduleRuntimeContext = ctx
 }
 
 /**

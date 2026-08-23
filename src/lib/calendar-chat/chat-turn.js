@@ -1,5 +1,5 @@
 /**
- * #375T — Testable Calendar LOCAL_EXCHANGE turn (mirrors ChatContext calendar block).
+ * #375T / #375U — Testable Calendar LOCAL_EXCHANGE turn (mirrors ChatContext calendar block).
  * Uses the same claim + ownership path as ChatProvider. Not used by Core.
  */
 
@@ -14,6 +14,7 @@ import { markActiveLocalExchange } from './local-exchange-ownership.js'
  *   languageHint?: 'it'|'en'
  *   runtimeRef: { current: object | null }
  *   activeLocalExchangeRef?: { current: object | null }
+ *   lastAssistantHadCalendar?: boolean
  *   storage?: Storage | null
  *   inFlightRef?: { current: boolean }
  *   requestFn?: Function
@@ -45,6 +46,7 @@ export async function runCalendarLocalExchangeTurn(input) {
     languageHint: input.languageHint,
     calendarCtx,
     activeLocalExchangeRef: ownershipRef,
+    lastAssistantHadCalendar: Boolean(input.lastAssistantHadCalendar),
   })
 
   if (!claim.claim) {
@@ -89,6 +91,7 @@ export async function runCalendarLocalExchangeTurn(input) {
       intent: claim.intent,
       result,
       calendarUi: result.calendarUi || null,
+      ownershipAfterCommit: ownershipRef?.current?.domain || null,
     }
   } finally {
     if (inFlightRef) inFlightRef.current = false
