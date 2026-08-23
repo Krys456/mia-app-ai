@@ -45,7 +45,7 @@ describe('calendar-chat-336b infrastructure', () => {
 
   it('wires ChatContext Calendar before Briefing and Home quick action', () => {
     const ctx = read('src/context/ChatContext.tsx')
-    assert.match(ctx, /detectCalendarIntent/)
+    assert.match(ctx, /resolveCalendarTurnClaim/)
     assert.match(ctx, /applyCalendarIntent/)
     assert.match(ctx, /#336B/)
     assert.match(homeQa, /id:\s*'calendario'/)
@@ -521,12 +521,16 @@ describe('calendar-chat-375P active-context persistence', () => {
     assert.match(chat, /resolveCalendarContext/)
     assert.match(chat, /rememberCalendarContext/)
     assert.match(chat, /calendarRuntimeRef/)
+    assert.match(chat, /activeLocalExchangeRef/)
+    assert.match(chat, /resolveCalendarTurnClaim/)
+    assert.match(chat, /markActiveLocalExchange/)
     assert.match(chat, /inFlightRef\.current = true/)
     assert.match(chat, /clearCalendarContext/)
     assert.doesNotMatch(
       chat,
       /const calendarCtx = loadCalendarContext\(\)/,
     )
+    assert.doesNotMatch(chat, /lastAssistantHadCalendar/)
   })
 
   it('clearCalendarContext isolates new chat', () => {
@@ -724,17 +728,18 @@ describe('calendar-chat-375S sticky follow-up + membership', () => {
   }
   const now = new Date('2026-08-23T16:00:00.000Z')
 
-  it('sticky hasCalendarContext arms E domani? without runtime ctx (not Core)', async () => {
+  it('ownership ref arms E domani? without runtime ctx (not Core)', async () => {
     resetModuleCalendarRuntimeForTests()
     const runtimeRef = { current: null }
+    const ownershipRef = { current: { domain: 'calendar', at: Date.now() } }
     const storage = memStore()
     let requestedRange = null
     const t = await runCalendarLocalExchangeTurn({
       text: 'E domani?',
       languageHint: 'it',
       runtimeRef,
+      activeLocalExchangeRef: ownershipRef,
       storage,
-      hasCalendarContext: true, // sticky from last Calendar badge
       timeZone: 'Europe/Rome',
       now,
       requestFn: async (opts) => {
@@ -792,11 +797,11 @@ describe('calendar-chat-375S sticky follow-up + membership', () => {
     assert.equal(r.calendarContext.events.length, 1)
   })
 
-  it('ChatContext sticky + fail-closed day-shift (source)', () => {
+  it('ChatContext ownership wiring (source)', () => {
     const chat = read('src/context/ChatContext.tsx')
-    assert.match(chat, /lastAssistantHadCalendar/)
-    assert.match(chat, /detectDayShiftFollowUp/)
-    assert.match(chat, /hasCalendarContext,/)
+    assert.match(chat, /activeLocalExchangeRef/)
+    assert.match(chat, /resolveCalendarTurnClaim/)
+    assert.match(chat, /markActiveLocalExchange/)
   })
 
   it('runCalendarQuery omits TZ so listEvents can use primary', async () => {
@@ -824,6 +829,170 @@ describe('calendar-chat-375S sticky follow-up + membership', () => {
     assert.equal(pack.items.length, 0)
     assert.equal(pack.queryMeta.rawCount, 1)
     assert.equal(pack.queryMeta.keptCount, 0)
+  })
+})
+
+describe('calendar-chat-375T ChatProvider-lifecycle two-turn', () => {
+  function memStore() {
+    const mem = new Map()
+    return {
+      getItem: (k) => (mem.has(k) ? mem.get(k) : null),
+      setItem: (k, v) => {
+        mem.set(k, String(v))
+      },
+      removeItem: (k) => {
+        mem.delete(k)
+      },
+    }
+  }
+
+  function failingStore() {
+    return {
+      getItem: () => {
+        throw new Error('storage_blocked')
+      },
+      setItem: () => {
+        throw new Error('storage_blocked')
+      },
+      removeItem: () => {
+        throw new Error('storage_blocked')
+      },
+    }
+  }
+
+  const birthday = {
+    id: 'bday',
+    title: 'Buon compleanno!',
+    start: '2026-08-23',
+    end: '2026-08-24',
+    allDay: true,
+    status: 'confirmed',
+  }
+  const now = new Date('2026-08-23T16:00:00.000Z')
+
+  async function twoTurn(followUpText, storage, expectRange) {
+    resetModuleCalendarRuntimeForTests()
+    const runtimeRef = { current: null }
+    const ownershipRef = { current: null }
+    const inFlightRef = { current: false }
+
+    const t1 = await runCalendarLocalExchangeTurn({
+      text: 'Cosa ho oggi?',
+      languageHint: 'it',
+      runtimeRef,
+      activeLocalExchangeRef: ownershipRef,
+      storage,
+      inFlightRef,
+      timeZone: 'Europe/Rome',
+      now,
+      requestFn: async () => ({
+        status: 'ok',
+        items: [birthday],
+        fetchedAt: now.toISOString(),
+        timeZone: 'Europe/Rome',
+      }),
+    })
+    assert.equal(t1.coreCalled, false)
+    assert.ok(t1.calendarUi)
+    assert.equal(ownershipRef.current?.domain, 'calendar')
+
+    // Drop runtime pack — ownership must still arm follow-up (real remount/storage miss).
+    runtimeRef.current = null
+    let requestedRange = null
+    let coreCalled = false
+    const t2 = await runCalendarLocalExchangeTurn({
+      text: followUpText,
+      languageHint: 'it',
+      runtimeRef,
+      activeLocalExchangeRef: ownershipRef,
+      storage,
+      inFlightRef,
+      timeZone: 'Europe/Rome',
+      now,
+      requestFn: async (opts) => {
+        requestedRange = opts.range || (opts.timeMin ? 'explicit' : null)
+        return {
+          status: 'empty',
+          items: [],
+          fetchedAt: now.toISOString(),
+          timeZone: 'Europe/Rome',
+        }
+      },
+    })
+    if (t2.coreCalled) coreCalled = true
+    assert.equal(coreCalled, false)
+    assert.equal(t2.coreCalled, false)
+    assert.ok(t2.calendarUi)
+    assert.equal(t2.intent.dayShiftFollowUp, true)
+    if (expectRange) assert.equal(requestedRange, expectRange)
+    return { t1, t2, ownershipRef, runtimeRef }
+  }
+
+  it('Cosa ho oggi? → E domani? same provider refs (not Core)', async () => {
+    await twoTurn('E domani?', memStore(), 'tomorrow')
+  })
+
+  it('Cosa ho oggi? → E oggi?', async () => {
+    await twoTurn('E oggi?', memStore(), 'today')
+  })
+
+  it('Cosa ho oggi? → E dopodomani?', async () => {
+    const { t2 } = await twoTurn('E dopodomani?', memStore(), null)
+    assert.equal(t2.intent.dayRef, 'day_after_tomorrow')
+  })
+
+  it('sessionStorage failure: ownership still routes E domani? to Calendar', async () => {
+    await twoTurn('E domani?', failingStore(), 'tomorrow')
+  })
+
+  it('fresh chat: bare E domani? is NOT Calendar', async () => {
+    resetModuleCalendarRuntimeForTests()
+    const t = await runCalendarLocalExchangeTurn({
+      text: 'E domani?',
+      languageHint: 'it',
+      runtimeRef: { current: null },
+      activeLocalExchangeRef: { current: null },
+      storage: memStore(),
+      timeZone: 'Europe/Rome',
+      now,
+      requestFn: async () => {
+        throw new Error('should_not_query')
+      },
+    })
+    assert.equal(t.coreCalled, true)
+    assert.equal(t.handled, false)
+  })
+
+  it('newChat clears ownership so E domani? is unclaimed', async () => {
+    const { markActiveLocalExchange, isCalendarLocalExchangeActive } = await import(
+      './local-exchange-ownership.js'
+    )
+    const ownershipRef = { current: null }
+    markActiveLocalExchange(ownershipRef, 'calendar')
+    assert.equal(isCalendarLocalExchangeActive(ownershipRef), true)
+    markActiveLocalExchange(ownershipRef, null)
+    assert.equal(isCalendarLocalExchangeActive(ownershipRef), false)
+
+    const t = await runCalendarLocalExchangeTurn({
+      text: 'E domani?',
+      languageHint: 'it',
+      runtimeRef: { current: null },
+      activeLocalExchangeRef: ownershipRef,
+      storage: memStore(),
+      timeZone: 'Europe/Rome',
+      now,
+      requestFn: async () => {
+        throw new Error('should_not_query')
+      },
+    })
+    assert.equal(t.coreCalled, true)
+  })
+
+  it('resolveCalendarTurnClaim is the ChatContext claim path (source)', () => {
+    const chat = read('src/context/ChatContext.tsx')
+    assert.match(chat, /resolveCalendarTurnClaim\(/)
+    assert.match(chat, /markActiveLocalExchange\(activeLocalExchangeRef,\s*'calendar'\)/)
+    assert.match(chat, /clearCalendarLocalExchange\(activeLocalExchangeRef\)/)
   })
 })
 
@@ -1087,7 +1256,7 @@ describe('calendar-chat-336b no Core fallthrough', () => {
     assert.match(ctx, /Never fall through to \/api\/chat/)
     // Matched calendar block returns true before Core
     const block = ctx.slice(calIdx, chatIdx)
-    assert.match(block, /intent === 'calendar'/)
+    assert.match(block, /claim\.claim/)
     assert.match(block, /return true/)
   })
 

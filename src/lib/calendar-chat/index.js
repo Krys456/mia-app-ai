@@ -22,6 +22,12 @@ export {
 } from './active-context.js'
 export { applyCalendarIntent, resolveClientCalendarTimeZone, isUnreliableCalendarTimeZone } from './controller.js'
 export { runCalendarLocalExchangeTurn } from './chat-turn.js'
+export { resolveCalendarTurnClaim } from './calendar-turn-claim.js'
+export {
+  markActiveLocalExchange,
+  isCalendarLocalExchangeActive,
+  clearCalendarLocalExchange,
+} from './local-exchange-ownership.js'
 export { requestCalendarQuery, mapCalendarQueryResponse } from './api.js'
 export { computeFreeWindows, filterEventsForQuery, filterEventsForAllDayDayMembership, allDayEventIncludesYmd } from './free-time.js'
 export { renderCalendarAnswer, failureReply } from './render.js'
