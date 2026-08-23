@@ -544,6 +544,160 @@ describe('calendar-chat-375P active-context persistence', () => {
     assert.equal(runtimeRef.current, null)
     assert.equal(resolveCalendarContext({ runtimeRef, storage }), null)
   })
+
+  it('#375R browser-proven shape round-trips (no domain/intent/dayRef required)', () => {
+    resetModuleCalendarRuntimeForTests()
+    const runtimeRef = { current: null }
+    const storage = memoryStorage()
+    // Live Preview stored shape after "Cosa ho oggi?" — createCalendarContext fields only.
+    const ctx = createCalendarContext({
+      dateRange: { range: 'today', labelDay: 'today', dayYmd: '2026-08-23' },
+      labelDay: 'today',
+      timezone: 'Etc/GMT+12',
+      fetchedAt: '2026-08-23T15:00:00.000Z',
+      events: [
+        {
+          id: 'bday',
+          title: 'Buon compleanno!',
+          start: '2026-08-23',
+          end: '2026-08-24',
+          allDay: true,
+        },
+      ],
+      focusIndex: 0,
+      queryType: 'list',
+      status: 'ok',
+      language: 'it',
+      dayYmd: '2026-08-23',
+    })
+    assert.equal('domain' in ctx, false)
+    assert.equal('intent' in ctx, false)
+    assert.equal('dayRef' in ctx, false)
+    assert.equal(typeof ctx.expiresAt, 'number')
+    assert.equal(isCalendarContextFresh(ctx), true)
+
+    rememberCalendarContext(ctx, { runtimeRef, storage })
+    // Simulate provider remount: empty runtime, storage still present.
+    const remounted = { current: null }
+    const resolved = resolveCalendarContext({ runtimeRef: remounted, storage })
+    assert.ok(resolved)
+    assert.equal(resolved.status, 'ok')
+    assert.equal(typeof resolved.expiresAt, 'number')
+
+    const t2 = detectCalendarIntent('E domani?', {
+      languageHint: 'it',
+      hasCalendarContext: Boolean(resolved),
+    })
+    assert.equal(t2.intent, 'calendar')
+    assert.equal(t2.dayRef, 'tomorrow')
+    assert.equal(t2.dayShiftFollowUp, true)
+  })
+
+  it('storage→resolve→E domani LOCAL_EXCHANGE (not Core) with live shape', async () => {
+    resetModuleCalendarRuntimeForTests()
+    const runtimeRef = { current: null }
+    const storage = memoryStorage()
+    const now = new Date('2026-08-23T16:00:00.000Z')
+
+    const t1 = await runCalendarLocalExchangeTurn({
+      text: 'Cosa ho oggi?',
+      languageHint: 'it',
+      runtimeRef,
+      storage,
+      timeZone: 'Europe/Rome',
+      now,
+      requestFn: async () => ({
+        status: 'ok',
+        items: [
+          {
+            id: 'bday',
+            title: 'Buon compleanno!',
+            start: '2026-08-23',
+            end: '2026-08-24',
+            allDay: true,
+            status: 'confirmed',
+          },
+        ],
+        fetchedAt: now.toISOString(),
+        timeZone: 'Europe/Rome',
+      }),
+    })
+    assert.equal(t1.coreCalled, false)
+    assert.ok(storage.getItem('shinkaido.activeCalendar.v1'))
+
+    // Drop runtime only — second turn must hydrate from storage (live remount case).
+    runtimeRef.current = null
+    let requestedRange = null
+    const t2 = await runCalendarLocalExchangeTurn({
+      text: 'E domani?',
+      languageHint: 'it',
+      runtimeRef,
+      storage,
+      timeZone: 'Europe/Rome',
+      now,
+      requestFn: async (opts) => {
+        requestedRange = opts.range
+        return {
+          status: 'empty',
+          items: [],
+          fetchedAt: now.toISOString(),
+          timeZone: 'Europe/Rome',
+        }
+      },
+    })
+    assert.equal(t2.hasCalendarContext, true)
+    assert.equal(t2.coreCalled, false)
+    assert.equal(t2.intent.dayRef, 'tomorrow')
+    assert.equal(requestedRange, 'tomorrow')
+  })
+})
+
+describe('calendar-chat-336b timezone (#375R)', () => {
+  it('rejects Etc/GMT* as unreliable client timezone', async () => {
+    const { isUnreliableCalendarTimeZone, resolveClientCalendarTimeZone } = await import(
+      './controller.js'
+    )
+    assert.equal(isUnreliableCalendarTimeZone('Etc/GMT+12'), true)
+    assert.equal(isUnreliableCalendarTimeZone('Etc/GMT-2'), true)
+    assert.equal(isUnreliableCalendarTimeZone('Europe/Rome'), false)
+    assert.equal(resolveClientCalendarTimeZone('Etc/GMT+12'), null)
+    assert.equal(resolveClientCalendarTimeZone('Europe/Rome'), 'Europe/Rome')
+  })
+
+  it('Etc/GMT+12 morning: omit bad TZ; pack Europe/Rome excludes birthday from tomorrow', async () => {
+    const morningUtc = new Date('2026-08-23T10:00:00.000Z')
+    const birthday = {
+      id: 'bday',
+      title: 'Buon compleanno!',
+      start: '2026-08-23',
+      end: '2026-08-24',
+      allDay: true,
+      status: 'confirmed',
+    }
+    let sentTz = 'SENT_UNDEFINED'
+    const r = await applyCalendarIntent({
+      text: 'Cosa ho domani?',
+      languageHint: 'it',
+      timeZone: 'Etc/GMT+12',
+      now: morningUtc,
+      requestFn: async (opts) => {
+        sentTz = opts.timeZone
+        // Server authoritative zone after rejecting Etc/GMT*.
+        return {
+          status: 'ok',
+          items: [birthday],
+          fetchedAt: morningUtc.toISOString(),
+          timeZone: 'Europe/Rome',
+        }
+      },
+    })
+    assert.equal(sentTz, undefined)
+    assert.equal(r.handled, true)
+    assert.equal(r.calendarContext.timezone, 'Europe/Rome')
+    assert.equal(r.calendarContext.dayYmd, '2026-08-24')
+    assert.equal(r.calendarContext.events.length, 0)
+    assert.match(String(r.reply || ''), /non risultano impegni/i)
+  })
 })
 
 describe('calendar-chat-336b all-day day membership (#375M)', () => {

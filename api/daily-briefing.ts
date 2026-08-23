@@ -130,7 +130,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Action-isolated: must not initialize or call morning schedule storage.
   if (safeBody.action === 'calendar_query') {
     try {
-      const tz = sanitizeTimeZone(safeBody.timeZone) || 'UTC'
+      // #375R — omit unreliable/missing client TZ so listEvents can use Google primary.
+      const tz = sanitizeTimeZone(safeBody.timeZone)
       const range =
         typeof safeBody.range === 'string' ? safeBody.range.trim().toLowerCase() : undefined
       const timeMin = typeof safeBody.timeMin === 'string' ? safeBody.timeMin : undefined
@@ -141,7 +142,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           : 40
 
       const pack = await runCalendarQuery(user.userId, {
-        timeZone: tz,
+        ...(tz ? { timeZone: tz } : {}),
         range,
         timeMin,
         timeMax,

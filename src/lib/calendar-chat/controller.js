@@ -16,12 +16,33 @@ import {
   renderCalendarFollowUp,
 } from './render.js'
 
-function browserTimeZone() {
-  try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
-  } catch {
-    return 'UTC'
+/**
+ * POSIX Etc/GMT±N has inverted signs and is often an OS misconfig.
+ * Return null so the server can use the Google Calendar primary timezone.
+ * @param {string | null | undefined} tz
+ */
+export function isUnreliableCalendarTimeZone(tz) {
+  return /^Etc\/GMT([+-]\d+)?$/i.test(String(tz || '').trim())
+}
+
+/**
+ * @param {string | null | undefined} [explicit]
+ * @returns {string | null}
+ */
+export function resolveClientCalendarTimeZone(explicit) {
+  if (typeof explicit === 'string' && explicit.trim()) {
+    const t = explicit.trim()
+    // Explicit unreliable zone → omit (do not silently substitute browser TZ).
+    if (isUnreliableCalendarTimeZone(t)) return null
+    return t
   }
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''
+    if (tz && !isUnreliableCalendarTimeZone(tz)) return tz
+  } catch {
+    /* ignore */
+  }
+  return null
 }
 
 function buildCalendarUi(status) {
@@ -74,7 +95,13 @@ export async function applyCalendarIntent(input) {
 
   const language = intent.language || langHint
   const now = input.now instanceof Date ? input.now : new Date()
-  const timeZone = input.timeZone || browserTimeZone()
+  // Prefer explicit/reliable IANA; omit Etc/GMT* so server can use Google primary.
+  const clientTz = resolveClientCalendarTimeZone(input.timeZone)
+  const provisionalTz = clientTz || 'UTC'
+  // Follow-ups reuse sticky context timezone when present.
+  const timeZone = (ctx && ctx.timezone && !isUnreliableCalendarTimeZone(ctx.timezone)
+    ? String(ctx.timezone)
+    : null) || provisionalTz
 
   // --- Follow-ups from verified context ---
   if (intent.followUp && ctx) {
@@ -201,9 +228,10 @@ export async function applyCalendarIntent(input) {
   }
 
   // --- Fresh query ---
-  const bounds = resolveCalendarQueryBounds({
+  // Provisional bounds for the request; reconciled after pack.timeZone (Google primary).
+  let bounds = resolveCalendarQueryBounds({
     dayRef: intent.dayRef,
-    timeZone,
+    timeZone: provisionalTz,
     now,
   })
 
@@ -212,7 +240,8 @@ export async function applyCalendarIntent(input) {
       ? input.requestFn
       : (await import('./api.js')).requestCalendarQuery
   const pack = await requestFn({
-    timeZone,
+    // Omit unreliable browser zones so listEvents can fall back to Google primary TZ.
+    ...(clientTz ? { timeZone: clientTz } : {}),
     range: bounds.range,
     timeMin: bounds.timeMin,
     timeMax: bounds.timeMax,
@@ -220,12 +249,25 @@ export async function applyCalendarIntent(input) {
     limit: 40,
   })
 
+  const packTz =
+    typeof pack.timeZone === 'string' && pack.timeZone.trim() && !isUnreliableCalendarTimeZone(pack.timeZone)
+      ? pack.timeZone.trim()
+      : null
+  const queryTimeZone = packTz || clientTz || 'UTC'
+  if (queryTimeZone !== provisionalTz) {
+    bounds = resolveCalendarQueryBounds({
+      dayRef: intent.dayRef,
+      timeZone: queryTimeZone,
+      now,
+    })
+  }
+
   const status = typeof pack.status === 'string' ? pack.status : 'error'
   if (status !== 'ok' && status !== 'empty') {
     const calendarContext = createCalendarContext({
       dateRange: bounds,
       labelDay: bounds.labelDay,
-      timezone: timeZone,
+      timezone: queryTimeZone,
       fetchedAt: pack.fetchedAt,
       events: [],
       focusIndex: -1,
@@ -264,7 +306,7 @@ export async function applyCalendarIntent(input) {
   if (intent.queryType === 'next') {
     // Keep soonest upcoming
     const nowMs = now.getTime()
-    const todayYmd = localYmdInZone(timeZone, now)
+    const todayYmd = localYmdInZone(queryTimeZone, now)
     events = events
       .filter((e) => {
         if (e.allDay) return allDayEventIncludesYmd(e, todayYmd)
@@ -278,7 +320,7 @@ export async function applyCalendarIntent(input) {
     intent.queryType === 'part_of_day'
   ) {
     events = filterEventsForQuery(events, {
-      timeZone,
+      timeZone: queryTimeZone,
       dayYmd: bounds.dayYmd,
       afterHour: intent.afterHour,
       afterMinute: intent.afterMinute,
@@ -291,14 +333,14 @@ export async function applyCalendarIntent(input) {
   let freeWindows = []
   if (intent.queryType === 'free_time') {
     let ymd = bounds.dayYmd
-    if (!ymd && bounds.range === 'today') ymd = localYmdInZone(timeZone, now)
-    if (!ymd && bounds.range === 'tomorrow') ymd = addDaysYmd(localYmdInZone(timeZone, now), 1)
-    freeWindows = ymd ? computeFreeWindows(events, { dayYmd: ymd, timeZone }) : []
+    if (!ymd && bounds.range === 'today') ymd = localYmdInZone(queryTimeZone, now)
+    if (!ymd && bounds.range === 'tomorrow') ymd = addDaysYmd(localYmdInZone(queryTimeZone, now), 1)
+    freeWindows = ymd ? computeFreeWindows(events, { dayYmd: ymd, timeZone: queryTimeZone }) : []
     const reply = renderCalendarAnswer({
       events,
       status: events.length ? 'ok' : 'empty',
       language,
-      timeZone,
+      timeZone: queryTimeZone,
       labelDay: bounds.labelDay,
       queryType: 'free_time',
       freeWindows,
@@ -306,7 +348,7 @@ export async function applyCalendarIntent(input) {
     const calendarContext = createCalendarContext({
       dateRange: bounds,
       labelDay: bounds.labelDay,
-      timezone: timeZone,
+      timezone: queryTimeZone,
       fetchedAt: pack.fetchedAt,
       events,
       focusIndex: 0,
@@ -336,7 +378,7 @@ export async function applyCalendarIntent(input) {
     events,
     status: effectiveStatus,
     language,
-    timeZone,
+    timeZone: queryTimeZone,
     labelDay: bounds.labelDay,
     queryType: intent.queryType || 'list',
     afterHour: intent.afterHour,
@@ -346,7 +388,7 @@ export async function applyCalendarIntent(input) {
   const calendarContext = createCalendarContext({
     dateRange: bounds,
     labelDay: bounds.labelDay,
-    timezone: timeZone,
+    timezone: queryTimeZone,
     fetchedAt: pack.fetchedAt,
     events,
     focusIndex: events.length ? 0 : -1,
