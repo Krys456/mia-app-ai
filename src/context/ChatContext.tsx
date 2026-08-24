@@ -144,6 +144,7 @@ import {
 import {
   applyEmailIntent,
   detectEmailIntent,
+  detectEmailLanguage,
   loadEmailContext,
   saveEmailContext,
 } from '../lib/email-chat'
@@ -2271,14 +2272,14 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       // Never fall through to /api/chat — including disabled/disconnected/error. Calendar
       // (above) is FROZEN: this block is a pure insertion, no Calendar behavior changed.
       // #383B — whole-turn gate: mixed email+reminder (etc.) must not discard the residual.
+      // #383D — reply language follows current utterance (sticky is fallback only).
       if (allowLocalRouters) {
         const sticky = deriveDictationLangFromMessages(state.messages)
-        const langHint =
-          sticky === 'en'
-            ? 'en'
-            : sticky === 'it'
-              ? 'it'
-              : detectBriefingLanguage(content, detectTimerLanguage(content, 'it'))
+        const stickyFallback =
+          sticky === 'en' || sticky === 'it'
+            ? sticky
+            : detectBriefingLanguage(content, detectTimerLanguage(content, 'it'))
+        const langHint = detectEmailLanguage(content, stickyFallback)
         const emailCtx = loadEmailContext()
         const emailIntent = detectEmailIntent(content, {
           languageHint: langHint,
