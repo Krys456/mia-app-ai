@@ -50,6 +50,7 @@ import {
 import {
   applyPhoneAction,
   buildPhoneActionDiag,
+  detectPhoneActionIntent,
   detectPhoneLanguage,
   isPhoneActionDiagEnabled,
   logPhoneActionSafe,
@@ -147,6 +148,7 @@ import {
   detectEmailLanguage,
   loadEmailContext,
   saveEmailContext,
+  shouldDeferPhoneEmailComposeToGmailWrite,
 } from '../lib/email-chat'
 import {
   applyPlacesIntent,
@@ -2095,6 +2097,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       }
 
       // #315 — deterministic Phone Actions (same user-gesture turn; never LLM-owned).
+      // #383F — Gmail write_unsupported: do not run Phone mailto/compose (no assign/open).
       if (allowLocalRouters) {
         const sticky = deriveDictationLangFromMessages(state.messages)
         const langHint =
@@ -2103,53 +2106,72 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             : sticky === 'it'
               ? 'it'
               : detectPhoneLanguage(content, detectTimerLanguage(content, 'it'))
-        let lastAssistantText = ''
-        for (let i = state.messages.length - 1; i >= 0; i -= 1) {
-          const m = state.messages[i]
-          if (m?.role === 'assistant' && m.kind !== 'error' && String(m.content || '').trim()) {
-            lastAssistantText = String(m.content).trim()
-            break
-          }
-        }
-        const phone = applyPhoneAction({
-          text: content,
-          lastAssistantText,
-          languageHint: langHint,
-          messagingContext: loadMessagingContext(),
-          env: {
-            navigateApp: (view: string) => {
-              requestAppNavigate(view)
-            },
-          },
+        const emailLangForPhoneGate = detectEmailLanguage(content, langHint)
+        const emailWriteGate = detectEmailIntent(content, {
+          languageHint: emailLangForPhoneGate,
+          hasEmailContext: Boolean(loadEmailContext()),
         })
-        if (phone.handled && phone.reply) {
-          if (phone.messagingContext) {
-            saveMessagingContext(phone.messagingContext)
-          } else if (
-            phone.action &&
-            phone.action !== 'sms' &&
-            phone.action !== 'whatsapp' &&
-            shouldClearMessagingOnUserText(content)
-          ) {
-            clearMessagingContext()
+        const phoneProbe = detectPhoneActionIntent(content, {
+          languageHint: langHint,
+          hasMessagingContext: Boolean(loadMessagingContext()),
+        })
+        const skipPhoneEmailCompose = shouldDeferPhoneEmailComposeToGmailWrite(emailWriteGate, {
+          handled: true,
+          action:
+            phoneProbe.kind === 'email' || phoneProbe.kind === 'email_needs_address'
+              ? 'email'
+              : null,
+          diag: { phoneActionIntent: phoneProbe.kind || null },
+        })
+        if (!skipPhoneEmailCompose) {
+          let lastAssistantText = ''
+          for (let i = state.messages.length - 1; i >= 0; i -= 1) {
+            const m = state.messages[i]
+            if (m?.role === 'assistant' && m.kind !== 'error' && String(m.content || '').trim()) {
+              lastAssistantText = String(m.content).trim()
+              break
+            }
           }
-          dispatch({
-            type: 'LOCAL_EXCHANGE',
-            userContent: content,
-            assistantContent: phone.reply,
+          const phone = applyPhoneAction({
+            text: content,
+            lastAssistantText,
+            languageHint: langHint,
+            messagingContext: loadMessagingContext(),
+            env: {
+              navigateApp: (view: string) => {
+                requestAppNavigate(view)
+              },
+            },
           })
-          logPhoneActionSafe({
-            action: phone.action,
-            target: phone.target,
-            safetyClass: phone.safetyClass,
-            handoffAttempted: Boolean(phone.diag.handoffAttempted),
-            failureCode: phone.diag.failureCode ?? null,
-          })
-          if (isPhoneActionDiagEnabled()) {
-            rememberPhoneActionDiag(buildPhoneActionDiag(phone.diag))
+          if (phone.handled && phone.reply) {
+            if (phone.messagingContext) {
+              saveMessagingContext(phone.messagingContext)
+            } else if (
+              phone.action &&
+              phone.action !== 'sms' &&
+              phone.action !== 'whatsapp' &&
+              shouldClearMessagingOnUserText(content)
+            ) {
+              clearMessagingContext()
+            }
+            dispatch({
+              type: 'LOCAL_EXCHANGE',
+              userContent: content,
+              assistantContent: phone.reply,
+            })
+            logPhoneActionSafe({
+              action: phone.action,
+              target: phone.target,
+              safetyClass: phone.safetyClass,
+              handoffAttempted: Boolean(phone.diag.handoffAttempted),
+              failureCode: phone.diag.failureCode ?? null,
+            })
+            if (isPhoneActionDiagEnabled()) {
+              rememberPhoneActionDiag(buildPhoneActionDiag(phone.diag))
+            }
+            clearCalendarLocalExchange(activeLocalExchangeRef, { reason: 'phone' })
+            return true
           }
-          clearCalendarLocalExchange(activeLocalExchangeRef, { reason: 'phone' })
-          return true
         }
         if (shouldClearMessagingOnUserText(content)) {
           clearMessagingContext()

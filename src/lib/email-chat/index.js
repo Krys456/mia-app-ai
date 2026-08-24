@@ -3,6 +3,7 @@
  */
 
 export { detectEmailIntent, detectEmailFollowUp, detectEmailLanguage } from './intent.js'
+export { shouldDeferPhoneEmailComposeToGmailWrite } from './phone-write-precedence.js'
 export { foldEmailText } from './normalize.js'
 export {
   EMAIL_CONTEXT_KEY,
