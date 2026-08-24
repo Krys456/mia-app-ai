@@ -20,6 +20,7 @@ import { detectUnitConversionIntent } from './unitConversion.js'
 import { detectReminderIntent } from './reminder-chat/intent.js'
 import { detectDailyBriefingIntent } from './daily-briefing/intent.js'
 import { detectTimerIntent } from './timer/intent.js'
+import { detectEmailIntent } from './email-chat/intent.js'
 import { CONVERSATIONAL_UNDERSTANDING_CONTRACT } from '../../lib/server/conversational-understanding.js'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '../..')
@@ -258,11 +259,38 @@ assert.ok(chatCtx.includes("routerType: 'calculator'"))
 assert.ok(chatCtx.includes("routerType: 'units'"))
 assert.ok(chatCtx.includes("routerType: 'weather'"))
 assert.ok(chatCtx.includes("routerType: 'briefing'"))
-// Calendar / Gmail / Places / Phone left audit-only (no gate wiring required)
+// #383B — Email now uses the whole-turn gate; Calendar / Places / Phone stay audit-only.
+assert.ok(chatCtx.includes("routerType: 'email'"))
 assert.equal((chatCtx.match(/routerType: 'calendar'/g) || []).length, 0)
-assert.equal((chatCtx.match(/routerType: 'email'/g) || []).length, 0)
 assert.equal((chatCtx.match(/routerType: 'places'/g) || []).length, 0)
 assert.equal((chatCtx.match(/routerType: 'phone'/g) || []).length, 0)
+
+// —— #383B Email + reminder mixed turn must not claim whole turn ——
+{
+  const full = 'Ho email da Marco e ricordami alle 9 di rispondere'
+  const ei = detectEmailIntent(full, { languageHint: 'it' })
+  assert.equal(ei.intent, 'email')
+  assertClaim('383B email+reminder mixed', false, {
+    routerType: 'email',
+    fullText: full,
+    detectedSpan: ei.sender || null,
+  })
+  assertClaim('383B pure important email', true, {
+    routerType: 'email',
+    fullText: 'Quali email importanti ho?',
+    detectedSpan: null,
+  })
+  assertClaim('383B pure write refusal still claims', true, {
+    routerType: 'email',
+    fullText: 'Invia una mail a Marco',
+    detectedSpan: null,
+  })
+  assertClaim('383C English emails+reminder mixed', false, {
+    routerType: 'email',
+    fullText: 'Any emails from Marco and remind me at 9 to reply',
+    detectedSpan: 'Marco',
+  })
+}
 
 // —— Core coverage principle present ——
 assert.ok(/materially distinct requests/i.test(CONVERSATIONAL_UNDERSTANDING_CONTRACT))

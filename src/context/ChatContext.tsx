@@ -50,6 +50,7 @@ import {
 import {
   applyPhoneAction,
   buildPhoneActionDiag,
+  detectPhoneActionIntent,
   detectPhoneLanguage,
   isPhoneActionDiagEnabled,
   logPhoneActionSafe,
@@ -144,8 +145,10 @@ import {
 import {
   applyEmailIntent,
   detectEmailIntent,
+  detectEmailLanguage,
   loadEmailContext,
   saveEmailContext,
+  shouldDeferPhoneEmailComposeToGmailWrite,
 } from '../lib/email-chat'
 import {
   applyPlacesIntent,
@@ -2094,6 +2097,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       }
 
       // #315 — deterministic Phone Actions (same user-gesture turn; never LLM-owned).
+      // #383F — Gmail write_unsupported: do not run Phone mailto/compose (no assign/open).
       if (allowLocalRouters) {
         const sticky = deriveDictationLangFromMessages(state.messages)
         const langHint =
@@ -2102,53 +2106,72 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             : sticky === 'it'
               ? 'it'
               : detectPhoneLanguage(content, detectTimerLanguage(content, 'it'))
-        let lastAssistantText = ''
-        for (let i = state.messages.length - 1; i >= 0; i -= 1) {
-          const m = state.messages[i]
-          if (m?.role === 'assistant' && m.kind !== 'error' && String(m.content || '').trim()) {
-            lastAssistantText = String(m.content).trim()
-            break
-          }
-        }
-        const phone = applyPhoneAction({
-          text: content,
-          lastAssistantText,
-          languageHint: langHint,
-          messagingContext: loadMessagingContext(),
-          env: {
-            navigateApp: (view: string) => {
-              requestAppNavigate(view)
-            },
-          },
+        const emailLangForPhoneGate = detectEmailLanguage(content, langHint)
+        const emailWriteGate = detectEmailIntent(content, {
+          languageHint: emailLangForPhoneGate,
+          hasEmailContext: Boolean(loadEmailContext()),
         })
-        if (phone.handled && phone.reply) {
-          if (phone.messagingContext) {
-            saveMessagingContext(phone.messagingContext)
-          } else if (
-            phone.action &&
-            phone.action !== 'sms' &&
-            phone.action !== 'whatsapp' &&
-            shouldClearMessagingOnUserText(content)
-          ) {
-            clearMessagingContext()
+        const phoneProbe = detectPhoneActionIntent(content, {
+          languageHint: langHint,
+          hasMessagingContext: Boolean(loadMessagingContext()),
+        })
+        const skipPhoneEmailCompose = shouldDeferPhoneEmailComposeToGmailWrite(emailWriteGate, {
+          handled: true,
+          action:
+            phoneProbe.kind === 'email' || phoneProbe.kind === 'email_needs_address'
+              ? 'email'
+              : null,
+          diag: { phoneActionIntent: phoneProbe.kind || null },
+        })
+        if (!skipPhoneEmailCompose) {
+          let lastAssistantText = ''
+          for (let i = state.messages.length - 1; i >= 0; i -= 1) {
+            const m = state.messages[i]
+            if (m?.role === 'assistant' && m.kind !== 'error' && String(m.content || '').trim()) {
+              lastAssistantText = String(m.content).trim()
+              break
+            }
           }
-          dispatch({
-            type: 'LOCAL_EXCHANGE',
-            userContent: content,
-            assistantContent: phone.reply,
+          const phone = applyPhoneAction({
+            text: content,
+            lastAssistantText,
+            languageHint: langHint,
+            messagingContext: loadMessagingContext(),
+            env: {
+              navigateApp: (view: string) => {
+                requestAppNavigate(view)
+              },
+            },
           })
-          logPhoneActionSafe({
-            action: phone.action,
-            target: phone.target,
-            safetyClass: phone.safetyClass,
-            handoffAttempted: Boolean(phone.diag.handoffAttempted),
-            failureCode: phone.diag.failureCode ?? null,
-          })
-          if (isPhoneActionDiagEnabled()) {
-            rememberPhoneActionDiag(buildPhoneActionDiag(phone.diag))
+          if (phone.handled && phone.reply) {
+            if (phone.messagingContext) {
+              saveMessagingContext(phone.messagingContext)
+            } else if (
+              phone.action &&
+              phone.action !== 'sms' &&
+              phone.action !== 'whatsapp' &&
+              shouldClearMessagingOnUserText(content)
+            ) {
+              clearMessagingContext()
+            }
+            dispatch({
+              type: 'LOCAL_EXCHANGE',
+              userContent: content,
+              assistantContent: phone.reply,
+            })
+            logPhoneActionSafe({
+              action: phone.action,
+              target: phone.target,
+              safetyClass: phone.safetyClass,
+              handoffAttempted: Boolean(phone.diag.handoffAttempted),
+              failureCode: phone.diag.failureCode ?? null,
+            })
+            if (isPhoneActionDiagEnabled()) {
+              rememberPhoneActionDiag(buildPhoneActionDiag(phone.diag))
+            }
+            clearCalendarLocalExchange(activeLocalExchangeRef, { reason: 'phone' })
+            return true
           }
-          clearCalendarLocalExchange(activeLocalExchangeRef, { reason: 'phone' })
-          return true
         }
         if (shouldClearMessagingOnUserText(content)) {
           clearMessagingContext()
@@ -2270,52 +2293,66 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       // #337B — Gmail read-only chat. CRITICAL: matched Email intents MUST terminate locally.
       // Never fall through to /api/chat — including disabled/disconnected/error. Calendar
       // (above) is FROZEN: this block is a pure insertion, no Calendar behavior changed.
+      // #383B — whole-turn gate: mixed email+reminder (etc.) must not discard the residual.
+      // #383D — reply language follows current utterance (sticky is fallback only).
       if (allowLocalRouters) {
         const sticky = deriveDictationLangFromMessages(state.messages)
-        const langHint =
-          sticky === 'en'
-            ? 'en'
-            : sticky === 'it'
-              ? 'it'
-              : detectBriefingLanguage(content, detectTimerLanguage(content, 'it'))
+        const stickyFallback =
+          sticky === 'en' || sticky === 'it'
+            ? sticky
+            : detectBriefingLanguage(content, detectTimerLanguage(content, 'it'))
+        const langHint = detectEmailLanguage(content, stickyFallback)
         const emailCtx = loadEmailContext()
         const emailIntent = detectEmailIntent(content, {
           languageHint: langHint,
           hasEmailContext: Boolean(emailCtx),
         })
         if (emailIntent.intent === 'email') {
-          void (async () => {
-            try {
-              const mail = await applyEmailIntent({
-                text: content,
-                languageHint: langHint,
-                emailContext: emailCtx,
-              })
-              const reply =
-                mail.handled && mail.reply
-                  ? mail.reply
-                  : langHint === 'en'
-                    ? 'I couldn’t read Gmail right now.'
-                    : 'Non riesco a leggere Gmail in questo momento.'
-              if (mail.emailContext) saveEmailContext(mail.emailContext)
-              dispatch({
-                type: 'LOCAL_EXCHANGE',
-                userContent: content,
-                assistantContent: reply,
-              })
-            } catch {
-              dispatch({
-                type: 'LOCAL_EXCHANGE',
-                userContent: content,
-                assistantContent:
-                  langHint === 'en'
-                    ? 'I couldn’t read Gmail right now.'
-                    : 'Non riesco a leggere Gmail in questo momento.',
-              })
-            }
-          })()
-          clearCalendarLocalExchange(activeLocalExchangeRef, { reason: 'email' })
-          return true
+          const claim = shouldLocalRouterClaimWholeTurn({
+            routerType: 'email',
+            fullText: content,
+            detectedSpan: (emailIntent as { sender?: string }).sender || null,
+            intentMetadata: {
+              followUp: Boolean(emailIntent.followUp),
+              operation: emailIntent.operation || null,
+            },
+          })
+          if (!claim.claimWholeTurn) {
+            // fall through — do not LOCAL_EXCHANGE (preserve residual asks)
+          } else {
+            void (async () => {
+              try {
+                const mail = await applyEmailIntent({
+                  text: content,
+                  languageHint: langHint,
+                  emailContext: emailCtx,
+                })
+                const reply =
+                  mail.handled && mail.reply
+                    ? mail.reply
+                    : langHint === 'en'
+                      ? 'I couldn’t read Gmail right now.'
+                      : 'Non riesco a leggere Gmail in questo momento.'
+                if (mail.emailContext) saveEmailContext(mail.emailContext)
+                dispatch({
+                  type: 'LOCAL_EXCHANGE',
+                  userContent: content,
+                  assistantContent: reply,
+                })
+              } catch {
+                dispatch({
+                  type: 'LOCAL_EXCHANGE',
+                  userContent: content,
+                  assistantContent:
+                    langHint === 'en'
+                      ? 'I couldn’t read Gmail right now.'
+                      : 'Non riesco a leggere Gmail in questo momento.',
+                })
+              }
+            })()
+            clearCalendarLocalExchange(activeLocalExchangeRef, { reason: 'email' })
+            return true
+          }
         }
       }
 

@@ -422,6 +422,7 @@ export type GmailQueryType =
   | 'sender'
   | 'time_window'
   | 'summary'
+  | 'important'
   | 'body_one'
 
 export type GmailQueryInput = {
@@ -465,6 +466,10 @@ export function buildSafeGmailQuery(input: GmailQueryInput): BuiltGmailQuery {
   switch (queryType) {
     case 'unread':
       return { ok: true, mode: 'list', q: 'in:inbox is:unread', maxResults: clampMaxResults(input.maxResults, 10) }
+
+    case 'important':
+      // #383B — server-built only; never accept client-supplied `q`.
+      return { ok: true, mode: 'list', q: 'in:inbox is:important', maxResults: clampMaxResults(input.maxResults, 20) }
 
     case 'latest':
       return { ok: true, mode: 'list', q: 'in:inbox', maxResults: clampMaxResults(input.maxResults, 5) }

@@ -38,6 +38,14 @@ const RESIDUAL_ASK_RE =
 const RESIDUAL_CONJ_ASK_RE =
   /\b(?:comunque|inoltre|poi|anche|e\s+poi|e\s+anche|ma\s+(?:prima|poi|comunque)|also|and\s+(?:also|then)|plus|besides)\b/i
 
+/**
+ * Residual cues for a *different* local capability than the claiming router.
+ * Used so Email (etc.) does not swallow reminder/timer/… halves of a mixed turn.
+ * Keep conservative: only strong primary verbs of other routers.
+ */
+const RESIDUAL_OTHER_CAPABILITY_RE =
+  /\b(?:ricordami|remind\s+me|promemoria|imposta(?:\s+un)?\s+timer|set(?:\s+a)?\s+timer|avvia(?:\s+un)?\s+timer|traduci(?:lo|la)?|translate|come\s+si\s+dice|quanto\s+fa|calcola|converti(?:lo)?|che\s+tempo(?:\s+fa)?|meteo|weather|fammi\s+(?:il\s+)?briefing|daily\s+briefing|ho\s+(?:email|mail|posta)|che\s+email|ricevuto\s+qualcosa\s+da)\b/i
+
 /** Router-specific cue phrases to strip when estimating residual. */
 const ROUTER_CUE_STRIP = {
   translation:
@@ -54,6 +62,9 @@ const ROUTER_CUE_STRIP = {
     /\b(?:che\s+tempo(?:\s+fa)?|weather|meteo|previsioni|forecast|piove|is\s+it\s+raining|temperature(?:\s+in)?)\b/gi,
   briefing:
     /\b(?:fammi\s+il\s+briefing|briefing(?:\s+giornaliero)?|daily\s+briefing|riepilogo\s+(?:della\s+)?giornata|morning\s+brief)\b/gi,
+  // #383B — Email participates in the whole-turn gate (read-only Gmail).
+  email:
+    /\b(?:e-?mails?|mails?|posta|gmail|inbox|unread|non\s+lett[ea]|importanti?|important|riassum\w*|summary|summarize|ricevuto\s+qualcosa\s+da|(?:ho|hai|quali|che)\s+(?:e-?mail|mail|posta)|(?:invia|manda|scrivi|send|write)\s+(?:una\s+|un'?\s*|an?\s+)?(?:e-?mail|mail|posta)|da\s+[a-zà-öø-ÿ'’\-]{2,40}|from\s+[a-z'’\-]{2,40})\b/gi,
 }
 
 /**
@@ -95,6 +106,7 @@ export function residualLooksLikeIndependentAsk(residual) {
   const letters = t.replace(/[^\p{L}\p{N}]+/gu, '')
   if (letters.length < 12) return false
   if (RESIDUAL_ASK_RE.test(t)) return true
+  if (RESIDUAL_OTHER_CAPABILITY_RE.test(t) && letters.length >= 16) return true
   if (RESIDUAL_CONJ_ASK_RE.test(t) && letters.length >= 24) return true
   // Multiple interrogative clauses remaining
   if ((t.match(/\?/g) || []).length >= 1 && letters.length >= 20 && RESIDUAL_ASK_RE.test(t + ' ?')) {

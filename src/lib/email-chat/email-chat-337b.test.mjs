@@ -7,9 +7,9 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
 import { describe, it } from 'node:test'
-import { detectEmailIntent, detectEmailFollowUp } from './intent.js'
+import { detectEmailIntent, detectEmailFollowUp, detectEmailLanguage } from './intent.js'
 import { foldEmailText } from './normalize.js'
-import { renderEmailList, renderFollowUp, extractiveSummary, failureReply } from './render.js'
+import { renderEmailList, renderFollowUp, extractiveSummary, failureReply, renderGmailWriteUnsupported } from './render.js'
 import { applyEmailIntent } from './controller.js'
 import { createEmailContext } from './active-context.js'
 
@@ -46,16 +46,18 @@ describe('email-chat-337b infrastructure', () => {
     }
 
     const ctx = read('src/context/ChatContext.tsx')
-    assert.match(ctx, /detectCalendarIntent/)
+    assert.match(ctx, /resolveCalendarTurnClaim/)
     assert.match(ctx, /applyCalendarIntent/)
     assert.match(ctx, /#336B/)
     assert.match(ctx, /detectEmailIntent/)
     assert.match(ctx, /applyEmailIntent/)
     assert.match(ctx, /#337B/)
+    assert.match(ctx, /shouldLocalRouterClaimWholeTurn/)
+    assert.match(ctx, /routerType: 'email'/)
 
     // Email block must be inserted AFTER Calendar's own "return true", and BEFORE
     // Daily Briefing — Calendar behavior/order is unchanged.
-    const calIdx = ctx.indexOf('#336B — Calendar chat')
+    const calIdx = ctx.search(/#336B.*Calendar chat/)
     const emailIdx = ctx.indexOf('#337B — Gmail read-only chat')
     const briefingIdx = ctx.indexOf('#321/#334C — Daily Briefing')
     assert.ok(calIdx > 0)
@@ -97,9 +99,19 @@ describe('email-chat-337b ↔ Supabase Edge contract (when present)', () => {
     const gmail = read('supabase/functions/_shared/email-gmail.ts')
     // Every fresh-query queryType this client can send must be a case the
     // Edge query builder actually understands.
-    for (const qt of ['today', 'unread', 'latest', 'sender', 'time_window', 'summary', 'body_one']) {
+    for (const qt of [
+      'today',
+      'unread',
+      'latest',
+      'sender',
+      'time_window',
+      'summary',
+      'important',
+      'body_one',
+    ]) {
       assert.match(gmail, new RegExp(`case '${qt}':`))
     }
+    assert.match(gmail, /in:inbox is:important/)
   })
 
   it('single-message follow-up uses body_one + bodyText (never a made-up shape)', { skip: !hasBackend }, () => {
@@ -168,6 +180,163 @@ describe('email-chat-337b intents (Italian-first)', () => {
     const summaryToday = detectEmailIntent('Riassumimi le email di oggi')
     assert.equal(summaryToday.queryType, 'summary')
     assert.equal(summaryToday.timeWindow, 'today')
+  })
+
+  it('#383B maps important intents to queryType important', () => {
+    for (const phrase of ['Quali email importanti ho?', 'Ho email importanti?', 'Any important email?']) {
+      const r = detectEmailIntent(phrase, { languageHint: phrase.startsWith('Any') ? 'en' : 'it' })
+      assert.equal(r.intent, 'email', phrase)
+      assert.equal(r.queryType, 'important', phrase)
+      assert.equal(r.operation, 'important', phrase)
+    }
+  })
+
+  it('#383C English plural emails routes like singular email', () => {
+    const important = detectEmailIntent('Any important emails?', { languageHint: 'en' })
+    assert.equal(important.intent, 'email')
+    assert.equal(important.queryType, 'important')
+
+    const unread = detectEmailIntent('Do I have unread emails?', { languageHint: 'en' })
+    assert.equal(unread.intent, 'email')
+    assert.equal(unread.queryType, 'unread')
+
+    const today = detectEmailIntent("Show me today's emails", { languageHint: 'en' })
+    assert.equal(today.intent, 'email')
+    assert.equal(today.queryType, 'today')
+
+    const sender = detectEmailIntent('Any emails from Marco?', { languageHint: 'en' })
+    assert.equal(sender.intent, 'email')
+    assert.equal(sender.queryType, 'sender')
+    assert.equal(sender.sender, 'Marco')
+
+    const write = detectEmailIntent('Send emails to Marco', { languageHint: 'en' })
+    assert.equal(write.intent, 'email')
+    assert.equal(write.operation, 'write_unsupported')
+    assert.equal(write.queryType, 'write_unsupported')
+  })
+
+  it('#383C does not claim unrelated plurals without email/mail/posta', () => {
+    for (const phrase of ['Any animals?', 'Show me today\'s meetings', 'Send flowers to Marco']) {
+      assert.equal(detectEmailIntent(phrase, { languageHint: 'en' }).intent, 'none', phrase)
+    }
+  })
+
+  it('#383D reply language follows current utterance (sticky hint is fallback only)', async () => {
+    const msgs = [
+      {
+        id: 'm1',
+        from: 'Boss',
+        subject: 'Urgent',
+        receivedAt: '2026-08-22T09:00:00.000Z',
+        unread: true,
+      },
+    ]
+    const requestFn = async () => ({
+      status: 'ok',
+      messages: msgs,
+      fetchedAt: new Date().toISOString(),
+      timeZone: 'UTC',
+    })
+
+    // Live bug: Italian sticky + English utterance must still render English.
+    const enImportant = await applyEmailIntent({
+      text: 'Any important emails?',
+      languageHint: 'it',
+      timeZone: 'UTC',
+      requestFn,
+    })
+    assert.equal(detectEmailLanguage('Any important emails?', 'it'), 'en')
+    assert.equal(detectEmailIntent('Any important emails?', { languageHint: 'it' }).language, 'en')
+    assert.match(enImportant.reply, /You have .* important emails/i)
+    assert.doesNotMatch(enImportant.reply, /^Hai /)
+
+    const enUnread = await applyEmailIntent({
+      text: 'Do I have unread emails?',
+      languageHint: 'it',
+      timeZone: 'UTC',
+      requestFn,
+    })
+    assert.equal(detectEmailIntent('Do I have unread emails?', { languageHint: 'it' }).language, 'en')
+    assert.match(enUnread.reply, /unread emails/i)
+
+    const enSender = await applyEmailIntent({
+      text: 'Any emails from Marco?',
+      languageHint: 'it',
+      timeZone: 'UTC',
+      requestFn,
+    })
+    assert.equal(detectEmailIntent('Any emails from Marco?', { languageHint: 'it' }).language, 'en')
+    assert.match(enSender.reply, /from Marco/i)
+
+    const enSummary = await applyEmailIntent({
+      text: 'Summarize my emails today',
+      languageHint: 'it',
+      timeZone: 'UTC',
+      requestFn,
+    })
+    assert.equal(detectEmailIntent('Summarize my emails today', { languageHint: 'it' }).language, 'en')
+    assert.match(enSummary.reply, /Summary of your emails/i)
+
+    const enWrite = await applyEmailIntent({
+      text: 'Send an email to Marco',
+      languageHint: 'it',
+      timeZone: 'UTC',
+      requestFn: async () => {
+        throw new Error('must not call Gmail API')
+      },
+    })
+    assert.equal(detectEmailIntent('Send an email to Marco', { languageHint: 'it' }).language, 'en')
+    assert.match(enWrite.reply, /can read/i)
+    assert.match(enWrite.reply, /can.t send|can't send|cannot send/i)
+
+    // Italian equivalents stay Italian even with English sticky.
+    const itImportant = await applyEmailIntent({
+      text: 'Quali email importanti ho?',
+      languageHint: 'en',
+      timeZone: 'UTC',
+      requestFn,
+    })
+    assert.equal(detectEmailLanguage('Quali email importanti ho?', 'en'), 'it')
+    assert.equal(detectEmailIntent('Quali email importanti ho?', { languageHint: 'en' }).language, 'it')
+    assert.match(itImportant.reply, /Hai .* email importanti/)
+
+    const itUnread = await applyEmailIntent({
+      text: 'Ho email non lette?',
+      languageHint: 'en',
+      timeZone: 'UTC',
+      requestFn,
+    })
+    assert.equal(detectEmailIntent('Ho email non lette?', { languageHint: 'en' }).language, 'it')
+    assert.match(itUnread.reply, /non lette/)
+
+    const itWrite = await applyEmailIntent({
+      text: 'Invia una mail a Marco',
+      languageHint: 'en',
+      timeZone: 'UTC',
+      requestFn: async () => {
+        throw new Error('must not call Gmail API')
+      },
+    })
+    assert.equal(detectEmailIntent('Invia una mail a Marco', { languageHint: 'en' }).language, 'it')
+    assert.match(itWrite.reply, /Posso leggere/)
+    assert.match(itWrite.reply, /non posso ancora inviare/i)
+  })
+
+  it('#383B detects send/write and does not map them to today/sender', () => {
+    for (const phrase of [
+      'Invia una mail a Marco',
+      "manda un'email a Marco",
+      'Send an email to Marco',
+      'Scrivi una mail a Marco',
+      'write an email to Sara',
+    ]) {
+      const r = detectEmailIntent(phrase)
+      assert.equal(r.intent, 'email', phrase)
+      assert.equal(r.operation, 'write_unsupported', phrase)
+      assert.equal(r.queryType, 'write_unsupported', phrase)
+      assert.notEqual(r.queryType, 'today', phrase)
+      assert.notEqual(r.queryType, 'sender', phrase)
+    }
   })
 
   const negatives = [
@@ -359,6 +528,68 @@ describe('email-chat-337b controller', () => {
     assert.match(result.reply, /Marco/)
     assert.equal(result.diag.modelCalls, 0)
     assert.ok(result.emailContext)
+  })
+
+  it('#383B write_unsupported returns honest reply with zero Gmail API calls', async () => {
+    let apiCalls = 0
+    for (const phrase of [
+      'Invia una mail a Marco',
+      'Send an email to Marco',
+      'Scrivi una mail a Marco',
+    ]) {
+      apiCalls = 0
+      const result = await applyEmailIntent({
+        text: phrase,
+        languageHint: phrase.startsWith('Send') ? 'en' : 'it',
+        timeZone: 'UTC',
+        requestFn: async () => {
+          apiCalls += 1
+          throw new Error('Gmail API must not be called for write intents')
+        },
+      })
+      assert.equal(result.handled, true, phrase)
+      assert.equal(apiCalls, 0, phrase)
+      assert.equal(result.diag.modelCalls, 0, phrase)
+      assert.equal(result.diag.gmailApiCalls, 0, phrase)
+      assert.equal(result.diag.operation, 'write_unsupported', phrase)
+      assert.equal(result.diag.failureCode, 'gmail_write_unsupported', phrase)
+      assert.equal(result.diag.terminatesLocally, true, phrase)
+      assert.match(result.reply, /leggere|read/i, phrase)
+      assert.match(result.reply, /non posso|can.t send|can't send|cannot send/i, phrase)
+    }
+    assert.match(renderGmailWriteUnsupported('it'), /Posso leggere/)
+    assert.match(renderGmailWriteUnsupported('en'), /can read/i)
+  })
+
+  it('#383B important list uses queryType important and never invents send', async () => {
+    let seen = null
+    const result = await applyEmailIntent({
+      text: 'Quali email importanti ho?',
+      languageHint: 'it',
+      timeZone: 'UTC',
+      requestFn: async (payload) => {
+        seen = payload
+        return {
+          status: 'ok',
+          messages: [
+            {
+              id: 'm1',
+              from: 'Boss',
+              subject: 'Urgente',
+              receivedAt: '2026-08-22T09:00:00.000Z',
+              unread: true,
+            },
+          ],
+          fetchedAt: new Date().toISOString(),
+          timeZone: 'UTC',
+        }
+      },
+    })
+    assert.equal(seen.queryType, 'important')
+    assert.equal(result.handled, true)
+    assert.match(result.reply, /importanti/)
+    assert.match(result.reply, /Boss/)
+    assert.equal(result.diag.modelCalls, 0)
   })
 
   it('follow-up ordinal reuses context with zero model calls', async () => {
