@@ -7,7 +7,7 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
 import { describe, it } from 'node:test'
-import { detectEmailIntent, detectEmailFollowUp } from './intent.js'
+import { detectEmailIntent, detectEmailFollowUp, detectEmailLanguage } from './intent.js'
 import { foldEmailText } from './normalize.js'
 import { renderEmailList, renderFollowUp, extractiveSummary, failureReply, renderGmailWriteUnsupported } from './render.js'
 import { applyEmailIntent } from './controller.js'
@@ -219,6 +219,107 @@ describe('email-chat-337b intents (Italian-first)', () => {
     for (const phrase of ['Any animals?', 'Show me today\'s meetings', 'Send flowers to Marco']) {
       assert.equal(detectEmailIntent(phrase, { languageHint: 'en' }).intent, 'none', phrase)
     }
+  })
+
+  it('#383D reply language follows current utterance (sticky hint is fallback only)', async () => {
+    const msgs = [
+      {
+        id: 'm1',
+        from: 'Boss',
+        subject: 'Urgent',
+        receivedAt: '2026-08-22T09:00:00.000Z',
+        unread: true,
+      },
+    ]
+    const requestFn = async () => ({
+      status: 'ok',
+      messages: msgs,
+      fetchedAt: new Date().toISOString(),
+      timeZone: 'UTC',
+    })
+
+    // Live bug: Italian sticky + English utterance must still render English.
+    const enImportant = await applyEmailIntent({
+      text: 'Any important emails?',
+      languageHint: 'it',
+      timeZone: 'UTC',
+      requestFn,
+    })
+    assert.equal(detectEmailLanguage('Any important emails?', 'it'), 'en')
+    assert.equal(detectEmailIntent('Any important emails?', { languageHint: 'it' }).language, 'en')
+    assert.match(enImportant.reply, /You have .* important emails/i)
+    assert.doesNotMatch(enImportant.reply, /^Hai /)
+
+    const enUnread = await applyEmailIntent({
+      text: 'Do I have unread emails?',
+      languageHint: 'it',
+      timeZone: 'UTC',
+      requestFn,
+    })
+    assert.equal(detectEmailIntent('Do I have unread emails?', { languageHint: 'it' }).language, 'en')
+    assert.match(enUnread.reply, /unread emails/i)
+
+    const enSender = await applyEmailIntent({
+      text: 'Any emails from Marco?',
+      languageHint: 'it',
+      timeZone: 'UTC',
+      requestFn,
+    })
+    assert.equal(detectEmailIntent('Any emails from Marco?', { languageHint: 'it' }).language, 'en')
+    assert.match(enSender.reply, /from Marco/i)
+
+    const enSummary = await applyEmailIntent({
+      text: 'Summarize my emails today',
+      languageHint: 'it',
+      timeZone: 'UTC',
+      requestFn,
+    })
+    assert.equal(detectEmailIntent('Summarize my emails today', { languageHint: 'it' }).language, 'en')
+    assert.match(enSummary.reply, /Summary of your emails/i)
+
+    const enWrite = await applyEmailIntent({
+      text: 'Send an email to Marco',
+      languageHint: 'it',
+      timeZone: 'UTC',
+      requestFn: async () => {
+        throw new Error('must not call Gmail API')
+      },
+    })
+    assert.equal(detectEmailIntent('Send an email to Marco', { languageHint: 'it' }).language, 'en')
+    assert.match(enWrite.reply, /can read/i)
+    assert.match(enWrite.reply, /can.t send|can't send|cannot send/i)
+
+    // Italian equivalents stay Italian even with English sticky.
+    const itImportant = await applyEmailIntent({
+      text: 'Quali email importanti ho?',
+      languageHint: 'en',
+      timeZone: 'UTC',
+      requestFn,
+    })
+    assert.equal(detectEmailLanguage('Quali email importanti ho?', 'en'), 'it')
+    assert.equal(detectEmailIntent('Quali email importanti ho?', { languageHint: 'en' }).language, 'it')
+    assert.match(itImportant.reply, /Hai .* email importanti/)
+
+    const itUnread = await applyEmailIntent({
+      text: 'Ho email non lette?',
+      languageHint: 'en',
+      timeZone: 'UTC',
+      requestFn,
+    })
+    assert.equal(detectEmailIntent('Ho email non lette?', { languageHint: 'en' }).language, 'it')
+    assert.match(itUnread.reply, /non lette/)
+
+    const itWrite = await applyEmailIntent({
+      text: 'Invia una mail a Marco',
+      languageHint: 'en',
+      timeZone: 'UTC',
+      requestFn: async () => {
+        throw new Error('must not call Gmail API')
+      },
+    })
+    assert.equal(detectEmailIntent('Invia una mail a Marco', { languageHint: 'en' }).language, 'it')
+    assert.match(itWrite.reply, /Posso leggere/)
+    assert.match(itWrite.reply, /non posso ancora inviare/i)
   })
 
   it('#383B detects send/write and does not map them to today/sender', () => {

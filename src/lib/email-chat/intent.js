@@ -20,6 +20,39 @@ const GMAIL_WRITE_RE =
   /\b(?:(?:invia|manda|inoltra)\s+(?:una\s+|un'?\s*)?(?:e-?mails?|mails?|posta)|scrivi\s+(?:una\s+|un'?\s*)?(?:e-?mails?|mails?|posta)|(?:send|write)\s+(?:an?\s+)?(?:e-?mails?|mails?))\b/
 const GMAIL_WRITE_EN_RE = /\b(?:send|write)\s+(?:an?\s+)?(?:e-?mails?|mails?)\b/
 
+/**
+ * Reply language for Gmail LOCAL_EXCHANGE — current utterance wins over sticky hint.
+ * Mirrors detectWeatherLanguage / detectTimerLanguage.
+ * @param {string} text
+ * @param {'it'|'en'} [fallback]
+ * @returns {'it'|'en'}
+ */
+export function detectEmailLanguage(text, fallback = 'it') {
+  const t = foldEmailText(text)
+  if (!t) return fallback === 'en' ? 'en' : 'it'
+
+  // Strong write cues (avoid ties on shared "mail"/"email" tokens).
+  if (GMAIL_WRITE_EN_RE.test(t)) return 'en'
+  if (/\b(?:invia|manda|inoltra|scrivi)\s+(?:una\s+|un'?\s*)?(?:e-?mails?|mails?|posta)\b/.test(t)) {
+    return 'it'
+  }
+
+  const itHits = (
+    t.match(
+      /\b(quali|ho|hai|ricevuto|non\s+lett[ea]|nuov[ea]|importanti|oggi|stamattina|riassum\w*|invia|manda|scrivi|ultima|ultimo|posta|che\s+email)\b/g,
+    ) || []
+  ).length
+  const enHits = (
+    t.match(
+      /\b(any|do\s+i|have|show\s+me|unread|today'?s?|from|send|write|summarize|summary|latest|newest|important|emails?)\b/g,
+    ) || []
+  ).length
+
+  if (enHits > itHits) return 'en'
+  if (itHits > enHits) return 'it'
+  return fallback === 'en' ? 'en' : 'it'
+}
+
 function detectTimeWindow(t) {
   if (/\b(stamattina|questa\s+mattina)\b/.test(t)) return 'morning'
   if (/\b(oggi|today)\b/.test(t)) return 'today'
@@ -122,11 +155,13 @@ export function detectEmailFollowUp(t) {
  * @param {{ languageHint?: 'it'|'en', hasEmailContext?: boolean }} [opts]
  */
 export function detectEmailIntent(raw, opts = {}) {
-  const language = opts.languageHint === 'en' ? 'en' : 'it'
+  const hint = opts.languageHint === 'en' ? 'en' : 'it'
   const text = String(raw || '').trim()
   if (!text || text.length > 400) {
-    return { intent: 'none', language }
+    return { intent: 'none', language: hint }
   }
+
+  const language = detectEmailLanguage(text, hint)
 
   const outer = analyzeOuterUserRequest(text)
   if (outer.localRoutersSuppressed) {
@@ -163,10 +198,9 @@ export function detectEmailIntent(raw, opts = {}) {
 
   // #383B — send/write phrases must never become today/sender inbox queries.
   if (isWrite) {
-    const writeLang = GMAIL_WRITE_EN_RE.test(t) || opts.languageHint === 'en' ? 'en' : language
     return {
       intent: 'email',
-      language: writeLang,
+      language,
       operation: 'write_unsupported',
       queryType: 'write_unsupported',
       followUp: false,
