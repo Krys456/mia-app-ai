@@ -92,6 +92,17 @@ export function failureReply(status, language = 'it') {
 }
 
 /**
+ * #383B — Honest read-only refusal for send/write/compose asks.
+ * @param {'it'|'en'} [language]
+ */
+export function renderGmailWriteUnsupported(language = 'it') {
+  if (language === 'en') {
+    return 'I can read your Gmail inbox, but I can’t send or write emails yet.'
+  }
+  return 'Posso leggere la tua casella Gmail, ma non posso ancora inviare o scrivere email.'
+}
+
+/**
  * @param {object[]} messages
  * @param {string} queryType
  * @param {{ language?: 'it'|'en', timeZone?: string, timeWindow?: string, sender?: string }} [opts]
@@ -109,6 +120,9 @@ export function renderEmailList(messages, queryType, opts = {}) {
     }
     if (queryType === 'unread') {
       return language === 'en' ? 'No unread emails.' : 'Non risultano email non lette.'
+    }
+    if (queryType === 'important') {
+      return language === 'en' ? 'No important emails.' : 'Non risultano email importanti.'
     }
     if (queryType === 'latest') {
       return language === 'en' ? 'No emails found.' : 'Non risultano email.'
@@ -139,6 +153,11 @@ export function renderEmailList(messages, queryType, opts = {}) {
     return language === 'en'
       ? `You have ${list.length} unread emails:\n${lines.join('\n')}`
       : `Hai ${list.length} email non lette:\n${lines.join('\n')}`
+  }
+  if (queryType === 'important') {
+    return language === 'en'
+      ? `You have ${list.length} important emails:\n${lines.join('\n')}`
+      : `Hai ${list.length} email importanti:\n${lines.join('\n')}`
   }
 
   return language === 'en'

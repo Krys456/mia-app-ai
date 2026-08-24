@@ -9,11 +9,16 @@ import { foldEmailText } from './normalize.js'
 
 const EMAIL_WORD_RE = /\b(email|e-mail|mail|posta)\b/
 const UNREAD_CUE_RE = /\b(nuov[ea]|non\s+lett[ea])\b/
+const IMPORTANT_CUE_RE = /\b(importanti?|important)\b/
 const LATEST_CUE_RE = /\b(ultima|ultimo|piu\s+recente|most\s+recent|latest|newest)\b/
 const SUMMARY_CUE_RE = /\b(riassum\w*|riassunto|summary|summarize)\b/
 const RICEVUTO_QUALCOSA_DA_RE = /\b(ho\s+)?ricevuto\s+qualcosa\s+da\b/
 const APRI_APP_RE = /\b(apri|open)\s+(gmail|posta|email|e-mail|mail)\b/
 const DA_SENDER_LOOSE_RE = /\bda\s+[a-z]/i
+/** Outbound compose/send — read-only product must refuse honestly, never map to inbox queries. */
+const GMAIL_WRITE_RE =
+  /\b(?:(?:invia|manda|inoltra)\s+(?:una\s+|un'?\s*)?(?:e-?mail|mail|posta)|scrivi\s+(?:una\s+|un'?\s*)?(?:e-?mail|mail|posta)|(?:send|write)\s+(?:an?\s+)?(?:e-?mail|mail))\b/
+const GMAIL_WRITE_EN_RE = /\b(?:send|write)\s+(?:an?\s+)?(?:e-?mail|mail)\b/
 
 function detectTimeWindow(t) {
   if (/\b(stamattina|questa\s+mattina)\b/.test(t)) return 'morning'
@@ -154,6 +159,20 @@ export function detectEmailIntent(raw, opts = {}) {
 
   const ricevutoQualcosaDa = RICEVUTO_QUALCOSA_DA_RE.test(t)
   const hasEmailWord = EMAIL_WORD_RE.test(t)
+  const isWrite = GMAIL_WRITE_RE.test(t)
+
+  // #383B — send/write phrases must never become today/sender inbox queries.
+  if (isWrite) {
+    const writeLang = GMAIL_WRITE_EN_RE.test(t) || opts.languageHint === 'en' ? 'en' : language
+    return {
+      intent: 'email',
+      language: writeLang,
+      operation: 'write_unsupported',
+      queryType: 'write_unsupported',
+      followUp: false,
+      failureCode: 'gmail_write_unsupported',
+    }
+  }
 
   // Ambiguous "Cosa mi ha scritto Marco?" (no email/mail/posta, no strong signal):
   // never claim — let Core clarify (with or without a fresh Email context).
@@ -177,6 +196,17 @@ export function detectEmailIntent(raw, opts = {}) {
 
   if (hasEmailWord && UNREAD_CUE_RE.test(t)) {
     return { intent: 'email', language, operation: 'unread', queryType: 'unread', followUp: false }
+  }
+
+  // #383B — important inbox (server-built `is:important`), before today fallback.
+  if (hasEmailWord && IMPORTANT_CUE_RE.test(t)) {
+    return {
+      intent: 'email',
+      language,
+      operation: 'important',
+      queryType: 'important',
+      followUp: false,
+    }
   }
 
   if (hasEmailWord && LATEST_CUE_RE.test(t)) {
