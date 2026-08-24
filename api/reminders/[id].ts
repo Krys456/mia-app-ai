@@ -138,6 +138,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         )
       }
 
+      // #380E — duplicate delivered ack: return current row, no write.
+      if (validated.idempotent === true || Object.keys(validated.data).length === 0) {
+        return sendJson(res, 200, { reminder: current }, req)
+      }
+
       const reminder = await updateReminder(id, validated.data, scope)
       if (!reminder) {
         return sendJson(res, 404, { error: 'Reminder not found', code: 'not_found' }, req)
