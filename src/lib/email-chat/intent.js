@@ -7,18 +7,18 @@
 import { analyzeOuterUserRequest } from '../outer-content-gate.js'
 import { foldEmailText } from './normalize.js'
 
-const EMAIL_WORD_RE = /\b(email|e-mail|mail|posta)\b/
-const UNREAD_CUE_RE = /\b(nuov[ea]|non\s+lett[ea])\b/
+const EMAIL_WORD_RE = /\b(emails?|e-mails?|mails?|posta)\b/
+const UNREAD_CUE_RE = /\b(nuov[ea]|non\s+lett[ea]|unread)\b/
 const IMPORTANT_CUE_RE = /\b(importanti?|important)\b/
 const LATEST_CUE_RE = /\b(ultima|ultimo|piu\s+recente|most\s+recent|latest|newest)\b/
 const SUMMARY_CUE_RE = /\b(riassum\w*|riassunto|summary|summarize)\b/
 const RICEVUTO_QUALCOSA_DA_RE = /\b(ho\s+)?ricevuto\s+qualcosa\s+da\b/
-const APRI_APP_RE = /\b(apri|open)\s+(gmail|posta|email|e-mail|mail)\b/
-const DA_SENDER_LOOSE_RE = /\bda\s+[a-z]/i
+const APRI_APP_RE = /\b(apri|open)\s+(gmail|posta|emails?|e-mails?|mails?)\b/
+const DA_SENDER_LOOSE_RE = /\b(?:da|from)\s+[a-z]/i
 /** Outbound compose/send — read-only product must refuse honestly, never map to inbox queries. */
 const GMAIL_WRITE_RE =
-  /\b(?:(?:invia|manda|inoltra)\s+(?:una\s+|un'?\s*)?(?:e-?mail|mail|posta)|scrivi\s+(?:una\s+|un'?\s*)?(?:e-?mail|mail|posta)|(?:send|write)\s+(?:an?\s+)?(?:e-?mail|mail))\b/
-const GMAIL_WRITE_EN_RE = /\b(?:send|write)\s+(?:an?\s+)?(?:e-?mail|mail)\b/
+  /\b(?:(?:invia|manda|inoltra)\s+(?:una\s+|un'?\s*)?(?:e-?mails?|mails?|posta)|scrivi\s+(?:una\s+|un'?\s*)?(?:e-?mails?|mails?|posta)|(?:send|write)\s+(?:an?\s+)?(?:e-?mails?|mails?))\b/
+const GMAIL_WRITE_EN_RE = /\b(?:send|write)\s+(?:an?\s+)?(?:e-?mails?|mails?)\b/
 
 function detectTimeWindow(t) {
   if (/\b(stamattina|questa\s+mattina)\b/.test(t)) return 'morning'
@@ -69,7 +69,7 @@ function looksQuotedOrInjected(raw) {
 /** Best-effort sender name, preserving original casing (e.g. "Amazon", "Marco"). */
 function extractSenderFromRaw(raw) {
   const m = String(raw || '').match(
-    /\bda\s+([A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ'’\-]{1,40})\b/i,
+    /\b(?:da|from)\s+([A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ'’\-]{1,40})\b/i,
   )
   if (!m) return null
   const name = m[1].trim()

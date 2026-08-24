@@ -285,6 +285,11 @@ assert.equal((chatCtx.match(/routerType: 'phone'/g) || []).length, 0)
     fullText: 'Invia una mail a Marco',
     detectedSpan: null,
   })
+  assertClaim('383C English emails+reminder mixed', false, {
+    routerType: 'email',
+    fullText: 'Any emails from Marco and remind me at 9 to reply',
+    detectedSpan: 'Marco',
+  })
 }
 
 // —— Core coverage principle present ——

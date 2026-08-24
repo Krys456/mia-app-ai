@@ -191,6 +191,36 @@ describe('email-chat-337b intents (Italian-first)', () => {
     }
   })
 
+  it('#383C English plural emails routes like singular email', () => {
+    const important = detectEmailIntent('Any important emails?', { languageHint: 'en' })
+    assert.equal(important.intent, 'email')
+    assert.equal(important.queryType, 'important')
+
+    const unread = detectEmailIntent('Do I have unread emails?', { languageHint: 'en' })
+    assert.equal(unread.intent, 'email')
+    assert.equal(unread.queryType, 'unread')
+
+    const today = detectEmailIntent("Show me today's emails", { languageHint: 'en' })
+    assert.equal(today.intent, 'email')
+    assert.equal(today.queryType, 'today')
+
+    const sender = detectEmailIntent('Any emails from Marco?', { languageHint: 'en' })
+    assert.equal(sender.intent, 'email')
+    assert.equal(sender.queryType, 'sender')
+    assert.equal(sender.sender, 'Marco')
+
+    const write = detectEmailIntent('Send emails to Marco', { languageHint: 'en' })
+    assert.equal(write.intent, 'email')
+    assert.equal(write.operation, 'write_unsupported')
+    assert.equal(write.queryType, 'write_unsupported')
+  })
+
+  it('#383C does not claim unrelated plurals without email/mail/posta', () => {
+    for (const phrase of ['Any animals?', 'Show me today\'s meetings', 'Send flowers to Marco']) {
+      assert.equal(detectEmailIntent(phrase, { languageHint: 'en' }).intent, 'none', phrase)
+    }
+  })
+
   it('#383B detects send/write and does not map them to today/sender', () => {
     for (const phrase of [
       'Invia una mail a Marco',
