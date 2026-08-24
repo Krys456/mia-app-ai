@@ -2270,6 +2270,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       // #337B — Gmail read-only chat. CRITICAL: matched Email intents MUST terminate locally.
       // Never fall through to /api/chat — including disabled/disconnected/error. Calendar
       // (above) is FROZEN: this block is a pure insertion, no Calendar behavior changed.
+      // #383B — whole-turn gate: mixed email+reminder (etc.) must not discard the residual.
       if (allowLocalRouters) {
         const sticky = deriveDictationLangFromMessages(state.messages)
         const langHint =
@@ -2284,38 +2285,51 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           hasEmailContext: Boolean(emailCtx),
         })
         if (emailIntent.intent === 'email') {
-          void (async () => {
-            try {
-              const mail = await applyEmailIntent({
-                text: content,
-                languageHint: langHint,
-                emailContext: emailCtx,
-              })
-              const reply =
-                mail.handled && mail.reply
-                  ? mail.reply
-                  : langHint === 'en'
-                    ? 'I couldn’t read Gmail right now.'
-                    : 'Non riesco a leggere Gmail in questo momento.'
-              if (mail.emailContext) saveEmailContext(mail.emailContext)
-              dispatch({
-                type: 'LOCAL_EXCHANGE',
-                userContent: content,
-                assistantContent: reply,
-              })
-            } catch {
-              dispatch({
-                type: 'LOCAL_EXCHANGE',
-                userContent: content,
-                assistantContent:
-                  langHint === 'en'
-                    ? 'I couldn’t read Gmail right now.'
-                    : 'Non riesco a leggere Gmail in questo momento.',
-              })
-            }
-          })()
-          clearCalendarLocalExchange(activeLocalExchangeRef, { reason: 'email' })
-          return true
+          const claim = shouldLocalRouterClaimWholeTurn({
+            routerType: 'email',
+            fullText: content,
+            detectedSpan: (emailIntent as { sender?: string }).sender || null,
+            intentMetadata: {
+              followUp: Boolean(emailIntent.followUp),
+              operation: emailIntent.operation || null,
+            },
+          })
+          if (!claim.claimWholeTurn) {
+            // fall through — do not LOCAL_EXCHANGE (preserve residual asks)
+          } else {
+            void (async () => {
+              try {
+                const mail = await applyEmailIntent({
+                  text: content,
+                  languageHint: langHint,
+                  emailContext: emailCtx,
+                })
+                const reply =
+                  mail.handled && mail.reply
+                    ? mail.reply
+                    : langHint === 'en'
+                      ? 'I couldn’t read Gmail right now.'
+                      : 'Non riesco a leggere Gmail in questo momento.'
+                if (mail.emailContext) saveEmailContext(mail.emailContext)
+                dispatch({
+                  type: 'LOCAL_EXCHANGE',
+                  userContent: content,
+                  assistantContent: reply,
+                })
+              } catch {
+                dispatch({
+                  type: 'LOCAL_EXCHANGE',
+                  userContent: content,
+                  assistantContent:
+                    langHint === 'en'
+                      ? 'I couldn’t read Gmail right now.'
+                      : 'Non riesco a leggere Gmail in questo momento.',
+                })
+              }
+            })()
+            clearCalendarLocalExchange(activeLocalExchangeRef, { reason: 'email' })
+            return true
+          }
         }
       }
 

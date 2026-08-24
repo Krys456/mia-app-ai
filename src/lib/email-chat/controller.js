@@ -6,7 +6,13 @@
 
 import { createEmailContext, isEmailContextFresh } from './active-context.js'
 import { detectEmailIntent } from './intent.js'
-import { extractiveSummary, failureReply, renderEmailList, renderFollowUp } from './render.js'
+import {
+  extractiveSummary,
+  failureReply,
+  renderEmailList,
+  renderFollowUp,
+  renderGmailWriteUnsupported,
+} from './render.js'
 
 function browserTimeZone() {
   try {
@@ -171,6 +177,23 @@ export async function applyEmailIntent(input) {
         operation: 'follow_up_no_context',
         failureCode: 'no_context',
         modelCalls: 0,
+        terminatesLocally: true,
+      },
+    }
+  }
+
+  // #383B — send/write: honest LOCAL_EXCHANGE, zero Gmail API / Core.
+  if (intent.operation === 'write_unsupported' || intent.queryType === 'write_unsupported') {
+    return {
+      handled: true,
+      reply: renderGmailWriteUnsupported(language),
+      emailUi: buildEmailUi('ok'),
+      diag: {
+        emailIntent: 'email',
+        operation: 'write_unsupported',
+        failureCode: 'gmail_write_unsupported',
+        modelCalls: 0,
+        gmailApiCalls: 0,
         terminatesLocally: true,
       },
     }
