@@ -241,9 +241,12 @@ Deno.serve(async (req) => {
             keys: { p256dh: sub.p256dh, auth: sub.auth },
           }
           const subscriber = appServer.subscribe(subscription)
+          // #384E — high urgency for time-sensitive morning briefing (Android/FCM Doze).
+          // @negrel/webpush Urgency.High === "high" → Urgency header.
+          // Scope: morning-briefing-dispatch only (Reminder Push already high via #380G).
           await subscriber.pushTextMessage(JSON.stringify(payload), {
             ttl: 60 * 60,
-            urgency: 'normal',
+            urgency: 'high',
           })
           anyAccepted = true
           await supabase
