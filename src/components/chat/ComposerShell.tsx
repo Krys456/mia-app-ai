@@ -438,6 +438,7 @@ export function ComposerShell({ onMessageSent }: ComposerShellProps) {
             onStopSend={voice.stopAndSend}
             onCancel={voice.cancelListening}
             onStopSpeaking={voice.stopSpeaking}
+            onBargeIn={voice.bargeIn}
             onListenAgain={voice.startListening}
             onPlayPending={voice.playPending}
             onExit={voice.exit}

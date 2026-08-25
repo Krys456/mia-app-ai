@@ -11,6 +11,8 @@ export type VoiceModeBarProps = {
   onStopSend: () => void
   onCancel: () => void
   onStopSpeaking: () => void
+  /** #385D — stop TTS and listen now (keeps continuous conversation on). */
+  onBargeIn: () => void
   onListenAgain: () => void
   onPlayPending: () => void
   onExit: () => void
@@ -28,7 +30,7 @@ function statusLabel(
     case 'processing':
       return 'Sto elaborando…'
     case 'speaking':
-      return 'Sto parlando…'
+      return 'Sto parlando… Tocca per parlare'
     case 'error':
       return 'Qualcosa non ha funzionato'
     default:
@@ -46,6 +48,7 @@ export function VoiceModeBar({
   onStopSend,
   onCancel,
   onStopSpeaking,
+  onBargeIn,
   onListenAgain,
   onPlayPending,
   onExit,
@@ -101,14 +104,24 @@ export function VoiceModeBar({
         ) : null}
 
         {phase === 'speaking' ? (
-          <button
-            type="button"
-            className="voice-mode-bar__btn voice-mode-bar__btn--primary"
-            aria-label="Interrompi riproduzione vocale"
-            onClick={onStopSpeaking}
-          >
-            Stop
-          </button>
+          <>
+            <button
+              type="button"
+              className="voice-mode-bar__btn voice-mode-bar__btn--primary"
+              aria-label="Interrompi e parla"
+              onClick={onBargeIn}
+            >
+              Interrompi e parla
+            </button>
+            <button
+              type="button"
+              className="voice-mode-bar__btn"
+              aria-label="Ferma riproduzione e metti in pausa la conversazione vocale"
+              onClick={onStopSpeaking}
+            >
+              Stop
+            </button>
+          </>
         ) : null}
 
         {needsManualPlay ? (

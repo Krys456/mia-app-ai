@@ -39,6 +39,8 @@ export interface UseVoiceModeApi {
   stopAndSend: () => void
   cancelListening: () => void
   stopSpeaking: () => void
+  /** #385D — while speaking: cancel TTS and listen (keeps continuous on). */
+  bargeIn: () => void
   playPending: () => void
   clearError: () => void
 }
@@ -429,6 +431,18 @@ export function useVoiceMode(): UseVoiceModeApi {
 
   startListeningRef.current = startListening
 
+  /**
+   * #385D tap-to-barge-in: explicit interrupt while speaking.
+   * Reuses startListening() teardown (turnId++, cancel auto-listen, clearAudio,
+   * setContinuous(true)) — does NOT call stopSpeaking() (which pauses continuity).
+   */
+  const bargeIn = useCallback(() => {
+    if (!activeRef.current) return
+    // Only while actively playing assistant speech — not needsManualPlay idle.
+    if (phase !== 'speaking') return
+    startListening()
+  }, [phase, startListening])
+
   const stopAndSend = useCallback(() => {
     if (phase !== 'listening') return
     sessionRef.current?.stop()
@@ -501,6 +515,7 @@ export function useVoiceMode(): UseVoiceModeApi {
     stopAndSend,
     cancelListening,
     stopSpeaking,
+    bargeIn,
     playPending,
     clearError,
   }
