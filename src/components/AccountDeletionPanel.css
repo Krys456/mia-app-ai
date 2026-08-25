@@ -1,0 +1,91 @@
+/* #386C — Account deletion (calm destructive affordance; not a card stack). */
+
+.account-deletion {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  max-width: 36rem;
+  margin-top: 0.35rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+}
+
+.account-deletion__title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.account-deletion__lead,
+.account-deletion__distinguish,
+.account-deletion__warn,
+.account-deletion__meta,
+.account-deletion__error,
+.account-deletion__label {
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.account-deletion__warn {
+  color: var(--text);
+  border-left: 2px solid color-mix(in srgb, var(--danger, #b42318) 75%, var(--border));
+  padding-left: 0.7rem;
+}
+
+.account-deletion__error {
+  color: var(--danger, #b42318);
+}
+
+.account-deletion__input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.55rem 0.65rem;
+  border-radius: var(--radius-sm, 6px);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+}
+
+.account-deletion__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  align-items: center;
+  margin-top: 0.25rem;
+}
+
+.account-deletion__open,
+.account-deletion__cancel,
+.account-deletion__destroy {
+  appearance: none;
+  border-radius: var(--radius-sm, 6px);
+  padding: 0.45rem 0.75rem;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+.account-deletion__open,
+.account-deletion__cancel {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.account-deletion__destroy {
+  border: 1px solid color-mix(in srgb, var(--danger, #b42318) 55%, var(--border));
+  background: color-mix(in srgb, var(--danger, #b42318) 12%, var(--surface));
+  color: var(--text);
+  font-weight: 600;
+}
+
+.account-deletion__destroy:disabled,
+.account-deletion__open:disabled,
+.account-deletion__cancel:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}

@@ -9,6 +9,7 @@ interface ImportMetaEnv {
   readonly VITE_REMINDERS_ENABLED?: string
   readonly VITE_VAPID_PUBLIC_KEY?: string
   readonly VITE_PUSH_ENABLED?: string
+  readonly VITE_ACCOUNT_DELETION_ENABLED?: string
   readonly VITE_BUILD_ID?: string
 }
 

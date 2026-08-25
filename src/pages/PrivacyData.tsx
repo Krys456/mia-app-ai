@@ -1,5 +1,6 @@
 import { PageHeader } from '../components/PageHeader'
 import { IdentityAccountPanel } from '../components/IdentityAccountPanel'
+import { AccountDeletionPanel } from '../components/AccountDeletionPanel'
 import {
   PRIVACY_DISCLOSURE,
   buildBetaContactLine,
@@ -17,6 +18,7 @@ interface PrivacyDataProps {
  * #298B — Lightweight Privacy & Data disclosure (closed beta).
  * #298C — Beta build + mailto support.
  * #298D — Italian UI copy + quiet beta identity.
+ * #386C — Account deletion under Account / Privacy.
  * AppView surface — no router.
  */
 export function PrivacyData({ onBack }: PrivacyDataProps) {
@@ -105,6 +107,8 @@ export function PrivacyData({ onBack }: PrivacyDataProps) {
             acquisti sullo stesso account.
           </p>
           <IdentityAccountPanel variant="privacy" />
+          <p>{PRIVACY_DISCLOSURE.accountDeletion}</p>
+          <AccountDeletionPanel />
         </section>
 
         <section className="privacy-data__section" aria-labelledby="privacy-session-title">

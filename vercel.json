@@ -48,6 +48,10 @@
     "api/subscription.ts": {
       "includeFiles": "lib/server/**",
       "maxDuration": 15
+    },
+    "api/account/delete.ts": {
+      "includeFiles": "lib/server/**",
+      "maxDuration": 60
     }
   },
   "rewrites": [

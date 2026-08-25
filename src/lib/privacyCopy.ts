@@ -48,7 +48,9 @@ export const PRIVACY_DISCLOSURE = {
   processors:
     'Servizi principali usati da ShinkAIdo: OpenAI (elaborazione AI e, se usi la Modalità vocale, sintesi vocale TTS), Supabase (autenticazione, Memoria, promemoria, sottoscrizioni push e, se collegato, connessione Calendar/Email), Vercel (hosting), Upstash (limite di richieste), i servizi push del browser/sistema operativo per le notifiche opzionali, Google (OAuth Calendar/Email e Places, solo se usi quelle funzioni), e il riconoscimento vocale del browser/sistema (Web Speech) per dettatura e Modalità vocale.',
   newChatVsMemory:
-    'Nuova chat chiude la conversazione sullo schermo. Eliminare la Memoria rimuove i ricordi salvati. L’eliminazione dell’account non è ancora disponibile.',
+    'Nuova chat chiude la conversazione sullo schermo. Eliminare la Memoria rimuove i ricordi salvati. Puoi eliminare l’intero account da Privacy e dati (azione permanente e separata).',
+  accountDeletion:
+    'Eliminare l’account rimuove in modo permanente da ShinkAIdo: Memoria, promemoria, notifiche push, programmazione del briefing, connessioni Calendar/Gmail (solo accesso ShinkAIdo — non cancella eventi o email su Google) e l’identità di accesso. La chat sullo schermo e le impostazioni locali di questo browser vengono cancellate al termine. I log operativi dei fornitori possono restare per un periodo limitato secondo le loro policy di conservazione.',
   highStakes:
     'ShinkAIdo può commettere errori. Per decisioni mediche, legali, finanziarie o altre decisioni critiche, verifica sempre con fonti o professionisti qualificati.',
   conversationSession:
@@ -70,3 +72,22 @@ export const MEMORY_SETTINGS_COPY = {
 /** #298D — calm empty-state guidance (not an onboarding tour). */
 export const FIRST_RUN_HINT =
   'Scrivi liberamente qui sotto. Memoria, privacy e altre opzioni sono disponibili nelle Impostazioni.'
+
+/** #386C — Account deletion UI copy (Italian product UI). */
+export const ACCOUNT_DELETION_COPY = {
+  title: 'Elimina account',
+  lead: 'Azione permanente. Rimuove i dati del tuo account ShinkAIdo e scollega le integrazioni.',
+  distinguish:
+    'Diverso da: Elimina Memoria, Scollega Calendar, Scollega Gmail o Esci (che mantengono l’account).',
+  openButton: 'Elimina account…',
+  warning:
+    'Questa operazione non si può annullare. Verranno eliminati Memoria, promemoria, notifiche, briefing, connessioni Google (solo accesso ShinkAIdo) e l’account. Non elimina eventi del calendario né email su Google.',
+  logsNote:
+    'I log di sicurezza/operativi dei servizi usati da ShinkAIdo possono restare temporaneamente secondo le policy del fornitore.',
+  confirmLabel: 'Digita ELIMINA per confermare (oppure DELETE)',
+  confirmHint: 'Conferma tipizzata obbligatoria — nessun addebito o recupero automatico.',
+  cancel: 'Annulla',
+  destroy: 'Elimina definitivamente',
+  processing: 'Eliminazione in corso…',
+  disabled: 'L’eliminazione account non è disponibile in questo ambiente.',
+} as const
