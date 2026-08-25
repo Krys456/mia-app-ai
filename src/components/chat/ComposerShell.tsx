@@ -434,6 +434,7 @@ export function ComposerShell({ onMessageSent }: ComposerShellProps) {
             interimText={voice.interimText}
             error={voice.error}
             needsManualPlay={voice.needsManualPlay}
+            continuousListening={voice.continuousListening}
             onStopSend={voice.stopAndSend}
             onCancel={voice.cancelListening}
             onStopSpeaking={voice.stopSpeaking}

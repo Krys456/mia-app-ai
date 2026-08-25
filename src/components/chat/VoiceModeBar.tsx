@@ -6,6 +6,8 @@ export type VoiceModeBarProps = {
   interimText: string
   error: string | null
   needsManualPlay: boolean
+  /** #385B — false after Stop until Ascolta (continuous conversation paused). */
+  continuousListening?: boolean
   onStopSend: () => void
   onCancel: () => void
   onStopSpeaking: () => void
@@ -14,7 +16,11 @@ export type VoiceModeBarProps = {
   onExit: () => void
 }
 
-function statusLabel(phase: VoiceModePhase, needsManualPlay: boolean): string {
+function statusLabel(
+  phase: VoiceModePhase,
+  needsManualPlay: boolean,
+  continuousListening: boolean,
+): string {
   if (needsManualPlay) return 'Pronto a riprodurre'
   switch (phase) {
     case 'listening':
@@ -26,7 +32,8 @@ function statusLabel(phase: VoiceModePhase, needsManualPlay: boolean): string {
     case 'error':
       return 'Qualcosa non ha funzionato'
     default:
-      return 'Modalità vocale'
+      // Idle: continuous pause vs waiting for next auto-listen cycle.
+      return continuousListening ? 'Modalità vocale' : 'In pausa — tocca Ascolta'
   }
 }
 
@@ -35,6 +42,7 @@ export function VoiceModeBar({
   interimText,
   error,
   needsManualPlay,
+  continuousListening = true,
   onStopSend,
   onCancel,
   onStopSpeaking,
@@ -42,7 +50,7 @@ export function VoiceModeBar({
   onPlayPending,
   onExit,
 }: VoiceModeBarProps) {
-  const label = statusLabel(phase, needsManualPlay)
+  const label = statusLabel(phase, needsManualPlay, continuousListening)
 
   return (
     <div

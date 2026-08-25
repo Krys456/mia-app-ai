@@ -212,9 +212,9 @@ assert.match(listenSrc, /does not persist raw microphone audio|Privacy/)
   assert.equal(detectPlacesFollowUp('Portami alla prima.', { hasPlacesContext: true }), false)
 }
 
-assert.match(chatContext, /detectCalendarIntent/)
-assert.match(chatContext, /detectEmailIntent/)
-assert.match(chatContext, /detectPlacesIntent/)
+assert.match(chatContext, /applyCalendarIntent|resolveCalendarTurnClaim/)
+assert.match(chatContext, /detectEmailIntent|applyEmailIntent/)
+assert.match(chatContext, /detectPlacesIntent|applyPlacesIntent/)
 assert.match(hook, /sendMessage\(finalText\)/)
 assert.doesNotMatch(hook, /calendar-chat|email-chat|places-chat/)
 
