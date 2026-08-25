@@ -1,5 +1,6 @@
 /**
- * #292 Voice Mode controller — STT → Core send → TTS playback.
+ * #292 / #385B Voice Mode controller — STT → sendMessage → TTS playback.
+ * #385B — after successful TTS end, auto-listen while session stays open.
  * Not stored as ChatContext audio state. One-send guarantee for finals.
  */
 
@@ -9,6 +10,7 @@ import { resolveRecognitionLang } from '../../lib/dictationLanguage'
 import { prepareSpeechText } from '../../lib/speechText'
 import { friendlySpeechError } from '../../lib/speechRecognition'
 import { requestSpeechAudio, TtsApiError } from '../../lib/ttsApi'
+import { shouldAutoListenAfterSpeech } from '../../lib/voiceContinuity'
 import {
   isSpeechRecognitionSupported,
   startVoiceListening,
@@ -29,6 +31,8 @@ export interface UseVoiceModeApi {
   interimText: string
   error: string | null
   needsManualPlay: boolean
+  /** False after Stop until user taps Ascolta (pauses continuous conversation). */
+  continuousListening: boolean
   enter: () => void
   exit: () => void
   startListening: () => void
@@ -59,6 +63,7 @@ export function useVoiceMode(): UseVoiceModeApi {
   const [interimText, setInterimText] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [needsManualPlay, setNeedsManualPlay] = useState(false)
+  const [continuousListening, setContinuousListening] = useState(true)
 
   const sessionRef = useRef<VoiceListenSession | null>(null)
   const listenGenRef = useRef(0)
@@ -75,6 +80,28 @@ export function useVoiceMode(): UseVoiceModeApi {
   const pendingBlobRef = useRef<Blob | null>(null)
   const messagesRef = useRef(messages)
   messagesRef.current = messages
+
+  const activeRef = useRef(false)
+  const continuousRef = useRef(true)
+  const needsManualPlayRef = useRef(false)
+  const isThinkingRef = useRef(isThinking)
+  const isStreamingRef = useRef(isStreaming)
+  isThinkingRef.current = isThinking
+  isStreamingRef.current = isStreaming
+
+  /** Bumps to cancel a queued auto-listen microtask. */
+  const autoListenGenRef = useRef(0)
+  const startListeningRef = useRef<() => void>(() => {})
+
+  const setContinuous = useCallback((next: boolean) => {
+    continuousRef.current = next
+    setContinuousListening(next)
+  }, [])
+
+  const setManualPlayFlag = useCallback((next: boolean) => {
+    needsManualPlayRef.current = next
+    setNeedsManualPlay(next)
+  }, [])
 
   const clearAudio = useCallback(() => {
     ttsAbortRef.current?.abort()
@@ -93,14 +120,61 @@ export function useVoiceMode(): UseVoiceModeApi {
     releaseObjectUrl(objectUrlRef.current)
     objectUrlRef.current = null
     pendingBlobRef.current = null
-    setNeedsManualPlay(false)
-  }, [])
+    setManualPlayFlag(false)
+  }, [setManualPlayFlag])
 
   const clearListenSession = useCallback(() => {
     listenGenRef.current += 1
     sessionRef.current?.dispose()
     sessionRef.current = null
   }, [])
+
+  const cancelScheduledAutoListen = useCallback(() => {
+    autoListenGenRef.current += 1
+  }, [])
+
+  const scheduleAutoListen = useCallback(
+    (turnId: number) => {
+      const gate = shouldAutoListenAfterSpeech({
+        voiceActive: activeRef.current,
+        continuousEnabled: continuousRef.current,
+        turnMatches: turnIdRef.current === turnId,
+        needsManualPlay: needsManualPlayRef.current,
+        hasPendingUnplayedAudio: Boolean(pendingBlobRef.current) && needsManualPlayRef.current,
+        recognitionOwned: sessionRef.current != null,
+        sendLocked: sendLockRef.current,
+        chatBusy: isThinkingRef.current || isStreamingRef.current,
+      })
+      if (!gate) {
+        setPhase('idle')
+        return
+      }
+
+      const gen = ++autoListenGenRef.current
+      setPhase('idle')
+      // Defer so audio teardown releases the mic before recognition.start (#356B).
+      queueMicrotask(() => {
+        if (autoListenGenRef.current !== gen) return
+        if (
+          !shouldAutoListenAfterSpeech({
+            voiceActive: activeRef.current,
+            continuousEnabled: continuousRef.current,
+            turnMatches: turnIdRef.current === turnId,
+            needsManualPlay: needsManualPlayRef.current,
+            hasPendingUnplayedAudio:
+              Boolean(pendingBlobRef.current) && needsManualPlayRef.current,
+            recognitionOwned: sessionRef.current != null,
+            sendLocked: sendLockRef.current,
+            chatBusy: isThinkingRef.current || isStreamingRef.current,
+          })
+        ) {
+          return
+        }
+        startListeningRef.current()
+      })
+    },
+    [],
+  )
 
   const clearError = useCallback(() => {
     setError(null)
@@ -110,9 +184,12 @@ export function useVoiceMode(): UseVoiceModeApi {
   const stopSpeaking = useCallback(() => {
     // Invalidate in-flight TTS so a late fetch cannot resume playback.
     turnIdRef.current += 1
+    cancelScheduledAutoListen()
+    // Pause continuous conversation until user taps Ascolta.
+    setContinuous(false)
     clearAudio()
     setPhase('idle')
-  }, [clearAudio])
+  }, [cancelScheduledAutoListen, clearAudio, setContinuous])
 
   const playBlob = useCallback(
     async (blob: Blob, turnId: number) => {
@@ -124,11 +201,23 @@ export function useVoiceMode(): UseVoiceModeApi {
       audioRef.current = audio
       audio.onended = () => {
         if (turnIdRef.current !== turnId) return
-        clearAudio()
-        setPhase('idle')
+        if (!activeRef.current) return
+        try {
+          audio.pause()
+        } catch {
+          /* ignore */
+        }
+        // Successful playback end — drop blob before gating auto-listen.
+        pendingBlobRef.current = null
+        setManualPlayFlag(false)
+        releaseObjectUrl(objectUrlRef.current)
+        objectUrlRef.current = null
+        if (audioRef.current === audio) audioRef.current = null
+        scheduleAutoListen(turnId)
       }
       audio.onerror = () => {
         if (turnIdRef.current !== turnId) return
+        cancelScheduledAutoListen()
         clearAudio()
         setError('Riproduzione audio non riuscita.')
         setPhase('error')
@@ -136,20 +225,22 @@ export function useVoiceMode(): UseVoiceModeApi {
       try {
         setPhase('speaking')
         await audio.play()
-        setNeedsManualPlay(false)
+        setManualPlayFlag(false)
       } catch {
-        // Autoplay blocked — keep blob for manual play.
-        setNeedsManualPlay(true)
+        // Autoplay blocked — keep blob for manual play; do NOT open the mic.
+        cancelScheduledAutoListen()
+        setManualPlayFlag(true)
         setPhase('idle')
         setError('Tocca Riproduci per ascoltare la risposta.')
       }
     },
-    [clearAudio],
+    [cancelScheduledAutoListen, clearAudio, scheduleAutoListen, setManualPlayFlag],
   )
 
   const playPending = useCallback(() => {
     const blob = pendingBlobRef.current
     if (!blob) return
+    if (!activeRef.current) return
     const turnId = turnIdRef.current
     void playBlob(blob, turnId)
   }, [playBlob])
@@ -158,7 +249,8 @@ export function useVoiceMode(): UseVoiceModeApi {
     async (text: string, turnId: number) => {
       const speech = prepareSpeechText(text)
       if (!speech) {
-        setPhase('idle')
+        // Nothing to speak — continue conversation if still active.
+        scheduleAutoListen(turnId)
         return
       }
       ttsAbortRef.current?.abort()
@@ -167,9 +259,11 @@ export function useVoiceMode(): UseVoiceModeApi {
       try {
         const blob = await requestSpeechAudio(speech, { signal: controller.signal })
         if (turnIdRef.current !== turnId || controller.signal.aborted) return
+        if (!activeRef.current) return
         await playBlob(blob, turnId)
       } catch (err) {
         if (controller.signal.aborted || turnIdRef.current !== turnId) return
+        cancelScheduledAutoListen()
         const message =
           err instanceof TtsApiError
             ? err.message
@@ -178,7 +272,7 @@ export function useVoiceMode(): UseVoiceModeApi {
         setPhase('error')
       }
     },
-    [playBlob],
+    [cancelScheduledAutoListen, playBlob, scheduleAutoListen],
   )
 
   // After Core finishes a voice-originated turn, speak the assistant text.
@@ -202,6 +296,7 @@ export function useVoiceMode(): UseVoiceModeApi {
     if (last.kind === 'error') {
       pendingSpeakRef.current = null
       sendLockRef.current = false
+      cancelScheduledAutoListen()
       setError(last.content || 'Richiesta non riuscita.')
       setPhase('error')
       return
@@ -211,20 +306,22 @@ export function useVoiceMode(): UseVoiceModeApi {
     sendLockRef.current = false
     const turnId = pending.turnId
     void speakAssistantText(last.content || '', turnId)
-  }, [isThinking, isStreaming, messages, speakAssistantText])
+  }, [cancelScheduledAutoListen, isThinking, isStreaming, messages, speakAssistantText])
 
   const cancelListening = useCallback(() => {
     // Discard — never send a partial/interim transcript.
     sendLockRef.current = false
     pendingSpeakRef.current = null
+    cancelScheduledAutoListen()
     listenGenRef.current += 1
     sessionRef.current?.abort()
     sessionRef.current = null
     setInterimText('')
     setPhase('idle')
-  }, [])
+  }, [cancelScheduledAutoListen])
 
   const startListening = useCallback(() => {
+    if (!activeRef.current) return
     if (!supported) {
       setError(
         'Modalità vocale non disponibile qui. Su questo dispositivo usa la chat testuale.',
@@ -232,7 +329,13 @@ export function useVoiceMode(): UseVoiceModeApi {
       setPhase('error')
       return
     }
-    if (sendLockRef.current || isThinking || isStreaming) return
+    if (sendLockRef.current || isThinkingRef.current || isStreamingRef.current) return
+    // One SpeechRecognition owner — do not double-start.
+    if (sessionRef.current) return
+
+    // Manual or auto resume re-enables continuous conversation.
+    setContinuous(true)
+    cancelScheduledAutoListen()
 
     // New Voice turn cancels prior speech (TTS fetch + playback) first (#356B).
     turnIdRef.current += 1
@@ -241,7 +344,7 @@ export function useVoiceMode(): UseVoiceModeApi {
     clearListenSession()
     setError(null)
     setInterimText('')
-    setNeedsManualPlay(false)
+    setManualPlayFlag(false)
 
     const lang = resolveRecognitionLang({
       messages: messagesRef.current.map((m) => ({ role: m.role, content: m.content })),
@@ -252,14 +355,17 @@ export function useVoiceMode(): UseVoiceModeApi {
     const session = startVoiceListening(lang, {
       onStart: () => {
         if (listenGenRef.current !== listenGen) return
+        if (!activeRef.current) return
         setPhase('listening')
       },
       onInterim: (text) => {
         if (listenGenRef.current !== listenGen) return
+        if (!activeRef.current) return
         setInterimText(text)
       },
       onFinal: (text) => {
         if (listenGenRef.current !== listenGen) return
+        if (!activeRef.current) return
         sessionRef.current = null
         setInterimText('')
         const finalText = text.replace(/\s+/g, ' ').trim()
@@ -289,6 +395,8 @@ export function useVoiceMode(): UseVoiceModeApi {
       onError: (code) => {
         if (listenGenRef.current !== listenGen) return
         if (code === 'aborted') return
+        // Fatal / permission / no-speech → recoverable idle/error; no auto-restart loop.
+        cancelScheduledAutoListen()
         const msg =
           friendlySpeechError(code, 'voice') ||
           'Ascolto non riuscito. Puoi scrivere normalmente.'
@@ -302,6 +410,7 @@ export function useVoiceMode(): UseVoiceModeApi {
     })
 
     if (!session) {
+      cancelScheduledAutoListen()
       setError('Microfono non disponibile.')
       setPhase('error')
       return
@@ -309,13 +418,16 @@ export function useVoiceMode(): UseVoiceModeApi {
     sessionRef.current = session
     setPhase('listening')
   }, [
+    cancelScheduledAutoListen,
     clearAudio,
     clearListenSession,
-    isStreaming,
-    isThinking,
     sendMessage,
+    setContinuous,
+    setManualPlayFlag,
     supported,
   ])
+
+  startListeningRef.current = startListening
 
   const stopAndSend = useCallback(() => {
     if (phase !== 'listening') return
@@ -323,7 +435,9 @@ export function useVoiceMode(): UseVoiceModeApi {
   }, [phase])
 
   const enter = useCallback(() => {
+    activeRef.current = true
     setActive(true)
+    setContinuous(true)
     setError(null)
     setInterimText('')
     setPhase('idle')
@@ -332,24 +446,30 @@ export function useVoiceMode(): UseVoiceModeApi {
     queueMicrotask(() => {
       startListening()
     })
-  }, [startListening])
+  }, [setContinuous, startListening])
 
   const exit = useCallback(() => {
+    activeRef.current = false
     turnIdRef.current += 1
     pendingSpeakRef.current = null
     sendLockRef.current = false
+    cancelScheduledAutoListen()
+    setContinuous(false)
     clearListenSession()
     clearAudio()
     setInterimText('')
     setError(null)
     setActive(false)
     setPhase('idle')
-  }, [clearAudio, clearListenSession])
+  }, [cancelScheduledAutoListen, clearAudio, clearListenSession, setContinuous])
 
   // Cleanup on unmount.
   useEffect(() => {
     return () => {
+      activeRef.current = false
+      continuousRef.current = false
       turnIdRef.current += 1
+      autoListenGenRef.current += 1
       pendingSpeakRef.current = null
       sendLockRef.current = false
       sessionRef.current?.dispose()
@@ -374,6 +494,7 @@ export function useVoiceMode(): UseVoiceModeApi {
     interimText,
     error,
     needsManualPlay,
+    continuousListening,
     enter,
     exit,
     startListening,
