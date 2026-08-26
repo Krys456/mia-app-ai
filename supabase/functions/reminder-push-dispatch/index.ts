@@ -15,10 +15,18 @@
 
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import * as webpush from 'jsr:@negrel/webpush@0.3'
+import {
+  WORKER_NAME_REMINDER_PUSH,
+  markWorkerDisabled,
+  markWorkerFailure,
+  markWorkerStarted,
+  markWorkerSuccess,
+} from '../_shared/worker-heartbeat.ts'
 
 const MAX_BATCH = 25
 const LEASE_SECONDS = 120
 const MAX_ATTEMPTS = 5
+const WORKER_NAME = WORKER_NAME_REMINDER_PUSH
 
 type ClaimRow = {
   id: string
@@ -141,18 +149,34 @@ Deno.serve(async (req) => {
   }
 
   const manualSmoke = body.mode === 'manual_smoke'
+  const supabaseUrl = env('SUPABASE_URL')
+  const serviceKey = env('SUPABASE_SERVICE_ROLE_KEY')
+  const supabase =
+    supabaseUrl && serviceKey
+      ? createClient(supabaseUrl, serviceKey, {
+          auth: { persistSession: false, autoRefreshToken: false },
+        })
+      : null
+
   const pushEnabled = isTruthy(env('PUSH_ENABLED'))
   if (!pushEnabled) {
+    await markWorkerDisabled(supabase, WORKER_NAME, runId, Date.now() - started, logSafe)
     logSafe({ runId, claimStatus: 'push_disabled', ok: true, durationMs: Date.now() - started })
     return json(200, { ok: true, skipped: 'push_disabled', runId })
   }
 
-  const supabaseUrl = env('SUPABASE_URL')
-  const serviceKey = env('SUPABASE_SERVICE_ROLE_KEY')
   const vapidKeysJson = env('VAPID_KEYS_JSON')
   const vapidSubject = env('VAPID_SUBJECT') || 'mailto:ops@shinkaido.local'
 
-  if (!supabaseUrl || !serviceKey || !vapidKeysJson) {
+  if (!supabaseUrl || !serviceKey || !vapidKeysJson || !supabase) {
+    await markWorkerFailure(
+      supabase,
+      WORKER_NAME,
+      runId,
+      Date.now() - started,
+      'push_misconfigured',
+      logSafe,
+    )
     logSafe({ runId, code: 'push_misconfigured', ok: false })
     return json(503, { error: 'misconfigured', code: 'push_misconfigured', runId })
   }
@@ -164,6 +188,14 @@ Deno.serve(async (req) => {
       throw new Error('invalid_vapid_json')
     }
   } catch {
+    await markWorkerFailure(
+      supabase,
+      WORKER_NAME,
+      runId,
+      Date.now() - started,
+      'push_vapid_json_invalid',
+      logSafe,
+    )
     logSafe({ runId, code: 'push_vapid_json_invalid', ok: false })
     return json(503, { error: 'misconfigured', code: 'push_vapid_json_invalid', runId })
   }
@@ -172,13 +204,12 @@ Deno.serve(async (req) => {
   const allowEnv = env('REMINDER_PUSH_ALLOW_ENV') // e.g. production
   const runtimeEnv = env('VERCEL_ENV') || env('SHINKAIDO_RUNTIME_ENV') || ''
   if (allowEnv && runtimeEnv && allowEnv !== runtimeEnv && !manualSmoke) {
+    await markWorkerDisabled(supabase, WORKER_NAME, runId, Date.now() - started, logSafe)
     logSafe({ runId, claimStatus: 'env_blocked', code: 'push_env_blocked', ok: true })
     return json(200, { ok: true, skipped: 'env_blocked', runId })
   }
 
-  const supabase = createClient(supabaseUrl, serviceKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  })
+  await markWorkerStarted(supabase, WORKER_NAME, runId, logSafe)
 
   if (!manualSmoke) {
     const { data: cfg, error: cfgErr } = await supabase
@@ -187,10 +218,19 @@ Deno.serve(async (req) => {
       .eq('id', 1)
       .maybeSingle()
     if (cfgErr) {
+      await markWorkerFailure(
+        supabase,
+        WORKER_NAME,
+        runId,
+        Date.now() - started,
+        'scheduler_config_error',
+        logSafe,
+      )
       logSafe({ runId, code: 'scheduler_config_error', ok: false })
       return json(500, { error: 'config_error', runId })
     }
     if (!cfg?.enabled) {
+      await markWorkerDisabled(supabase, WORKER_NAME, runId, Date.now() - started, logSafe)
       logSafe({ runId, claimStatus: 'scheduler_disabled', ok: true, durationMs: Date.now() - started })
       return json(200, { ok: true, skipped: 'scheduler_disabled', runId })
     }
@@ -204,6 +244,14 @@ Deno.serve(async (req) => {
   })
 
   if (claimErr) {
+    await markWorkerFailure(
+      supabase,
+      WORKER_NAME,
+      runId,
+      Date.now() - started,
+      'claim_failed',
+      logSafe,
+    )
     logSafe({ runId, code: 'claim_failed', ok: false })
     return json(500, { error: 'claim_failed', runId })
   }
@@ -441,6 +489,10 @@ Deno.serve(async (req) => {
     }
   }
 
+  const durationMs = Date.now() - started
+  // claimed=0 (idle) is still a successful healthy worker run.
+  await markWorkerSuccess(supabase, WORKER_NAME, runId, durationMs, logSafe)
+
   logSafe({
     runId,
     claimStatus: 'tick_done',
@@ -448,7 +500,7 @@ Deno.serve(async (req) => {
     pushed,
     failed,
     released,
-    durationMs: Date.now() - started,
+    durationMs,
     ok: true,
   })
 
@@ -459,6 +511,6 @@ Deno.serve(async (req) => {
     pushed,
     failed,
     released,
-    durationMs: Date.now() - started,
+    durationMs,
   })
 })

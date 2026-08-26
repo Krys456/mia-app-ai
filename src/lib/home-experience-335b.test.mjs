@@ -132,7 +132,7 @@ assert.match(header, /onNavigate\('vision'\)/)
 
 // No protected systems touched in this PR surface
 assert.doesNotMatch(experience, /supabase|stripe|entitlement/i)
-assert.equal(Object.keys(JSON.parse(read('vercel.json')).functions).length, 11)
+assert.equal(Object.keys(JSON.parse(read('vercel.json')).functions).length, 12)
 assert.doesNotMatch(read('package.json'), /framer-motion|three|gsap/)
 
 // Washi/Sumi class hooks
