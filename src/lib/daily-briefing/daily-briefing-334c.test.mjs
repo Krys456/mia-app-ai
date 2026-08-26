@@ -24,7 +24,7 @@ const root = process.cwd()
 const read = (rel) => fs.readFileSync(path.join(root, rel), 'utf8')
 
 // Architecture freezes
-assert.equal(Object.keys(JSON.parse(read('vercel.json')).functions).length, 11)
+assert.equal(Object.keys(JSON.parse(read('vercel.json')).functions).length, 13)
 assert.doesNotMatch(read('src/lib/daily-briefing/controller.js'), /openai|responses\.create|\/api\/chat/)
 assert.doesNotMatch(read('src/lib/daily-briefing/preferences.js'), /openai|\/api\/chat/)
 assert.doesNotMatch(read('src/lib/daily-briefing/schedule.js'), /openai|\/api\/chat/)

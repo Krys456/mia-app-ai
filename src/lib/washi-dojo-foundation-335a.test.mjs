@@ -140,7 +140,7 @@ assert.match(fakeRoot.style.props['--hanko'], /^#D94A3A$/i)
 assert.equal(fakeRoot.style.props['--washi-fiber-opacity'], '0.022')
 
 // No new product deps / no Core touch
-assert.equal(Object.keys(JSON.parse(read('vercel.json')).functions).length, 11)
+assert.equal(Object.keys(JSON.parse(read('vercel.json')).functions).length, 13)
 assert.doesNotMatch(read('package.json'), /framer-motion|three|gsap/)
 
 console.log('washi-dojo-foundation-335a.test.mjs: ok')

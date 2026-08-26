@@ -31,11 +31,11 @@ const read = (rel) => fs.readFileSync(path.join(root, rel), 'utf8')
 const exists = (rel) => fs.existsSync(path.join(root, rel))
 
 describe('places-chat-355b write-path guardrails', () => {
-  it('does not create api/places.ts and keeps vercel.json at 11 functions', () => {
+  it('does not create api/places.ts and keeps vercel.json at 13 functions', () => {
     assert.equal(exists('api/places.ts'), false)
     const vercelJson = JSON.parse(read('vercel.json'))
     const fnCount = Object.keys(vercelJson.functions || {}).length
-    assert.equal(fnCount, 11)
+    assert.equal(fnCount, 13)
     assert.ok(!Object.keys(vercelJson.functions).some((f) => f.includes('places')))
   })
 

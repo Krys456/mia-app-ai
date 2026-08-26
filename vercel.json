@@ -52,6 +52,10 @@
     "api/account/delete.ts": {
       "includeFiles": "lib/server/**",
       "maxDuration": 60
+    },
+    "api/health.ts": {
+      "includeFiles": "lib/server/**",
+      "maxDuration": 10
     }
   },
   "rewrites": [

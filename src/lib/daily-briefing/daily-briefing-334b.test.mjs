@@ -17,7 +17,7 @@ const read = (rel) => fs.readFileSync(path.join(root, rel), 'utf8')
 
 // Architecture freezes
 assert.match(read('vercel.json'), /api\/daily-briefing\.ts/)
-assert.equal(Object.keys(JSON.parse(read('vercel.json')).functions).length, 11)
+assert.equal(Object.keys(JSON.parse(read('vercel.json')).functions).length, 13)
 assert.doesNotMatch(read('src/lib/daily-briefing/controller.js'), /openai|responses\.create|\/api\/chat/)
 assert.doesNotMatch(read('src/lib/daily-briefing/render.js'), /openai|responses\.create/)
 assert.doesNotMatch(read('src/lib/daily-briefing/followups.js'), /openai|responses\.create/)

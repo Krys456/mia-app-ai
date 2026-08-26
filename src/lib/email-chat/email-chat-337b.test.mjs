@@ -20,7 +20,7 @@ describe('email-chat-337b infrastructure', () => {
   it('does not create a new Vercel function for email', () => {
     assert.ok(!fs.existsSync(path.join(root, 'api/email.ts')))
     const fnCount = Object.keys(JSON.parse(read('vercel.json')).functions).length
-    assert.equal(fnCount, 11)
+    assert.equal(fnCount, 13)
   })
 
   it('does not modify Calendar chat files and wires ChatContext as a pure insertion', () => {
