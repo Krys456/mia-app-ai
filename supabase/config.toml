@@ -34,3 +34,9 @@ verify_jwt = false
 # email-query.
 [functions.email-oauth-callback]
 verify_jwt = false
+
+# #387C — Independent worker-health alert checker (M2M). Auth via
+# WORKER_HEALTH_ALERT_SECRET (or REMINDER_PUSH_WORKER_SECRET fallback).
+# Fail-closed when WORKER_HEALTH_ALERT_ENABLED is off. Does NOT disable JWT globally.
+[functions.worker-health-alert-check]
+verify_jwt = false
