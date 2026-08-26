@@ -74,7 +74,7 @@ const chatContext = read('src/context/ChatContext.tsx')
 // ---------------------------------------------------------------------------
 {
   const fnKeys = [...vercel.matchAll(/"api\/[^"]+\.ts"/g)].map((m) => m[0])
-  assert.equal(fnKeys.length, 13, `expected 13 vercel functions, got ${fnKeys.length}`)
+  assert.equal(fnKeys.length, 12, `expected 12 vercel functions, got ${fnKeys.length}`)
   assert.ok(fnKeys.includes('"api/tts.ts"'))
   assert.doesNotMatch(vercel, /api\/stt|api\/voice|api\/whisper|api\/realtime/i)
 }

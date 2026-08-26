@@ -340,7 +340,7 @@ describe('reminder-chat-357b wiring / budget', () => {
     assert.match(chat, /LOCAL_EXCHANGE/)
     assert.doesNotMatch(chat, /modality:\s*['"]voice['"]/)
     const fns = [...vercel.matchAll(/"api\/[^"]+\.ts"/g)]
-    assert.equal(fns.length, 13)
+    assert.equal(fns.length, 12)
     assert.doesNotMatch(read('src/lib/calendar-chat/intent.js'), /357B/)
     assert.doesNotMatch(read('src/lib/email-chat/intent.js'), /357B/)
     assert.doesNotMatch(read('src/lib/places-chat/intent.js'), /357B/)

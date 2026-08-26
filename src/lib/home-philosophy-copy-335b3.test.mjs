@@ -31,6 +31,6 @@ assert.ok(fs.existsSync(path.join(root, 'public/brand/shinkaido-home-hero.webp')
 assert.equal(fs.existsSync(path.join(root, 'src/lib/homeGreeting.ts')), false)
 assert.equal(fs.existsSync(path.join(root, 'src/lib/dailyThought.ts')), false)
 
-assert.equal(Object.keys(JSON.parse(read('vercel.json')).functions).length, 13)
+assert.equal(Object.keys(JSON.parse(read('vercel.json')).functions).length, 12)
 
 console.log('home-philosophy-copy-335b3: ok')

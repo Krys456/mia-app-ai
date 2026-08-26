@@ -46,7 +46,7 @@ assert.ok(fs.statSync(sumiArt).size <= 300 * 1024)
 assert.ok(fs.statSync(washi).size > 40 * 1024, 'hero should be a real raster scene')
 
 // No protected surface churn
-assert.equal(Object.keys(JSON.parse(read('vercel.json')).functions).length, 13)
+assert.equal(Object.keys(JSON.parse(read('vercel.json')).functions).length, 12)
 assert.doesNotMatch(read('package.json'), /framer-motion|three|gsap/)
 
 console.log('reference-home-art-335b2: ok')

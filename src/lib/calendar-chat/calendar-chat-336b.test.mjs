@@ -48,7 +48,7 @@ describe('calendar-chat-336b infrastructure', () => {
     assert.ok(fs.existsSync(path.join(root, 'lib/server/daily-briefing/calendar-query.js')))
     assert.ok(!fs.existsSync(path.join(root, 'api/calendar.ts')))
     const fnCount = Object.keys(JSON.parse(read('vercel.json')).functions).length
-    assert.equal(fnCount, 13)
+    assert.equal(fnCount, 12)
   })
 
   it('wires ChatContext Calendar before Briefing and Home quick action', () => {

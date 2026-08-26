@@ -9,6 +9,9 @@
 3. Server-side health evaluator (`lib/server/worker-health.js`) for future alerting
 4. Public `GET /api/health` — minimal liveness (`ok`, `status`, `buildId`, `environment`)
 
+> **Hobby note:** `/api/health` is a Vercel rewrite onto `api/subscription.ts?probe=public_health`
+> (no 13th serverless function). Public health runs **before** subscription auth.
+
 ## Privacy
 
 Heartbeat rows must never store:

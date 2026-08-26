@@ -46,7 +46,7 @@ assert.doesNotMatch(homeExp, /bottom-nav|BottomNav/)
 assert.ok(fs.existsSync(path.join(root, 'public/brand/shinkaido-home-hero.webp')))
 assert.ok(fs.existsSync(path.join(root, 'public/brand/shinkaido-home-hero-sumi.webp')))
 
-assert.equal(Object.keys(JSON.parse(read('vercel.json')).functions).length, 13)
+assert.equal(Object.keys(JSON.parse(read('vercel.json')).functions).length, 12)
 assert.doesNotMatch(read('package.json'), /framer-motion|three|gsap/)
 
 console.log('signature-composer-335d: ok')

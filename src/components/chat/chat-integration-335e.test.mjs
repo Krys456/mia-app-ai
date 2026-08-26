@@ -61,7 +61,7 @@ assert.match(home, /SumiHero/)
 assert.match(home, /QuickActions/)
 assert.ok(fs.existsSync(path.join(root, 'public/brand/shinkaido-home-hero.webp')))
 
-assert.equal(Object.keys(JSON.parse(read('vercel.json')).functions).length, 13)
+assert.equal(Object.keys(JSON.parse(read('vercel.json')).functions).length, 12)
 assert.doesNotMatch(read('package.json'), /framer-motion|three|gsap/)
 
 console.log('chat-integration-335e: ok')
