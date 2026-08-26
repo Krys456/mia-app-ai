@@ -83,16 +83,21 @@ assert.match(plansTsx, /Upgrade/)
 assert.match(plansTsx, /disponibile a breve|disponibili a breve|pagamenti.*breve/i)
 assert.match(plansTsx, /IdentityAccountPanel|showIdentityGate/)
 assert.match(plansTsx, /role="status"/)
-assert.doesNotMatch(plansTsx, /stripe\.com|\/checkout|RevenueCat|Play Billing|StoreKit|createCheckout/i)
+// #388B: Plans may start Test Mode Checkout via subscriptionApi (no Stripe.js / Elements).
+assert.match(plansTsx, /startPlanCheckout|startBillingPortal/)
+assert.doesNotMatch(plansTsx, /RevenueCat|Play Billing|StoreKit|@stripe\/stripe-js|CardElement/i)
 assert.match(plansCss, /grid-template-columns:\s*1fr/)
 assert.match(plansCss, /@media \(min-width:\s*768px\)[\s\S]*repeat\(3/)
 assert.match(plansCss, /min-height:\s*max\(2\.75rem,\s*var\(--touch-min\)\)/)
 assert.match(plansCss, /\.plan-card__btn:focus-visible/)
 
-// Free is current; upgrade is non-purchase
+// Free is current; Upgrade still gated — live Checkout only when server billing.enabled
 assert.match(plansTsx, /isCurrent[\s\S]*Piano attuale|Piano attuale[\s\S]*disabled/)
 assert.match(plansTsx, /setUpgradeNote|onUpgradeClick/)
-assert.doesNotMatch(plansTsx, /window\.location|fetch\(|\/api\/billing|\/api\/checkout/)
+assert.match(plansTsx, /billingEnabled|checkoutEnabled/)
+assert.match(plansTsx, /window\.location\.assign/)
+assert.doesNotMatch(plansTsx, /\/api\/billing|STRIPE_SECRET|sk_test_|price_/)
+assert.match(plansTsx, /disponibile a breve|disponibili a breve|pagamenti.*breve|Checkout sicuro/i)
 
 // —— No monetization / Core impact ——
 assert.doesNotMatch(chatApi, /planId|PLAN_CATALOG|UI_FOUNDATION_CURRENT_PLAN/)

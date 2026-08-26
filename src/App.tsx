@@ -61,6 +61,18 @@ function AppShell() {
     return () => setAppNavigateHandler(null)
   }, [])
 
+  // #388B — Stripe Checkout/Portal return → open Plans (query only; no router).
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search)
+      if (params.get('plans') === '1' || params.get('checkout') || params.get('portal')) {
+        navigateRef.current('plans')
+      }
+    } catch {
+      /* soft */
+    }
+  }, [])
+
   const openMemoryManage = (fromSettings = true) => {
     if (!isMemoryManageUiEnabled()) return
     memoryReturnToSettingsRef.current = fromSettings

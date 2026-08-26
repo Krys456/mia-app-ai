@@ -57,6 +57,11 @@
   max-width: 40rem;
 }
 
+.plans-page__manage {
+  display: flex;
+  justify-content: flex-start;
+}
+
 .plans-grid {
   display: grid;
   grid-template-columns: 1fr;

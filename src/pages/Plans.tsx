@@ -1,8 +1,9 @@
 /**
- * #332A/#332D/#332E2/#332E2A — ShinkAIdo Plans page.
+ * #332A/#332D/#332E2/#332E2A/#388B — ShinkAIdo Plans page.
  * Catalog-driven. Current plan from verified /api/subscription when available;
  * display-only — never authorizes premium APIs.
- * Upgrade: anonymous → identity gate; durable → coming-soon (no billing yet).
+ * Upgrade: anonymous → identity gate; durable → Stripe Test Mode checkout when
+ * server billing capabilities are enabled (Preview only; Production blocked).
  *
  * #332E2A: stable onIdentityChange + equality guard (no render loop).
  */
@@ -16,7 +17,12 @@ import {
   formatPlanPrice,
   type PlanId,
 } from '../lib/planCatalog'
-import { fetchVerifiedSubscription } from '../lib/subscriptionApi'
+import {
+  fetchVerifiedSubscription,
+  startBillingPortal,
+  startPlanCheckout,
+  type PublicSubscriptionState,
+} from '../lib/subscriptionApi'
 import { loadIdentitySnapshot } from '../lib/accountLinking'
 import {
   identityStatusEquals,
@@ -37,8 +43,10 @@ export function Plans({
   const titleId = useId()
   const [upgradeNote, setUpgradeNote] = useState<string | null>(null)
   const [verifiedPlanId, setVerifiedPlanId] = useState<PlanId>(currentPlanId)
+  const [subscription, setSubscription] = useState<PublicSubscriptionState | null>(null)
   const [identity, setIdentity] = useState<IdentityStatus | null>(null)
   const [showIdentityGate, setShowIdentityGate] = useState(false)
+  const [busy, setBusy] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -49,6 +57,7 @@ export function Plans({
       ])
       if (!cancelled) {
         setVerifiedPlanId(state.planId)
+        setSubscription(state)
         setIdentity(idStatus)
       }
     })()
@@ -57,35 +66,85 @@ export function Plans({
     }
   }, [])
 
+  // Checkout return hint (success does NOT grant entitlements — webhook does).
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search)
+      const checkout = params.get('checkout')
+      if (checkout === 'success') {
+        setUpgradeNote(
+          'Pagamento in elaborazione. Il piano si aggiorna dopo la conferma del provider.',
+        )
+      } else if (checkout === 'cancel') {
+        setUpgradeNote('Checkout annullato. Nessun addebito.')
+      }
+    } catch {
+      /* soft */
+    }
+  }, [])
+
   const activePlanId = verifiedPlanId
-  // While identity is still loading (null), treat as non-durable so Upgrade opens the gate.
   const durable = identity?.durable === true
+  const billingEnabled = subscription?.billing?.checkoutEnabled === true
+  const portalEnabled =
+    subscription?.billing?.portalEnabled === true &&
+    subscription?.provider === 'stripe' &&
+    activePlanId !== 'free'
 
   const onIdentityChange = useCallback((next: IdentityStatus) => {
     setIdentity((prev) => (identityStatusEquals(prev, next) ? prev : next))
     if (next.durable) {
       setUpgradeNote(
-        'Account collegato. I pagamenti saranno disponibili nella prossima fase.',
+        billingEnabled
+          ? 'Account collegato. Puoi procedere con l’upgrade.'
+          : 'Account collegato. I pagamenti saranno disponibili nella prossima fase.',
       )
       setShowIdentityGate(false)
     }
-  }, [])
+  }, [billingEnabled])
 
-  const onUpgradeClick = (planId: PlanId) => {
+  const onUpgradeClick = async (planId: PlanId) => {
     if (!durable) {
       setShowIdentityGate(true)
       setUpgradeNote(
-        'Crea o collega un account per proteggere e ripristinare il tuo acquisto. Nessun pagamento in questa fase.',
+        'Crea o collega un account per proteggere e ripristinare il tuo acquisto.',
       )
       return
     }
 
     setShowIdentityGate(false)
-    setUpgradeNote(
-      planId === 'base'
-        ? 'Account collegato. I pagamenti Base saranno disponibili a breve. Nessun addebito ora.'
-        : 'Account collegato. I pagamenti Pro saranno disponibili a breve. Nessun addebito ora.',
-    )
+
+    if (!billingEnabled || (planId !== 'base' && planId !== 'pro')) {
+      setUpgradeNote(
+        planId === 'base'
+          ? 'Account collegato. I pagamenti Base saranno disponibili a breve. Nessun addebito ora.'
+          : 'Account collegato. I pagamenti Pro saranno disponibili a breve. Nessun addebito ora.',
+      )
+      return
+    }
+
+    setBusy(true)
+    setUpgradeNote('Apertura Checkout sicuro…')
+    const result = await startPlanCheckout(planId)
+    setBusy(false)
+    if (!result.ok) {
+      setUpgradeNote(result.error || 'Checkout non disponibile.')
+      return
+    }
+    window.location.assign(result.url)
+  }
+
+  const onManageSubscription = async () => {
+    if (!portalEnabled || busy) return
+    setBusy(true)
+    setUpgradeNote('Apertura portale abbonamento…')
+    const result = await startBillingPortal()
+    setBusy(false)
+    if (!result.ok) {
+      setUpgradeNote(result.error || 'Portale non disponibile.')
+      return
+    }
+    window.location.assign(result.url)
   }
 
   return (
@@ -113,6 +172,19 @@ export function Plans({
           <p className="plans-page__footnote" role="status">
             Account: {identity.emailMasked}
           </p>
+        ) : null}
+
+        {portalEnabled ? (
+          <div className="plans-page__manage">
+            <button
+              type="button"
+              className="plan-card__btn plan-card__btn--upgrade"
+              onClick={() => void onManageSubscription()}
+              disabled={busy}
+            >
+              Gestisci abbonamento
+            </button>
+          </div>
         ) : null}
 
         <div className="plans-grid" role="list">
@@ -161,13 +233,22 @@ export function Plans({
                     <button
                       type="button"
                       className="plan-card__btn plan-card__btn--upgrade"
-                      onClick={() => onUpgradeClick(plan.planId)}
+                      onClick={() => void onUpgradeClick(plan.planId)}
+                      disabled={busy}
                       aria-label={
-                        durable
-                          ? `Upgrade a ${plan.displayName} — pagamenti a breve`
-                          : `Upgrade a ${plan.displayName} — collega account`
+                        !durable
+                          ? `Upgrade a ${plan.displayName} — collega account`
+                          : billingEnabled
+                            ? `Upgrade a ${plan.displayName}`
+                            : `Upgrade a ${plan.displayName} — pagamenti a breve`
                       }
-                      title={durable ? 'Pagamenti a breve' : 'Collega account'}
+                      title={
+                        !durable
+                          ? 'Collega account'
+                          : billingEnabled
+                            ? 'Checkout sicuro (Test Mode)'
+                            : 'Pagamenti a breve'
+                      }
                     >
                       Upgrade
                     </button>
@@ -179,7 +260,9 @@ export function Plans({
         </div>
 
         <p className="plans-page__footnote">
-          Prezzi provvisori per valutazione prodotto. Non configurati su store o pagamenti.
+          {billingEnabled
+            ? 'Checkout Test Mode via Stripe. Nessuna carta gestita da ShinkAIdo. Prezzi provvisori.'
+            : 'Prezzi provvisori per valutazione prodotto. Non configurati su store o pagamenti.'}
         </p>
       </div>
     </main>
