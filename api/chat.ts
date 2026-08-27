@@ -25,6 +25,7 @@ import {
 } from '../lib/server/core-memory-recall.js'
 import { applyCors, sendCorsPreflight, sendJson, SAFE_UPSTREAM_ERROR, SAFE_INTERNAL_ERROR } from '../lib/server/http.js'
 import { safeErrorSnippet } from '../lib/server/safe-log.js'
+import { getRequestContext } from '../lib/server/request-id.js'
 import { buildCoreContinuityAppendix } from '../lib/server/conversation-continuity.js'
 import { buildCoreConversationalUnderstandingAppendix } from '../lib/server/conversational-understanding.js'
 import { buildCoreAdaptiveResponseReasoningAppendix } from '../lib/server/adaptive-response-reasoning.js'
@@ -403,7 +404,10 @@ function resolveHostedToolsForTurn(
   options: {
     forceWebSearch?: boolean
     entitlements?: Parameters<typeof decideVisionEntitlement>[0]['entitlements']
+    planId?: string
     enforcementEnabled?: boolean
+    requestId?: string | null
+    resolution?: string | null
   } = {},
 ) {
   const intent = detectExplicitWebSearchIntent(lastUserCaption)
@@ -426,7 +430,10 @@ function resolveHostedToolsForTurn(
       forceWebSearch,
       webTools,
       entitlements: options.entitlements,
+      planId: options.planId,
       enforcementEnabled: options.enforcementEnabled,
+      requestId: options.requestId,
+      resolution: options.resolution,
     })
     if (webDecision.mode === 'deny' && webDecision.decision && !webDecision.decision.allowed) {
       return {
@@ -443,7 +450,10 @@ function resolveHostedToolsForTurn(
     const imageDecision = decideImageGenerationTools({
       imageTools,
       entitlements: options.entitlements,
+      planId: options.planId,
       enforcementEnabled: options.enforcementEnabled,
+      requestId: options.requestId,
+      resolution: options.resolution,
     })
     imageTools = imageDecision.imageTools
   }
@@ -517,8 +527,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const access = await requirePaidApiAccess(req, res, { bucket: 'chat' })
   if (!access) return undefined
 
-  // #332D — async load; DB hit only when ENTITLEMENT_ENFORCEMENT_ENABLED is ON.
-  const { entitlements } = await loadUserEntitlementsAsync(access.userId)
+  // #332D/#388C — async load; DB hit when enforcement OR shadow is ON.
+  const entitlementLoad = await loadUserEntitlementsAsync(access.userId)
+  const { entitlements } = entitlementLoad
+  const entitlementPlanId = entitlementLoad.planId
+  const entitlementResolution = entitlementLoad.reason
+  const entitlementRequestId = getRequestContext(req as any)?.requestId ?? null
 
   const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) {
@@ -612,11 +626,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }, req)
     }
 
-    // #332C — Vision entitlement (image turns only). Text Core chat stays Free.
+    // #332C/#388C — Vision entitlement (image turns only). Text Core chat stays Free.
     {
       const visionDecision = decideVisionEntitlement({
         hasImage: lastUserHasImage,
         entitlements,
+        planId: entitlementPlanId,
+        requestId: entitlementRequestId,
+        resolution: entitlementResolution,
       })
       if (visionDecision.allowed === false && 'body' in visionDecision) {
         return sendJson(res, 403, visionDecision.body, req)
@@ -839,11 +856,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    // #332C — Documents entitlement for attach + continuity reuse (rollout OFF by default).
+    // #332C/#388C — Documents entitlement for attach + continuity reuse (rollout OFF by default).
     {
       const docsDecision = decideDocumentsEntitlement({
         hasDocument: lastUserHasFile || Boolean(documentReuse),
         entitlements,
+        planId: entitlementPlanId,
+        requestId: entitlementRequestId,
+        resolution: entitlementResolution,
       })
       if (docsDecision.allowed === false && 'body' in docsDecision) {
         return sendJson(res, 403, docsDecision.body, req)
@@ -934,6 +954,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const hosted = resolveHostedToolsForTurn(model, lastUserCaption || '', {
       forceWebSearch: visionSearchActive,
       entitlements,
+      planId: entitlementPlanId,
+      requestId: entitlementRequestId,
+      resolution: entitlementResolution,
     })
     if (hosted.denial) {
       return sendJson(res, 403, hosted.denial, req)
