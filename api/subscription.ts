@@ -7,15 +7,18 @@
  * - POST /api/subscription              → { action: checkout|portal }
  * - POST /api/stripe/webhook            → rewrite → ?probe=stripe_webhook
  *
- * #388B.1 ROOT CAUSE:
- * This project is Vite + @vercel/node, NOT Next.js Pages. Next.js-only
- * api.bodyParser=false config is ignored here, so application/json is
- * auto-parsed into req.body and the original bytes are discarded.
- * Stripe signs exact bytes → constructEvent fails / raw_body_unavailable.
+ * #388B.1 ROOT CAUSE (proven on Preview):
+ * Vite + @vercel/node treats a bare default function export as a Node
+ * (req, res) helper. Helpers auto-parse application/json into req.body and
+ * consume the stream. Next.js-only api.bodyParser=false is ignored.
+ * Exporting `async function (request: Request)` as the default is STILL
+ * invoked as a Node helper (IncomingMessage) — Preview crashed on
+ * headers.forEach.
  *
- * FIX: Web Fetch API handler. `await request.text()` yields exact raw bytes
- * for application/json (and every other content-type). Checkout/portal parse
- * JSON from that same string after the webhook path branches off.
+ * FIX: Web Standard fetch export (Vercel Node docs):
+ *   export default { async fetch(request: Request) { ... } }
+ * so await request.text() yields the exact Stripe bytes for constructEvent.
+ * Never JSON.parse → stringify as a signature substitute.
  *
  * ENTITLEMENT_ENFORCEMENT_ENABLED is NOT changed here (must remain OFF).
  */
@@ -51,6 +54,7 @@ import {
   rawBodyFromWebRequest,
   webCorsPreflight,
   webJson,
+  webRequestOrigin,
 } from '../lib/server/web-request.js'
 
 export const config = {
@@ -58,158 +62,141 @@ export const config = {
   maxDuration: 30,
 }
 
-/**
- * Web Fetch API entry — required for exact Stripe raw body bytes.
- * @param {Request} request
- * @returns {Promise<Response>}
- */
-export default async function handler(request: Request): Promise<Response> {
-  const req = createWebRequestShim(request)
-  const obs = ensureRequestContext(req)
+export default {
+  async fetch(request: Request): Promise<Response> {
+    const probeReq = createWebRequestShim(request)
+    const obs = ensureRequestContext(probeReq as any)
 
-  if (request.method === 'OPTIONS') {
-    return webCorsPreflight(req)
-  }
+    if (request.method === 'OPTIONS') {
+      return webCorsPreflight(probeReq)
+    }
 
-  // #387B public liveness (unauthenticated). Must run before auth / body read.
-  if (isPublicHealthProbe(req)) {
+    // #387B public liveness (unauthenticated).
+    if (isPublicHealthProbe(probeReq)) {
+      if (request.method !== 'GET') {
+        return webJson(
+          405,
+          { error: 'Method not allowed', code: 'method_not_allowed' },
+          probeReq,
+          { Allow: 'GET, OPTIONS' },
+        )
+      }
+      const body = buildPublicHealthPayload(process.env)
+      logApiEvent({
+        route: '/api/health',
+        code: 'health_ok',
+        ok: true,
+        requestId: obs.requestId,
+        environment: body.environment,
+        buildId: body.buildId,
+      })
+      return webJson(200, body, probeReq, { 'Cache-Control': 'no-store' })
+    }
+
+    // #388B Stripe webhook — exact raw bytes required.
+    if (isStripeWebhookProbe(probeReq)) {
+      if (request.method !== 'POST') {
+        return webJson(
+          405,
+          { error: 'Method not allowed', code: 'method_not_allowed' },
+          probeReq,
+          { Allow: 'POST, OPTIONS' },
+        )
+      }
+      return handleWebhookPost(request, probeReq, obs.requestId)
+    }
+
+    if (request.method === 'POST') {
+      return handleBillingActionPost(request, probeReq, obs.requestId)
+    }
+
     if (request.method !== 'GET') {
       return webJson(
         405,
         { error: 'Method not allowed', code: 'method_not_allowed' },
-        req,
-        { Allow: 'GET, OPTIONS' },
+        probeReq,
+        { Allow: 'GET, POST, OPTIONS' },
       )
     }
-    const body = buildPublicHealthPayload(process.env)
-    logApiEvent({
-      route: '/api/health',
-      code: 'health_ok',
-      ok: true,
-      requestId: obs.requestId,
-      environment: body.environment,
-      buildId: body.buildId,
-    })
-    return webJson(200, body, req, { 'Cache-Control': 'no-store' })
-  }
 
-  // Read body ONCE as exact raw bytes (works for application/json).
-  /** @type {Buffer | null} */
-  let rawBody: Buffer | null = null
-  if (request.method === 'POST' || request.method === 'PUT' || request.method === 'PATCH') {
+    let userId: string
     try {
-      rawBody = await rawBodyFromWebRequest(request)
+      const verified = await requireAuthenticatedUser(probeReq)
+      userId = verified.userId
     } catch (error) {
-      console.error('[api/subscription] raw body read failed:', safeErrorSnippet(error))
-      return webJson(
-        400,
-        { error: 'Invalid request body', code: 'raw_body_read_failed' },
-        req,
-      )
+      if (error instanceof AuthError) {
+        return webJson(
+          error.status || 401,
+          { error: error.message, code: error.code || 'unauthorized' },
+          probeReq,
+        )
+      }
+      throw error
     }
-  }
 
-  // #388B Stripe webhook (unauthenticated; signature is the auth).
-  if (isStripeWebhookProbe(req)) {
-    if (request.method !== 'POST') {
+    try {
+      const verified = await resolveVerifiedPlanForUser(userId)
+      if (verified.lookupError) {
+        return webJson(
+          503,
+          {
+            error: 'Subscription service temporarily unavailable. Retry shortly.',
+            code: 'subscription_lookup_unavailable',
+          },
+          probeReq,
+        )
+      }
+
+      const caps = resolveStripePublicCapabilities(process.env)
       return webJson(
-        405,
-        { error: 'Method not allowed', code: 'method_not_allowed' },
-        req,
-        { Allow: 'POST, OPTIONS' },
+        200,
+        {
+          planId: verified.publicView.planId,
+          status: verified.publicView.status,
+          currentPeriodEnd: verified.publicView.currentPeriodEnd,
+          cancelAtPeriodEnd: verified.publicView.cancelAtPeriodEnd,
+          provider: verified.publicView.provider,
+          resolution: verified.publicView.resolution,
+          billing: {
+            enabled: caps.billingEnabled,
+            checkoutEnabled: caps.checkoutEnabled,
+            portalEnabled: caps.portalEnabled,
+            mode: caps.mode,
+          },
+        },
+        probeReq,
       )
-    }
-    return handleWebhookPost(req, rawBody || Buffer.alloc(0), obs.requestId)
-  }
-
-  if (request.method === 'POST') {
-    return handleBillingActionPost(req, rawBody || Buffer.alloc(0), obs.requestId)
-  }
-
-  if (request.method !== 'GET') {
-    return webJson(
-      405,
-      { error: 'Method not allowed', code: 'method_not_allowed' },
-      req,
-      { Allow: 'GET, POST, OPTIONS' },
-    )
-  }
-
-  let userId: string
-  try {
-    const verified = await requireAuthenticatedUser(req)
-    userId = verified.userId
-  } catch (error) {
-    if (error instanceof AuthError) {
-      return webJson(
-        error.status || 401,
-        { error: error.message, code: error.code || 'unauthorized' },
-        req,
-      )
-    }
-    throw error
-  }
-
-  try {
-    const verified = await resolveVerifiedPlanForUser(userId)
-    if (verified.lookupError) {
+    } catch (error) {
+      console.error('[api/subscription] failed:', safeErrorSnippet(error))
       return webJson(
         503,
         {
           error: 'Subscription service temporarily unavailable. Retry shortly.',
           code: 'subscription_lookup_unavailable',
         },
-        req,
+        probeReq,
       )
     }
-
-    const caps = resolveStripePublicCapabilities(process.env)
-
-    return webJson(
-      200,
-      {
-        planId: verified.publicView.planId,
-        status: verified.publicView.status,
-        currentPeriodEnd: verified.publicView.currentPeriodEnd,
-        cancelAtPeriodEnd: verified.publicView.cancelAtPeriodEnd,
-        provider: verified.publicView.provider,
-        resolution: verified.publicView.resolution,
-        billing: {
-          enabled: caps.billingEnabled,
-          checkoutEnabled: caps.checkoutEnabled,
-          portalEnabled: caps.portalEnabled,
-          mode: caps.mode,
-        },
-      },
-      req,
-    )
-  } catch (error) {
-    console.error('[api/subscription] failed:', safeErrorSnippet(error))
-    return webJson(
-      503,
-      {
-        error: 'Subscription service temporarily unavailable. Retry shortly.',
-        code: 'subscription_lookup_unavailable',
-      },
-      req,
-    )
-  }
+  },
 }
 
 async function handleWebhookPost(
-  req: ReturnType<typeof createWebRequestShim>,
-  rawBody: Buffer,
+  request: Request,
+  probeReq: ReturnType<typeof createWebRequestShim>,
   requestId: string,
 ): Promise<Response> {
   const started = Date.now()
   try {
-    const signature =
-      typeof req.headers['stripe-signature'] === 'string'
-        ? req.headers['stripe-signature']
-        : typeof req.headers['Stripe-Signature'] === 'string'
-          ? req.headers['Stripe-Signature']
-          : ''
+    const rawBody = await rawBodyFromWebRequest(request)
+    if (!rawBody || rawBody.length === 0) {
+      return webJson(
+        400,
+        { error: 'Webhook rejected', code: 'raw_body_unavailable' },
+        probeReq,
+      )
+    }
 
+    const signature = request.headers.get('stripe-signature') || ''
     const result = await handleStripeWebhook({
       rawBody,
       signature,
@@ -231,42 +218,43 @@ async function handleWebhookPost(
       return webJson(
         result.httpStatus || 400,
         { error: 'Webhook rejected', code: result.code },
-        req,
+        probeReq,
       )
     }
 
-    return webJson(200, { received: true, code: result.code }, req)
-  } catch (error) {
+    return webJson(200, { received: true, code: result.code }, probeReq)
+  } catch (error: any) {
+    const code = error?.code === 'raw_body_unavailable' ? 'raw_body_unavailable' : 'webhook_handler_error'
     console.error('[api/stripe/webhook] failed:', safeErrorSnippet(error), requestId)
     logApiEvent({
       route: '/api/stripe/webhook',
-      code: 'webhook_handler_error',
+      code,
       ok: false,
       requestId,
       durationMs: Date.now() - started,
     })
     return webJson(
-      500,
-      { error: 'Webhook processing failed', code: 'webhook_handler_error' },
-      req,
+      code === 'raw_body_unavailable' ? 400 : 500,
+      { error: 'Webhook processing failed', code },
+      probeReq,
     )
   }
 }
 
 async function handleBillingActionPost(
-  req: ReturnType<typeof createWebRequestShim>,
-  rawBody: Buffer,
+  request: Request,
+  probeReq: ReturnType<typeof createWebRequestShim>,
   requestId: string,
 ): Promise<Response> {
   const started = Date.now()
   let body: Record<string, unknown> = {}
   try {
-    body = parseJsonFromRawBody(rawBody)
+    const raw = await rawBodyFromWebRequest(request)
+    body = parseJsonFromRawBody(raw)
   } catch {
-    return webJson(400, { error: 'Invalid request body', code: 'invalid_json' }, req)
+    return webJson(400, { error: 'Invalid request body', code: 'invalid_json' }, probeReq)
   }
 
-  // Reject client ownership / price spoofing fields.
   if (
     'priceId' in body ||
     'price_id' in body ||
@@ -280,29 +268,26 @@ async function handleBillingActionPost(
     return webJson(
       400,
       { error: 'Disallowed billing field', code: 'billing_field_rejected' },
-      req,
+      probeReq,
     )
   }
 
   let verified: Awaited<ReturnType<typeof requireAuthenticatedUser>>
   try {
-    verified = await requireAuthenticatedUser(req)
+    verified = await requireAuthenticatedUser(probeReq)
   } catch (error) {
     if (error instanceof AuthError) {
       return webJson(
         error.status || 401,
         { error: error.message, code: error.code || 'unauthorized' },
-        req,
+        probeReq,
       )
     }
     throw error
   }
 
   const action = typeof body.action === 'string' ? body.action.trim().toLowerCase() : ''
-  const originHeader =
-    (typeof req.headers.origin === 'string' && req.headers.origin.trim()) ||
-    (typeof req.headers.Origin === 'string' && req.headers.Origin.trim()) ||
-    null
+  const originHeader = webRequestOrigin(request)
 
   if (action === 'checkout') {
     try {
@@ -341,11 +326,8 @@ async function handleBillingActionPost(
       if (!result.ok) {
         return webJson(
           result.status || 400,
-          {
-            error: mapBillingErrorMessage(result.code),
-            code: result.code,
-          },
-          req,
+          { error: mapBillingErrorMessage(result.code), code: result.code },
+          probeReq,
         )
       }
 
@@ -358,7 +340,7 @@ async function handleBillingActionPost(
           planId: result.planId,
           code: 'checkout_created',
         },
-        req,
+        probeReq,
       )
     } catch (error) {
       console.error('[api/subscription] checkout failed:', safeErrorSnippet(error), requestId)
@@ -372,7 +354,7 @@ async function handleBillingActionPost(
       return webJson(
         503,
         { error: 'Checkout unavailable. Retry shortly.', code: 'checkout_failed' },
-        req,
+        probeReq,
       )
     }
   }
@@ -407,30 +389,22 @@ async function handleBillingActionPost(
       if (!result.ok) {
         return webJson(
           result.status || 400,
-          {
-            error: mapBillingErrorMessage(result.code),
-            code: result.code,
-          },
-          req,
+          { error: mapBillingErrorMessage(result.code), code: result.code },
+          probeReq,
         )
       }
 
       return webJson(
         200,
-        {
-          ok: true,
-          action: 'portal',
-          url: result.url,
-          code: 'portal_created',
-        },
-        req,
+        { ok: true, action: 'portal', url: result.url, code: 'portal_created' },
+        probeReq,
       )
     } catch (error) {
       console.error('[api/subscription] portal failed:', safeErrorSnippet(error), requestId)
       return webJson(
         503,
         { error: 'Billing portal unavailable. Retry shortly.', code: 'portal_failed' },
-        req,
+        probeReq,
       )
     }
   }
@@ -438,7 +412,7 @@ async function handleBillingActionPost(
   return webJson(
     400,
     { error: 'Unknown billing action', code: 'billing_action_unknown' },
-    req,
+    probeReq,
   )
 }
 
