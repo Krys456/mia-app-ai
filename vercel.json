@@ -60,6 +60,10 @@
       "destination": "/api/subscription?probe=public_health"
     },
     {
+      "source": "/api/stripe/webhook",
+      "destination": "/api/subscription?probe=stripe_webhook"
+    },
+    {
       "source": "/api/translation",
       "destination": "/api/selection"
     },
