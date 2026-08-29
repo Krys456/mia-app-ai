@@ -27,6 +27,7 @@ import {
   generateOAuthNonce,
   GOOGLE_OAUTH_SCOPES,
 } from '../_shared/calendar-oauth.ts'
+import { decideEdgeEntitlement } from '../_shared/entitlement-gate.ts'
 
 Deno.serve(async (req) => {
   const started = Date.now()
@@ -82,6 +83,25 @@ Deno.serve(async (req) => {
   try {
     const supabase = serviceClient()
     const userId = await ensureAuthUserRow(supabase, verified.userId)
+
+    // #388D — entitlement after JWT + product flag; OAuth callback remains ungated.
+    const entitlement = await decideEdgeEntitlement({
+      supabase,
+      userId,
+      feature: 'calendar',
+      requestId: runId,
+      route: 'calendar-oauth-start',
+    })
+    if (!entitlement.allowed) {
+      const status = entitlement.reason === 'lookup_unavailable' ? 503 : 403
+      logSafe('calendar-oauth-start', {
+        runId,
+        code: entitlement.body.code,
+        ok: false,
+        durationMs: Date.now() - started,
+      })
+      return json(status, { ...entitlement.body, runId }, cors)
+    }
 
     const codeVerifier = generateCodeVerifier()
     const codeChallenge = await generateCodeChallenge(codeVerifier)

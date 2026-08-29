@@ -27,6 +27,7 @@ import {
   getValidAccessToken,
   type MinimalMessage,
 } from '../_shared/email-gmail.ts'
+import { decideEdgeEntitlement } from '../_shared/entitlement-gate.ts'
 
 type QueryStatus =
   | 'ok'
@@ -163,6 +164,36 @@ Deno.serve(async (req) => {
   try {
     const supabase = serviceClient()
     const userId = await ensureAuthUserRow(supabase, verified.userId)
+
+    // #388D — authoritative Gmail read gate (client calls Edge directly).
+    const entitlement = await decideEdgeEntitlement({
+      supabase,
+      userId,
+      feature: 'gmail',
+      requestId: runId,
+      route: 'email-query',
+    })
+    if (!entitlement.allowed) {
+      const httpStatus = entitlement.reason === 'lookup_unavailable' ? 503 : 403
+      logSafe('email-query', {
+        runId,
+        status: 'error',
+        code: entitlement.body.code,
+        queryType,
+        durationMs: Date.now() - started,
+      })
+      return respond(httpStatus, cors, {
+        ok: false,
+        status: 'error',
+        messages: [],
+        fetchedAt,
+        timeZone,
+        queryType,
+        runId,
+        error: entitlement.body.error,
+        code: entitlement.body.code,
+      })
+    }
 
     const tokenRes = await getValidAccessToken(supabase, userId, { encKey, clientId, clientSecret })
     if (!tokenRes.ok) {
