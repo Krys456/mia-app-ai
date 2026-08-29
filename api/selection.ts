@@ -243,7 +243,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       userId: access.userId,
       entitlement: 'webSearch',
       entitlements: entitlementLoad.entitlements,
-      planId: entitlementLoad.planId,
+      planId: entitlementLoad.planId as 'free' | 'base' | 'pro',
       requestId: entitlementRequestId,
       route: '/api/selection',
     })
