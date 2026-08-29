@@ -28,6 +28,7 @@ import {
 import { consumeRateLimit } from '../lib/server/rate-limit.js'
 import { ensureRequestContext } from '../lib/server/request-id.js'
 import { safeErrorSnippet } from '../lib/server/safe-log.js'
+import { decideCalendarIntegrationEntitlement } from '../lib/server/integration-entitlement.js'
 
 export const config = {
   runtime: 'nodejs',
@@ -126,10 +127,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { user_id: _u, userId: _uc, ...safeBody } = body
 
-  // #336B — read-only Calendar chat query (same function; verified listEvents only).
+  // #336B/#388D — read-only Calendar chat query (verified listEvents only).
   // Action-isolated: must not initialize or call morning schedule storage.
+  // Entitlement: product flag first; shadow observes; enforcement OFF → allow.
   if (safeBody.action === 'calendar_query') {
     try {
+      const calendarGate = await decideCalendarIntegrationEntitlement({
+        userId: user.userId,
+        requestId: obs.requestId,
+        route: '/api/daily-briefing',
+      })
+      if (!calendarGate.allowed) {
+        if (calendarGate.reason === 'product_disabled') {
+          return sendJson(
+            res,
+            200,
+            {
+              status: 'disabled',
+              items: [],
+              code: calendarGate.code,
+              requestId: obs.requestId,
+            },
+            req,
+          )
+        }
+        const status = calendarGate.reason === 'lookup_unavailable' ? 503 : 403
+        return sendJson(res, status, { ...calendarGate.body, requestId: obs.requestId }, req)
+      }
+
       // #375R — omit unreliable/missing client TZ so listEvents can use Google primary.
       const tz = sanitizeTimeZone(safeBody.timeZone)
       const range =
@@ -231,6 +256,46 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const language = safeBody.language === 'en' ? 'en' : 'it'
 
   try {
+    // #388D — Calendar portion of briefing pack: product flag + entitlement/shadow.
+    // Soft-fail when enforcement would deny so reminders still return.
+    const calendarGate = await decideCalendarIntegrationEntitlement({
+      userId: user.userId,
+      requestId: obs.requestId,
+      route: '/api/daily-briefing',
+    })
+    if (!calendarGate.allowed && calendarGate.reason !== 'product_disabled') {
+      if (calendarGate.reason === 'lookup_unavailable') {
+        return sendJson(
+          res,
+          503,
+          { ...calendarGate.body, requestId: obs.requestId },
+          req,
+        )
+      }
+      // Enforcement ON + Free: omit calendar data, keep briefing shape.
+      const payload = await buildDailyBriefingServerPayload({
+        userId: user.userId,
+        timeZone,
+        target,
+        language,
+        skipCalendar: true,
+      })
+      return sendJson(
+        res,
+        200,
+        {
+          ...payload,
+          calendar: {
+            status: 'entitlement_required',
+            items: [],
+            code: 'entitlement_required',
+          },
+          requestId: obs.requestId,
+        },
+        req,
+      )
+    }
+
     const payload = await buildDailyBriefingServerPayload({
       userId: user.userId,
       timeZone,
