@@ -10,12 +10,14 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { buildCoreResponsesCreateParams } from '../lib/server/core-responses-params.js'
 import { requirePaidApiAccess } from '../lib/server/paid-api-guard.js'
 import {
+  decideAdvancedMemoryEntitlement,
   decideDocumentsEntitlement,
   decideImageGenerationTools,
   decideVisionEntitlement,
   decideWebSearchTools,
   loadUserEntitlementsAsync,
 } from '../lib/server/entitlement-gates.js'
+import { resolveEntitledChatModel } from '../lib/server/chat-model.js'
 import { syncPublicUserProfile } from '../lib/server/brain-memory.js'
 import { getServiceSupabase } from '../lib/server/supabase.js'
 import {
@@ -462,13 +464,6 @@ function resolveHostedToolsForTurn(
   return { tools, toolChoice, intent, forceWebSearch, denial }
 }
 
-function resolveChatModel(env: NodeJS.ProcessEnv = process.env): string {
-  const raw = typeof env.OPENAI_MODEL === 'string' ? env.OPENAI_MODEL.trim() : ''
-  // Common typo: digit zero instead of letter o (gpt-40 → gpt-4o).
-  const normalized = raw.replace(/\bgpt-40\b/gi, 'gpt-4o')
-  return normalized || 'gpt-4o'
-}
-
 type MemoryFeedbackEvent =
   | {
       type: 'created' | 'updated' | 'removed'
@@ -609,7 +604,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const lastUserHasImage = lastUserAttachments.some((a) => a.type === 'image')
     const lastUserHasFile = lastUserAttachments.some((a) => a.type === 'file')
     const lastUserHasAttachment = lastUserHasImage || lastUserHasFile
-    const model = resolveChatModel(process.env)
+    // #388G — server-side advancedModel resolution (env authoritative; body model ignored).
+    const modelResolution = resolveEntitledChatModel({
+      entitlements,
+      planId: entitlementPlanId,
+      resolution: entitlementResolution,
+      requestId: entitlementRequestId,
+      route: '/api/chat',
+      claimedModel: (body as Record<string, unknown>).model,
+    })
+    const model = modelResolution.model
+
+    // #388G — advancedMemory for overview + durable auto-write (forget stays Free).
+    const advancedMemoryDecision = decideAdvancedMemoryEntitlement({
+      entitlements,
+      planId: entitlementPlanId,
+      resolution: entitlementResolution,
+      requestId: entitlementRequestId,
+      route: '/api/chat',
+    })
+    const advancedMemoryAllowed = advancedMemoryDecision.allowed !== false
 
     if (lastUserHasImage && !modelSupportsImageInput(model)) {
       console.warn(
@@ -721,9 +735,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Memory Overview (PR3): explicit "what do you remember about me?" inspection.
     // Runs after Forget controls, before Recall V1. Works when Memory is OFF.
     // Empty/unauth → deterministic, zero model. Non-empty → bounded pack + one Core call.
+    // #388G — overview is advancedMemory; soft-skip when enforcement denies (Core chat continues).
     let overviewPack = ''
     let overviewHandled = false
-    if (lastUserCaption) {
+    if (lastUserCaption && advancedMemoryAllowed) {
       const { tryHandleMemoryOverview } = await import(
         '../lib/server/memory-control-overview.js'
       )
@@ -1082,7 +1097,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       lastUserHasFile ||
       activeDocumentReused
 
-    if (lastUserCaption && !skipExtractionForInspection) {
+    // #388G — durable auto-write is advancedMemory; soft-skip when unentitled under enforcement.
+    // Soft recall (loadCoreMemoryPack) and forget remain Free / ungated.
+    if (lastUserCaption && !skipExtractionForInspection && advancedMemoryAllowed) {
       const write = await runMemoryIfEnabled(
         lastUserCaption,
         content,

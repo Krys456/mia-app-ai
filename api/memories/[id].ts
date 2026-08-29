@@ -9,6 +9,8 @@ import { applyCors, parseJsonBody, sendCorsPreflight, sendJson, SAFE_MEMORY_ERRO
 import { MEMORY_FIELD_LIMITS } from '../../lib/server/memory-field-limits.js'
 import { consumeRateLimit } from '../../lib/server/rate-limit.js'
 import { safeErrorSnippet } from '../../lib/server/safe-log.js'
+import { decideRouteEntitlementAsync } from '../../lib/server/entitlement-gates.js'
+import { getRequestContext } from '../../lib/server/request-id.js'
 
 export const config = {
   runtime: 'nodejs',
@@ -61,6 +63,30 @@ async function enforceMemoryRateLimit(
   return true
 }
 
+/**
+ * #388G — Gate advanced memory item read/update.
+ * Privacy DELETE remains ungated so Free users can always remove their data.
+ */
+async function requireAdvancedMemoryManage(
+  req: VercelRequest,
+  res: VercelResponse,
+  userId: string,
+): Promise<boolean> {
+  const decision = await decideRouteEntitlementAsync({
+    userId,
+    entitlement: 'advancedMemory',
+    requestId: getRequestContext(req as any)?.requestId ?? null,
+    route: '/api/memories/[id]',
+    decisionStage: 'required',
+  })
+  if (decision.allowed === false && 'body' in decision) {
+    const status = decision.reason === 'lookup_unavailable' ? 503 : 403
+    sendJson(res, status, decision.body, req)
+    return false
+  }
+  return true
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     applyCors(res, req)
@@ -89,6 +115,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (req.method === 'GET') {
+      if (!(await requireAdvancedMemoryManage(req, res, owner.userId))) {
+        return undefined
+      }
       const memory = await getMemoryById(id, scope)
       if (!memory) {
         return sendJson(res, 404, { error: 'Memory not found' }, req)
@@ -97,6 +126,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (req.method === 'PUT') {
+      if (!(await requireAdvancedMemoryManage(req, res, owner.userId))) {
+        return undefined
+      }
       let body: Record<string, unknown>
       try {
         body = parseJsonBody(req)
@@ -160,6 +192,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (req.method === 'DELETE') {
+      // Privacy forget — always available to the authenticated owner (Free included).
       const ok = await deleteMemory(id, scope)
       if (!ok) {
         return sendJson(res, 404, { error: 'Memory not found' }, req)
