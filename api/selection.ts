@@ -11,6 +11,7 @@ import { applyCors, sendCorsPreflight, sendJson, SAFE_UPSTREAM_ERROR } from '../
 import { requirePaidApiAccess } from '../lib/server/paid-api-guard.js'
 import { decideRouteEntitlementAsync } from '../lib/server/entitlement-gates.js'
 import { safeErrorSnippet } from '../lib/server/safe-log.js'
+import { getRequestContext } from '../lib/server/request-id.js'
 import {
   buildSelectionInput,
   buildSelectionInstructions,
@@ -231,6 +232,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const decision = await decideRouteEntitlementAsync({
       userId: access.userId,
       entitlement: 'webSearch',
+      requestId: getRequestContext(req as any)?.requestId ?? null,
+      route: '/api/selection',
     })
     if (decision.allowed === false && 'body' in decision) {
       const status = decision.reason === 'lookup_unavailable' ? 503 : 403
