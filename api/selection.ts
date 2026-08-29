@@ -9,7 +9,11 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { buildCoreResponsesCreateParams } from '../lib/server/core-responses-params.js'
 import { applyCors, sendCorsPreflight, sendJson, SAFE_UPSTREAM_ERROR } from '../lib/server/http.js'
 import { requirePaidApiAccess } from '../lib/server/paid-api-guard.js'
-import { decideRouteEntitlementAsync } from '../lib/server/entitlement-gates.js'
+import {
+  decideRouteEntitlementAsync,
+  loadUserEntitlementsAsync,
+} from '../lib/server/entitlement-gates.js'
+import { resolveEntitledChatModel } from '../lib/server/chat-model.js'
 import { safeErrorSnippet } from '../lib/server/safe-log.js'
 import { getRequestContext } from '../lib/server/request-id.js'
 import {
@@ -49,12 +53,6 @@ function parseBody(req: VercelRequest): Record<string, unknown> {
   return {}
 }
 
-function resolveChatModel(env: NodeJS.ProcessEnv = process.env): string {
-  const raw = typeof env.OPENAI_MODEL === 'string' ? env.OPENAI_MODEL.trim() : ''
-  const normalized = raw.replace(/\bgpt-40\b/gi, 'gpt-4o')
-  return normalized || 'gpt-4o'
-}
-
 function isTranslationBody(body: Record<string, unknown>): boolean {
   if (body.operation === 'translate' || body.runtime === 'translation') return true
   // /api/translation rewrite: has targetLanguage + text, no selection operation
@@ -69,6 +67,7 @@ async function handleTranslation(
   res: VercelResponse,
   body: Record<string, unknown>,
   apiKey: string,
+  model: string,
 ) {
   const sanitized = sanitizeTranslationRequest(body)
   if (sanitized.ok === false) {
@@ -88,7 +87,6 @@ async function handleTranslation(
   const targetLanguage = sanitized.targetLanguage
   const sourceLanguage = sanitized.sourceLanguage
   const mode = sanitized.mode
-  const model = resolveChatModel(process.env)
 
   try {
     const OpenAI = (await import('openai')).default
@@ -212,9 +210,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return sendJson(res, 400, { error: 'Invalid JSON body', code: 'invalid_body' }, req)
   }
 
+  // #388G — authoritative advancedModel resolution (never trust body.model / plan claims).
+  const entitlementRequestId = getRequestContext(req as any)?.requestId ?? null
+  const entitlementLoad = await loadUserEntitlementsAsync(access.userId)
+  const modelResolution = resolveEntitledChatModel({
+    entitlements: entitlementLoad.entitlements,
+    planId: entitlementLoad.planId,
+    resolution: entitlementLoad.reason,
+    requestId: entitlementRequestId,
+    route: '/api/selection',
+    claimedModel: body.model,
+  })
+  const model = modelResolution.model
+
   // #322 — /api/translation rewrite lands here.
   if (isTranslationBody(body)) {
-    return handleTranslation(req, res, body, apiKey)
+    return handleTranslation(req, res, body, apiKey, model)
   }
 
   const sanitized = sanitizeSelectionRequest(body)
@@ -223,7 +234,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return sendJson(res, 400, { error: sanitized.error, code: sanitized.code }, req)
   }
 
-  const model = resolveChatModel(process.env)
   const isSearch = sanitized.operation === 'search'
 
   // #332C — Search uses hosted web_search; gate before OpenAI (rollout OFF by default).
@@ -232,7 +242,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const decision = await decideRouteEntitlementAsync({
       userId: access.userId,
       entitlement: 'webSearch',
-      requestId: getRequestContext(req as any)?.requestId ?? null,
+      entitlements: entitlementLoad.entitlements,
+      planId: entitlementLoad.planId,
+      requestId: entitlementRequestId,
       route: '/api/selection',
     })
     if (decision.allowed === false && 'body' in decision) {

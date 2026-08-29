@@ -9,6 +9,8 @@ import { parseJsonBody, sendCorsPreflight, sendJson, applyCors, SAFE_MEMORY_ERRO
 import { MEMORY_FIELD_LIMITS } from '../../lib/server/memory-field-limits.js'
 import { consumeRateLimit } from '../../lib/server/rate-limit.js'
 import { safeErrorSnippet } from '../../lib/server/safe-log.js'
+import { decideRouteEntitlementAsync } from '../../lib/server/entitlement-gates.js'
+import { getRequestContext } from '../../lib/server/request-id.js'
 
 export const config = {
   runtime: 'nodejs',
@@ -133,6 +135,30 @@ async function enforceMemoryRateLimit(
   return true
 }
 
+/**
+ * #388G — Gate advanced memory manage CRUD (list/create).
+ * Privacy DELETE remains ungated so Free users can always forget.
+ */
+async function requireAdvancedMemoryManage(
+  req: VercelRequest,
+  res: VercelResponse,
+  userId: string,
+): Promise<boolean> {
+  const decision = await decideRouteEntitlementAsync({
+    userId,
+    entitlement: 'advancedMemory',
+    requestId: getRequestContext(req as any)?.requestId ?? null,
+    route: '/api/memories',
+    decisionStage: 'required',
+  })
+  if (decision.allowed === false && 'body' in decision) {
+    const status = decision.reason === 'lookup_unavailable' ? 503 : 403
+    sendJson(res, status, { success: false, ...decision.body }, req)
+    return false
+  }
+  return true
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     applyCors(res, req)
@@ -153,6 +179,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const scope = memoryOwnerScope(owner.userId)
 
     if (req.method === 'GET') {
+      if (!(await requireAdvancedMemoryManage(req, res, owner.userId))) {
+        return undefined
+      }
       const category =
         typeof req.query.category === 'string' ? req.query.category.trim() : undefined
       const q = typeof req.query.q === 'string' ? req.query.q.trim() : undefined
@@ -181,6 +210,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (req.method === 'DELETE') {
+      // Privacy forget-all — always available to the authenticated owner (Free included).
       const clear =
         req.query.clear === '1' ||
         req.query.clear === 'true' ||
@@ -202,6 +232,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         success: false,
         error: 'Method not allowed. Only GET, POST, and DELETE are supported.',
       }, req)
+    }
+
+    if (!(await requireAdvancedMemoryManage(req, res, owner.userId))) {
+      return undefined
     }
 
     let body: Record<string, unknown>
